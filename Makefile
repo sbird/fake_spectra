@@ -1,6 +1,6 @@
 
-CC = icc
-CFLAGS =  -O -w  -i64 -ip 
+CC = gcc
+CFLAGS =  -O2 -Wall  -g 
 
 extract: read_snapshot.o extract_spectra.o	
 	$(CC) $(CFLAGS) -o extract read_snapshot.o extract_spectra.o -lm

@@ -102,6 +102,7 @@ void SPH_interpolation()
   /*    Generate random coordinates for a point in the box */
   for(iproc=0;iproc<NUMLOS;iproc++)
     { 
+      /*Pick a random sightline*/
       do	
       	iaxis = (int)(drand48()*4);
       while (iaxis == 0 || iaxis==4); 
@@ -113,6 +114,10 @@ void SPH_interpolation()
       printf("Interpolating line of sight %d...done\n",iproc);
       
       /* Loop over particles in LOS and do the SPH interpolation */
+      /* This first finds which particles are near this sight line. 
+       * Probably a faster way to do that. 
+       * Then adds the total density, temp. and velocity for near particles to 
+       * the binned totals for that sightline*/
       for(i=1;i<NumPart[0]+1;i++)
 	{
 	  
@@ -155,7 +160,7 @@ void SPH_interpolation()
 	      
 	      if (dr2 <= h4)
 		{
-		  hinv2 = 1. / h2; /* 1/h^2 */
+	           hinv2 = 1. / h2; /* 1/h^2 */
 		   hinv3 = hinv2 / hh; /* 1/h^3 */
 		   
 		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
@@ -220,8 +225,6 @@ void SPH_interpolation()
 			  rhoker_H1[jj] += kernel * XH * H1frac;
 			  velker_H1[jj] += velker * XH * H1frac;
 			  temker_H1[jj] += temker * XH * H1frac;
-			     
-			  
 
 			  //printf("try %d %e.. %e .done\n",jj,kernel,P[i].Mass_d);		      
 
@@ -237,7 +240,8 @@ void SPH_interpolation()
 	{
 	  ii = i + (NBINS*iproc);
 	  
-	  Delta[ii]     = log10(rhoker_H[ii]/critH);   /* log H density normalised by mean*/
+	  Delta[ii]     = log10(rhoker_H[ii]/critH);   /* log H density normalised by mean 
+                                                          H density of universe */
 	  n_H1[ii]      = rhoker_H1[ii]/rhoker_H[ii];  /* HI/H */
 	  veloc_H1[ii]  = velker_H1[ii]/rhoker_H1[ii]; /* HI weighted km s^-1 */ 
 	  temp_H1[ii]   = temker_H1[ii]/rhoker_H1[ii]; /* HI weighted K */
@@ -267,7 +271,9 @@ void SPH_interpolation()
 		  /*  u_He2 = velaxis[j]*1.0e3; */
 		}
 		  
-
+              /* Note this is indexed with i, above with j! 
+               * This is the difference in velocities between two clouds 
+               * on the same sightline*/
 	      vdiff_H1  = fabs((velaxis[i]*1.0e3) - u_H1); /* ms^-1 */
 	      /* vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2);*/ /* ms^-1 */
 	      

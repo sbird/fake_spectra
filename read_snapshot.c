@@ -49,6 +49,7 @@ int load_snapshot(char *fname, int files, int itype)
   int    t,n,off,pc,pc_new,pc_sph;
   int ii=0;
   float dummy2;
+  char dummy3[4];
   
   
   
@@ -70,7 +71,10 @@ int load_snapshot(char *fname, int files, int itype)
 	  exit(0);
 	}
       
-      
+      SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
       /* Read the header data */
       fread(&dummy, sizeof(dummy), 1, fd);
       fread(&header1, sizeof(header1), 1, fd); 
@@ -125,7 +129,12 @@ int load_snapshot(char *fname, int files, int itype)
       
       if(i==0)
 	allocate_memory();
-      
+  
+      SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
+
       /*Particle positions */
       printf("Reading position...checking\n");
       SKIP;
@@ -152,6 +161,10 @@ int load_snapshot(char *fname, int files, int itype)
       
       /* Peculiar velocites */
       printf("Reading velocity...checking\n");
+      SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
       SKIP;
       for(k=0,pc_new=pc;k<6;k++)
 	{
@@ -184,6 +197,10 @@ int load_snapshot(char *fname, int files, int itype)
       
       /* Particles masses  */
       printf("Reading mass...checking\n");
+      SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
       if(ntot_withmasses>0)
        	SKIP;
       for(k=0, pc_new=pc; k<6; k++)
@@ -221,6 +238,10 @@ int load_snapshot(char *fname, int files, int itype)
       
       if(itype == 0)
 	{ 
+           SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
 	   SKIP;
 	  /*The internal energy of all the Sph particles is read in */
 	  printf("Reading internal energy per unit mass...checking\n");
@@ -233,7 +254,10 @@ int load_snapshot(char *fname, int files, int itype)
 	  
 	  printf("P[%d].U = %f\n\n", Ntype, P[1].U);
 	  
-	  
+	        SKIP
+      fread(&dummy3,sizeof(char),4,fd);
+      fread(&dummy, sizeof(dummy), 1, fd); 
+      SKIP
 	  
 	 SKIP;
 
