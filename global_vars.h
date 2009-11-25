@@ -17,7 +17,7 @@ struct io_header_1
 } header1;
 
 
-int     itype, NumPart[6], Ntype, NumPartTot;
+int    NumPart[6], Ntype, NumPartTot;
 
 struct particle_data 
 {

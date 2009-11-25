@@ -13,11 +13,10 @@ void SPH_interpolation();
 /*****************************************************************************/
 int main(int argc, char **argv)
 {
-  char path[200], input_fname[200], basename[200];
-  int  type, snapshot_number, files;
-  int i;
+  char input_fname[200];
+  int type, files;
   
-  itype = PARTTYPE; 
+  type = PARTTYPE; 
   files = FILENUMBER;
   
   if(argv[1] == NULL)
@@ -29,9 +28,9 @@ int main(int argc, char **argv)
   
   strcpy(input_fname, argv[1]);
   
-  load_snapshot(input_fname, files, itype);
+  load_snapshot(input_fname, files, type);
   
-  if(itype == 0)
+  if(type == 0)
     SPH_interpolation();
   
   return(0);
@@ -45,8 +44,8 @@ int load_snapshot(char *fname, int files, int itype)
 {
   FILE *fd;
   char   buf[200];
-  int    i,j,k,dummy,ntot_withmasses;
-  int    t,n,off,pc,pc_new,pc_sph;
+  int    i,k,dummy,ntot_withmasses;
+  int    n,pc,pc_new,pc_sph;
   int ii=0;
   float dummy2;
   char dummy3[4];

@@ -9,6 +9,7 @@ double *rhoker_He2,*velker_He2,*temker_He2;
 double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 
+void InitLOSMemory(void);
 
 /*****************************************************************************/
 void SPH_interpolation()
@@ -17,10 +18,13 @@ void SPH_interpolation()
   double zmingrid,zmaxgrid,dzgrid,dzinv,boxsize,box2,dzbin,vmax,dvbin;
   double xproj,yproj,zproj,xx,yy,zz,hh,h2,h4,dr,dr2;
   double hinv2,hinv3,vr,Temperature,dzmax,zgrid;
-  double deltaz,dz,dist2,H1frac,He2frac,q,kernel,velker,temker;
-  double sigma_Lya_H1,sigma_Lya_He2,vmax2,vdiff_H1,vdiff_He2;
+  double deltaz,dz,dist2,H1frac,q,kernel,velker,temker;
+  double sigma_Lya_H1,vmax2,vdiff_H1;
   double A_H1,T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
+#ifdef HELIUM
   double A_He2,T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
+  double sigma_Lya_He2,vdiff_He2,He2frac;
+#endif
   int i,iproc,ic,iaxis,iz,ioff,j,iiz,ii,jj;
   
   double ztime[1];
@@ -44,7 +48,9 @@ void SPH_interpolation()
   
   /* Absorption cross-sections m^2 */
   sigma_Lya_H1  = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
-  /* sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA; */
+#ifdef HELIUM
+  sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
+#endif
   
   /* Conversion factors from internal units */
   rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -136,8 +142,8 @@ void SPH_interpolation()
 	    dr = fabs(yy-yproj);
           else if (iaxis ==  2)
 	    dr = fabs(xx-xproj);
-          else if (iaxis == 3)
-	    dr = fabs(xx-xproj);
+          else 
+            dr = fabs(xx-xproj);
 	  
 	  if (dr > box2) 
 	    dr = boxsize - dr; /* Keep dr between 0 and box/2 */
@@ -166,14 +172,16 @@ void SPH_interpolation()
 		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
 		   Temperature = P[i].U; /* T in Kelvin */
 		   H1frac = P[i].NH0; /* nHI/nH */
-		   /* He2frac = P[i].NHep; *//* nHeII/nH */
+                #ifdef HELIUM
+		   He2frac = P[i].NHep; /* nHeII/nH */
+                #endif
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
 		     iz = (xx - zmingrid) * dzinv +1  ;
 		   else if (iaxis == 2) 
 		     iz = (yy - zmingrid) * dzinv +1 ;
-		   else if (iaxis == 3)
+		   else 
 		     iz = (zz - zmingrid) * dzinv +1;
 		   
 		   dzmax = sqrt(fabs(h4 - dr2));
@@ -191,7 +199,7 @@ void SPH_interpolation()
                         deltaz = zgrid - xx;
 		      else if (iaxis == 2)
                         deltaz = zgrid - yy;
-		      else if (iaxis == 3)
+		      else
                         deltaz = zgrid - zz;
                      
 		      if (deltaz > box2) 
@@ -249,7 +257,9 @@ void SPH_interpolation()
       
       /* Prefactor for optical depth  */
       A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(PI);
+  #ifdef HELIUM
       A_He2 = sigma_Lya_He2*C*dzgrid/sqrt(PI);
+  #endif
     
       
       /* Compute the HI and He2 Lya spectra */
@@ -260,80 +270,81 @@ void SPH_interpolation()
 	      
 	      jj =  j + (NBINS*iproc);
 	      
-	      if (PECVEL == 1)
-		{
-		  u_H1 =  (velaxis[j] + veloc_H1[jj])*1.0e3;
-		  /* u_He2 = (velaxis[j] + veloc_He2[jj])*1.0e3; */
-		}
-	      else
-		{
-		  u_H1  = velaxis[j]*1.0e3;
-		  /*  u_He2 = velaxis[j]*1.0e3; */
-		}
-		  
+              u_H1  = velaxis[j]*1.0e3;
+          #if PECVEL 
+              u_H1 +=veloc_H1[jj]*1.0e3;
+          #endif
               /* Note this is indexed with i, above with j! 
                * This is the difference in velocities between two clouds 
                * on the same sightline*/
 	      vdiff_H1  = fabs((velaxis[i]*1.0e3) - u_H1); /* ms^-1 */
-	      /* vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2);*/ /* ms^-1 */
+
+      #ifdef HELIUM
+              u_He2 = velaxis[j]*1.0e3;
+           #if PECVEL
+              u_He2 += veloc_He2[jj]*1.0e3;
+           #endif
+              vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2); /* ms^-1 */
+      #endif //HELIUM
 	      
-	      
-	      if (PERIODIC == 1)
-		{
+           #if PERIODIC  
 		  if (vdiff_H1 > (vmax2*1.0e3))
 		    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
-		  
-		  /* if (vdiff_He2 > (vmax2*1.0e3))
-		     vdiff_He2 = (vmax*1.0e3) - vdiff_He2; */
-		}
-	
+                  #ifdef HELIUM
+		  if (vdiff_He2 > (vmax2*1.0e3))
+		     vdiff_He2 = (vmax*1.0e3) - vdiff_He2; 
+                  #endif
+           #endif
 	      
 	      b_H1   = sqrt(2.0*BOLTZMANN*temp_H1[jj]/(HMASS*PROTONMASS));
-	      b_He2  = sqrt(2.0*BOLTZMANN*temp_He2[jj]/(HEMASS*PROTONMASS));
-	      
 	      T0 = (vdiff_H1/b_H1)*(vdiff_H1/b_H1);
 	      T1 = exp(-T0);
-	      
+          #ifdef HELIUM
+	      b_He2  = sqrt(2.0*BOLTZMANN*temp_He2[jj]/(HEMASS*PROTONMASS));
 	      T3 = (vdiff_He2/b_He2)*(vdiff_He2/b_He2);
 	      T4 = exp(-T3);
+          #endif
 	      
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
 	      if (VOIGT == 1)
 		{
 		  aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*PI*b_H1);
-		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*PI*b_He2);
 		  
 		  T2 = 1.5/T0;	
-		  T5 = 1.5/T3; 
-		  
 		  if(T0 < 1.0e-6)
 		    profile_H1  = T1;
 		  else
 		    profile_H1  = T1 - aa_H1/sqrt(PI)/T0 
 		      *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
 		  
-		  /* if(T3 < 1.0e-6)
+          #ifdef HELIUM
+		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*PI*b_He2);
+		  T5 = 1.5/T3; 
+		   if(T3 < 1.0e-6)
 		       profile_He2  = T4;
  		  else
 		    profile_He2 = T4 - aa_He2/sqrt(PI)/T3 
-		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0); */
-		  
+		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0);
+          #endif
 		}
 	      
 	      else
 		{
 		  profile_H1 = T1;
-		  /* profile_He2 = T4; */
+          #ifdef HELIUM
+		  profile_He2 = T4;
+          #endif
 		}
 	      
 	      
 	      tau_H1j  = A_H1  * rhoker_H1[jj]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
-	      /*   tau_He2j = A_He2 * rhoker_He2[jj] * profile_He2 /(HMASS*PROTONMASS*b_He2); */
-	      
 	      ii =  i + (NBINS*iproc);
 	      
 	      tau_H1[ii]  += tau_H1j;
-	      /* tau_He2[ii] += tau_He2j; */
+          #ifdef HELIUM
+	      tau_He2j = A_He2 * rhoker_He2[jj] * profile_He2 /(HMASS*PROTONMASS*b_He2);
+	      tau_He2[ii] += tau_He2j;
+          #endif
 	      // printf("pixel %d.. %lf .done\n",ii,T1);
 	    }
 	}             /* Spectrum convolution */
@@ -348,10 +359,12 @@ void SPH_interpolation()
   fwrite(temp_H1,sizeof(double),NBINS*NUMLOS,output);   /* T [K], HI weighted */
   fwrite(veloc_H1,sizeof(double),NBINS*NUMLOS,output);  /* v_pec [km s^-1], HI weighted */
   fwrite(tau_H1,sizeof(double),NBINS*NUMLOS,output);    /* HI optical depth */
-  /*  fwrite(n_He2,sizeof(double),NBINS*NUMLOS,output); */    /* n_HeII/n_H */
-  /* fwrite(temp_He2,sizeof(double),NBINS*NUMLOS,output); */  /* T [K], HeII weighted */
-  /* fwrite(veloc_He2,sizeof(double),NBINS*NUMLOS,output);*/ /* v_pec [km s^-1], HeII weighted */
-  /* fwrite(tau_He2,sizeof(double),NBINS*NUMLOS,output);*/   /* HeII optical depth */
+#ifdef HELIUM
+  fwrite(n_He2,sizeof(double),NBINS*NUMLOS,output);     /* n_HeII/n_H */
+  fwrite(temp_He2,sizeof(double),NBINS*NUMLOS,output);   /* T [K], HeII weighted */
+  fwrite(veloc_He2,sizeof(double),NBINS*NUMLOS,output); /* v_pec [km s^-1], HeII weighted */
+  fwrite(tau_He2,sizeof(double),NBINS*NUMLOS,output);   /* HeII optical depth */
+#endif
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
   fclose(output);
@@ -376,14 +389,15 @@ void InitLOSMemory(void)
   veloc_H1     = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
   temp_H1      = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
   tau_H1       = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
+#ifdef HELIUM 
+  rhoker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  velker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  temker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
   
-  /* rhoker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  /* velker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  /* temker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  
-  /* n_He2         = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  /* veloc_He2     = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  /* temp_He2      = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
-  /* tau_He2       = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); */
+  n_He2         = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  veloc_He2     = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  temp_He2      = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  tau_He2       = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+#endif
 }
 /*****************************************************************************/
