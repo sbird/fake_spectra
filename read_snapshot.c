@@ -44,17 +44,11 @@ int load_snapshot(char *fname, int files, int itype)
 {
   FILE *fd;
   char   buf[200];
-  int    i,k,dummy,ntot_withmasses;
-  int    n,pc,pc_new,pc_sph;
-  int ii=0;
-  float dummy2;
-  char dummy3[4];
+  float     *temp;
+  int        i,k,ntot_withmasses;
+  int        n,pc,pc_new,pc_sph;
   
-  
-  
-#define SKIP fread(&dummy, sizeof(dummy), 1, fd);
-  
-  for(i=0, pc=1; i<files; i++, pc=pc_new)
+  for(i=    0, pc=0; i<files; i++, pc=pc_new)
     {
       if(files>1)
 	sprintf(buf,"%s.%d",fname,i);
@@ -70,15 +64,11 @@ int load_snapshot(char *fname, int files, int itype)
 	  exit(0);
 	}
       
-      SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
-      /* Read the header data */
-      fread(&dummy, sizeof(dummy), 1, fd);
-      fread(&header1, sizeof(header1), 1, fd); 
-      fread(&dummy, sizeof(dummy), 1, fd);
-      
+     if(!read_gadget_head(&header1,fd,0))
+     {
+        fprintf(stderr, "Can't read header!\n");
+        exit(1);
+     }
       
       /*Load in the number of different particle types*/
       for(k=0, NumPartTot=0, ntot_withmasses=0; k<5; k++)
@@ -89,11 +79,11 @@ int load_snapshot(char *fname, int files, int itype)
       
       if(NumPart[itype] == 0)
 	{
-	  printf("File %s contains no particles! Exiting.\n\n", buf);
+	  printf("File %s contains no particles of type  %d! Exiting.\n\n", buf,itype);
 	  exit(0);
 	}
       
-      for(k=0, ntot_withmasses=0; k<5; k++)
+      for(k=0, ntot_withmasses=0; k<6; k++)
 	{
 	  if(header1.mass[k]==0)
 	    ntot_withmasses+= header1.npart[k];
@@ -101,6 +91,7 @@ int load_snapshot(char *fname, int files, int itype)
       
       for(k=0 ;k<5 ;k++)
 	printf("Massarr[%d] = %e\n",k,header1.mass[k]);
+      printf("Particles with mass = %d\n\n",ntot_withmasses);
       
       
       atime= header1.time;
@@ -129,30 +120,29 @@ int load_snapshot(char *fname, int files, int itype)
       if(i==0)
 	allocate_memory();
   
-      SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
+      if(!(temp=malloc(3*NumPartTot*sizeof(float))))
+      {
+                      fprintf(stderr, "Failed to allocate temp memory\n");
+                      exit(2);
+      }
 
       /*Particle positions */
       printf("Reading position...checking\n");
-      SKIP;
+      read_gadget_float3(temp,"POS ",0,NumPartTot,fd,0);
       for(k=0,pc_new=pc;k<6;k++)
-	{
-	  for(n=0;n<NumPart[k];n++)
-	    {
-	      if(k == itype)						
-		{
-		  fread(&P[pc_new].Pos[0], sizeof(float), 3, fd);	   
+   	{
+	      for(n=0;n<NumPart[k];n++)
+	     {
+	       if(k == itype)						
+	       {
+	          P[pc_new].Pos[0]=temp[3*pc_new];	   
+	          P[pc_new].Pos[1]=temp[3*pc_new+1];	   
+	          P[pc_new].Pos[2]=temp[3*pc_new+2];	   
 		  pc_new++;
-		}
-	      else
-		for (ii=0;ii<3;ii++)
-		  fread(&dummy2, sizeof(dummy2), 1, fd);	      
+	       }
 	    }
 	  
 	}
-      SKIP;
       
       printf("P[%d].Pos[0] = %f\n", 1, P[1].Pos[0]);
       printf("P[%d].Pos[1] = %f\n", 1, P[1].Pos[1]);
@@ -160,48 +150,30 @@ int load_snapshot(char *fname, int files, int itype)
       
       /* Peculiar velocites */
       printf("Reading velocity...checking\n");
-      SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
-      SKIP;
+      read_gadget_float3(temp,"VEL ",0,NumPartTot,fd,0);
       for(k=0,pc_new=pc;k<6;k++)
 	{
 	  for(n=0;n<NumPart[k];n++)
 	    {
-	      if(k == itype)						
-		{
-		  fread(&P[pc_new].Vel[0], sizeof(float), 3, fd);
+	       if(k == itype)						
+	       {
+	          P[pc_new].Vel[0]=temp[3*pc_new];	   
+	          P[pc_new].Vel[1]=temp[3*pc_new+1];	   
+	          P[pc_new].Vel[2]=temp[3*pc_new+2];	   
 		  pc_new++;
-		}
-	      else
-		for (ii=0;ii<3;ii++)
-		  fread(&dummy2, sizeof(dummy2), 1, fd);	      
+	       }
 	    }
 	}
-      SKIP;
 
       printf("P[%d].Vel[0] = %f\n", 1, P[1].Vel[0]);
       printf("P[%d].Vel[1] = %f\n", 1, P[1].Vel[1]);
       printf("P[%d].Vel[2] = %f\n\n", 1, P[1].Vel[2]);
       
       
-      /* Particle IDs (unused)  */
-      SKIP;
-      for(k=0,pc_new=pc;k<6;k++)
-	for(n=0;n<NumPart[k];n++)
-	  fread(&dummy, sizeof(dummy), 1, fd);
-       SKIP;
-      
-      
       /* Particles masses  */
       printf("Reading mass...checking\n");
-      SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
       if(ntot_withmasses>0)
-       	SKIP;
+              read_gadget_float(temp,"MASS",fd);
       for(k=0, pc_new=pc; k<6; k++)
 	{
 	  for(n=0;n<NumPart[k];n++)
@@ -215,76 +187,52 @@ int load_snapshot(char *fname, int files, int itype)
 		    }
 		  else				
 		    {
-		      fread(&P[pc_new].Mass, sizeof(float), 1, fd);
+		      P[pc_new].Mass=temp[pc_new];
 		      pc_new++;
 		    }
 		}
-	      else
-		{
-		  if(header1.mass[k]>0.0)
-		    dummy2 = header1.mass[k];
-		  else
-		    fread(&dummy2, sizeof(dummy2), 1, fd);
-		}
-	      
 	    }
 	}
-      if(ntot_withmasses>0)
-	SKIP;
       
       printf("P[%d].Mass = %e\n\n", Ntype, P[1].Mass);
       
       
       if(itype == 0)
 	{ 
-           SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
-	   SKIP;
 	  /*The internal energy of all the Sph particles is read in */
 	  printf("Reading internal energy per unit mass...checking\n");
+              read_gadget_float(temp,"U   ",fd);
 	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
 	    {
-	      fread(&P[pc_sph].U, sizeof(float), 1, fd);
-	      pc_sph++;
+	      P[pc_sph].U=temp[pc_sph];
+              pc_sph++;
 	    }
-	  SKIP;
 	  
 	  printf("P[%d].U = %f\n\n", Ntype, P[1].U);
 	  
-	        SKIP
-      fread(&dummy3,sizeof(char),4,fd);
-      fread(&dummy, sizeof(dummy), 1, fd); 
-      SKIP
-	  
-	 SKIP;
-
-	  /*The comoving density of all the SPH particles is read in */
-          printf("Reading comoving SPH density...checking\n");
-          for(n=0, pc_sph=pc; n<header1.npart[0];n++)
-            {
-              fread(&P[pc_sph].Rho, sizeof(float), 1, fd);
-
+	  /*The comoving density of all the SPH particles is read in. NOT USED. */
+         /* printf("Reading comoving SPH density...checking\n");
+              read_gadget_float(temp,"RHO ",fd);
+	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
+	    {
+	      P[pc_sph].Rho=temp[pc_sph];
               pc_sph++;
-            }
+	    }
 
 	  printf("P[%d].Rho = %e\n", Ntype, P[1].Rho);
-          printf("\n");
-	  SKIP;
+          printf("\n");*/
 	  
 
           /* The free electron fraction */
           if(header1.flag_cooling)
             {
-	      SKIP;
               printf("Reading electron fraction...checking\n");
-              for(n=0, pc_sph=pc; n<NumPart[0];n++)
-                {
-                  fread(&P[pc_sph].Ne, sizeof(float), 1, fd);
-                  pc_sph++;
-                }
-              SKIP;
+              read_gadget_float(temp,"NHP ",fd);
+	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
+	    {
+	      P[pc_sph].Ne=temp[pc_sph];
+              pc_sph++;
+	    }
             }
 
           printf("P[%d].Ne = %e\n\n", Ntype, P[1].Ne);
@@ -294,29 +242,24 @@ int load_snapshot(char *fname, int files, int itype)
       	  /* The HI fraction, nHI/nH */
 	  if(header1.flag_cooling)
 	    {
-	      SKIP;
-	      
-	      printf("Reading HI fraction...checking\n");
-	      for(n=0, pc_sph=pc; n<NumPart[0];n++)
-		{
-		  fread(&P[pc_sph].NH0, sizeof(float), 1, fd);
-		  pc_sph++;
-		}
-	        SKIP;
+              read_gadget_float(temp,"NH  ",fd);
+	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
+	    {
+	      P[pc_sph].NH0=temp[pc_sph];
+              pc_sph++;
+	    }
 	    }
 	  
 	  printf("P[%d].NH0 = %e\n\n", Ntype, P[1].NH0);
 	  
  
 	  /* The smoothing length */	  
-	   SKIP;
-	  printf("Reading smoothing length...checking\n");
+              read_gadget_float(temp,"HSML",fd);
 	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
 	    {
-	      fread(&P[pc_sph].h, sizeof(float), 1, fd);
-	      pc_sph++;
+	      P[pc_sph].h=temp[pc_sph];
+              pc_sph++;
 	    }
-	  SKIP;
 	  
 	  printf("P[%d].h = %f\n\n",Ntype, P[1].h);
 	  
@@ -324,6 +267,7 @@ int load_snapshot(char *fname, int files, int itype)
 	  
 	}
       fclose(fd);
+      free(temp);
     }
       
 
@@ -336,25 +280,14 @@ int load_snapshot(char *fname, int files, int itype)
 /* this routine allocates the memory for the 
  * particle data.
  */
-  int allocate_memory(void)
-  { 
+int allocate_memory(void)
+{ 
   if(!(P=malloc(Ntype*sizeof(struct particle_data))))
     {
       fprintf(stderr,"failed to allocate memory.\n\n");
       exit(0);
     }
   
-  P--;   /* start with offset 1 */
-
-  
-  if(!(Id=malloc(Ntype*sizeof(int))))
-    {
-      fprintf(stderr,"failed to allocate memory.\n\n");
-      exit(0);
-    }
-  
-  Id--;   /* start with offset 1 */
-
   printf("Allocating memory...done\n");
   return(0);
 }

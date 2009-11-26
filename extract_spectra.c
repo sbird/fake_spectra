@@ -10,6 +10,7 @@ double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 
 void InitLOSMemory(void);
+void FreeLOSMemory(void);
 
 /*****************************************************************************/
 void SPH_interpolation()
@@ -60,7 +61,7 @@ void SPH_interpolation()
   hscale = rscale * 0.5; /* Note the factor of 0.5 for this kernel definition */
   
   /*   Convert to SI units from GADGET-3 units */
-  for(i=1;i<NumPart[0]+1;i++)
+  for(i=0;i<NumPart[0];i++)
     {
       for(ic=0;ic<3;ic++)
 	{
@@ -124,7 +125,7 @@ void SPH_interpolation()
        * Probably a faster way to do that. 
        * Then adds the total density, temp. and velocity for near particles to 
        * the binned totals for that sightline*/
-      for(i=1;i<NumPart[0]+1;i++)
+      for(i=0;i<NumPart[0];i++)
 	{
 	  
 	  /*     Positions (physical m) */
@@ -368,36 +369,62 @@ void SPH_interpolation()
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
   fclose(output);
-  
+  FreeLOSMemory();
   return;
 }
 
 /*****************************************************************************/
 void InitLOSMemory(void)
 {  
-  rhoker_H     = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  Delta        = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
+  rhoker_H     = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  Delta        = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
   
-  posaxis      = (double *) malloc(NBINS * sizeof(double));
-  velaxis      = (double *) malloc(NBINS * sizeof(double));
+  posaxis      = (double *) calloc(NBINS , sizeof(double));
+  velaxis      = (double *) calloc(NBINS , sizeof(double));
   
-  rhoker_H1    = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  velker_H1    = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  temker_H1    = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
+  rhoker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  velker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  temker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
   
-  n_H1         = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  veloc_H1     = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  temp_H1      = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
-  tau_H1       = (double *) malloc((NUMLOS * NBINS) * sizeof(double));
+  n_H1         = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  veloc_H1     = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  temp_H1      = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  tau_H1       = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
 #ifdef HELIUM 
-  rhoker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
-  velker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
-  temker_He2    = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  rhoker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  velker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  temker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
   
-  n_He2         = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
-  veloc_He2     = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
-  temp_He2      = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
-  tau_He2       = (double *) malloc((NUMLOS * NBINS) * sizeof(double)); 
+  n_He2         = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  veloc_He2     = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  temp_He2      = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  tau_He2       = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+#endif
+}
+/*****************************************************************************/
+
+/*****************************************************************************/
+void FreeLOSMemory(void)
+{  
+  free(rhoker_H)  ;
+  free(Delta)     ;
+  free(posaxis)   ;
+  free(velaxis)   ;
+  free(rhoker_H1) ;
+  free(velker_H1) ;
+  free(temker_H1) ;
+  free(n_H1     ) ;
+  free(veloc_H1 ) ;
+  free(temp_H1  ) ;
+  free(tau_H1   ) ;
+#ifdef HELIUM 
+  free(rhoker_He2);
+  free(velker_He2);
+  free(temker_He2);
+  free(n_He2     );
+  free(veloc_He2 );
+  free(temp_He2  );
+  free(tau_He2   );
 #endif
 }
 /*****************************************************************************/
