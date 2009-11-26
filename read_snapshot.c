@@ -46,9 +46,10 @@ int load_snapshot(char *fname, int files, int itype)
   char   buf[200];
   float     *temp;
   int        i,k,ntot_withmasses;
-  int        n,pc,pc_new,pc_sph;
+  int        n;
+  int Nstart=0;
   
-  for(i=    0, pc=0; i<files; i++, pc=pc_new)
+  for(i=0; i<files; i++)
     {
       if(files>1)
 	sprintf(buf,"%s.%d",fname,i);
@@ -116,83 +117,60 @@ int load_snapshot(char *fname, int files, int itype)
       
       /* Now read the particle data */ 
       Ntype = NumPart[itype];
-      
+      for(n=0; n<itype; n++)
+              Nstart+=NumPart[n];
       if(i==0)
 	allocate_memory();
   
-      if(!(temp=malloc(3*NumPartTot*sizeof(float))))
+      if(!(temp=malloc(3*Ntype*sizeof(float))))
       {
                       fprintf(stderr, "Failed to allocate temp memory\n");
                       exit(2);
       }
-
       /*Particle positions */
       printf("Reading position...checking\n");
-      read_gadget_float3(temp,"POS ",0,NumPartTot,fd,0);
-      for(k=0,pc_new=pc;k<6;k++)
-   	{
-	      for(n=0;n<NumPart[k];n++)
-	     {
-	       if(k == itype)						
-	       {
-	          P[pc_new].Pos[0]=temp[3*pc_new];	   
-	          P[pc_new].Pos[1]=temp[3*pc_new+1];	   
-	          P[pc_new].Pos[2]=temp[3*pc_new+2];	   
-		  pc_new++;
-	       }
-	    }
-	  
-	}
+      read_gadget_float3(temp,"POS ",Nstart,Ntype,fd,0);
+      for(n=0;n<Ntype;n++)
+      {
+         P[n].Pos[0]=temp[3*n];	   
+         P[n].Pos[1]=temp[3*n+1];	   
+         P[n].Pos[2]=temp[3*n+2];	   
+      }
       
-      printf("P[%d].Pos[0] = %f\n", 1, P[1].Pos[0]);
-      printf("P[%d].Pos[1] = %f\n", 1, P[1].Pos[1]);
-      printf("P[%d].Pos[2] = %f\n\n", 1, P[1].Pos[2]);
+      printf("P[%d].Pos[0] = %f\n", 0, P[0].Pos[0]);
+      printf("P[%d].Pos[1] = %f\n", 0, P[0].Pos[1]);
+      printf("P[%d].Pos[2] = %f\n\n", 0, P[0].Pos[2]);
       
       /* Peculiar velocites */
       printf("Reading velocity...checking\n");
-      read_gadget_float3(temp,"VEL ",0,NumPartTot,fd,0);
-      for(k=0,pc_new=pc;k<6;k++)
-	{
-	  for(n=0;n<NumPart[k];n++)
-	    {
-	       if(k == itype)						
-	       {
-	          P[pc_new].Vel[0]=temp[3*pc_new];	   
-	          P[pc_new].Vel[1]=temp[3*pc_new+1];	   
-	          P[pc_new].Vel[2]=temp[3*pc_new+2];	   
-		  pc_new++;
-	       }
-	    }
-	}
-
-      printf("P[%d].Vel[0] = %f\n", 1, P[1].Vel[0]);
-      printf("P[%d].Vel[1] = %f\n", 1, P[1].Vel[1]);
-      printf("P[%d].Vel[2] = %f\n\n", 1, P[1].Vel[2]);
-      
+      read_gadget_float3(temp,"VEL ",Nstart,Ntype,fd,0);
+      for(n=0;n<Ntype;n++)
+      {
+         P[n].Vel[0]=temp[3*n];	   
+         P[n].Vel[1]=temp[3*n+1];	   
+         P[n].Vel[2]=temp[3*n+2];	   
+      }
+      printf("P[%d].Vel[0] = %f\n", 0, P[0].Vel[0]);
+      printf("P[%d].Vel[1] = %f\n", 0, P[0].Vel[1]);
+      printf("P[%d].Vel[2] = %f\n\n", 0, P[0].Vel[2]);
+      free(temp);
+      if(!(temp=malloc(Ntype*sizeof(float))))
+      {
+                      fprintf(stderr, "Failed to allocate temp memory\n");
+                      exit(2);
+      }
       
       /* Particles masses  */
       printf("Reading mass...checking\n");
       if(ntot_withmasses>0)
-              read_gadget_float(temp,"MASS",fd);
-      for(k=0, pc_new=pc; k<6; k++)
-	{
-	  for(n=0;n<NumPart[k];n++)
-	    {
-	      if(k == itype)				
-		{
-		  if(header1.mass[k]>0.0)
-		    {
-		      P[pc_new].Mass = header1.mass[k];
-		      pc_new++;			
-		    }
-		  else				
-		    {
-		      P[pc_new].Mass=temp[pc_new];
-		      pc_new++;
-		    }
-		}
-	    }
-	}
+              read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
+      for(n=0;n<Ntype;n++)
+      {
+   	  if(header1.mass[itype]>0.0)
+   	      P[n].Mass = header1.mass[itype];
+   	  else				
+   	      P[n].Mass=temp[n];
+      }
       
       printf("P[%d].Mass = %e\n\n", Ntype, P[1].Mass);
       
@@ -201,69 +179,33 @@ int load_snapshot(char *fname, int files, int itype)
 	{ 
 	  /*The internal energy of all the Sph particles is read in */
 	  printf("Reading internal energy per unit mass...checking\n");
-              read_gadget_float(temp,"U   ",fd);
-	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
-	    {
-	      P[pc_sph].U=temp[pc_sph];
-              pc_sph++;
-	    }
+              read_gadget_float(temp,"U   ",0,NumPart[0],fd);
+	  for(n=0; n<NumPart[0];n++)
+	      P[n].U=temp[n];
 	  
 	  printf("P[%d].U = %f\n\n", Ntype, P[1].U);
 	  
-	  /*The comoving density of all the SPH particles is read in. NOT USED. */
-         /* printf("Reading comoving SPH density...checking\n");
-              read_gadget_float(temp,"RHO ",fd);
-	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
-	    {
-	      P[pc_sph].Rho=temp[pc_sph];
-              pc_sph++;
-	    }
-
-	  printf("P[%d].Rho = %e\n", Ntype, P[1].Rho);
-          printf("\n");*/
-	  
-
           /* The free electron fraction */
           if(header1.flag_cooling)
             {
               printf("Reading electron fraction...checking\n");
-              read_gadget_float(temp,"NHP ",fd);
-	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
-	    {
-	      P[pc_sph].Ne=temp[pc_sph];
-              pc_sph++;
+              read_gadget_float(temp,"NHP ",0,NumPart[0],fd);
+	      for(n=0; n<NumPart[0];n++)
+	         P[n].Ne=temp[n];
+
+              printf("P[%d].Ne = %e\n\n", Ntype, P[1].Ne);
+              /* The HI fraction, nHI/nH */
+              read_gadget_float(temp,"NH  ",0,NumPart[0],fd);
+              for(n=0; n<NumPart[0];n++)
+	        P[n].NH0=temp[n];
+	      printf("P[%d].NH0 = %e\n\n", Ntype, P[1].NH0);
 	    }
-            }
-
-          printf("P[%d].Ne = %e\n\n", Ntype, P[1].Ne);
-
-
-
-      	  /* The HI fraction, nHI/nH */
-	  if(header1.flag_cooling)
-	    {
-              read_gadget_float(temp,"NH  ",fd);
-	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
-	    {
-	      P[pc_sph].NH0=temp[pc_sph];
-              pc_sph++;
-	    }
-	    }
-	  
-	  printf("P[%d].NH0 = %e\n\n", Ntype, P[1].NH0);
-	  
  
 	  /* The smoothing length */	  
-              read_gadget_float(temp,"HSML",fd);
-	  for(n=0, pc_sph=pc; n<NumPart[0];n++)
-	    {
-	      P[pc_sph].h=temp[pc_sph];
-              pc_sph++;
-	    }
-	  
-	  printf("P[%d].h = %f\n\n",Ntype, P[1].h);
-	  
-	  
+         read_gadget_float(temp,"HSML",0,NumPart[0],fd);
+	 for(n=0; n<NumPart[0];n++)
+	    P[n].h=temp[n];
+	 printf("P[%d].h = %f\n\n",Ntype, P[1].h);
 	  
 	}
       fclose(fd);

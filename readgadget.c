@@ -172,7 +172,7 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old)
 /*-------- FILE *fd:      File handle -----------------------------------------*/
 /*-------- returns length of dataarray ----------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-int64_t read_gadget_float(float *data,char *label,FILE *fd)
+int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *fd)
 {
   int64_t blocksize;
   blocksize = find_block(fd,label);
@@ -183,10 +183,13 @@ int64_t read_gadget_float(float *data,char *label,FILE *fd)
     }
   else
     {
+       blocksize=(blocksize < number*sizeof(float) ? blocksize : number*sizeof(float));
 #ifdef MY_DEBUG
        printf("Reading %d bytes of data from <%s>...\n",blocksize,label);
 #endif
        SKIP;
+       if(offset>0)
+          fseek(fd,offset*sizeof(float),SEEK_CUR);
        my_fread(data,blocksize, 1, fd);
        swap_Nbyte((char*)data,blocksize/sizeof(float),4);
        SKIP;
