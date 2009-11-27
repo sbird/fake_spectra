@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include "global_vars.h"
 #define int4bytes int
-typedef struct io_header_1 gadget_header;
 gadget_header header;
 
 /*--------- comment/uncomment to remove/enable DEBUG outputs ------------------*/

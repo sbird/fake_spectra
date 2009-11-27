@@ -9,11 +9,11 @@ double *rhoker_He2,*velker_He2,*temker_He2;
 double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 
-void InitLOSMemory(void);
+void InitLOSMemory(int NumLos);
 void FreeLOSMemory(void);
 
 /*****************************************************************************/
-void SPH_interpolation()
+void SPH_interpolation(int NumLos, int Ntype)
 {
   double Hz,rhoc,critH,H0,mu,rscale,vscale,mscale,escale,hscale;
   double zmingrid,zmaxgrid,dzgrid,dzinv,boxsize,box2,dzbin,vmax,dvbin;
@@ -33,7 +33,7 @@ void SPH_interpolation()
   FILE *output;
   
 
-  InitLOSMemory();
+  InitLOSMemory(NumLos);
   printf("Allocating memory...done\n");
   
   srand48(241008); /* random seed generator */
@@ -61,7 +61,7 @@ void SPH_interpolation()
   hscale = rscale * 0.5; /* Note the factor of 0.5 for this kernel definition */
   
   /*   Convert to SI units from GADGET-3 units */
-  for(i=0;i<NumPart[0];i++)
+  for(i=0;i<Ntype;i++)
     {
       for(ic=0;ic<3;ic++)
 	{
@@ -107,7 +107,7 @@ void SPH_interpolation()
   
   
   /*    Generate random coordinates for a point in the box */
-  for(iproc=0;iproc<NUMLOS;iproc++)
+  for(iproc=0;iproc<NumLos;iproc++)
     { 
       /*Pick a random sightline*/
       do	
@@ -125,7 +125,7 @@ void SPH_interpolation()
        * Probably a faster way to do that. 
        * Then adds the total density, temp. and velocity for near particles to 
        * the binned totals for that sightline*/
-      for(i=0;i<NumPart[0];i++)
+      for(i=0;i<Ntype;i++)
 	{
 	  
 	  /*     Positions (physical m) */
@@ -272,7 +272,7 @@ void SPH_interpolation()
 	      jj =  j + (NBINS*iproc);
 	      
               u_H1  = velaxis[j]*1.0e3;
-          #if PECVEL 
+          #ifdef PECVEL 
               u_H1 +=veloc_H1[jj]*1.0e3;
           #endif
               /* Note this is indexed with i, above with j! 
@@ -282,13 +282,13 @@ void SPH_interpolation()
 
       #ifdef HELIUM
               u_He2 = velaxis[j]*1.0e3;
-           #if PECVEL
+           #ifdef PECVEL
               u_He2 += veloc_He2[jj]*1.0e3;
            #endif
               vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2); /* ms^-1 */
       #endif //HELIUM
 	      
-           #if PERIODIC  
+           #ifdef PERIODIC  
 		  if (vdiff_H1 > (vmax2*1.0e3))
 		    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
                   #ifdef HELIUM
@@ -307,8 +307,7 @@ void SPH_interpolation()
           #endif
 	      
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
-	      if (VOIGT == 1)
-		{
+#ifdef VOIGT
 		  aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*PI*b_H1);
 		  
 		  T2 = 1.5/T0;	
@@ -327,15 +326,12 @@ void SPH_interpolation()
 		    profile_He2 = T4 - aa_He2/sqrt(PI)/T3 
 		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0);
           #endif
-		}
-	      
-	      else
-		{
+#else   
 		  profile_H1 = T1;
           #ifdef HELIUM
 		  profile_He2 = T4;
           #endif
-		}
+#endif
 	      
 	      
 	      tau_H1j  = A_H1  * rhoker_H1[jj]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
@@ -355,16 +351,16 @@ void SPH_interpolation()
   
   output = fopen("spectra1024.dat","wb");
   fwrite(ztime,sizeof(double),1,output);
-  fwrite(Delta,sizeof(double),NBINS*NUMLOS,output);     /* gas overdensity */
-  fwrite(n_H1,sizeof(double),NBINS*NUMLOS,output);      /* n_HI/n_H */
-  fwrite(temp_H1,sizeof(double),NBINS*NUMLOS,output);   /* T [K], HI weighted */
-  fwrite(veloc_H1,sizeof(double),NBINS*NUMLOS,output);  /* v_pec [km s^-1], HI weighted */
-  fwrite(tau_H1,sizeof(double),NBINS*NUMLOS,output);    /* HI optical depth */
+  fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
+  fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
+  fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
+  fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
+  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
 #ifdef HELIUM
-  fwrite(n_He2,sizeof(double),NBINS*NUMLOS,output);     /* n_HeII/n_H */
-  fwrite(temp_He2,sizeof(double),NBINS*NUMLOS,output);   /* T [K], HeII weighted */
-  fwrite(veloc_He2,sizeof(double),NBINS*NUMLOS,output); /* v_pec [km s^-1], HeII weighted */
-  fwrite(tau_He2,sizeof(double),NBINS*NUMLOS,output);   /* HeII optical depth */
+  fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
+  fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
+  fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
+  fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
 #endif
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
@@ -374,31 +370,31 @@ void SPH_interpolation()
 }
 
 /*****************************************************************************/
-void InitLOSMemory(void)
+void InitLOSMemory(int NumLos)
 {  
-  rhoker_H     = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  Delta        = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  rhoker_H     = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  Delta        = (double *) calloc((NumLos * NBINS) , sizeof(double));
   
   posaxis      = (double *) calloc(NBINS , sizeof(double));
   velaxis      = (double *) calloc(NBINS , sizeof(double));
   
-  rhoker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  velker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  temker_H1    = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  rhoker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  velker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  temker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
   
-  n_H1         = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  veloc_H1     = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  temp_H1      = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
-  tau_H1       = (double *) calloc((NUMLOS * NBINS) , sizeof(double));
+  n_H1         = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  temp_H1      = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
 #ifdef HELIUM 
-  rhoker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
-  velker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
-  temker_He2    = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  rhoker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  velker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  temker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   
-  n_He2         = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
-  veloc_He2     = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
-  temp_He2      = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
-  tau_He2       = (double *) calloc((NUMLOS * NBINS) , sizeof(double)); 
+  n_He2         = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  veloc_He2     = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  temp_He2      = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  tau_He2       = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
 #endif
 }
 /*****************************************************************************/

@@ -1,15 +1,8 @@
 #include "headers.h"
 
-
 /* Snapshot information */
 #define PARTTYPE 0/* Particle type required */
 #define FILENUMBER 1 /* Number of sub-files */
-
-
-/* Optional flags, set to either 1 (on) or 0 (off) */
-#define PERIODIC 1 /* Periodic spectra */
-#define VOIGT 1    /* Voigt profiles vs. Gaussian profiles */
-#define PECVEL 1   /* Peculiar velocities */
 
 /* Spectrum data set size     */ 
 #define NBINS 1024 /* number of pixels */
@@ -20,7 +13,7 @@
 #define OMEGAB 0.0463 /* baryon fraction */
 
 /* Some useful numbers */
-#define  PI    3.14159265358979323846
+#define  PI    M_PI
 #define  GAMMA (5.0/3.0)
 
 /* Physical constants, SI units */
