@@ -141,7 +141,7 @@ int load_snapshot(char *fname, int files)
                     exit(2);
     }
     /*Particle positions */
-    printf("Reading position...\n");
+    printf("Reading position and velocity...\n");
     read_gadget_float3(temp,"POS ",Nstart,Ntype,fd,0);
     for(n=0;n<Ntype;n++)
     {
@@ -149,10 +149,8 @@ int load_snapshot(char *fname, int files)
        P[NumRead+n].Pos[1]=temp[3*n+1];	   
        P[NumRead+n].Pos[2]=temp[3*n+2];	   
     }
-    printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
     
     /* Peculiar velocites */
-    printf("Reading velocity...\n");
     read_gadget_float3(temp,"VEL ",Nstart,Ntype,fd,0);
     for(n=0;n<Ntype;n++)
     {
@@ -160,7 +158,6 @@ int load_snapshot(char *fname, int files)
        P[NumRead+n].Vel[1]=temp[3*n+1];	   
        P[NumRead+n].Vel[2]=temp[3*n+2];	   
     }
-    printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
     free(temp);
     /*Done with triplets, read single valued things*/
     if(!(temp=malloc(Ntype*sizeof(float))))
@@ -170,7 +167,7 @@ int load_snapshot(char *fname, int files)
     }
     
     /* Particles masses  */
-    printf("Reading mass...\n");
+    printf("Reading mass and temp...\n");
     if(headers[i].mass[PARTTYPE] == 0)
             read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
     for(n=0;n<Ntype;n++)
@@ -184,12 +181,10 @@ int load_snapshot(char *fname, int files)
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
           omegab = P[0].Mass/(P[0].Mass+headers[0].mass[1])*omega0;
-    printf("P[%d].Mass = %e Ω_B=%g\n\n", Ntype, P[1].Mass,omegab);
     
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
-        printf("Reading internal energy per unit mass...\n");
         read_gadget_float(temp,"U   ",0,NumPart[0],fd);
         for(n=0; n<NumPart[0];n++)
             P[NumRead+n].U=temp[n];
@@ -199,29 +194,32 @@ int load_snapshot(char *fname, int files)
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
-            printf("Reading electron fraction...\n");
+            printf("Reading electron fractions...\n");
             read_gadget_float(temp,"NHP ",0,NumPart[0],fd);
             for(n=0; n<NumPart[0];n++)
                P[NumRead+n].Ne=temp[n];
 
-            printf("P[%d].Ne = %e\n", Ntype, P[1].Ne);
             /* The HI fraction, nHI/nH */
             read_gadget_float(temp,"NH  ",0,NumPart[0],fd);
             for(n=0; n<NumPart[0];n++)
               P[NumRead+n].NH0=temp[n];
-            printf("P[%d].NH0 = %e\n", Ntype, P[1].NH0);
           }
 
         /* The smoothing length */	  
        read_gadget_float(temp,"HSML",0,NumPart[0],fd);
        for(n=0; n<NumPart[0];n++)
           P[NumRead+n].h=temp[n];
-       printf("P[%d].h = %f\n",Ntype, P[1].h);
         
       }
     NumRead+=Ntype;
     fclose(fd);
     free(temp);
   }
+  printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
+  printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
+  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass,omegab);
+  printf("P[%d].Ne = %e\n", NumRead, P[1].Ne);
+  printf("P[%d].NH0 = %e\n", NumRead, P[1].NH0);
+  printf("P[%d].h = %f\n",NumRead, P[1].h);
   return NumRead;
 }
