@@ -181,33 +181,29 @@ int load_snapshot(char *fname, int files)
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
           omegab = P[0].Mass/(P[0].Mass+headers[0].mass[1])*omega0;
-    
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
-        read_gadget_float(temp,"U   ",0,NumPart[0],fd);
-        for(n=0; n<NumPart[0];n++)
+        read_gadget_float(temp,"U   ",Nstart,Ntype,fd);
+        for(n=0; n<Ntype;n++)
             P[NumRead+n].U=temp[n];
-        
-        printf("P[%d].U = %f\n\n", Ntype, P[1].U);
-        
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
             printf("Reading electron fractions...\n");
-            read_gadget_float(temp,"NHP ",0,NumPart[0],fd);
-            for(n=0; n<NumPart[0];n++)
+            read_gadget_float(temp,"NHP ",Nstart,Ntype,fd);
+            for(n=0; n<Ntype;n++)
                P[NumRead+n].Ne=temp[n];
 
             /* The HI fraction, nHI/nH */
-            read_gadget_float(temp,"NH  ",0,NumPart[0],fd);
-            for(n=0; n<NumPart[0];n++)
+            read_gadget_float(temp,"NH  ",Nstart,Ntype,fd);
+            for(n=0; n<Ntype;n++)
               P[NumRead+n].NH0=temp[n];
           }
 
         /* The smoothing length */	  
-       read_gadget_float(temp,"HSML",0,NumPart[0],fd);
-       for(n=0; n<NumPart[0];n++)
+       read_gadget_float(temp,"HSML",Nstart,Ntype,fd);
+       for(n=0; n<Ntype;n++)
           P[NumRead+n].h=temp[n];
         
       }
@@ -218,6 +214,7 @@ int load_snapshot(char *fname, int files)
   printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
   printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass,omegab);
+  printf("P[%d].U = %f\n\n", NumRead, P[1].U);
   printf("P[%d].Ne = %e\n", NumRead, P[1].Ne);
   printf("P[%d].NH0 = %e\n", NumRead, P[1].NH0);
   printf("P[%d].h = %f\n",NumRead, P[1].h);
