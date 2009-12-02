@@ -1,6 +1,6 @@
 
 CC = gcc
-CFLAGS =  -O2 -Wall  -g -pg
+CFLAGS =  -O2 -Wall  -g -fopenmp
 OPTS = 
 OPTS += -DPERIODIC
 # Use a periodic spectra
@@ -13,7 +13,7 @@ OPTS += -DVOIGT
 CFLAGS += $(OPTS)
 
 extract: read_snapshot.o extract_spectra.o readgadget.o Makefile	
-	$(CC) $(CFLAGS) -o extract -pg read_snapshot.o -pg extract_spectra.o -pg readgadget.o -lm
+	$(CC) $(CFLAGS) -o extract read_snapshot.o extract_spectra.o readgadget.o -lm
 
 read_snapshot.o: read_snapshot.c global_vars.h headers.h parameters.h Makefile
 	$(CC) $(CFLAGS) -c read_snapshot.c
