@@ -18,11 +18,12 @@
 #include "parameters.h"
 #define THREAD_ALLOC 10
 
-double *rhoker_H,*Delta,*posaxis,*velaxis;
-double *rhoker_H1,*velker_H1,*temker_H1;
-double *rhoker_He2,*velker_He2,*temker_He2;
+double *Delta,*posaxis,*velaxis;
 double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
+#ifdef HELIUM
+double *rhoker_He2,*velker_He2,*temker_He2;
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
+#endif
 
 void InitLOSMemory(int NumLos);
 void FreeLOSMemory(void);
@@ -63,20 +64,29 @@ void SPH_interpolation(int NumLos, int Ntype)
   const double sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
   const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(PI);
 #endif
-  int i,iproc;
+  int iproc;
   FILE *output;
 
   InitLOSMemory(NumLos);
-  printf("Allocating memory...done\n");
   
   srand48(241008); /* random seed generator */
+  /*   Initialise distance coordinate for iaxis */
+  posaxis[0]=0.0;
+  velaxis[0]=0.0;
+  
+  for(iproc=0;iproc<NBINS-1;iproc++)
+    {
+      posaxis[iproc+1] = posaxis[iproc] + dzbin; /* comoving kpc/h */
+      velaxis[iproc+1] = velaxis[iproc] + dvbin; /* physical km s^-1 */
+    }
   
 #pragma omp parallel
   { 
+    int i;
   /*   Convert to SI units from GADGET-3 units */
   #pragma omp for schedule(static, 128)
   for(i=0;i<Ntype;i++)
-    {
+  {
       double mu;
       int ic;
       for(ic=0;ic<3;ic++)
@@ -91,28 +101,32 @@ void SPH_interpolation(int NumLos, int Ntype)
       /* Mean molecular weight */
       mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
       P[i].U *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
-    }
-    #pragma omp barrier
-    #pragma omp master
-    {
-      printf("Converting units...done\n");
-    }
-  /*   Initialise distance coordinate for iaxis */
-  posaxis[0]=0.0;
-  velaxis[0]=0.0;
-  
-  for(i=0;i<NBINS-1;i++)
-    {
-      posaxis[i+1] = posaxis[i] + dzbin; /* comoving kpc/h */
-      velaxis[i+1] = velaxis[i] + dvbin; /* physical km s^-1 */
-    }
+  }
+  #pragma omp master
+  {
+    printf("Converting units...done\n");
+  }
+  #pragma omp barrier
   
   /*    Generate random coordinates for a point in the box */
   #pragma omp for schedule(static, THREAD_ALLOC)
   for(iproc=0;iproc<NumLos;iproc++)
     { 
       double xproj,yproj,zproj;
-      int iaxis,iz,ioff,j,iiz,ii,jj;
+      int iaxis,iz,ioff,j,iiz,ii;
+      double rhoker_H[NBINS],rhoker_H1[NBINS];
+      double velker_H1[NBINS],temker_H1[NBINS];
+      double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
+      for(i=0; i<NBINS; i++)
+      {
+         rhoker_H[i]=0;
+         rhoker_H1[i]=0;
+         velker_H1[i]=0;
+         temker_H1[i]=0;
+         temp_H1_local[i]=0;
+         veloc_H1_local[i]=0;
+         tau_H1_local[i]=0;
+      }
       /*Pick a random sightline*/
       do	
       	iaxis = (int)(drand48()*4);
@@ -121,7 +135,7 @@ void SPH_interpolation(int NumLos, int Ntype)
       xproj = drand48()*box100*rscale;
       yproj = drand48()*box100*rscale;
       zproj = drand48()*box100*rscale;
-/*      if((iproc %10) ==0)  */
+     if((iproc %10) ==0)
       printf("Interpolating line of sight %d...done\n",iproc);
       
       /* Loop over particles in LOS and do the SPH interpolation */
@@ -231,93 +245,90 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
 			  
-			  jj = j + ((NBINS)*iproc);
-			  rhoker_H[jj]  += kernel * XH;		 
-			  
-			  rhoker_H1[jj] += kernel * XH * H1frac;
-			  velker_H1[jj] += velker * XH * H1frac;
-			  temker_H1[jj] += temker * XH * H1frac;
-
-			  //printf("try %d %e.. %e .done\n",jj,kernel,P[i].Mass_d);		      
+			  rhoker_H[j]  += kernel * XH;		 
+			  rhoker_H1[j] += kernel * XH * H1frac;
+			  velker_H1[j] += velker * XH * H1frac;
+			  temker_H1[j] += temker * XH * H1frac;
 			}      /* dist2 < 4h^2 */
 		     }        /* loop over contributing vertices */
 		 }           /* dx^2+dy^2 < 4h^2 */
 	    }               /* dx < 2h */
 	}                  /* Loop over particles in LOS */
       
-      
       for(i = 0;i<NBINS;i++)
 	{
-	  ii = i + (NBINS*iproc);
-	  
-	  Delta[ii]     = log10(rhoker_H[ii]/critH);   /* log H density normalised by mean 
-                                                          H density of universe */
-	  n_H1[ii]      = rhoker_H1[ii]/rhoker_H[ii];  /* HI/H */
-	  veloc_H1[ii]  = velker_H1[ii]/rhoker_H1[ii]; /* HI weighted km s^-1 */ 
-	  temp_H1[ii]   = temker_H1[ii]/rhoker_H1[ii]; /* HI weighted K */
+	  veloc_H1_local[i]  = velker_H1[i]/rhoker_H1[i]; /* HI weighted km s^-1 */ 
+	  temp_H1_local[i]   = temker_H1[i]/rhoker_H1[i]; /* HI weighted K */
       	}
       
-      
-      /* Compute the HI and He2 Lya spectra */
+      /* Compute the HI Lya spectra */
       for(i=0;i<NBINS;i++)
 	{
 	  for(j=0;j<NBINS;j++)
 	    {
               double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
               double vdiff_H1;
-          #ifdef HELIUM
-              double T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
-              double vdiff_He2;
-          #endif
-	      jj =  j + (NBINS*iproc);
 	      
               u_H1  = velaxis[j]*1.0e3;
           #ifdef PECVEL 
-              u_H1 +=veloc_H1[jj]*1.0e3;
+              u_H1 +=veloc_H1_local[j]*1.0e3;
           #endif
               /* Note this is indexed with i, above with j! 
                * This is the difference in velocities between two clouds 
                * on the same sightline*/
 	      vdiff_H1  = fabs((velaxis[i]*1.0e3) - u_H1); /* ms^-1 */
-
-      #ifdef HELIUM
-              u_He2 = velaxis[j]*1.0e3;
-           #ifdef PECVEL
-              u_He2 += veloc_He2[jj]*1.0e3;
-           #endif
-              vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2); /* ms^-1 */
-      #endif //HELIUM
-	      
            #ifdef PERIODIC  
 		  if (vdiff_H1 > (vmax2*1.0e3))
 		    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
-                  #ifdef HELIUM
-		  if (vdiff_He2 > (vmax2*1.0e3))
-		     vdiff_He2 = (vmax*1.0e3) - vdiff_He2; 
-                  #endif
            #endif
-	      
-	      b_H1   = sqrt(2.0*BOLTZMANN*temp_H1[jj]/(HMASS*PROTONMASS));
+	      b_H1   = sqrt(2.0*BOLTZMANN*temp_H1_local[j]/(HMASS*PROTONMASS));
 	      T0 = (vdiff_H1/b_H1)*(vdiff_H1/b_H1);
 	      T1 = exp(-T0);
-          #ifdef HELIUM
-	      b_He2  = sqrt(2.0*BOLTZMANN*temp_He2[jj]/(HEMASS*PROTONMASS));
+	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
+            #ifdef VOIGT
+	      aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*PI*b_H1);
+	      T2 = 1.5/T0;	
+	      if(T0 < 1.0e-6)
+	        profile_H1  = T1;
+	      else
+	        profile_H1  = T1 - aa_H1/sqrt(PI)/T0 
+	          *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
+            #else   
+	      profile_H1 = T1;
+            #endif
+	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
+	      tau_H1_local[i]  += tau_H1j;
+	    }
+	}             /* Spectrum convolution */
+      /* Compute the HeI Lya spectra: Probably doesn't work now */
+#ifdef HELIUM
+      for(i=0;i<NBINS;i++)
+	{
+	  for(j=0;j<NBINS;j++)
+	    {
+              double T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
+              double vdiff_He2;
+	      
+              /* Note this is indexed with i, above with j! 
+               * This is the difference in velocities between two clouds 
+               * on the same sightline*/
+              u_He2 = velaxis[j]*1.0e3;
+           #ifdef PECVEL
+              u_He2 += veloc_He2_local[j]*1.0e3;
+           #endif
+              vdiff_He2 = fabs((velaxis[i]*1.0e3) - u_He2); /* ms^-1 */
+	      
+           #ifdef PERIODIC  
+		  if (vdiff_He2 > (vmax2*1.0e3))
+		     vdiff_He2 = (vmax*1.0e3) - vdiff_He2; 
+           #endif
+	      
+	      b_He2  = sqrt(2.0*BOLTZMANN*temp_He2_local[j]/(HEMASS*PROTONMASS));
 	      T3 = (vdiff_He2/b_He2)*(vdiff_He2/b_He2);
 	      T4 = exp(-T3);
-          #endif
 	      
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
 #ifdef VOIGT
-		  aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*PI*b_H1);
-		  
-		  T2 = 1.5/T0;	
-		  if(T0 < 1.0e-6)
-		    profile_H1  = T1;
-		  else
-		    profile_H1  = T1 - aa_H1/sqrt(PI)/T0 
-		      *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
-		  
-          #ifdef HELIUM
 		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*PI*b_He2);
 		  T5 = 1.5/T3; 
 		   if(T3 < 1.0e-6)
@@ -325,27 +336,29 @@ void SPH_interpolation(int NumLos, int Ntype)
  		  else
 		    profile_He2 = T4 - aa_He2/sqrt(PI)/T3 
 		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0);
-          #endif
 #else   
-		  profile_H1 = T1;
-          #ifdef HELIUM
 		  profile_He2 = T4;
-          #endif
 #endif
-	      tau_H1j  = A_H1  * rhoker_H1[jj]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
-	      ii =  i + (NBINS*iproc);
-	      
-	      tau_H1[ii]  += tau_H1j;
-          #ifdef HELIUM
-	      tau_He2j = A_He2 * rhoker_He2[jj] * profile_He2 /(HMASS*PROTONMASS*b_He2);
-	      tau_He2[ii] += tau_He2j;
-          #endif
-	      // printf("pixel %d.. %lf .done\n",ii,T1);
+	      tau_He2j = A_He2 * rhoker_He2[j] * profile_He2 /(HMASS*PROTONMASS*b_He2);
+	      tau_He2_local[i] += tau_He2j;
 	    }
-	}             /* Spectrum convolution */
+	}             /* HeI Spectrum convolution */
+#endif //HELIUM
+      
+      /*All non-thread-local memory writing should happen here*/
+      for(i = 0;i<NBINS;i++)
+	{
+	  ii = i + (NBINS*iproc);
+	  
+	  Delta[ii]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean 
+                                                          H density of universe */
+	  n_H1[ii]      = rhoker_H1[i]/rhoker_H[i];  /* HI/H */
+          veloc_H1[ii]    = veloc_H1_local[i]; /* HI weighted km s^-1 */ 
+	  temp_H1[ii]   = temp_H1_local[i]; /* HI weighted K */
+          tau_H1[ii]    = tau_H1_local[i];
+      	}
     }                /* Loop over numlos random LOS */
   }/*End of parallel block*/
-  printf("Got here!\n");
   output = fopen("spectra1024.dat","wb");
   fwrite(&ztime,sizeof(double),1,output);
   fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
@@ -369,23 +382,16 @@ void SPH_interpolation(int NumLos, int Ntype)
 /*****************************************************************************/
 void InitLOSMemory(int NumLos)
 {  
-  rhoker_H     = (double *) calloc((NumLos * NBINS) , sizeof(double));
   Delta        = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  
-  posaxis      = (double *) calloc(NBINS , sizeof(double));
-  velaxis      = (double *) calloc(NBINS , sizeof(double));
-  
-  rhoker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  velker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  temker_H1    = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  
   n_H1         = (double *) calloc((NumLos * NBINS) , sizeof(double));
   veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
   temp_H1      = (double *) calloc((NumLos * NBINS) , sizeof(double));
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  if(!rhoker_H ||  !Delta       ||   !posaxis     ||   !velaxis     || 
-     !rhoker_H1   ||  !velker_H1   ||      !temker_H1   ||   !n_H1        || 
-     !veloc_H1    ||      !temp_H1     ||      !tau_H1  )
+
+  posaxis      = (double *) calloc(NBINS , sizeof(double));
+  velaxis      = (double *) calloc(NBINS , sizeof(double));
+  if(!Delta ||!posaxis  ||   !velaxis || 
+   !n_H1 || !veloc_H1 || !temp_H1 || !tau_H1  )
   {
       fprintf(stderr, "Failed to allocate memory!\n");
       exit(1);
@@ -412,13 +418,9 @@ void InitLOSMemory(int NumLos)
 /*****************************************************************************/
 void FreeLOSMemory(void)
 {  
-  free(rhoker_H)  ;
   free(Delta)     ;
   free(posaxis)   ;
   free(velaxis)   ;
-  free(rhoker_H1) ;
-  free(velker_H1) ;
-  free(temker_H1) ;
   free(n_H1     ) ;
   free(veloc_H1 ) ;
   free(temp_H1  ) ;

@@ -183,14 +183,14 @@ int load_snapshot(char *fname, int files)
     
     /* Particles masses  */
     printf("Reading mass and temp...\n");
-    if(headers[i].mass[PARTTYPE] == 0)
-            read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
-    for(n=0;n<Ntype;n++)
+    if(headers[i].mass[PARTTYPE])
+        for(n=0;n<Ntype;n++)
+          P[NumRead+n].Mass_d = (double) headers[i].mass[PARTTYPE];
+    else
     {
- 	  if(headers[i].mass[PARTTYPE])
- 	      P[NumRead+n].Mass_d = (double) headers[i].mass[PARTTYPE];
- 	  else				
- 	      P[NumRead+n].Mass_d= (double) temp[n];
+        read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
+        for(n=0;n<Ntype;n++)
+          P[NumRead+n].Mass_d= (double) temp[n];
     }
     if(headers[i].mass[0])
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
