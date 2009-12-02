@@ -28,6 +28,9 @@ struct particle_data
   float  Vel[3];
   float Mass;
   float U, NH0, Ne, h;
+#ifdef HELIUM
+  float NHep;
+#endif
 } *P;
 
 double  atime, redshift, omega0, omegaL, box100, h100, omegab;

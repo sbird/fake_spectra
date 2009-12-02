@@ -21,7 +21,6 @@
 double *Delta,*posaxis,*velaxis;
 double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
 #ifdef HELIUM
-double *rhoker_He2,*velker_He2,*temker_He2;
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 #endif
 
@@ -117,6 +116,11 @@ void SPH_interpolation(int NumLos, int Ntype)
       double rhoker_H[NBINS],rhoker_H1[NBINS];
       double velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
+#ifdef HELIUM
+      double rhoker_He2[NBINS];
+      double velker_He2[NBINS],temker_He2[NBINS];
+      double temp_He2_local[NBINS],veloc_He2_local[NBINS], tau_He2_local[NBINS];
+#endif
       for(i=0; i<NBINS; i++)
       {
          rhoker_H[i]=0;
@@ -147,6 +151,9 @@ void SPH_interpolation(int NumLos, int Ntype)
 	{
 	  double xx,yy,zz,hh,h2,h4,dr,dr2;
           double hinv2,hinv3,vr,Temperature,dzmax,H1frac,zgrid;
+        #ifdef HELIUM
+          double He2frac;
+        #endif
 	  /*     Positions (physical m) */
 	  xx = P[i].Pos[0];
 	  yy = P[i].Pos[1];
@@ -191,7 +198,10 @@ void SPH_interpolation(int NumLos, int Ntype)
 		   
 		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
 		   Temperature = P[i].U; /* T in Kelvin */
-		   H1frac = P[i].NH0; /* nHI/nH */
+		   H1frac = P[i].NH0; /* nHI/nH */ 
+                #ifdef HELIUM
+                   He2frac = P[i].NHep; /* nHeII/nH */
+                #endif
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -249,6 +259,12 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  rhoker_H1[j] += kernel * XH * H1frac;
 			  velker_H1[j] += velker * XH * H1frac;
 			  temker_H1[j] += temker * XH * H1frac;
+                        #ifdef HELIUM
+                          rhoker_He2[j] += kernel * XH * He2frac;
+                          velker_He2[j] += velker * XH * He2frac;
+                          temker_He2[j] += temker * XH * He2frac;
+                        #endif
+
 			}      /* dist2 < 4h^2 */
 		     }        /* loop over contributing vertices */
 		 }           /* dx^2+dy^2 < 4h^2 */
@@ -302,6 +318,11 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}             /* Spectrum convolution */
       /* Compute the HeI Lya spectra: Probably doesn't work now */
 #ifdef HELIUM
+      for(i = 0;i<NBINS;i++)
+	{
+	  veloc_He2_local[i]  = velker_He2[i]/rhoker_He2[i]; /* HI weighted km s^-1 */ 
+	  temp_He2_local[i]   = temker_He2[i]/rhoker_He2[i]; /* HI weighted K */
+      	}
       for(i=0;i<NBINS;i++)
 	{
 	  for(j=0;j<NBINS;j++)
@@ -356,6 +377,12 @@ void SPH_interpolation(int NumLos, int Ntype)
           veloc_H1[ii]    = veloc_H1_local[i]; /* HI weighted km s^-1 */ 
 	  temp_H1[ii]   = temp_H1_local[i]; /* HI weighted K */
           tau_H1[ii]    = tau_H1_local[i];
+        #ifdef HELIUM
+	  n_He2[ii]      = rhoker_He2[i]/rhoker_H[i];  /* HI/H */
+          veloc_He2[ii]    = veloc_He2_local[i]; /* HI weighted km s^-1 */ 
+	  temp_He2[ii]   = temp_He2_local[i]; /* HI weighted K */
+          tau_He2[ii]    = tau_He2_local[i];
+        #endif
       	}
     }                /* Loop over numlos random LOS */
   }/*End of parallel block*/
@@ -396,16 +423,11 @@ void InitLOSMemory(int NumLos)
       exit(1);
   }
 #ifdef HELIUM 
-  rhoker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
-  velker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
-  temker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
-  
   n_He2         = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   veloc_He2     = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   temp_He2      = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   tau_He2       = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
-  if( !rhoker_He2||  !velker_He2|| !temker_He2|| !n_He2  || !veloc_He2 || 
-      ! temp_He2  || ! tau_He2 )
+  if(!n_He2  || !veloc_He2 || ! temp_He2  || ! tau_He2 )
   {
       fprintf(stderr, "Failed to allocate helium memory!\n");
       exit(1);
@@ -425,9 +447,6 @@ void FreeLOSMemory(void)
   free(temp_H1  ) ;
   free(tau_H1   ) ;
 #ifdef HELIUM 
-  free(rhoker_He2);
-  free(velker_He2);
-  free(temker_He2);
   free(n_He2     );
   free(veloc_He2 );
   free(temp_He2  );

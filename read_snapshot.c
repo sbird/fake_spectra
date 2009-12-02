@@ -229,6 +229,11 @@ int load_snapshot(char *fname, int files)
             read_gadget_float(temp,"NH  ",Nstart,Ntype,fd);
             for(n=0; n<Ntype;n++)
               P[NumRead+n].NH0=temp[n];
+        #ifdef HELIUM
+            read_gadget_float(temp,"NHEP",Nstart,Ntype,fd);
+            for(n=0; n<Ntype;n++)
+               P[NumRead+n].NHep=temp[n];
+        #endif  
           }
 
         /* The smoothing length */	  
