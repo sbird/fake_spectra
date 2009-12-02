@@ -150,28 +150,51 @@ int load_snapshot(char *fname, int files)
     Ntype = headers[i].npart[PARTTYPE];
     for(n=0; n<PARTTYPE; n++)
             Nstart+=headers[i].npart[n];
-    if(!(temp=malloc(3*Ntype*sizeof(float))))
+    if(!(temp=malloc(3*(floor(Ntype/3)+2)*sizeof(float))))
     {
                     fprintf(stderr, "Failed to allocate temp memory\n");
                     exit(2);
     }
     /*Particle positions */
     printf("Reading position and velocity...\n");
-    read_gadget_float3(temp,"POS ",Nstart,Ntype,fd,0);
-    for(n=0;n<Ntype;n++)
+    /*This is a cheat so that peak memory usage is a bit lower*/
+    for(k=0; k<3; k++)
     {
-       P[NumRead+n].Pos[0]=temp[3*n];	   
-       P[NumRead+n].Pos[1]=temp[3*n+1];	   
-       P[NumRead+n].Pos[2]=temp[3*n+2];	   
+        int chunk=floor(Ntype/3);
+        int chunke=chunk;
+        if(k==2)
+           chunke=Ntype-2*chunk;
+        read_gadget_float3(temp,"POS ",Nstart+k*chunk,chunke,fd,0);
+        #pragma omp parallel
+         {
+            #pragma omp for schedule(static, 300)
+            for(n=0;n<chunke;n++)
+            {
+               P[NumRead+n+k*chunk].Pos[0]=temp[3*n];	
+               P[NumRead+n+k*chunk].Pos[1]=temp[3*n+1];	
+               P[NumRead+n+k*chunk].Pos[2]=temp[3*n+2];	
+            }
+         }
     }
     
     /* Peculiar velocites */
-    read_gadget_float3(temp,"VEL ",Nstart,Ntype,fd,0);
-    for(n=0;n<Ntype;n++)
+    for(k=0; k<3; k++)
     {
-       P[NumRead+n].Vel[0]=temp[3*n];	   
-       P[NumRead+n].Vel[1]=temp[3*n+1];	   
-       P[NumRead+n].Vel[2]=temp[3*n+2];	   
+        int chunk=floor(Ntype/3);
+        int chunke=chunk;
+        if(k==2)
+           chunke=Ntype-2*chunk;
+        read_gadget_float3(temp,"VEL ",Nstart+k*chunk,chunke,fd,0);
+        #pragma omp parallel
+         {
+            #pragma omp for schedule(static, 300)
+            for(n=0;n<chunke;n++)
+            {
+               P[NumRead+n+k*chunk].Vel[0]=temp[3*n];	
+               P[NumRead+n+k*chunk].Vel[1]=temp[3*n+1];	
+               P[NumRead+n+k*chunk].Vel[2]=temp[3*n+2];	
+            }
+         }
     }
     free(temp);
     /*Done with triplets, read single valued things*/
@@ -185,17 +208,17 @@ int load_snapshot(char *fname, int files)
     printf("Reading mass and temp...\n");
     if(headers[i].mass[PARTTYPE])
         for(n=0;n<Ntype;n++)
-          P[NumRead+n].Mass_d = (double) headers[i].mass[PARTTYPE];
+          P[NumRead+n].Mass = headers[i].mass[PARTTYPE];
     else
     {
         read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
         for(n=0;n<Ntype;n++)
-          P[NumRead+n].Mass_d= (double) temp[n];
+          P[NumRead+n].Mass= temp[n];
     }
     if(headers[i].mass[0])
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
-          omegab = P[0].Mass_d/(P[0].Mass_d+headers[0].mass[1])*omega0;
+          omegab = P[0].Mass/(P[0].Mass+headers[0].mass[1])*omega0;
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
@@ -228,7 +251,7 @@ int load_snapshot(char *fname, int files)
   }
   printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
-  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass_d,omegab);
+  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass,omegab);
   printf("P[%d].U = %f\n\n", NumRead, P[1].U);
   printf("P[%d].Ne = %e\n", NumRead, P[1].Ne);
   printf("P[%d].NH0 = %e\n", NumRead, P[1].NH0);

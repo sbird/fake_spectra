@@ -96,7 +96,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}
       
       P[i].h *= hscale;   /* m, physical */
-      P[i].Mass_d = P[i].Mass_d * mscale;   /* kg */
+      P[i].Mass = P[i].Mass * mscale;   /* kg */
 
       /* Mean molecular weight */
       mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
@@ -241,7 +241,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  
 			  kernel = kernel * hinv3;  
 
-			  kernel = P[i].Mass_d * kernel; /* kg m^-3 */
+			  kernel = P[i].Mass * kernel; /* kg m^-3 */
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
 			  
@@ -387,7 +387,6 @@ void InitLOSMemory(int NumLos)
   veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
   temp_H1      = (double *) calloc((NumLos * NBINS) , sizeof(double));
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
-
   posaxis      = (double *) calloc(NBINS , sizeof(double));
   velaxis      = (double *) calloc(NBINS , sizeof(double));
   if(!Delta ||!posaxis  ||   !velaxis || 
