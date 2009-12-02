@@ -1,3 +1,17 @@
+/* Copyright (c) 2009, Simeon Bird <spb41@cam.ac.uk>
+ *               Based on code (c) 2005 by J. Bolton
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "headers.h"
 #include "global_vars.h"
@@ -8,7 +22,7 @@ void SPH_interpolation(int NumLos, int Ntype);
 
 /* Here we load a snapshot file. It can be distributed
  * onto several files (for files>1) */
-/*****************************************************************************/
+/**********************************************************************/
 int main(int argc, char **argv)
 {
   int Npart, NumLos, files;
@@ -27,9 +41,10 @@ int main(int argc, char **argv)
   Npart=load_snapshot(argv[3], files);
   if(!PARTTYPE)
     SPH_interpolation(NumLos,Npart);
+  free(P);
   return 0;
 }
-/*****************************************************************************/
+/**********************************************************************/
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
@@ -173,14 +188,14 @@ int load_snapshot(char *fname, int files)
     for(n=0;n<Ntype;n++)
     {
  	  if(headers[i].mass[PARTTYPE])
- 	      P[NumRead+n].Mass = headers[i].mass[PARTTYPE];
+ 	      P[NumRead+n].Mass_d = (double) headers[i].mass[PARTTYPE];
  	  else				
- 	      P[NumRead+n].Mass=temp[n];
+ 	      P[NumRead+n].Mass_d= (double) temp[n];
     }
     if(headers[i].mass[0])
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
-          omegab = P[0].Mass/(P[0].Mass+headers[0].mass[1])*omega0;
+          omegab = P[0].Mass_d/(P[0].Mass_d+headers[0].mass[1])*omega0;
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
@@ -213,10 +228,11 @@ int load_snapshot(char *fname, int files)
   }
   printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
-  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass,omegab);
+  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass_d,omegab);
   printf("P[%d].U = %f\n\n", NumRead, P[1].U);
   printf("P[%d].Ne = %e\n", NumRead, P[1].Ne);
   printf("P[%d].NH0 = %e\n", NumRead, P[1].NH0);
   printf("P[%d].h = %f\n",NumRead, P[1].h);
+  free(headers);
   return NumRead;
 }

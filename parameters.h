@@ -6,7 +6,6 @@
 
 /* Spectrum data set size     */ 
 #define NBINS 1024 /* number of pixels */
-#define NUMLOS 20 /* number of spectra */
 
 /* Model parameters outwith header */
 #define XH 0.76  /* hydrogen fraction by mass */

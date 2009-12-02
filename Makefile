@@ -1,6 +1,6 @@
 
 CC = gcc
-CFLAGS =  -O2 -Wall  -g 
+CFLAGS =  -O2 -Wall  -g -fopenmp
 OPTS = 
 OPTS += -DPERIODIC
 # Use a periodic spectra

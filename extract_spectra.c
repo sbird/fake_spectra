@@ -1,7 +1,22 @@
+/* Copyright (c) 2005, J. Bolton
+ *      Modified 2009 by Simeon Bird <spb41@cam.ac.uk>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "headers.h"
 #include "global_vars.h"
 #include "parameters.h"
+#define THREAD_ALLOC 10
 
 double *rhoker_H,*Delta,*posaxis,*velaxis;
 double *rhoker_H1,*velker_H1,*temker_H1;
@@ -15,54 +30,55 @@ void FreeLOSMemory(void);
 /*****************************************************************************/
 void SPH_interpolation(int NumLos, int Ntype)
 {
-  double Hz,rhoc,critH,H0,mu,rscale,vscale,mscale,escale,hscale;
-  double zmingrid,zmaxgrid,dzgrid,dzinv,boxsize,box2,dzbin,vmax,dvbin;
-  double xproj,yproj,zproj,xx,yy,zz,hh,h2,h4,dr,dr2;
-  double hinv2,hinv3,vr,Temperature,dzmax,zgrid;
-  double deltaz,dz,dist2,H1frac,q,kernel,velker,temker;
-  double sigma_Lya_H1,vmax2,vdiff_H1;
-  double A_H1,T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
-#ifdef HELIUM
-  double A_He2,T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
-  double sigma_Lya_He2,vdiff_He2,He2frac;
-#endif
-  int i,iproc,ic,iaxis,iz,ioff,j,iiz,ii,jj;
-  
-  double ztime[1];
+  const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
+  const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
+    /* Critical matter/energy density at z = 0.0 */
+  const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * PI * GRAVITY); /* kgm^-3 */
+  /* Mean hydrogen mass density of the Universe */
+  const double critH = (rhoc * OMEGAB * XH) / (atime*atime*atime); /* kgm^-3*/
+  /* Conversion factors from internal units */
+  const double rscale = (KPC*atime)/h100;   /* convert length to m */
+  const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
+  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
+  const double escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
+  const double hscale = rscale * 0.5; /* Note the factor of 0.5 for this kernel definition */
+  /*    Calculate the length scales to be used in the box */
+  const double zmingrid = 0.0;
+  const double zmaxgrid = box100*rscale;  /* box sizes in physical m */
+  const double dzgrid   = (zmaxgrid-zmingrid) / (double)NBINS; /* bin size (physical m) */
+  const double dzinv    = 1. / dzgrid;
+  const double boxsize  = zmaxgrid;   
+  const double box2     = 0.5 * boxsize;
+  const double dzbin = box100/ (double)NBINS; /* bin size (comoving kpc/h) */
+  const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
+  const double vmax2 = vmax/2.0; /* kms^-1 */
+  const double dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
+  const double ztime = 1.0/atime - 1.0;
 
+  /* Absorption cross-sections m^2 */
+  const double sigma_Lya_H1  = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
+  /* Prefactor for optical depth  */
+  const double A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(PI);  
+#ifdef HELIUM
+  const double sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
+  const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(PI);
+#endif
+  int i,iproc;
   FILE *output;
-  
 
   InitLOSMemory(NumLos);
   printf("Allocating memory...done\n");
   
   srand48(241008); /* random seed generator */
   
-  H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
-  Hz = 100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;  
-  
-  /* Critical matter/energy density at z = 0.0 */
-  rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * PI * GRAVITY); /* kgm^-3 */
-  
-  /* Mean hydrogen mass density of the Universe */
-  critH = (rhoc * OMEGAB * XH) / (atime*atime*atime); /* kgm^-3*/
-  
-  /* Absorption cross-sections m^2 */
-  sigma_Lya_H1  = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
-#ifdef HELIUM
-  sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
-#endif
-  
-  /* Conversion factors from internal units */
-  rscale = (KPC*atime)/h100;   /* convert length to m */
-  vscale = sqrt(atime);        /* convert velocity to kms^-1 */
-  mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
-  escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
-  hscale = rscale * 0.5; /* Note the factor of 0.5 for this kernel definition */
-  
+#pragma omp parallel
+  { 
   /*   Convert to SI units from GADGET-3 units */
+  #pragma omp for schedule(static, 128)
   for(i=0;i<Ntype;i++)
     {
+      double mu;
+      int ic;
       for(ic=0;ic<3;ic++)
 	{
 	  P[i].Pos[ic] *= rscale; /* m, physical */
@@ -70,31 +86,17 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}
       
       P[i].h *= hscale;   /* m, physical */
-      P[i].Mass_d = (double)P[i].Mass * mscale;   /* kg */
-      //   printf("try to print mass %e %e \n",mscale,P[i].Mass_d);
+      P[i].Mass_d = P[i].Mass_d * mscale;   /* kg */
 
       /* Mean molecular weight */
       mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
       P[i].U *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
     }
-  printf("Converting units...done\n");
-  
-  
-  /*    Calculate the length scales to be used in the box */
-  zmingrid = 0.0;
-  zmaxgrid = box100*rscale;  /* box sizes in physical m */
-  dzgrid   = (zmaxgrid-zmingrid) / (double)NBINS; /* bin size (physical m) */
-  dzinv    = 1. / dzgrid;
-  boxsize  = zmaxgrid;   
-  box2     = 0.5 * boxsize;
-  dzbin = box100/ (double)NBINS; /* bin size (comoving kpc/h) */
-  
-  vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
-  vmax2 = vmax/2.0; /* kms^-1 */
-  dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
-  
- 
-
+    #pragma omp barrier
+    #pragma omp master
+    {
+      printf("Converting units...done\n");
+    }
   /*   Initialise distance coordinate for iaxis */
   posaxis[0]=0.0;
   velaxis[0]=0.0;
@@ -105,10 +107,12 @@ void SPH_interpolation(int NumLos, int Ntype)
       velaxis[i+1] = velaxis[i] + dvbin; /* physical km s^-1 */
     }
   
-  
   /*    Generate random coordinates for a point in the box */
+  #pragma omp for schedule(static, THREAD_ALLOC)
   for(iproc=0;iproc<NumLos;iproc++)
     { 
+      double xproj,yproj,zproj;
+      int iaxis,iz,ioff,j,iiz,ii,jj;
       /*Pick a random sightline*/
       do	
       	iaxis = (int)(drand48()*4);
@@ -117,7 +121,7 @@ void SPH_interpolation(int NumLos, int Ntype)
       xproj = drand48()*box100*rscale;
       yproj = drand48()*box100*rscale;
       zproj = drand48()*box100*rscale;
-     if((iproc %10) ==0) 
+/*      if((iproc %10) ==0)  */
       printf("Interpolating line of sight %d...done\n",iproc);
       
       /* Loop over particles in LOS and do the SPH interpolation */
@@ -127,7 +131,8 @@ void SPH_interpolation(int NumLos, int Ntype)
        * the binned totals for that sightline*/
       for(i=0;i<Ntype;i++)
 	{
-	  
+	  double xx,yy,zz,hh,h2,h4,dr,dr2;
+          double hinv2,hinv3,vr,Temperature,dzmax,H1frac,zgrid;
 	  /*     Positions (physical m) */
 	  xx = P[i].Pos[0];
 	  yy = P[i].Pos[1];
@@ -173,9 +178,6 @@ void SPH_interpolation(int NumLos, int Ntype)
 		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
 		   Temperature = P[i].U; /* T in Kelvin */
 		   H1frac = P[i].NH0; /* nHI/nH */
-                #ifdef HELIUM
-		   He2frac = P[i].NHep; /* nHeII/nH */
-                #endif
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -191,6 +193,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 		   /* Loop over contributing vertices */
 		   for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
 		     {
+                       double deltaz,dz,dist2,q,kernel,velker,temker;
 		       j = iiz;
 		       j = ((j-1+10*NBINS) % NBINS);
 		       
@@ -236,8 +239,6 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  temker_H1[jj] += temker * XH * H1frac;
 
 			  //printf("try %d %e.. %e .done\n",jj,kernel,P[i].Mass_d);		      
-
-			  
 			}      /* dist2 < 4h^2 */
 		     }        /* loop over contributing vertices */
 		 }           /* dx^2+dy^2 < 4h^2 */
@@ -256,19 +257,18 @@ void SPH_interpolation(int NumLos, int Ntype)
 	  temp_H1[ii]   = temker_H1[ii]/rhoker_H1[ii]; /* HI weighted K */
       	}
       
-      /* Prefactor for optical depth  */
-      A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(PI);
-  #ifdef HELIUM
-      A_He2 = sigma_Lya_He2*C*dzgrid/sqrt(PI);
-  #endif
-    
       
       /* Compute the HI and He2 Lya spectra */
       for(i=0;i<NBINS;i++)
 	{
 	  for(j=0;j<NBINS;j++)
 	    {
-	      
+              double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
+              double vdiff_H1;
+          #ifdef HELIUM
+              double T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
+              double vdiff_He2;
+          #endif
 	      jj =  j + (NBINS*iproc);
 	      
               u_H1  = velaxis[j]*1.0e3;
@@ -332,8 +332,6 @@ void SPH_interpolation(int NumLos, int Ntype)
 		  profile_He2 = T4;
           #endif
 #endif
-	      
-	      
 	      tau_H1j  = A_H1  * rhoker_H1[jj]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
 	      ii =  i + (NBINS*iproc);
 	      
@@ -346,11 +344,10 @@ void SPH_interpolation(int NumLos, int Ntype)
 	    }
 	}             /* Spectrum convolution */
     }                /* Loop over numlos random LOS */
-  
-  ztime[0] = 1.0/atime - 1.0;
-  
+  }/*End of parallel block*/
+  printf("Got here!\n");
   output = fopen("spectra1024.dat","wb");
-  fwrite(ztime,sizeof(double),1,output);
+  fwrite(&ztime,sizeof(double),1,output);
   fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
   fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
   fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
@@ -386,6 +383,13 @@ void InitLOSMemory(int NumLos)
   veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
   temp_H1      = (double *) calloc((NumLos * NBINS) , sizeof(double));
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  if(!rhoker_H ||  !Delta       ||   !posaxis     ||   !velaxis     || 
+     !rhoker_H1   ||  !velker_H1   ||      !temker_H1   ||   !n_H1        || 
+     !veloc_H1    ||      !temp_H1     ||      !tau_H1  )
+  {
+      fprintf(stderr, "Failed to allocate memory!\n");
+      exit(1);
+  }
 #ifdef HELIUM 
   rhoker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   velker_He2    = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
@@ -395,6 +399,12 @@ void InitLOSMemory(int NumLos)
   veloc_He2     = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   temp_He2      = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
   tau_He2       = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
+  if( !rhoker_He2||  !velker_He2|| !temker_He2|| !n_He2  || !veloc_He2 || 
+      ! temp_He2  || ! tau_He2 )
+  {
+      fprintf(stderr, "Failed to allocate helium memory!\n");
+      exit(1);
+  }
 #endif
 }
 /*****************************************************************************/

@@ -26,8 +26,6 @@ struct particle_data
 {
   float  Pos[3];
   float  Vel[3];
-  float  Mass;
-  int    Type;
   double Mass_d;
   float U, NH0, Ne, h;
 } *P;
