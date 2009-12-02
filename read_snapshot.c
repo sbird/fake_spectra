@@ -165,16 +165,12 @@ int load_snapshot(char *fname, int files)
         if(k==2)
            chunke=Ntype-2*chunk;
         read_gadget_float3(temp,"POS ",Nstart+k*chunk,chunke,fd,0);
-        #pragma omp parallel
-         {
-            #pragma omp for schedule(static, 300)
             for(n=0;n<chunke;n++)
             {
                P[NumRead+n+k*chunk].Pos[0]=temp[3*n];	
                P[NumRead+n+k*chunk].Pos[1]=temp[3*n+1];	
                P[NumRead+n+k*chunk].Pos[2]=temp[3*n+2];	
             }
-         }
     }
     
     /* Peculiar velocites */
@@ -185,16 +181,12 @@ int load_snapshot(char *fname, int files)
         if(k==2)
            chunke=Ntype-2*chunk;
         read_gadget_float3(temp,"VEL ",Nstart+k*chunk,chunke,fd,0);
-        #pragma omp parallel
-         {
-            #pragma omp for schedule(static, 300)
             for(n=0;n<chunke;n++)
             {
                P[NumRead+n+k*chunk].Vel[0]=temp[3*n];	
                P[NumRead+n+k*chunk].Vel[1]=temp[3*n+1];	
                P[NumRead+n+k*chunk].Vel[2]=temp[3*n+2];	
             }
-         }
     }
     free(temp);
     /*Done with triplets, read single valued things*/
