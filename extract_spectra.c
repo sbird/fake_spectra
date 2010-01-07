@@ -33,7 +33,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
   const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
     /* Critical matter/energy density at z = 0.0 */
-  const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * PI * GRAVITY); /* kgm^-3 */
+  const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
   /* Mean hydrogen mass density of the Universe */
   const double critH = (rhoc * OMEGAB * XH) / (atime*atime*atime); /* kgm^-3*/
   /* Conversion factors from internal units */
@@ -56,12 +56,12 @@ void SPH_interpolation(int NumLos, int Ntype)
   const double ztime = 1.0/atime - 1.0;
 
   /* Absorption cross-sections m^2 */
-  const double sigma_Lya_H1  = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
+  const double sigma_Lya_H1  = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
   /* Prefactor for optical depth  */
-  const double A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(PI);  
+  const double A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(M_PI);  
 #ifdef HELIUM
-  const double sigma_Lya_He2 = sqrt(3.0*PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
-  const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(PI);
+  const double sigma_Lya_He2 = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
+  const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
 #endif
   int iproc;
   FILE *output;
@@ -245,13 +245,13 @@ void SPH_interpolation(int NumLos, int Ntype)
 			{
 			  q = sqrt(dist2 * hinv2);
 			  if (q <= 1.)
-			    kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/PI;
+			    kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
 			  else
-			    kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/PI;
+			    kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
 			  
-			  kernel = kernel * hinv3;  
+			  kernel *= hinv3;  
 
-			  kernel = P[i].Mass * kernel; /* kg m^-3 */
+			  kernel *= P[i].Mass; /* kg m^-3 */
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
 			  
@@ -302,12 +302,12 @@ void SPH_interpolation(int NumLos, int Ntype)
 	      T1 = exp(-T0);
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
             #ifdef VOIGT
-	      aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*PI*b_H1);
+	      aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*M_PI*b_H1);
 	      T2 = 1.5/T0;	
 	      if(T0 < 1.0e-6)
 	        profile_H1  = T1;
 	      else
-	        profile_H1  = T1 - aa_H1/sqrt(PI)/T0 
+	        profile_H1  = T1 - aa_H1/sqrt(M_PI)/T0 
 	          *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
             #else   
 	      profile_H1 = T1;
@@ -350,12 +350,12 @@ void SPH_interpolation(int NumLos, int Ntype)
 	      
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
 #ifdef VOIGT
-		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*PI*b_He2);
+		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*M_PI*b_He2);
 		  T5 = 1.5/T3; 
 		   if(T3 < 1.0e-6)
 		       profile_He2  = T4;
  		  else
-		    profile_He2 = T4 - aa_He2/sqrt(PI)/T3 
+		    profile_He2 = T4 - aa_He2/sqrt(M_PI)/T3 
 		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0);
 #else   
 		  profile_He2 = T4;

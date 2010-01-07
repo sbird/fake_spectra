@@ -12,7 +12,6 @@
 #define OMEGAB 0.0463 /* baryon fraction */
 
 /* Some useful numbers */
-#define  PI    M_PI
 #define  GAMMA (5.0/3.0)
 
 /* Physical constants, SI units */
