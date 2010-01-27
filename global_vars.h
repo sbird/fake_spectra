@@ -1,6 +1,12 @@
 #ifndef GLOBAL_VARS_H
 #define GLOBAL_VARS_H
 
+/*Plan needs to be generated only once,
+ * and used by each thread.*/
+#include <srfftw.h>
+fftw_plan pl;
+
+/*Gadget particle header*/
 struct io_header_1
 {
   int      npart[6];
@@ -42,5 +48,6 @@ int64_t read_gadget_float(float *data,char *label,int offset, int read,FILE *fd)
 /* The final argument, if one, means it will attempt to read an old format file*/
 int64_t read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
+int powerspectrum(const int dims, float *field, float *power);
 
 #endif

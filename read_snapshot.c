@@ -33,14 +33,18 @@ int main(int argc, char **argv)
   }
   NumLos=atoi(argv[1]);
   files=atoi(argv[2]);
+
+
   if(NumLos <=0 || files <=0)
   {
           printf("Need NUMLOS >0\n");
           exit(99);
   }
+  pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
   Npart=load_snapshot(argv[3], files);
   if(!PARTTYPE)
     SPH_interpolation(NumLos,Npart);
+  fftw_destroy_plan(pl);
   free(P);
   return 0;
 }

@@ -20,6 +20,7 @@
 
 double *Delta,*posaxis,*velaxis;
 double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
+float *flux_power;
 #ifdef HELIUM
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 #endif
@@ -116,6 +117,8 @@ void SPH_interpolation(int NumLos, int Ntype)
       double rhoker_H[NBINS],rhoker_H1[NBINS];
       double velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
+      float flux_H1_local[NBINS];
+      float flux_power_local[(NBINS+1)/2];
 #ifdef HELIUM
       double rhoker_He2[NBINS];
       double velker_He2[NBINS],temker_He2[NBINS];
@@ -366,7 +369,19 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}             /* HeI Spectrum convolution */
 #endif //HELIUM
       
+      /* Calculate flux and flux power spectrum */
+      for(i=0; i<NBINS; i++)
+      {
+         flux_H1_local[i]=exp(-tau_H1_local[i]);
+      }
+      powerspectrum(NBINS, flux_H1_local, flux_power_local);
       /*All non-thread-local memory writing should happen here*/
+      /*Write powerspectrum*/
+      for(i=0; i<(NBINS+1)/2;i++)
+      {
+          ii=i+(NBINS+1)/2*iproc;
+          flux_power[ii]=flux_power_local[i];
+      }
       for(i = 0;i<NBINS;i++)
 	{
 	  ii = i + (NBINS*iproc);
@@ -393,6 +408,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
   fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
   fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
+  fwrite(flux_power,sizeof(float),(NBINS+1)/2*NumLos,output);    /* HI optical depth */
 #ifdef HELIUM
   fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
   fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
@@ -416,8 +432,9 @@ void InitLOSMemory(int NumLos)
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
   posaxis      = (double *) calloc(NBINS , sizeof(double));
   velaxis      = (double *) calloc(NBINS , sizeof(double));
+  flux_power   = (float *) calloc(NumLos * (NBINS+1)/2, sizeof(float));
   if(!Delta ||!posaxis  ||   !velaxis || 
-   !n_H1 || !veloc_H1 || !temp_H1 || !tau_H1  )
+   !n_H1 || !veloc_H1 || !temp_H1 || !tau_H1 || !flux_power  )
   {
       fprintf(stderr, "Failed to allocate memory!\n");
       exit(1);
@@ -446,6 +463,7 @@ void FreeLOSMemory(void)
   free(veloc_H1 ) ;
   free(temp_H1  ) ;
   free(tau_H1   ) ;
+  free(flux_power);
 #ifdef HELIUM 
   free(n_He2     );
   free(veloc_He2 );
