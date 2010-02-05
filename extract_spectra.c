@@ -369,19 +369,6 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}             /* HeI Spectrum convolution */
 #endif //HELIUM
       
-      /* Calculate flux and flux power spectrum */
-      for(i=0; i<NBINS; i++)
-      {
-         flux_H1_local[i]=exp(-tau_H1_local[i]);
-      }
-      powerspectrum(NBINS, flux_H1_local, flux_power_local);
-      /*All non-thread-local memory writing should happen here*/
-      /*Write powerspectrum*/
-      for(i=0; i<(NBINS+1)/2;i++)
-      {
-          ii=i+(NBINS+1)/2*iproc;
-          flux_power[ii]=flux_power_local[i];
-      }
       for(i = 0;i<NBINS;i++)
 	{
 	  ii = i + (NBINS*iproc);
@@ -401,6 +388,36 @@ void SPH_interpolation(int NumLos, int Ntype)
       	}
     }                /* Loop over numlos random LOS */
   }/*End of parallel block*/
+  /*Calculate mean flux*/
+  double obs_flux= 0.0023*pow(1.0+ztime,3.65);
+  double scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.01 );
+  int i;
+  for(i=0; i<NBINS*NumLos; i++)
+  {
+    tau_H1[i]*=scale;
+  }
+#if 0 
+#pragma omp_parallel
+  {
+  #pragma omp for schedule(static, THREAD_ALLOC)
+  for(iproc=0;iproc<NumLos;iproc++)
+  {
+      /* Calculate flux and flux power spectrum */
+      for(i=0; i<NBINS; i++)
+      {
+         flux_H1_local[i]=exp(-tau_H1_local[i]);
+      }
+      powerspectrum(NBINS, flux_H1_local, flux_power_local);
+      /*All non-thread-local memory writing should happen here*/
+      /*Write powerspectrum*/
+      for(i=0; i<(NBINS+1)/2;i++)
+      {
+          ii=i+(NBINS+1)/2*iproc;
+          flux_power[ii]=flux_power_local[i];
+      }
+  }/*End loop*/
+  }/*End parallel block*/
+#endif
   output = fopen("spectra1024.dat","wb");
   fwrite(&ztime,sizeof(double),1,output);
   fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
