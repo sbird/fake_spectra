@@ -5,6 +5,9 @@
 /* Spectrum data set size     */ 
 #define NBINS 1024 /* number of pixels */
 
+/*Number of lines at a time to allocate to each thread*/
+#define THREAD_ALLOC 10
+
 /* Model parameters outwith header */
 #define XH 0.76  /* hydrogen fraction by mass */
 #define OMEGAB 0.0463 /* baryon fraction */

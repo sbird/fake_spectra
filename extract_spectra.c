@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include "global_vars.h"
 #include "parameters.h"
-#define THREAD_ALLOC 10
 
 /*****************************************************************************/
 void SPH_interpolation(int NumLos, int Ntype)
@@ -46,7 +45,6 @@ void SPH_interpolation(int NumLos, int Ntype)
   const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
   const double vmax2 = vmax/2.0; /* kms^-1 */
   const double dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
-  const double ztime = 1.0/atime - 1.0;
 
   /* Absorption cross-sections m^2 */
   const double sigma_Lya_H1  = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
@@ -57,10 +55,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
 #endif
   int iproc;
-  FILE *output;
 
-  InitLOSMemory(NumLos);
-  
   srand48(241008); /* random seed generator */
   /*   Initialise distance coordinate for iaxis */
   posaxis[0]=0.0;
@@ -109,8 +104,6 @@ void SPH_interpolation(int NumLos, int Ntype)
       double rhoker_H[NBINS],rhoker_H1[NBINS];
       double velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
-      float flux_H1_local[NBINS];
-      float flux_power_local[(NBINS+1)/2];
 #ifdef HELIUM
       double rhoker_He2[NBINS];
       double velker_He2[NBINS],temker_He2[NBINS];
@@ -361,6 +354,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}             /* HeI Spectrum convolution */
 #endif //HELIUM
       
+      /*All non-thread-local memory writing should happen here*/
       for(i = 0;i<NBINS;i++)
 	{
 	  ii = i + (NBINS*iproc);
@@ -380,56 +374,6 @@ void SPH_interpolation(int NumLos, int Ntype)
       	}
     }                /* Loop over numlos random LOS */
   }/*End of parallel block*/
-  /*Calculate mean flux*/
-  double obs_flux= 0.0023*pow(1.0+ztime,3.65);
-  double scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.01 );
-  int i;
-  for(i=0; i<NBINS*NumLos; i++)
-  {
-    tau_H1[i]*=scale;
-  }
-#if 0 
-#pragma omp_parallel
-  {
-  #pragma omp for schedule(static, THREAD_ALLOC)
-  for(iproc=0;iproc<NumLos;iproc++)
-  {
-      /* Calculate flux and flux power spectrum */
-      for(i=0; i<NBINS; i++)
-      {
-         flux_H1_local[i]=exp(-tau_H1_local[i]);
-      }
-      powerspectrum(NBINS, flux_H1_local, flux_power_local);
-      /*All non-thread-local memory writing should happen here*/
-      /*Write powerspectrum*/
-      for(i=0; i<(NBINS+1)/2;i++)
-      {
-          ii=i+(NBINS+1)/2*iproc;
-          flux_power[ii]=flux_power_local[i];
-      }
-  }/*End loop*/
-  }/*End parallel block*/
-#endif
-
-#if 0
-  output = fopen("spectra1024.dat","wb");
-  fwrite(&ztime,sizeof(double),1,output);
-  fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
-  fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
-  fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
-  fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
-  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
-  fwrite(flux_power,sizeof(float),(NBINS+1)/2*NumLos,output);    /* HI optical depth */
-#ifdef HELIUM
-  fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
-  fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
-  fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
-  fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
-#endif
-  fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
-  fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
-  fclose(output);
-#endif
   return;
 }
 
