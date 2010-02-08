@@ -42,8 +42,10 @@ struct particle_data
 double  atime, redshift, omega0, omegaL, box100, h100, omegab;
 
 /*Pointers to arrays to use in SPH_interpolation*/
-double *Delta,*posaxis,*velaxis;
-double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
+#ifdef MORE_DATA
+double *Delta,*n_H1,*veloc_H1,*temp_H1;
+#endif
+double *tau_H1, *posaxis,*velaxis;
 float *flux_power;
 #ifdef HELIUM
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;

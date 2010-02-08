@@ -22,14 +22,16 @@
 
 double mean_flux(double * tau, double nbins, double obs_flux, double tol)
 {
-    double mean_flux=0;
-    double tau_mean_flux=0;
-    double scale=1;
-    double newscale=1;
+    double mean_flux;
+    double tau_mean_flux;
+    double scale, newscale=100;
     double obs_flux_bins=obs_flux*nbins;
     double temp;
     int i;
     do{
+         scale=newscale;
+         mean_flux=0;
+         tau_mean_flux=0;
          for(i=0; i< nbins; i++)
          {
              temp=exp(-scale*tau[i]);
@@ -37,7 +39,10 @@ double mean_flux(double * tau, double nbins, double obs_flux, double tol)
              tau_mean_flux+=temp*tau[i];
          }
          newscale=scale+(mean_flux-obs_flux_bins)/tau_mean_flux;
-         printf("iteration!\n");
+         /*We don't want the absorption to change sign and become emission; 
+          * 0 is too far. */
+         if(newscale < 0)
+                 newscale=0;
     }while(fabs(newscale-scale) > tol*newscale);
     return newscale;
 }

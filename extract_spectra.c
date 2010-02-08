@@ -23,11 +23,13 @@
 void SPH_interpolation(int NumLos, int Ntype)
 {
   const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
+#ifdef MORE_DATA
   const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
     /* Critical matter/energy density at z = 0.0 */
   const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
   /* Mean hydrogen mass density of the Universe */
   const double critH = (rhoc * OMEGAB * XH) / (atime*atime*atime); /* kgm^-3*/
+#endif
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
@@ -127,7 +129,7 @@ void SPH_interpolation(int NumLos, int Ntype)
       xproj = drand48()*box100*rscale;
       yproj = drand48()*box100*rscale;
       zproj = drand48()*box100*rscale;
-     if((iproc %10) ==0)
+     if((iproc % (NumLos/20)) ==0)
       printf("Interpolating line of sight %d...done\n",iproc);
       
       /* Loop over particles in LOS and do the SPH interpolation */
@@ -358,17 +360,20 @@ void SPH_interpolation(int NumLos, int Ntype)
       for(i = 0;i<NBINS;i++)
 	{
 	  ii = i + (NBINS*iproc);
-	  
+          tau_H1[ii]    = tau_H1_local[i];
+        #ifdef MORE_DATA	  
 	  Delta[ii]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean 
                                                           H density of universe */
 	  n_H1[ii]      = rhoker_H1[i]/rhoker_H[i];  /* HI/H */
           veloc_H1[ii]    = veloc_H1_local[i]; /* HI weighted km s^-1 */ 
 	  temp_H1[ii]   = temp_H1_local[i]; /* HI weighted K */
-          tau_H1[ii]    = tau_H1_local[i];
+        #endif
         #ifdef HELIUM
+        #ifdef MORE_DATA
 	  n_He2[ii]      = rhoker_He2[i]/rhoker_H[i];  /* HI/H */
           veloc_He2[ii]    = veloc_He2_local[i]; /* HI weighted km s^-1 */ 
 	  temp_He2[ii]   = temp_He2_local[i]; /* HI weighted K */
+        #endif
           tau_He2[ii]    = tau_He2_local[i];
         #endif
       	}
@@ -380,16 +385,21 @@ void SPH_interpolation(int NumLos, int Ntype)
 /*****************************************************************************/
 void InitLOSMemory(int NumLos)
 {  
+  #ifdef MORE_DATA
   Delta        = (double *) calloc((NumLos * NBINS) , sizeof(double));
   n_H1         = (double *) calloc((NumLos * NBINS) , sizeof(double));
   veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
   temp_H1      = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  #endif
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
   posaxis      = (double *) calloc(NBINS , sizeof(double));
   velaxis      = (double *) calloc(NBINS , sizeof(double));
   flux_power   = (float *) calloc(NumLos * (NBINS+1)/2, sizeof(float));
-  if(!Delta ||!posaxis  ||   !velaxis || 
-   !n_H1 || !veloc_H1 || !temp_H1 || !tau_H1 || !flux_power  )
+  if(!posaxis  ||   !velaxis || 
+  #ifdef MORE_DATA
+     !Delta ||  !n_H1 || !veloc_H1 || !temp_H1 || 
+  #endif
+     !tau_H1 || !flux_power  )
   {
       fprintf(stderr, "Failed to allocate memory!\n");
       exit(1);
@@ -411,12 +421,14 @@ void InitLOSMemory(int NumLos)
 /*****************************************************************************/
 void FreeLOSMemory(void)
 {  
+#ifdef MORE_DATA
   free(Delta)     ;
-  free(posaxis)   ;
-  free(velaxis)   ;
   free(n_H1     ) ;
   free(veloc_H1 ) ;
   free(temp_H1  ) ;
+#endif
+  free(posaxis)   ;
+  free(velaxis)   ;
   free(tau_H1   ) ;
   free(flux_power);
 #ifdef HELIUM 

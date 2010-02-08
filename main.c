@@ -30,7 +30,7 @@ int main(int argc, char **argv)
   float flux_power_avg[(NBINS+1)/2];
   FILE *output;
   int iproc,j,jj;
-
+  
   if(argc<4)
   {
     printf("Usage: ./extract NUMLOS NUMFILES base_filename\n");
@@ -45,7 +45,6 @@ int main(int argc, char **argv)
           printf("Need NUMLOS >0\n");
           exit(99);
   }
-  pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
   Npart=load_snapshot(argv[3], files);
   InitLOSMemory(NumLos);
   if(!PARTTYPE)
@@ -54,7 +53,10 @@ int main(int argc, char **argv)
   free(P);
   /*Calculate mean flux*/
   obs_flux= 0.0023*pow(1.0+redshift,3.65); //TODO: Replace this with a real value.
-  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.01 );
+  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
+  for(j=0; j<(NBINS+1)/2;j++)
+    flux_power_avg[j]=0;
+  pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
 #pragma omp parallel
   {
     /*Perform the scaling*/
@@ -91,9 +93,15 @@ int main(int argc, char **argv)
         for(jj=0; jj<NumLos; jj++)
            flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
         flux_power_avg[j]/=NumLos;
-        printf("%g  ",flux_power_avg[j]);
     }
-    printf("\n");
+    printf("Outputting average flux power spectrum\n");
+    output=fopen("flux_power.txt","w");
+    for(j=0; j<(NBINS+1)/2;j++)
+    {
+       fprintf(output, "%g\n", flux_power_avg[j]);
+    }
+    fclose(output);
+#ifdef MORE_DATA
   /*Output to a file*/
   output = fopen("spectra1024.dat","wb");
   fwrite(&redshift,sizeof(double),1,output);
@@ -112,6 +120,7 @@ int main(int argc, char **argv)
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
   fclose(output);
+#endif
   /*Free other memory*/
   FreeLOSMemory();
   fftw_destroy_plan(pl);

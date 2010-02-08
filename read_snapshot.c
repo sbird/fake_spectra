@@ -111,7 +111,7 @@ int load_snapshot(char *fname, int files)
     else
       sprintf(buf,"%s",fname);
     
-    printf("Reading file : %s\n\n", buf);
+    printf("\nReading file : %s\n", buf);
     if(!(fd=fopen(buf,"r")))
     {
       printf("can't open file `%s`\n\n",buf);
