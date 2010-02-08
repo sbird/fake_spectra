@@ -13,42 +13,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "headers.h"
 #include "global_vars.h"
 #include "parameters.h"
 
-int load_snapshot(char *fname, int files);
-void SPH_interpolation(int NumLos, int Ntype);
-
-/* Here we load a snapshot file. It can be distributed
- * onto several files (for files>1) */
-/**********************************************************************/
-int main(int argc, char **argv)
-{
-  int Npart, NumLos, files;
-  if(argc<4)
-  {
-    printf("Usage: ./extract NUMLOS NUMFILES base_filename\n");
-    exit(99);
-  }
-  NumLos=atoi(argv[1]);
-  files=atoi(argv[2]);
-
-
-  if(NumLos <=0 || files <=0)
-  {
-          printf("Need NUMLOS >0\n");
-          exit(99);
-  }
-  pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-  Npart=load_snapshot(argv[3], files);
-  if(!PARTTYPE)
-    SPH_interpolation(NumLos,Npart);
-  fftw_destroy_plan(pl);
-  free(P);
-  return 0;
-}
-/**********************************************************************/
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */

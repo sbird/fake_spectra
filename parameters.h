@@ -1,5 +1,3 @@
-#include "headers.h"
-
 /* Snapshot information */
 #define PARTTYPE 0/* Particle type required */
 #define FILENUMBER 1 /* Number of sub-files */

@@ -13,16 +13,16 @@ OPTS += -DVOIGT
 CFLAGS += $(OPTS)
 LINK=gcc -lm -lsrfftw -lsfftw -lgomp -L/data/store/spb41/apps/fftw/lib
 
-extract: read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o mean_flux.o Makefile	
-	$(LINK) $(CFLAGS) -o extract read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o mean_flux.o
+extract: main.o read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o mean_flux.o Makefile	
+	$(LINK) $(CFLAGS) -o extract main.o read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o mean_flux.o
 
-read_snapshot.o: read_snapshot.c global_vars.h headers.h parameters.h Makefile
+read_snapshot.o: read_snapshot.c global_vars.h parameters.h Makefile
 	$(CC) $(CFLAGS) -c read_snapshot.c
 
-readgadget.o: readgadget.c global_vars.h headers.h parameters.h Makefile
+readgadget.o: readgadget.c global_vars.h parameters.h Makefile
 	$(CC) $(CFLAGS) -c readgadget.c
 
-extract_spectra.o: extract_spectra.c global_vars.h headers.h parameters.h Makefile
+extract_spectra.o: extract_spectra.c global_vars.h parameters.h Makefile
 	$(CC) $(CFLAGS) -c extract_spectra.c
 
 powerspectrum.o: powerspectrum.c
@@ -30,5 +30,9 @@ powerspectrum.o: powerspectrum.c
 
 mean_flux.o: mean_flux.c
 	$(CC) $(CFLAGS) -c mean_flux.c
+
+main.o: main.c
+	$(CC) $(CFLAGS) -c main.c
+
 clean:
 	rm -f *.o  extract

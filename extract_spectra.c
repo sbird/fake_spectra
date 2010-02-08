@@ -13,20 +13,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "headers.h"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "global_vars.h"
 #include "parameters.h"
 #define THREAD_ALLOC 10
-
-double *Delta,*posaxis,*velaxis;
-double *n_H1,*veloc_H1,*temp_H1,*tau_H1;
-float *flux_power;
-#ifdef HELIUM
-double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
-#endif
-
-void InitLOSMemory(int NumLos);
-void FreeLOSMemory(void);
 
 /*****************************************************************************/
 void SPH_interpolation(int NumLos, int Ntype)
@@ -418,6 +410,8 @@ void SPH_interpolation(int NumLos, int Ntype)
   }/*End loop*/
   }/*End parallel block*/
 #endif
+
+#if 0
   output = fopen("spectra1024.dat","wb");
   fwrite(&ztime,sizeof(double),1,output);
   fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
@@ -435,7 +429,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
   fclose(output);
-  FreeLOSMemory();
+#endif
   return;
 }
 
