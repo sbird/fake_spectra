@@ -54,7 +54,7 @@ int main(int argc, char **argv)
   /*Free the particle list once we don't need it*/
   free(P);
   /*Calculate mean flux*/
-  obs_flux= 0.0023*pow(1.0+redshift,3.65); //TODO: Replace this with a real value.
+  obs_flux= exp(-TAU_EFF);
   scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
   for(j=0; j<(NBINS+1)/2;j++)
     flux_power_avg[j]=0;
