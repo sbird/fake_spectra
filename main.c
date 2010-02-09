@@ -20,6 +20,7 @@
 #include "global_vars.h"
 #include "parameters.h"
 
+
 /* Here we load a snapshot file. It can be distributed
  * onto several files (for files>1) */
 /**********************************************************************/
@@ -29,6 +30,7 @@ int main(int argc, char **argv)
   double obs_flux,scale;
   float flux_power_avg[(NBINS+1)/2];
   FILE *output;
+  char *outname;
   int iproc,j,jj;
   
   if(argc<4)
@@ -95,10 +97,17 @@ int main(int argc, char **argv)
         flux_power_avg[j]/=NumLos;
     }
     printf("Outputting average flux power spectrum\n");
-    output=fopen("flux_power.txt","w");
+    outname=malloc((strlen(argv[3])+25)*sizeof(char));
+    if(!strcpy(outname,argv[3]) || !(outname=strcat(outname, "_flux_power.txt")))
+    {
+      fprintf(stderr, "Some problem with the strings\n");
+      exit(1);
+    }
+    output=fopen(outname,"w");
     for(j=0; j<(NBINS+1)/2;j++)
     {
-       fprintf(output, "%g\n", flux_power_avg[j]);
+            /*First value is k*/
+       fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
     }
     fclose(output);
 #ifdef MORE_DATA
