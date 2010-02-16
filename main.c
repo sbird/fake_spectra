@@ -54,8 +54,10 @@ int main(int argc, char **argv)
   /*Free the particle list once we don't need it*/
   free(P);
   /*Calculate mean flux*/
+  /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
   obs_flux= exp(-TAU_EFF);
   scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
+  printf("scale=%g\n",scale);
   for(j=0; j<(NBINS+1)/2;j++)
     flux_power_avg[j]=0;
   pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
