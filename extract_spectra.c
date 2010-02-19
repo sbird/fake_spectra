@@ -129,8 +129,8 @@ void SPH_interpolation(int NumLos, int Ntype)
       xproj = drand48()*box100*rscale;
       yproj = drand48()*box100*rscale;
       zproj = drand48()*box100*rscale;
-     if((iproc % (NumLos/20)) ==0)
-      printf("Interpolating line of sight %d...done\n",iproc);
+     if((NumLos <20) ||  (iproc % NumLos/20) ==0)
+      printf("Interpolating line of sight %d...%g %g %g\n",iproc,xproj,yproj,zproj);
       
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which particles are near this sight line. 
