@@ -93,7 +93,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   }
   #pragma omp master
   {
-    printf("Converting units...done\n");
+    printf("Converted units.");
   }
   #pragma omp barrier
   
@@ -129,7 +129,7 @@ void SPH_interpolation(int NumLos, int Ntype)
       xproj = drand48()*box100*rscale;
       yproj = drand48()*box100*rscale;
       zproj = drand48()*box100*rscale;
-     if((NumLos <20) ||  (iproc % NumLos/20) ==0)
+     if((NumLos <20) ||  ((iproc % (NumLos/20)) ==0))
       printf("Interpolating line of sight %d...%g %g %g\n",iproc,xproj,yproj,zproj);
       
       /* Loop over particles in LOS and do the SPH interpolation */
