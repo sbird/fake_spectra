@@ -263,8 +263,18 @@ void SPH_interpolation(int NumLos, int Ntype)
       
       for(i = 0;i<NBINS;i++)
 	{
-	  veloc_H1_local[i]  = velker_H1[i]/rhoker_H1[i]; /* HI weighted km s^-1 */ 
-	  temp_H1_local[i]   = temker_H1[i]/rhoker_H1[i]; /* HI weighted K */
+          /* If there are no particles in this bin, rhoker will be zero. 
+           * In this case, we set temp and veloc arbitrarily to one, 
+           * to avoid nans propagating. Zero rho will imply zero absorption 
+           * anyway. */
+          if(rhoker_H1[i]){       
+        	  veloc_H1_local[i]  = velker_H1[i]/rhoker_H1[i]; /* HI weighted km s^-1 */ 
+        	  temp_H1_local[i]   = temker_H1[i]/rhoker_H1[i]; /* HI weighted K */
+          }
+          else{
+                  veloc_H1_local[i]=1;
+                  temp_H1_local[i]=1;
+          }
       	}
       
       /* Compute the HI Lya spectra */
