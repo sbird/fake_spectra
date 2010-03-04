@@ -71,7 +71,7 @@ int load_snapshot(char *fname, int files)
         NumPart[k] += headers[i].npart[k]; /* Total particle number */
     if(!NumPart[PARTTYPE])
       {
-        printf("No particles of type  %d! Exiting.\n\n",PARTTYPE);
+        fprintf(stderr, "No particles of type  %d! Exiting.\n\n",PARTTYPE);
         exit(1);
       }
     for(k=0; k<6; k++)
@@ -114,8 +114,8 @@ int load_snapshot(char *fname, int files)
     printf("\nReading file : %s\n", buf);
     if(!(fd=fopen(buf,"r")))
     {
-      printf("can't open file `%s`\n\n",buf);
-      exit(0);
+      fprintf(stderr,"can't open file `%s`\n\n",buf);
+      exit(2);
     }
     
     /* Now read the particle data */ 

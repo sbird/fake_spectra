@@ -32,10 +32,12 @@ int main(int argc, char **argv)
   FILE *output;
   char *outname;
   int iproc,j,jj;
-  
+  /*Make sure stdout is line buffered even when not 
+   * printing to a terminal but, eg, perl*/
+  setlinebuf(stdout);
   if(argc<4)
   {
-    printf("Usage: ./extract NUMLOS NUMFILES base_filename\n");
+    fprintf(stderr,"Usage: ./extract NUMLOS NUMFILES base_filename\n");
     exit(99);
   }
   NumLos=atoi(argv[1]);
@@ -44,7 +46,7 @@ int main(int argc, char **argv)
 
   if(NumLos <=0 || files <=0)
   {
-          printf("Need NUMLOS >0\n");
+          fprintf(stderr,"Need NUMLOS >0\n");
           exit(99);
   }
   Npart=load_snapshot(argv[3], files);
