@@ -93,7 +93,7 @@ void SPH_interpolation(int NumLos, int Ntype)
   }
   #pragma omp master
   {
-    printf("Converted units.");
+    printf("Converted units.\n");
   }
   #pragma omp barrier
   
