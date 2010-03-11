@@ -26,7 +26,7 @@ int powerspectrum(const int dims, float *field, float *power)
         const int dims2=dims*dims;
 	if(sizeof(fftw_real) != sizeof(float))
 	{
-		fprintf(stderr, "sizeof fftw_real:%ld fftw_complex: %ld, float: %ld\n",sizeof(fftw_real), sizeof(fftw_complex), sizeof(float));
+		fprintf(stderr, "sizeof fftw_real:%zd fftw_complex: %zd, float: %zd\n",sizeof(fftw_real), sizeof(fftw_complex), sizeof(float));
 		fprintf(stderr, "fftw_real is not a float. Perhaps you linked the wrong library?\n");
 		exit(1);
 	}

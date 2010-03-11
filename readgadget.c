@@ -31,7 +31,7 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
 
   if((nread = fread(ptr, size, nmemb, stream)) != nmemb)
     {
-      fprintf(stderr, "fread error: %ld = fread(%p %ld %ld file)!\n",nread,ptr,size,nmemb);
+      fprintf(stderr, "fread error: %zd = fread(%p %zd %zd file)!\n",nread,ptr,size,nmemb);
       exit(3);
     }
   return nread;
