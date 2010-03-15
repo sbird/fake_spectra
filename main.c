@@ -57,20 +57,24 @@ int main(int argc, char **argv)
   free(P);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
+#ifndef NO_RESCALE_FLUX
   obs_flux= exp(-TAU_EFF);
   scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
   printf("scale=%g\n",scale);
+#endif
   for(j=0; j<(NBINS+1)/2;j++)
     flux_power_avg[j]=0;
   pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
 #pragma omp parallel
   {
+#ifndef NO_RESCALE_FLUX
     /*Perform the scaling*/
     #pragma omp for schedule(static, THREAD_ALLOC)
     for(iproc=0; iproc<NBINS*NumLos; iproc++)
     {
       tau_H1[iproc]*=scale;
     }
+#endif
     /*Calculate power spectrum*/
     #pragma omp for schedule(static, THREAD_ALLOC)
     for(iproc=0;iproc<NumLos;iproc++)

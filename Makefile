@@ -12,6 +12,8 @@ OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
 #OPTS += -DHELIUM
 # Enable helium absorption
+OPTS += -DNO_RESCALE_FLUX
+#Don't rescale to the observed mean flux
 CFLAGS += $(OPTS)
 COM_INC = global_vars.h parameters.h Makefile
 LINK=$(CC) -lm -lsrfftw -lsfftw -lgomp -L/data/store/spb41/apps/fftw/lib
