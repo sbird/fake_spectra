@@ -135,7 +135,7 @@ int main(int argc, char **argv)
         flux_power_avg[j]/=NumLos;
     }
     printf("Outputting average flux power spectrum\n");
-    outname=malloc((strlen(argv[3])+25)*sizeof(char));
+    outname=malloc((strlen(outdir)+25)*sizeof(char));
     if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
     {
       fprintf(stderr, "Some problem with the strings\n");
