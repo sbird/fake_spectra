@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "global_vars.h"
 #include "parameters.h"
 
@@ -26,30 +27,59 @@
 /**********************************************************************/
 int main(int argc, char **argv)
 {
-  int Npart, NumLos, files;
+  int Npart, NumLos=0, files=0;
   double obs_flux,scale;
   float flux_power_avg[(NBINS+1)/2];
   FILE *output;
-  char *outname;
+  int rescale=1;
+  char *outname=NULL;
+  char *outdir=NULL;
+  char *indir=NULL;
+  char c;
   int iproc,j,jj;
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  if(argc<4)
+  while((c = getopt(argc, argv, "f:o:i:n:r")) !=-1)
   {
-    fprintf(stderr,"Usage: ./extract NUMLOS NUMFILES base_filename\n");
-    exit(99);
+    switch(c)
+      {
+        case 'f':
+           files=atoi(optarg);
+           break;
+        case 'o':
+           outdir=optarg;
+           break;
+        case 'i':
+           indir=optarg;
+           break;
+        case 'n':
+           NumLos=atoi(optarg);
+           break;
+        case 'r':
+           rescale=0;
+           break;
+        case 'h':
+        case '?':
+           help();
+        default:
+           exit(1);
+      }
   }
-  NumLos=atoi(argv[1]);
-  files=atoi(argv[2]);
-
-
   if(NumLos <=0 || files <=0)
   {
-          fprintf(stderr,"Need NUMLOS >0\n");
+          fprintf(stderr,"Need NUMLOS and NUMFILES >0\n");
+          help();
           exit(99);
+  
   }
-  Npart=load_snapshot(argv[3], files);
+  if( !outdir || !indir)
+  {
+         fprintf(stderr, "Specify output (%s) and input (%s) directories.\n",outdir, indir);
+         help();
+         exit(99);
+  }
+  Npart=load_snapshot(indir, files);
   InitLOSMemory(NumLos);
   if(!PARTTYPE)
     SPH_interpolation(NumLos,Npart);
@@ -57,24 +87,24 @@ int main(int argc, char **argv)
   free(P);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
-#ifndef NO_RESCALE_FLUX
-  obs_flux= exp(-TAU_EFF);
-  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
-  printf("scale=%g\n",scale);
-#endif
+  if(rescale){
+    obs_flux= exp(-TAU_EFF);
+    scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
+    printf("scale=%g\n",scale);
+  }
   for(j=0; j<(NBINS+1)/2;j++)
     flux_power_avg[j]=0;
   pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
 #pragma omp parallel
   {
-#ifndef NO_RESCALE_FLUX
-    /*Perform the scaling*/
-    #pragma omp for schedule(static, THREAD_ALLOC)
-    for(iproc=0; iproc<NBINS*NumLos; iproc++)
-    {
-      tau_H1[iproc]*=scale;
+    if(rescale){
+      /*Perform the scaling*/
+      #pragma omp for schedule(static, THREAD_ALLOC)
+      for(iproc=0; iproc<NBINS*NumLos; iproc++)
+      {
+        tau_H1[iproc]*=scale;
+      }
     }
-#endif
     /*Calculate power spectrum*/
     #pragma omp for schedule(static, THREAD_ALLOC)
     for(iproc=0;iproc<NumLos;iproc++)
@@ -106,7 +136,7 @@ int main(int argc, char **argv)
     }
     printf("Outputting average flux power spectrum\n");
     outname=malloc((strlen(argv[3])+25)*sizeof(char));
-    if(!strcpy(outname,argv[3]) || !(outname=strcat(outname, "_flux_power.txt")))
+    if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
     {
       fprintf(stderr, "Some problem with the strings\n");
       exit(1);
@@ -144,3 +174,10 @@ int main(int argc, char **argv)
   return 0;
 }
 /**********************************************************************/
+
+void help()
+{
+           fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt will be appended)\n"
+                           "-r turns off mean flux rescaling\n");
+           return;
+}

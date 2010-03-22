@@ -62,7 +62,7 @@ int64_t read_gadget_float(float *data,char *label,int offset, int read,FILE *fd)
 /* The final argument, if one, means it will attempt to read an old format file*/
 int64_t read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
-
+void help(void);
 /* These functions do the work*/
 int powerspectrum(const int dims, float *field, float *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
