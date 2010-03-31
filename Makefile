@@ -10,6 +10,8 @@ OPTS += -DPECVEL
 # Use peculiar velocites 
 OPTS += -DVOIGT 
 # Voigt profiles vs. Gaussian profiles
+OPTS += -DRAW_SPECTRA
+# Output data file with optical depths rather than flux power spectrum.
 #OPTS += -DHELIUM
 # Enable helium absorption
 CFLAGS += $(OPTS)

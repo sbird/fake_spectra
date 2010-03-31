@@ -28,15 +28,17 @@
 int main(int argc, char **argv)
 {
   int Npart, NumLos=0, files=0;
-  double obs_flux,scale;
-  float flux_power_avg[(NBINS+1)/2];
   FILE *output;
   int rescale=1;
   char *outname=NULL;
   char *outdir=NULL;
   char *indir=NULL;
   char c;
+#ifndef RAW_SPECTRA
+  double obs_flux,scale;
+  float flux_power_avg[(NBINS+1)/2];
   int iproc,j,jj;
+#endif
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
@@ -85,6 +87,33 @@ int main(int argc, char **argv)
     SPH_interpolation(NumLos,Npart);
   /*Free the particle list once we don't need it*/
   free(P);
+  /*If the spectra flag is set, output the raw spectra to a file, 
+   * instead of the flux power spectrum directly.*/
+#ifdef RAW_SPECTRA
+  /*Output to a file*/
+  outname=malloc((strlen(outdir)+25)*sizeof(char));
+  if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  {
+    fprintf(stderr, "Some problem with the strings\n");
+    exit(1);
+  }
+  output=fopen(outname,"w");
+  fwrite(&redshift,sizeof(double),1,output);
+  fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
+  fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
+  fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
+  fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
+  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
+#ifdef HELIUM
+  fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
+  fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
+  fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
+  fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
+#endif
+  fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
+  fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
+  fclose(output);
+#else /*If outputting flux power directly*/
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
   if(rescale){
@@ -128,56 +157,38 @@ int main(int argc, char **argv)
     }/*End loop*/
   }/*End parallel block*/
   /*Average the power spectrum*/
-    for(j=0; j<(NBINS+1)/2;j++)
-    {
-        for(jj=0; jj<NumLos; jj++)
-           flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
-        flux_power_avg[j]/=NumLos;
-    }
-    printf("Outputting average flux power spectrum\n");
-    outname=malloc((strlen(outdir)+25)*sizeof(char));
-    if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
-    {
-      fprintf(stderr, "Some problem with the strings\n");
-      exit(1);
-    }
-    output=fopen(outname,"w");
-    for(j=0; j<(NBINS+1)/2;j++)
-    {
-            /*First value is k*/
-       fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
-    }
-    fclose(output);
-#ifdef MORE_DATA
-  /*Output to a file*/
-  output = fopen("spectra1024.dat","wb");
-  fwrite(&redshift,sizeof(double),1,output);
-  fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
-  fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
-  fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
-  fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
-  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
-  fwrite(flux_power,sizeof(float),(NBINS+1)/2*NumLos,output);    /* HI optical depth */
-#ifdef HELIUM
-  fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
-  fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
-  fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
-  fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
-#endif
-  fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
-  fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
+  for(j=0; j<(NBINS+1)/2;j++)
+  {
+      for(jj=0; jj<NumLos; jj++)
+         flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
+      flux_power_avg[j]/=NumLos;
+  }
+  printf("Outputting average flux power spectrum\n");
+  outname=malloc((strlen(outdir)+25)*sizeof(char));
+  if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
+  {
+    fprintf(stderr, "Some problem with the strings\n");
+    exit(1);
+  }
+  output=fopen(outname,"w");
+  for(j=0; j<(NBINS+1)/2;j++)
+  {
+          /*First value is k*/
+     fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
+  }
   fclose(output);
-#endif
-  /*Free other memory*/
-  FreeLOSMemory();
   fftw_destroy_plan(pl);
+  #endif /* RAW_SPECTRA*/
+  /*Free other memory*/
+  free(outname);
+  FreeLOSMemory();
   return 0;
 }
 /**********************************************************************/
 
 void help()
 {
-           fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt will be appended)\n"
+           fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
                            "-r turns off mean flux rescaling\n");
            return;
 }

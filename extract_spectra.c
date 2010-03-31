@@ -23,7 +23,7 @@
 void SPH_interpolation(int NumLos, int Ntype)
 {
   const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
-#ifdef MORE_DATA
+#ifdef RAW_SPECTRA
   const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
     /* Critical matter/energy density at z = 0.0 */
   const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
@@ -371,7 +371,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 	{
 	  ii = i + (NBINS*iproc);
           tau_H1[ii]    = tau_H1_local[i];
-        #ifdef MORE_DATA	  
+        #ifdef RAW_SPECTRA	  
 	  Delta[ii]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean 
                                                           H density of universe */
 	  n_H1[ii]      = rhoker_H1[i]/rhoker_H[i];  /* HI/H */
@@ -379,7 +379,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 	  temp_H1[ii]   = temp_H1_local[i]; /* HI weighted K */
         #endif
         #ifdef HELIUM
-        #ifdef MORE_DATA
+        #ifdef RAW_SPECTRA
 	  n_He2[ii]      = rhoker_He2[i]/rhoker_H[i];  /* HI/H */
           veloc_He2[ii]    = veloc_He2_local[i]; /* HI weighted km s^-1 */ 
 	  temp_He2[ii]   = temp_He2_local[i]; /* HI weighted K */
@@ -395,7 +395,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 /*****************************************************************************/
 void InitLOSMemory(int NumLos)
 {  
-  #ifdef MORE_DATA
+  #ifdef RAW_SPECTRA
   Delta        = (double *) calloc((NumLos * NBINS) , sizeof(double));
   n_H1         = (double *) calloc((NumLos * NBINS) , sizeof(double));
   veloc_H1     = (double *) calloc((NumLos * NBINS) , sizeof(double));
@@ -406,7 +406,7 @@ void InitLOSMemory(int NumLos)
   velaxis      = (double *) calloc(NBINS , sizeof(double));
   flux_power   = (float *) calloc(NumLos * (NBINS+1)/2, sizeof(float));
   if(!posaxis  ||   !velaxis || 
-  #ifdef MORE_DATA
+  #ifdef RAW_SPECTRA
      !Delta ||  !n_H1 || !veloc_H1 || !temp_H1 || 
   #endif
      !tau_H1 || !flux_power  )
@@ -431,16 +431,17 @@ void InitLOSMemory(int NumLos)
 /*****************************************************************************/
 void FreeLOSMemory(void)
 {  
-#ifdef MORE_DATA
+#ifdef RAW_SPECTRA
   free(Delta)     ;
   free(n_H1     ) ;
   free(veloc_H1 ) ;
   free(temp_H1  ) ;
+#else
+  free(flux_power);
 #endif
   free(posaxis)   ;
   free(velaxis)   ;
   free(tau_H1   ) ;
-  free(flux_power);
 #ifdef HELIUM 
   free(n_He2     );
   free(veloc_He2 );
