@@ -42,7 +42,7 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "f:o:i:n:r")) !=-1)
+  while((c = getopt(argc, argv, "f:o:i:n:rh")) !=-1)
   {
     switch(c)
       {
