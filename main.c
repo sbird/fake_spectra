@@ -16,6 +16,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include "global_vars.h"
@@ -30,6 +31,9 @@ int main(int argc, char **argv)
   int Npart, NumLos=0, files=0;
   FILE *output;
   int rescale=1;
+  int old=0;
+  los *los_table=NULL;
+  char *ext_table=NULL;
   char *outname=NULL;
   char *outdir=NULL;
   char *indir=NULL;
@@ -42,7 +46,7 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "f:o:i:n:rh")) !=-1)
+  while((c = getopt(argc, argv, "f:o:i:t:n:rh1")) !=-1)
   {
     switch(c)
       {
@@ -60,6 +64,12 @@ int main(int argc, char **argv)
            break;
         case 'r':
            rescale=0;
+           break;
+        case 't':
+           ext_table=optarg;
+           break;
+        case '1':
+           old=1;
            break;
         case 'h':
         case '?':
@@ -81,23 +91,31 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  Npart=load_snapshot(indir, files);
+  los_table=malloc(NumLos*sizeof(los));
+  if(!los_table){
+          fprintf(stderr, "Error allocating memory for sightline table\n");
+          exit(2);
+  }
+  Npart=load_snapshot(indir, files, old);
+  populate_los_table(los_table,NumLos, ext_table, box100); 
   InitLOSMemory(NumLos);
   if(!PARTTYPE)
-    SPH_interpolation(NumLos,Npart);
+    SPH_interpolation(NumLos,Npart, los_table);
   /*Free the particle list once we don't need it*/
   free(P);
   /*If the spectra flag is set, output the raw spectra to a file, 
    * instead of the flux power spectrum directly.*/
 #ifdef RAW_SPECTRA
   /*Output to a file*/
-  outname=malloc((strlen(outdir)+25)*sizeof(char));
-  if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  if(!outname=malloc((strlen(outdir)+25)*sizeof(char)) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
-    fprintf(stderr, "Some problem with the strings\n");
+    fprintf(stderr, "Some problem with file output strings\n");
     exit(1);
   }
-  output=fopen(outname,"w");
+  if(!output=fopen(outname,"w"))
+  {
+          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
+  }
   fwrite(&redshift,sizeof(double),1,output);
   fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
   fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
@@ -164,13 +182,15 @@ int main(int argc, char **argv)
       flux_power_avg[j]/=NumLos;
   }
   printf("Outputting average flux power spectrum\n");
-  outname=malloc((strlen(outdir)+25)*sizeof(char));
-  if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
+  if(!(outname=malloc((strlen(outdir)+25)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
   {
-    fprintf(stderr, "Some problem with the strings\n");
+    fprintf(stderr, "Some problem with file output strings\n");
     exit(1);
   }
-  output=fopen(outname,"w");
+  if(!(output=fopen(outname,"w")))
+  {
+          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
+  }
   for(j=0; j<(NBINS+1)/2;j++)
   {
           /*First value is k*/
@@ -180,6 +200,7 @@ int main(int argc, char **argv)
   fftw_destroy_plan(pl);
   #endif /* RAW_SPECTRA*/
   /*Free other memory*/
+  free(los_table);
   free(outname);
   FreeLOSMemory();
   return 0;
@@ -189,6 +210,56 @@ int main(int argc, char **argv)
 void help()
 {
            fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
-                           "-r turns off mean flux rescaling\n");
+                  "-t table_file will read line of sight coordinates from a table.\n"
+                  "-1 will attempt to read files in Gadget-1 format. May not always work.\n"
+                  "-r turns off mean flux rescaling\n");
            return;
+}
+
+/* Populate the line of sight table, either by random numbers or with some external input. */
+void populate_los_table(los * los_table, int NumLos, char * ext_table, double box)
+{
+        FILE * fh;
+        int lines=0;
+        int axis;
+        float xx, yy, zz;
+        /*If we have a file path, load the sightline table from there*/
+        if(ext_table){
+                const double boxm=box/1000.0;
+                if(!(fh=fopen(ext_table, "r")))
+                {
+                        fprintf(stderr, "Error opening %s: %s\n",ext_table, strerror(errno));
+                        exit(3);
+                }
+                while(lines < NumLos){
+                        if(EOF == fscanf(fh, "%d %f %f %f\n", &axis, &xx, &yy, &zz)){
+                                fprintf(stderr, "Error reading table: %s. Possibly file is truncated?\n",strerror(errno));
+                                exit(3);
+                        }
+                        if(axis > 3 || axis <0 || xx > boxm || xx < 0 || 
+                           yy > boxm || yy < 0 || zz > boxm || zz <0 ){
+                                fprintf(stderr, "Line %d of LOS table is: %d %f %f %f, which is silly for boxm %f.\n", lines+1, axis, xx, yy, zz, boxm);
+                                exit(3);
+                        }
+                        los_table[lines].axis=axis;
+                        los_table[lines].xx=xx*1000;
+                        los_table[lines].yy=yy*1000;
+                        los_table[lines].zz=zz*1000;
+                        lines++;
+                }
+        }
+        else{
+                srand48(241008); /* random seed generator */
+                for(lines=0; lines<NumLos; lines++)
+                {
+                        do	
+                        	axis = (int)(drand48()*4);
+                        while (axis == 0 || axis==4); 
+                        los_table[lines].axis=axis;
+                        los_table[lines].xx=drand48()*box;
+                        los_table[lines].yy=drand48()*box;
+                        los_table[lines].zz=drand48()*box;
+                }
+        }
+        return;
 }

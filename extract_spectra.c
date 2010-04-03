@@ -20,7 +20,7 @@
 #include "parameters.h"
 
 /*****************************************************************************/
-void SPH_interpolation(int NumLos, int Ntype)
+void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 {
   const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
 #ifdef RAW_SPECTRA
@@ -58,7 +58,6 @@ void SPH_interpolation(int NumLos, int Ntype)
 #endif
   int iproc;
 
-  srand48(241008); /* random seed generator */
   /*   Initialise distance coordinate for iaxis */
   posaxis[0]=0.0;
   velaxis[0]=0.0;
@@ -121,16 +120,14 @@ void SPH_interpolation(int NumLos, int Ntype)
          veloc_H1_local[i]=0;
          tau_H1_local[i]=0;
       }
-      /*Pick a random sightline*/
-      do	
-      	iaxis = (int)(drand48()*4);
-      while (iaxis == 0 || iaxis==4); 
-      
-      xproj = drand48()*box100*rscale;
-      yproj = drand48()*box100*rscale;
-      zproj = drand48()*box100*rscale;
-     if((NumLos <20) ||  ((iproc % (NumLos/20)) ==0))
-      printf("Interpolating line of sight %d...%g %g %g\n",iproc,xproj,yproj,zproj);
+      /*Load a sightline from the table.*/
+      iaxis = los_table[iproc].axis;
+      xproj = los_table[iproc].xx*rscale;
+      yproj = los_table[iproc].yy*rscale;
+      zproj = los_table[iproc].zz*rscale;
+     
+      if((NumLos <20) ||  ((iproc % (NumLos/20)) ==0))
+        printf("Interpolating line of sight %d...%g %g %g\n",iproc,xproj,yproj,zproj);
       
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which particles are near this sight line. 

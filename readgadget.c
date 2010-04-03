@@ -171,10 +171,14 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old)
 /*-------- FILE *fd:      File handle -----------------------------------------*/
 /*-------- returns length of dataarray ----------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *fd)
+int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *fd, int old)
 {
   int64_t blocksize;
-  blocksize = find_block(fd,label);
+  if(!old)
+    blocksize = find_block(fd,label);
+  else{
+	blocksize = header.npart[1]*sizeof(float);
+  }
   if(blocksize <= 0)
     {
       fprintf(stderr, "Block (float) <%s> not found!\n",label);

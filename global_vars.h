@@ -39,6 +39,16 @@ struct particle_data
 #endif
 } *P;
 
+/*Structure for storing a sightline*/
+struct _los
+{
+        int axis;
+        float xx;
+        float yy;
+        float zz;
+};
+typedef struct _los los;
+
 double  atime, redshift, omega0, omegaL, box100, h100, omegab;
 
 /*Pointers to arrays to use in SPH_interpolation*/
@@ -58,8 +68,9 @@ void FreeLOSMemory(void);
 void swap_Nbyte(char *data,int n,int m);
 size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream);
 int64_t find_block(FILE *fd,char *label);
-int64_t read_gadget_float(float *data,char *label,int offset, int read,FILE *fd);
-/* The final argument, if one, means it will attempt to read an old format file*/
+/* The final argument, if one, means it will attempt to read an old format file. 
+ * It may not work, due to the wide variation in GADGET type one files. */
+int64_t read_gadget_float(float *data,char *label,int offset, int read,FILE *fd, int old);
 int64_t read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
@@ -67,7 +78,8 @@ void help(void);
 int powerspectrum(const int dims, float *field, float *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
 
-int load_snapshot(char *fname, int files);
-void SPH_interpolation(int NumLos, int Ntype);
+int load_snapshot(char *fname, int files, int old);
+void SPH_interpolation(int NumLos, int Ntype, los *los_table);
+void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
 #endif

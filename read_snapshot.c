@@ -20,7 +20,7 @@
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int load_snapshot(char *fname, int files)
+int load_snapshot(char *fname, int files, int old)
 {
   FILE *fd;
   gadget_header *headers;
@@ -48,7 +48,7 @@ int load_snapshot(char *fname, int files)
    		fprintf(stderr,"Error opening file %s for reading!\n", buf);
    		exit(1);
      }
-     if(!read_gadget_head(headers+i, fd, 0))
+     if(!read_gadget_head(headers+i, fd, old))
      {
    		fprintf(stderr,"Error reading file header!\n");
    		exit(1);
@@ -136,7 +136,7 @@ int load_snapshot(char *fname, int files)
         int chunke=chunk;
         if(k==2)
            chunke=Ntype-2*chunk;
-        read_gadget_float3(temp,"POS ",Nstart+k*chunk,chunke,fd,0);
+        read_gadget_float3(temp,"POS ",Nstart+k*chunk,chunke,fd,old);
             for(n=0;n<chunke;n++)
             {
                P[NumRead+n+k*chunk].Pos[0]=temp[3*n];	
@@ -152,7 +152,7 @@ int load_snapshot(char *fname, int files)
         int chunke=chunk;
         if(k==2)
            chunke=Ntype-2*chunk;
-        read_gadget_float3(temp,"VEL ",Nstart+k*chunk,chunke,fd,0);
+        read_gadget_float3(temp,"VEL ",Nstart+k*chunk,chunke,fd,old);
             for(n=0;n<chunke;n++)
             {
                P[NumRead+n+k*chunk].Vel[0]=temp[3*n];	
@@ -175,7 +175,7 @@ int load_snapshot(char *fname, int files)
           P[NumRead+n].Mass = headers[i].mass[PARTTYPE];
     else
     {
-        read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
+        read_gadget_float(temp,"MASS",Nstart,Ntype,fd, old);
         for(n=0;n<Ntype;n++)
           P[NumRead+n].Mass= temp[n];
     }
@@ -186,30 +186,30 @@ int load_snapshot(char *fname, int files)
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
-        read_gadget_float(temp,"U   ",Nstart,Ntype,fd);
+        read_gadget_float(temp,"U   ",Nstart,Ntype,fd, old);
         for(n=0; n<Ntype;n++)
             P[NumRead+n].U=temp[n];
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
             printf("Reading electron fractions...\n");
-            read_gadget_float(temp,"NHP ",Nstart,Ntype,fd);
+            read_gadget_float(temp,"NHP ",Nstart,Ntype,fd, old);
             for(n=0; n<Ntype;n++)
                P[NumRead+n].Ne=temp[n];
 
             /* The HI fraction, nHI/nH */
-            read_gadget_float(temp,"NH  ",Nstart,Ntype,fd);
+            read_gadget_float(temp,"NH  ",Nstart,Ntype,fd, old);
             for(n=0; n<Ntype;n++)
               P[NumRead+n].NH0=temp[n];
         #ifdef HELIUM
-            read_gadget_float(temp,"NHEP",Nstart,Ntype,fd);
+            read_gadget_float(temp,"NHEP",Nstart,Ntype,fd, old);
             for(n=0; n<Ntype;n++)
                P[NumRead+n].NHep=temp[n];
         #endif  
           }
 
         /* The smoothing length */	  
-       read_gadget_float(temp,"HSML",Nstart,Ntype,fd);
+       read_gadget_float(temp,"HSML",Nstart,Ntype,fd, old);
        for(n=0; n<Ntype;n++)
           P[NumRead+n].h=temp[n];
         
