@@ -85,7 +85,10 @@ void SPH_interpolation(int NumLos, int Ntype)
 	}
       
       P[i].h *= hscale;   /* m, physical */
-      P[i].Mass = P[i].Mass * mscale;   /* kg */
+/*      P[i].Mass = P[i].Mass * mscale; *//* kg */
+      /*We leave mass in GADGET units, to prevent a floating overflow
+       * when we have poor resolution. P[i].Mass only affects rhoker, 
+       * so we simply rescale rhoker later.*/ 
 
       /* Mean molecular weight */
       mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
@@ -319,7 +322,7 @@ void SPH_interpolation(int NumLos, int Ntype)
             #else   
 	      profile_H1 = T1;
             #endif
-	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
+	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1 * mscale/(HMASS*PROTONMASS*b_H1) ;
 	      tau_H1_local[i]  += tau_H1j;
 	    }
 	}             /* Spectrum convolution */
