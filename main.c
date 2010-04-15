@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   char *indir=NULL;
   char c;
 #ifndef RAW_SPECTRA
-  double obs_flux,scale;
+  double obs_flux,scale=1;
   float flux_power_avg[(NBINS+1)/2];
   int iproc,j,jj;
 #endif

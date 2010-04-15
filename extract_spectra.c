@@ -84,7 +84,10 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 	}
       
       P[i].h *= hscale;   /* m, physical */
-      P[i].Mass = P[i].Mass * mscale;   /* kg */
+/*      P[i].Mass = P[i].Mass * mscale; *//* kg */
+      /*We leave mass in GADGET units, to prevent a floating overflow
+       * when we have poor resolution. P[i].Mass only affects rhoker, 
+       * so we simply rescale rhoker later.*/ 
 
       /* Mean molecular weight */
       mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
@@ -102,17 +105,20 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
     { 
       double xproj,yproj,zproj;
       int iaxis,iz,ioff,j,iiz,ii;
-      double rhoker_H[NBINS],rhoker_H1[NBINS];
-      double velker_H1[NBINS],temker_H1[NBINS];
+#ifdef RAW_SPECTRA
+      double rhoker_H[NBINS];
+#endif
+      double rhoker_H1[NBINS],velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
 #ifdef HELIUM
-      double rhoker_He2[NBINS];
-      double velker_He2[NBINS],temker_He2[NBINS];
+      double rhoker_He2[NBINS], velker_He2[NBINS],temker_He2[NBINS];
       double temp_He2_local[NBINS],veloc_He2_local[NBINS], tau_He2_local[NBINS];
 #endif
       for(i=0; i<NBINS; i++)
       {
+#ifdef RAW_SPECTRA
          rhoker_H[i]=0;
+#endif
          rhoker_H1[i]=0;
          velker_H1[i]=0;
          temker_H1[i]=0;
@@ -137,10 +143,7 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
       for(i=0;i<Ntype;i++)
 	{
 	  double xx,yy,zz,hh,h2,h4,dr,dr2;
-          double hinv2,hinv3,vr,Temperature,dzmax,H1frac,zgrid;
-        #ifdef HELIUM
-          double He2frac;
-        #endif
+          double dzmax,zgrid;
 	  /*     Positions (physical m) */
 	  xx = P[i].Pos[0];
 	  yy = P[i].Pos[1];
@@ -180,15 +183,15 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 	      
 	      if (dr2 <= h4)
 		{
-	           hinv2 = 1. / h2; /* 1/h^2 */
-		   hinv3 = hinv2 / hh; /* 1/h^3 */
-		   
-		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
-		   Temperature = P[i].U; /* T in Kelvin */
-		   H1frac = P[i].NH0; /* nHI/nH */ 
+		   const double H1frac = P[i].NH0; /* nHI/nH */ 
                 #ifdef HELIUM
-                   He2frac = P[i].NHep; /* nHeII/nH */
+                   const double He2frac = P[i].NHep; /* nHeII/nH */
                 #endif
+	           const double hinv2 = 1. / h2; /* 1/h^2 */
+		   const double hinv3 = hinv2 / hh; /* 1/h^3 */
+		   
+		   const double vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
+		   const double Temperature = P[i].U; /* T in Kelvin */
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -236,13 +239,15 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 			  else
 			    kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
 			  
-			  kernel *= hinv3;  
+			  kernel *= hinv3; 
 
 			  kernel *= P[i].Mass; /* kg m^-3 */
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
-			  
+
+                        #ifdef RAW_SPECTRA 
 			  rhoker_H[j]  += kernel * XH;		 
+                        #endif
 			  rhoker_H1[j] += kernel * XH * H1frac;
 			  velker_H1[j] += velker * XH * H1frac;
 			  temker_H1[j] += temker * XH * H1frac;
@@ -295,7 +300,7 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 		    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
            #endif
 	      b_H1   = sqrt(2.0*BOLTZMANN*temp_H1_local[j]/(HMASS*PROTONMASS));
-	      T0 = (vdiff_H1/b_H1)*(vdiff_H1/b_H1);
+	      T0 = pow(vdiff_H1/b_H1,2);
 	      T1 = exp(-T0);
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
             #ifdef VOIGT
@@ -309,7 +314,7 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
             #else   
 	      profile_H1 = T1;
             #endif
-	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1  /(HMASS*PROTONMASS*b_H1);
+	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1 * mscale/(HMASS*PROTONMASS*b_H1) ;
 	      tau_H1_local[i]  += tau_H1j;
 	    }
 	}             /* Spectrum convolution */
