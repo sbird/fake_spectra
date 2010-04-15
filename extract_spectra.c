@@ -103,7 +103,10 @@ void SPH_interpolation(int NumLos, int Ntype)
     { 
       double xproj,yproj,zproj;
       int iaxis,iz,ioff,j,iiz,ii;
-      double rhoker_H[NBINS],rhoker_H1[NBINS];
+#ifdef RAW_SPECTRA
+      double rhoker_H[NBINS];
+#endif
+      double rhoker_H1[NBINS];
       double velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
 #ifdef HELIUM
@@ -113,7 +116,9 @@ void SPH_interpolation(int NumLos, int Ntype)
 #endif
       for(i=0; i<NBINS; i++)
       {
+#ifdef RAW_SPECTRA
          rhoker_H[i]=0;
+#endif
          rhoker_H1[i]=0;
          velker_H1[i]=0;
          temker_H1[i]=0;
@@ -239,13 +244,15 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  else
 			    kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
 			  
-			  kernel *= hinv3;  
+			  kernel *= hinv3; 
 
 			  kernel *= P[i].Mass; /* kg m^-3 */
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
-			  
+
+                        #ifdef RAW_SPECTRA 
 			  rhoker_H[j]  += kernel * XH;		 
+                        #endif
 			  rhoker_H1[j] += kernel * XH * H1frac;
 			  velker_H1[j] += velker * XH * H1frac;
 			  temker_H1[j] += temker * XH * H1frac;
@@ -298,7 +305,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 		    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
            #endif
 	      b_H1   = sqrt(2.0*BOLTZMANN*temp_H1_local[j]/(HMASS*PROTONMASS));
-	      T0 = (vdiff_H1/b_H1)*(vdiff_H1/b_H1);
+	      T0 = pow(vdiff_H1/b_H1,2);
 	      T1 = exp(-T0);
 	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
             #ifdef VOIGT
