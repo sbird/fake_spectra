@@ -109,12 +109,10 @@ void SPH_interpolation(int NumLos, int Ntype)
 #ifdef RAW_SPECTRA
       double rhoker_H[NBINS];
 #endif
-      double rhoker_H1[NBINS];
-      double velker_H1[NBINS],temker_H1[NBINS];
+      double rhoker_H1[NBINS],velker_H1[NBINS],temker_H1[NBINS];
       double temp_H1_local[NBINS],veloc_H1_local[NBINS], tau_H1_local[NBINS];
 #ifdef HELIUM
-      double rhoker_He2[NBINS];
-      double velker_He2[NBINS],temker_He2[NBINS];
+      double rhoker_He2[NBINS], velker_He2[NBINS],temker_He2[NBINS];
       double temp_He2_local[NBINS],veloc_He2_local[NBINS], tau_He2_local[NBINS];
 #endif
       for(i=0; i<NBINS; i++)
@@ -148,10 +146,7 @@ void SPH_interpolation(int NumLos, int Ntype)
       for(i=0;i<Ntype;i++)
 	{
 	  double xx,yy,zz,hh,h2,h4,dr,dr2;
-          double hinv2,hinv3,vr,Temperature,dzmax,H1frac,zgrid;
-        #ifdef HELIUM
-          double He2frac;
-        #endif
+          double dzmax,zgrid;
 	  /*     Positions (physical m) */
 	  xx = P[i].Pos[0];
 	  yy = P[i].Pos[1];
@@ -191,15 +186,15 @@ void SPH_interpolation(int NumLos, int Ntype)
 	      
 	      if (dr2 <= h4)
 		{
-	           hinv2 = 1. / h2; /* 1/h^2 */
-		   hinv3 = hinv2 / hh; /* 1/h^3 */
-		   
-		   vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
-		   Temperature = P[i].U; /* T in Kelvin */
-		   H1frac = P[i].NH0; /* nHI/nH */ 
+		   const double H1frac = P[i].NH0; /* nHI/nH */ 
                 #ifdef HELIUM
-                   He2frac = P[i].NHep; /* nHeII/nH */
+                   const double He2frac = P[i].NHep; /* nHeII/nH */
                 #endif
+	           const double hinv2 = 1. / h2; /* 1/h^2 */
+		   const double hinv3 = hinv2 / hh; /* 1/h^3 */
+		   
+		   const double vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
+		   const double Temperature = P[i].U; /* T in Kelvin */
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
