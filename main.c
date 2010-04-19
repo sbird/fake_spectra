@@ -104,12 +104,12 @@ int main(int argc, char **argv)
    * instead of the flux power spectrum directly.*/
 #ifdef RAW_SPECTRA
   /*Output to a file*/
-  if(!outname=malloc((strlen(outdir)+25)*sizeof(char)) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  if(!(outname=malloc((strlen(outdir)+25)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
     fprintf(stderr, "Some problem with file output strings\n");
     exit(1);
   }
-  if(!output=fopen(outname,"w"))
+  if(!(output=fopen(outname,"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
   }

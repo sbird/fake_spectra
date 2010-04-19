@@ -49,3 +49,4 @@ main.o: main.c $(COM_INC)
 
 clean:
 	rm -f *.o  extract
+
