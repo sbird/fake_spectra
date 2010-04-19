@@ -193,7 +193,12 @@ int load_snapshot(char *fname, int files)
         if(headers[i].flag_cooling)
           {
             printf("Reading electron fractions...\n");
+        #ifndef GADGET3
             read_gadget_float(temp,"NHP ",Nstart,Ntype,fd);
+        #else
+            /* Gadget-III changes the block names*/
+            read_gadget_float(temp,"NE  ",Nstart,Ntype,fd);
+        #endif
             for(n=0; n<Ntype;n++)
                P[NumRead+n].Ne=temp[n];
 

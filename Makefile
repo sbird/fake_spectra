@@ -8,8 +8,10 @@ OPTS += -DPERIODIC
 # Use a periodic spectra
 OPTS += -DPECVEL
 # Use peculiar velocites 
-OPTS += -DVOIGT -DMY_DEBUG
+OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
+OPTS += -DGADGET3
+#Gadget III has slightly different block headers
 #OPTS += -DRAW_SPECTRA
 # Output data file with optical depths rather than flux power spectrum.
 #OPTS += -DHELIUM
