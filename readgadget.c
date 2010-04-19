@@ -32,7 +32,12 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
 
   if((nread = fread(ptr, size, nmemb, stream)) != nmemb)
     {
+      int err;
+      if(feof(stream))
+              return 0;
       fprintf(stderr, "fread error: %zd = fread(%d %zd %zd file)!\n",nread,fileno(stream),size,nmemb);
+      err=ferror(stream);
+      fprintf(stderr, "ferror gives: %d : %s\n",err,strerror(err));
       exit(3);
     }
   return nread;
@@ -97,6 +102,11 @@ int_blk find_block(FILE *fd,char *label)
        else
          {
            my_fread(blocklabel, 4*sizeof(char), 1, fd);
+           if(feof(fd)) 
+           {
+             fprintf(stderr, "Block (float) <%s> not found!\n",label);
+             exit(5);
+           }
            my_fread(&blocksize, sizeof(int4bytes), 1, fd);
            if(blocksize > pow(2,32))
            {
