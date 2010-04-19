@@ -55,12 +55,13 @@ double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 void InitLOSMemory(int NumLos);
 void FreeLOSMemory(void);
 
+#define int_blk int64_t
 void swap_Nbyte(char *data,int n,int m);
-size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream);
-int64_t find_block(FILE *fd,char *label);
-int64_t read_gadget_float(float *data,char *label,int offset, int read,FILE *fd);
+size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream); 
+int_blk find_block(FILE *fd,char *label);
+int_blk read_gadget_float(float *data,char *label,int offset, int read,FILE *fd);
 /* The final argument, if one, means it will attempt to read an old format file*/
-int64_t read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
+int_blk read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 /* These functions do the work*/

@@ -8,7 +8,7 @@ OPTS += -DPERIODIC
 # Use a periodic spectra
 OPTS += -DPECVEL
 # Use peculiar velocites 
-OPTS += -DVOIGT 
+OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
 #OPTS += -DRAW_SPECTRA
 # Output data file with optical depths rather than flux power spectrum.
