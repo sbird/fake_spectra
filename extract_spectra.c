@@ -374,7 +374,7 @@ void SPH_interpolation(int NumLos, int Ntype, los * los_table)
 	  ii = i + (NBINS*iproc);
           tau_H1[ii]    = tau_H1_local[i];
         #ifdef RAW_SPECTRA	  
-	  Delta[ii]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean 
+	  Delta[ii]     = log10(mscale*rhoker_H[i]/critH);   /* log H density normalised by mean 
                                                           H density of universe */
 	  n_H1[ii]      = rhoker_H1[i]/rhoker_H[i];  /* HI/H */
           veloc_H1[ii]    = veloc_H1_local[i]; /* HI weighted km s^-1 */ 
