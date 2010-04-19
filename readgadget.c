@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <math.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -31,7 +32,12 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
 
   if((nread = fread(ptr, size, nmemb, stream)) != nmemb)
     {
-      fprintf(stderr, "fread error: %zd = fread(%p %zd %zd file)!\n",nread,ptr,size,nmemb);
+      int err;
+      if(feof(stream))
+              return 0;
+      fprintf(stderr, "fread error: %zd = fread(%d %zd %zd file)!\n",nread,fileno(stream),size,nmemb);
+      err=ferror(stream);
+      fprintf(stderr, "ferror gives: %d : %s\n",err,strerror(err));
       exit(3);
     }
   return nread;
@@ -70,14 +76,14 @@ void swap_Nbyte(char *data,int n,int m)
 /*-------- returns length of block found, -------------------------------------*/
 /*-------- the file fd points to starting point of block ----------------------*/
 /*-----------------------------------------------------------------------------*/
-int64_t find_block(FILE *fd,char *label)
+int_blk find_block(FILE *fd,char *label)
 {
-  int4bytes blocksize=0;
+  int_blk blocksize=0;
   char blocklabel[5]={"    "};
 
   rewind(fd);
 
-  while(!feof(fd) && blocksize == 0)
+  while(blocksize == 0)
     {
        SKIP;
        if(blksize == 134217728)
@@ -96,10 +102,20 @@ int64_t find_block(FILE *fd,char *label)
        else
          {
            my_fread(blocklabel, 4*sizeof(char), 1, fd);
+           if(feof(fd)) 
+           {
+             fprintf(stderr, "Block (float) <%s> not found!\n",label);
+             exit(5);
+           }
            my_fread(&blocksize, sizeof(int4bytes), 1, fd);
+           if(blocksize > pow(2,32))
+           {
+              fprintf(stderr, "You are apparently trying to read a very large file. This is not (yet) supported.\n");
+              exit(1);
+           }
            swap_Nbyte((char*)&blocksize,1,4);
 #ifdef MY_DEBUG
-         fprintf(stderr, "Found Block <%s> with %d bytes\n",blocklabel,blocksize);
+         fprintf(stderr, "Found Block <%s> with %ld bytes\n",blocklabel,blocksize);
 #endif
            SKIP;
 	   if(strcmp(label,blocklabel)!=0)
@@ -130,7 +146,7 @@ int64_t find_block(FILE *fd,char *label)
 /*-----------------------------------------------------------------------------*/
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old)
 {
-  int blocksize;
+  int_blk blocksize;
   if(!old)
     blocksize = find_block(fd,"HEAD");
   else{
@@ -155,7 +171,7 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old)
 		 fprintf(stderr, "flag_feedback=%d\n",header.flag_feedback);
 		 fprintf(stderr, "header.npartTotal=%d %d %d %d %d %d\n", header.npartTotal[0],header.npartTotal[1],header.npartTotal[2],header.npartTotal[3], header.npartTotal[4], header.npartTotal[5]);
 		 fprintf(stderr, "flag_cooling=%d\n",header.flag_cooling);
-		 fprintf(stderr, "numfiles=%d\n",header.numfiles);
+		 fprintf(stderr, "numfiles=%d\n",header.num_files);
 		 fprintf(stderr, "boxsize=%e\n",header.BoxSize);
 	#endif
        SKIP;
@@ -171,9 +187,9 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old)
 /*-------- FILE *fd:      File handle -----------------------------------------*/
 /*-------- returns length of dataarray ----------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *fd, int old)
+int_blk read_gadget_float(float *data,char *label,int offset, int number, FILE *fd, int old)
 {
-  int64_t blocksize;
+  int_blk blocksize;
   if(!old)
     blocksize = find_block(fd,label);
   else{
@@ -188,7 +204,7 @@ int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *
     {
        blocksize=(blocksize < number*sizeof(float) ? blocksize : number*sizeof(float));
 #ifdef MY_DEBUG
-       printf("Reading %d bytes of data from <%s>...\n",blocksize,label);
+       printf("Reading %ld bytes of data from <%s>...\n",blocksize,label);
 #endif
        SKIP;
        if(offset>0)
@@ -210,9 +226,9 @@ int64_t read_gadget_float(float *data,char *label,int offset, int number, FILE *
 /*-------- FILE *fd:      File handle -----------------------------------------*/
 /*-------- returns length of dataarray ----------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-int64_t read_gadget_float3(float *data,char *label,int offset, int number, FILE *fd, int old)
+int_blk read_gadget_float3(float *data,char *label,int offset, int number, FILE *fd, int old)
 {
-  int blocksize;
+  int_blk blocksize;
 
   if(!old)
     blocksize = find_block(fd,label);
@@ -228,7 +244,7 @@ int64_t read_gadget_float3(float *data,char *label,int offset, int number, FILE 
     {
        blocksize=(blocksize < 3*number*sizeof(float) ? blocksize : 3*number*sizeof(float));
 #ifdef MY_DEBUG
-       fprintf(stderr,"Reading %d bytes of data from <%s>...\n",blocksize,label);
+       fprintf(stderr,"Reading %ld bytes of data from <%s>...\n",blocksize,label);
 #endif
        SKIP;
        if(offset>0)
@@ -237,7 +253,7 @@ int64_t read_gadget_float3(float *data,char *label,int offset, int number, FILE 
        swap_Nbyte((char*)data,blocksize/sizeof(float),4);
 #ifdef MY_DEBUG
 		 fprintf(stderr, "first particles at: %e %e %e\n",data[0],data[1],data[2]);
-		 fprintf(stderr, "last particles at: %e %e %e\n",data[header.npart[1]-3],data[header.npart[1]-2],data[header.npart[1]-1]);
+		 fprintf(stderr, "last particles at: %e %e %e\n",data[number-3],data[number-2],data[number-1]);
 #endif
        SKIP;
     }
