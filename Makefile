@@ -10,7 +10,7 @@ OPTS += -DPECVEL
 # Use peculiar velocites 
 OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
-OPTS += -DGADGET3
+#OPTS += -DGADGET3
 #Gadget III has slightly different block headers
 #OPTS += -DRAW_SPECTRA
 # Output data file with optical depths rather than flux power spectrum.
