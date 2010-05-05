@@ -18,7 +18,8 @@ OPTS += -DVOIGT
 # Enable helium absorption
 CFLAGS += $(OPTS)
 COM_INC = global_vars.h parameters.h Makefile
-LINK=$(CC) -lm -lsrfftw -lsfftw -lgomp -L/data/store/spb41/apps/fftw/lib
+FFTW = /data/store/spb41/apps/fftw/lib
+LINK=$(CC) -lm -lsrfftw -lsfftw -lgomp -L$(FFTW)
 
 .PHONY: all clean
 
@@ -31,6 +32,9 @@ extract: main.o read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o m
 	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) readgadget.o $(PG) powerspectrum.o $(PG) mean_flux.o
 read_snapshot.o: read_snapshot.c $(COM_INC)
 	$(CC) $(CFLAGS) -c read_snapshot.c
+
+rescale: rescale.c powerspectrum.o mean_flux.o $(COM_INC)
+	$(CC) $(CFLAGS) rescale.c -lm -L$(FFTW) -lsrfftw -lsfftw powerspectrum.o mean_flux.o -o rescale 
 
 readgadget.o: readgadget.c $(COM_INC)
 	$(CC) $(CFLAGS) -c readgadget.c
