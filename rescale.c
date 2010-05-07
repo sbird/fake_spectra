@@ -22,11 +22,13 @@
 #include <unistd.h>
 #include "global_vars.h"
 #include "parameters.h"
-#define PTS 20
+#define PTS 30
 #define TAU_MEAN_MIN 0.2
 #define TAU_MEAN_MAX 0.5
 #define TAU_SLOPE_MIN 2.0
 #define TAU_SLOPE_MAX 4.0
+#define TAU_MIN TAU_MEAN_MIN*pow((1.0+redshift)/4.0,TAU_SLOPE_MIN)
+#define TAU_MAX TAU_MEAN_MAX*pow((1.0+redshift)/4.0,TAU_SLOPE_MAX)
 
 int main(int argc, char **argv)
 {
@@ -37,8 +39,7 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *outname=NULL;
   char c;
-  double tau_amp[PTS],tau_slope[PTS];
-  int j,jj,m,n;
+  int j,jj,n;
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
@@ -90,43 +91,37 @@ int main(int argc, char **argv)
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
   /*Do this even if not rescaling, as we want to know the mean flux*/
   pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-  for(n=0;n<PTS;n++)
-  {
-          tau_amp[n]=TAU_MEAN_MIN+n*(TAU_MEAN_MAX-TAU_MEAN_MIN)/PTS;
-          tau_slope[n]=TAU_SLOPE_MIN+n*(TAU_SLOPE_MAX-TAU_SLOPE_MIN)/PTS;
-  }
+
   inname=basename(inname);
   outname=malloc((strlen(outdir)+strlen(inname)+80)*sizeof(char));
   for(n=0; n<PTS; n++)
   {
-          for(m=0; m<PTS; m++)
+          double scale=1;
+          float flux_power_avg[(NBINS+1)/2];
+          const double tau_eff=TAU_MIN+(TAU_MAX-TAU_MIN)/PTS*n;
+          const double obs_flux=exp(-tau_eff);
+          scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
+          printf("scale=%g\n",scale);
+          for(j=0; j<(NBINS+1)/2;j++)
+            flux_power_avg[j]=0;
+          /*If no rescale, we output the non-rescaled power spectrum as well*/
+          calc_power_spectra(flux_power,tau_H1,scale,NumLos);
+          /*Average the power spectrum*/
+          for(j=0; j<(NBINS+1)/2;j++)
           {
-                  double obs_flux,scale=1;
-                  float flux_power_avg[(NBINS+1)/2];
-                  obs_flux=exp(-tau_amp[n]*pow((1+redshift)/4.0,tau_slope[m]));
-                  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
-                  printf("scale=%g\n",scale);
-                  for(j=0; j<(NBINS+1)/2;j++)
-                    flux_power_avg[j]=0;
-                  /*If no rescale, we output the non-rescaled power spectrum as well*/
-                  calc_power_spectra(flux_power,tau_H1,scale,NumLos);
-                  /*Average the power spectrum*/
-                  for(j=0; j<(NBINS+1)/2;j++)
-                  {
-                      for(jj=0; jj<NumLos; jj++)
-                         flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
-                      flux_power_avg[j]/=NumLos;
-                  }
-                  sprintf(outname,"%s/%s_%g_%g_flux_power.txt",outdir,inname,tau_amp[n],tau_slope[m]);
-                  printf("Outputting %s\n",outname);
-                  output=fopen(outname,"w");
-                  for(j=0; j<(NBINS+1)/2;j++)
-                  {
-                          /*First value is k*/
-                     fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
-                  }
-                  fclose(output);
+              for(jj=0; jj<NumLos; jj++)
+                 flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
+              flux_power_avg[j]/=NumLos;
           }
+          sprintf(outname,"%s/%s_%g_flux_power.txt",outdir,inname,tau_eff);
+          printf("Outputting %s\n",outname);
+          output=fopen(outname,"w");
+          for(j=0; j<(NBINS+1)/2;j++)
+          {
+                  /*First value is k*/
+             fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
+          }
+          fclose(output);
   }
   free(outname);
   FreeLOSMemory();
