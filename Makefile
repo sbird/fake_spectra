@@ -1,6 +1,6 @@
 
-#CC = icc -openmp -vec_report0
-CC= gcc -fopenmp -Wall 
+CC = icc -openmp -vec_report0
+#CC= gcc -fopenmp -Wall 
 CFLAGS =  -O2  -g
 OPTS = 
 PG = 
@@ -19,7 +19,8 @@ OPTS += -DVOIGT
 CFLAGS += $(OPTS)
 COM_INC = global_vars.h parameters.h Makefile
 FFTW = /data/store/spb41/apps/fftw/lib
-LINK=$(CC) -lm -lsrfftw -lsfftw -lgomp -L$(FFTW)
+LINK=$(CC)  -lsrfftw -lsfftw  -L$(FFTW)
+#LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
 
 .PHONY: all clean
 
@@ -53,3 +54,4 @@ main.o: main.c $(COM_INC)
 
 clean:
 	rm -f *.o  extract
+
