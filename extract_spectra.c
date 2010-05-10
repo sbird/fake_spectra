@@ -197,7 +197,7 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 		   
 		   const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
                    const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-		   const double Temperature = (*P).U[i]*mu; /* T in some strange units */
+		   const double temp = (*P).U[i]*mu; /* T in some strange units */
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -249,7 +249,7 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 
 			  kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
 			  velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
-			  temker = Temperature * kernel; /* kg (kpc)^-3 * K */
+			  temker = temp * kernel; /* kg (kpc)^-3 * K */
 
                         #ifdef RAW_SPECTRA 
 			  rhoker_H[j]  += kernel * XH;		 
