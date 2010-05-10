@@ -35,11 +35,12 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
   const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
   const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
   const double escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
-  const double hscale = rscale * 0.5; /* Note the factor of 0.5 for this kernel definition */
+  const double tscale = ((GAMMA-1.0) * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* convert (with mu) T to K */
+  /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
   const double zmingrid = 0.0;
-  const double zmaxgrid = box100*rscale;  /* box sizes in physical m */
-  const double dzgrid   = (zmaxgrid-zmingrid) / (double)NBINS; /* bin size (physical m) */
+  const double zmaxgrid = box100;  /* box sizes in kpc */
+  const double dzgrid   = (zmaxgrid-zmingrid) / (double)NBINS; /* bin size (kpc) */
   const double dzinv    = 1. / dzgrid;
   const double boxsize  = zmaxgrid;   
   const double box2     = 0.5 * boxsize;
@@ -51,7 +52,7 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
   /* Absorption cross-sections m^2 */
   const double sigma_Lya_H1  = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
   /* Prefactor for optical depth  */
-  const double A_H1 = sigma_Lya_H1*C*dzgrid/sqrt(M_PI);  
+  const double A_H1 = rscale*sigma_Lya_H1*C*dzgrid/sqrt(M_PI);  
 #ifdef HELIUM
   const double sigma_Lya_He2 = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
   const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
@@ -71,6 +72,7 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
   
 #pragma omp parallel
   { 
+#if 0 
     int i;
   /*   Convert to SI units from GADGET-3 units */
   #pragma omp for schedule(static, 128)
@@ -99,13 +101,13 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
     printf("Converted units.\n");
   }
   #pragma omp barrier
-  
+#endif
   /*    Generate random coordinates for a point in the box */
   #pragma omp for schedule(static, THREAD_ALLOC)
   for(iproc=0;iproc<NumLos;iproc++)
     { 
       double xproj,yproj,zproj;
-      int iaxis,iz,ioff,j,iiz,ii;
+      int iaxis,iz,ioff,j,iiz,ii,i;
 #ifdef RAW_SPECTRA
       double rhoker_H[NBINS];
 #endif
@@ -132,9 +134,9 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
       	iaxis = (int)(drand48()*4);
       while (iaxis == 0 || iaxis==4); 
       
-      xproj = drand48()*box100*rscale;
-      yproj = drand48()*box100*rscale;
-      zproj = drand48()*box100*rscale;
+      xproj = drand48()*box100;
+      yproj = drand48()*box100;
+      zproj = drand48()*box100;
      if((NumLos <20) ||  ((iproc % (NumLos/20)) ==0))
       printf("Interpolating line of sight %d...%g %g %g\n",iproc,xproj,yproj,zproj);
       
@@ -147,13 +149,13 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 	{
 	  double xx,yy,zz,hh,h2,h4,dr,dr2;
           double dzmax,zgrid;
-	  /*     Positions (physical m) */
+	  /*     Positions (kpc) */
 	  xx = (*P).Pos[3*i+0];
 	  yy = (*P).Pos[3*i+1];
 	  zz = (*P).Pos[3*i+2];
               
-	  /* Resolution length (physical m) */
-	  hh = (*P).h[i]; 
+	  /* Resolution length (kpc) */
+	  hh = (*P).h[i]*0.5; /*Factor of two in this kernel definition*/
 	  h2 = hh*hh; 
 	  h4 = 4.*h2;           /* 2 smoothing lengths squared */
 	  
@@ -193,8 +195,9 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 	           const double hinv2 = 1. / h2; /* 1/h^2 */
 		   const double hinv3 = hinv2 / hh; /* 1/h^3 */
 		   
-		   const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in km s^-1 */
-		   const double Temperature = (*P).U[i]; /* T in Kelvin */
+		   const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
+                   const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
+		   const double Temperature = (*P).U[i]*mu; /* T in some strange units */
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -244,9 +247,9 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 			  
 			  kernel *= hinv3; 
 
-			  kernel *= (*P).Mass[i]; /* kg m^-3 */
-			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
-			  temker = Temperature * kernel; /* kg m^-3 * K */
+			  kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
+			  velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
+			  temker = Temperature * kernel; /* kg (kpc)^-3 * K */
 
                         #ifdef RAW_SPECTRA 
 			  rhoker_H[j]  += kernel * XH;		 
@@ -273,8 +276,12 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
            * to avoid nans propagating. Zero rho will imply zero absorption 
            * anyway. */
           if(rhoker_H1[i]){       
-        	  veloc_H1_local[i]  = velker_H1[i]/rhoker_H1[i]; /* HI weighted km s^-1 */ 
-        	  temp_H1_local[i]   = temker_H1[i]/rhoker_H1[i]; /* HI weighted K */
+        	  veloc_H1_local[i]  = vscale*velker_H1[i]/rhoker_H1[i]; /* HI weighted km s^-1 */ 
+        	  temp_H1_local[i]   = tscale*temker_H1[i]/rhoker_H1[i]; /* HI weighted K */
+                  rhoker_H1[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
+             #ifdef RAW_SPECTRA
+                  rhoker_H[i] *= mscale*pow(rscale,-3);
+             #endif
           }
           else{
                   veloc_H1_local[i]=1;
@@ -317,7 +324,7 @@ void SPH_interpolation(int NumLos, int Ntype, pdata* P)
             #else   
 	      profile_H1 = T1;
             #endif
-	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1 * mscale/(HMASS*PROTONMASS*b_H1) ;
+	      tau_H1j  = A_H1  * rhoker_H1[j]  * profile_H1 /(HMASS*PROTONMASS*b_H1) ;
 	      tau_H1_local[i]  += tau_H1j;
 	    }
 	}             /* Spectrum convolution */
