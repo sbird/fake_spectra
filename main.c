@@ -34,6 +34,7 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *indir=NULL;
   char c;
+  struct particle_data P;
 #ifndef RAW_SPECTRA
   double obs_flux,scale=1;
   float flux_power_avg[(NBINS+1)/2];
@@ -81,12 +82,12 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  Npart=load_snapshot(indir, files);
+  Npart=load_snapshot(indir, files, &P);
   InitLOSMemory(NumLos);
   if(!PARTTYPE)
-    SPH_interpolation(NumLos,Npart);
+    SPH_interpolation(NumLos,Npart, &P);
   /*Free the particle list once we don't need it*/
-  free(P);
+  free_parts(&P);
   /*If the spectra flag is set, output the raw spectra to a file, 
    * instead of the flux power spectrum directly.*/
 #ifdef RAW_SPECTRA

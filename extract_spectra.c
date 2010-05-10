@@ -20,7 +20,7 @@
 #include "parameters.h"
 
 /*****************************************************************************/
-void SPH_interpolation(int NumLos, int Ntype)
+void SPH_interpolation(int NumLos, int Ntype, pdata* P)
 {
   const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
 #ifdef RAW_SPECTRA
@@ -80,19 +80,19 @@ void SPH_interpolation(int NumLos, int Ntype)
       int ic;
       for(ic=0;ic<3;ic++)
 	{
-	  P[i].Pos[ic] *= rscale; /* m, physical */
-	  P[i].Vel[ic] *= vscale; /* km s^-1, physical */
+	  (*P).Pos[3*i+ic] *= rscale; /* m, physical */
+	  (*P).Vel[3*i+ic] *= vscale; /* km s^-1, physical */
 	}
       
-      P[i].h *= hscale;   /* m, physical */
-/*      P[i].Mass = P[i].Mass * mscale; *//* kg */
+      (*P).h[i] *= hscale;   /* m, physical */
+/*      (*P).Mass[i] = (*P).Mass[i] * mscale; *//* kg */
       /*We leave mass in GADGET units, to prevent a floating overflow
-       * when we have poor resolution. P[i].Mass only affects rhoker, 
+       * when we have poor resolution. (*P).Mass[i] only affects rhoker, 
        * so we simply rescale rhoker later.*/ 
 
       /* Mean molecular weight */
-      mu = 1.0/(XH*(0.75+P[i].Ne) + 0.25);
-      P[i].U *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
+      mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
+      (*P).U[i] *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
   }
   #pragma omp master
   {
@@ -148,12 +148,12 @@ void SPH_interpolation(int NumLos, int Ntype)
 	  double xx,yy,zz,hh,h2,h4,dr,dr2;
           double dzmax,zgrid;
 	  /*     Positions (physical m) */
-	  xx = P[i].Pos[0];
-	  yy = P[i].Pos[1];
-	  zz = P[i].Pos[2];
+	  xx = (*P).Pos[3*i+0];
+	  yy = (*P).Pos[3*i+1];
+	  zz = (*P).Pos[3*i+2];
               
 	  /* Resolution length (physical m) */
-	  hh = P[i].h; 
+	  hh = (*P).h[i]; 
 	  h2 = hh*hh; 
 	  h4 = 4.*h2;           /* 2 smoothing lengths squared */
 	  
@@ -186,15 +186,15 @@ void SPH_interpolation(int NumLos, int Ntype)
 	      
 	      if (dr2 <= h4)
 		{
-		   const double H1frac = P[i].NH0; /* nHI/nH */ 
+		   const double H1frac = (*P).NH0[i]; /* nHI/nH */ 
                 #ifdef HELIUM
-                   const double He2frac = P[i].NHep; /* nHeII/nH */
+                   const double He2frac = (*P).NHep[i]; /* nHeII/nH */
                 #endif
 	           const double hinv2 = 1. / h2; /* 1/h^2 */
 		   const double hinv3 = hinv2 / hh; /* 1/h^3 */
 		   
-		   const double vr = P[i].Vel[iaxis-1]; /* peculiar velocity in km s^-1 */
-		   const double Temperature = P[i].U; /* T in Kelvin */
+		   const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in km s^-1 */
+		   const double Temperature = (*P).U[i]; /* T in Kelvin */
 		   
 		   /* Central vertex to contribute to */
 		   if (iaxis == 1)
@@ -244,7 +244,7 @@ void SPH_interpolation(int NumLos, int Ntype)
 			  
 			  kernel *= hinv3; 
 
-			  kernel *= P[i].Mass; /* kg m^-3 */
+			  kernel *= (*P).Mass[i]; /* kg m^-3 */
 			  velker = vr * kernel; /* kg m^-3 * km s^-1 */
 			  temker = Temperature * kernel; /* kg m^-3 * K */
 

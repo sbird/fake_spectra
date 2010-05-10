@@ -30,14 +30,19 @@ typedef struct io_header_1 gadget_header;
 
 struct particle_data 
 {
-  float  Pos[3];
-  float  Vel[3];
-  float Mass;
-  float U, NH0, Ne, h;
+  float *Pos;
+  float *Vel;
+  float *Mass;
+  float *U, *NH0, *Ne, *h;
 #ifdef HELIUM
-  float NHep;
+  float *NHep;
 #endif
-} *P;
+};
+typedef struct particle_data pdata;
+
+/*Allocate and free memory for the particle tables*/
+int alloc_parts(pdata* P, int np);
+void free_parts(pdata* P);
 
 double  atime, redshift, omega0, omegaL, box100, h100, omegab;
 
@@ -69,7 +74,7 @@ int powerspectrum(const int dims, float *field, float *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
 void calc_power_spectra(float *flux_power, double *tau_H1,double scale, int NumLos);
 
-int load_snapshot(char *fname, int files);
-void SPH_interpolation(int NumLos, int Ntype);
+int load_snapshot(char *fname, int files, pdata* P);
+void SPH_interpolation(int NumLos, int Ntype, pdata* P);
 
 #endif

@@ -20,11 +20,10 @@
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int load_snapshot(char *fname, int files)
+int load_snapshot(char *fname, int files, pdata *P)
 {
   FILE *fd;
   gadget_header *headers;
-  float *temp;
   int i,k,n,NumRead,ntot_withmasses=0;
   int NumPart[6]={0,0,0,0,0,0};
   /*Loop over the headers first, to get totals, then loop over data*/
@@ -96,7 +95,7 @@ int load_snapshot(char *fname, int files)
   printf("Expansion factor = %f\n",atime);
   printf("Hubble = %g Box=%g \n",h100,box100);
 
-  if(!(P=malloc(NumPart[PARTTYPE]*sizeof(struct particle_data))))
+  if(!(alloc_parts(P,NumPart[PARTTYPE])))
   {
     fprintf(stderr,"failed to allocate memory.\n\n");
     exit(1);
@@ -122,114 +121,85 @@ int load_snapshot(char *fname, int files)
     Ntype = headers[i].npart[PARTTYPE];
     for(n=0; n<PARTTYPE; n++)
             Nstart+=headers[i].npart[n];
-    if(!(temp=malloc(3*(floor(Ntype/3)+2)*sizeof(float))))
-    {
-                    fprintf(stderr, "Failed to allocate temp memory\n");
-                    exit(2);
-    }
     /*Particle positions */
     printf("Reading position and velocity...\n");
-    /*This is a cheat so that peak memory usage is a bit lower*/
-    for(k=0; k<3; k++)
-    {
-        int chunk=floor(Ntype/3);
-        int chunke=chunk;
-        if(k==2)
-           chunke=Ntype-2*chunk;
-        read_gadget_float3(temp,"POS ",Nstart+k*chunk,chunke,fd,0);
-            for(n=0;n<chunke;n++)
-            {
-               P[NumRead+n+k*chunk].Pos[0]=temp[3*n];	
-               P[NumRead+n+k*chunk].Pos[1]=temp[3*n+1];	
-               P[NumRead+n+k*chunk].Pos[2]=temp[3*n+2];	
-            }
-    }
-    
+    read_gadget_float3((*P).Pos+3*NumRead,"POS ",Nstart,Ntype,fd,0);
     /* Peculiar velocites */
-    for(k=0; k<3; k++)
-    {
-        int chunk=floor(Ntype/3);
-        int chunke=chunk;
-        if(k==2)
-           chunke=Ntype-2*chunk;
-        read_gadget_float3(temp,"VEL ",Nstart+k*chunk,chunke,fd,0);
-            for(n=0;n<chunke;n++)
-            {
-               P[NumRead+n+k*chunk].Vel[0]=temp[3*n];	
-               P[NumRead+n+k*chunk].Vel[1]=temp[3*n+1];	
-               P[NumRead+n+k*chunk].Vel[2]=temp[3*n+2];	
-            }
-    }
-    free(temp);
-    /*Done with triplets, read single valued things*/
-    if(!(temp=malloc(Ntype*sizeof(float))))
-    {
-                    fprintf(stderr, "Failed to allocate temp memory\n");
-                    exit(2);
-    }
-    
+    read_gadget_float3((*P).Vel+3*NumRead,"VEL ",Nstart,Ntype,fd,0);
     /* Particles masses  */
     printf("Reading mass and temp...\n");
     if(headers[i].mass[PARTTYPE])
         for(n=0;n<Ntype;n++)
-          P[NumRead+n].Mass = headers[i].mass[PARTTYPE];
+          (*P).Mass[NumRead+n] = headers[i].mass[PARTTYPE];
     else
-    {
-        read_gadget_float(temp,"MASS",Nstart,Ntype,fd);
-        for(n=0;n<Ntype;n++)
-          P[NumRead+n].Mass= temp[n];
-    }
+        read_gadget_float((*P).Mass+NumRead,"MASS",Nstart,Ntype,fd);
     if(headers[i].mass[0])
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
-          omegab = P[0].Mass/(P[0].Mass+headers[0].mass[1])*omega0;
+          omegab = (*P).Mass[0]/((*P).Mass[0]+headers[0].mass[1])*omega0;
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
-        read_gadget_float(temp,"U   ",Nstart,Ntype,fd);
-        for(n=0; n<Ntype;n++)
-            P[NumRead+n].U=temp[n];
+        read_gadget_float((*P).U+NumRead,"U   ",Nstart,Ntype,fd);
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
             printf("Reading electron fractions...\n");
         #ifndef GADGET3
-            read_gadget_float(temp,"NHP ",Nstart,Ntype,fd);
+            read_gadget_float((*P).Ne+NumRead,"NHP ",Nstart,Ntype,fd);
         #else
             /* Gadget-III changes the block names*/
-            read_gadget_float(temp,"NE  ",Nstart,Ntype,fd);
+            read_gadget_float((*P).Ne+NumRead,"NE  ",Nstart,Ntype,fd);
         #endif
-            for(n=0; n<Ntype;n++)
-               P[NumRead+n].Ne=temp[n];
-
             /* The HI fraction, nHI/nH */
-            read_gadget_float(temp,"NH  ",Nstart,Ntype,fd);
-            for(n=0; n<Ntype;n++)
-              P[NumRead+n].NH0=temp[n];
+            read_gadget_float((*P).NH0+NumRead,"NH  ",Nstart,Ntype,fd);
         #ifdef HELIUM
-            read_gadget_float(temp,"NHEP",Nstart,Ntype,fd);
-            for(n=0; n<Ntype;n++)
-               P[NumRead+n].NHep=temp[n];
+            read_gadget_float((*P).NHep+NumRead,"NHEP",Nstart,Ntype,fd);
         #endif  
           }
 
         /* The smoothing length */	  
-       read_gadget_float(temp,"HSML",Nstart,Ntype,fd);
-       for(n=0; n<Ntype;n++)
-          P[NumRead+n].h=temp[n];
-        
+       read_gadget_float((*P).h+NumRead,"HSML",Nstart,Ntype,fd);
       }
     NumRead+=Ntype;
     fclose(fd);
-    free(temp);
   }
-  printf("P[%d].Pos = [%g %g %g]\n", 0, P[0].Pos[0], P[0].Pos[1],P[0].Pos[2]);
-  printf("P[%d].Vel = [%g %g %g]\n", 0, P[0].Vel[0], P[0].Vel[1],P[0].Vel[2]);
-  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, P[1].Mass,omegab);
-  printf("P[%d].U = %f\n\n", NumRead, P[1].U);
-  printf("P[%d].Ne = %e\n", NumRead, P[1].Ne);
-  printf("P[%d].NH0 = %e\n", NumRead, P[1].NH0);
-  printf("P[%d].h = %f\n",NumRead, P[1].h);
+  printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
+  printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
+  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, (*P).Mass[NumRead-1],omegab);
+  printf("P[%d].U = %f\n\n", NumRead, (*P).U[NumRead-1]);
+  printf("P[%d].Ne = %e\n", NumRead, (*P).Ne[NumRead-1]);
+  printf("P[%d].NH0 = %e\n", NumRead, (*P).NH0[NumRead-1]);
+  printf("P[%d].h = %f\n",NumRead, (*P).h[NumRead-1]);
   free(headers);
   return NumRead;
+}
+
+int alloc_parts(pdata* P, int np)
+{
+    return ((*P).Vel=malloc(np*3*sizeof(float))) &&
+    ((*P).Pos=malloc(np*3*sizeof(float))) &&
+    ((*P).Mass=malloc(np*sizeof(float))) &&
+    ((*P).U=malloc(np*sizeof(float))) &&
+    ((*P).NH0=malloc(np*sizeof(float))) &&
+    ((*P).Ne=malloc(np*sizeof(float))) &&
+#ifdef HELIUM
+    ((*P).NHep=malloc(np*sizeof(float))) &&
+#endif
+    ((*P).h=malloc(np*sizeof(float)));
+}
+
+void free_parts(pdata* P)
+{
+    free((*P).Vel);
+    free((*P).Pos);
+    free((*P).Mass);
+    free((*P).U);
+    free((*P).NH0);
+    free((*P).Ne);
+    free((*P).h);
+#ifdef HELIUM
+    free((*P).NHep);
+#endif
+    return;
 }
