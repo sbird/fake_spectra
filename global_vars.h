@@ -30,14 +30,19 @@ typedef struct io_header_1 gadget_header;
 
 struct particle_data 
 {
-  float  Pos[3];
-  float  Vel[3];
-  float Mass;
-  float U, NH0, Ne, h;
+  float *Pos;
+  float *Vel;
+  float *Mass;
+  float *U, *NH0, *Ne, *h;
 #ifdef HELIUM
-  float NHep;
+  float *NHep;
 #endif
-} *P;
+};
+typedef struct particle_data pdata;
+
+/*Allocate and free memory for the particle tables*/
+int alloc_parts(pdata* P, int np);
+void free_parts(pdata* P);
 
 /*Structure for storing a sightline*/
 struct _los
@@ -78,9 +83,10 @@ void help(void);
 /* These functions do the work*/
 int powerspectrum(const int dims, float *field, float *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
+void calc_power_spectra(float *flux_power, double *tau_H1,double scale, int NumLos);
 
-int load_snapshot(char *fname, int files, int old);
-void SPH_interpolation(int NumLos, int Ntype, los *los_table);
+int load_snapshot(char *fname, int files, int old, pdata* P);
+void SPH_interpolation(int NumLos, int Ntype, los *los_table, pdata* P);
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
 #endif

@@ -1,0 +1,6 @@
+*.o
+extract
+rescale
+extract-icc
+tags
+.*.swp

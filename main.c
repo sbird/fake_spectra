@@ -38,10 +38,11 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *indir=NULL;
   char c;
+  struct particle_data P;
 #ifndef RAW_SPECTRA
   double obs_flux,scale=1;
   float flux_power_avg[(NBINS+1)/2];
-  int iproc,j,jj;
+  int j,jj;
 #endif
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
@@ -93,18 +94,18 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  Npart=load_snapshot(indir, files, old);
+  Npart=load_snapshot(indir, files, old, &P);
   populate_los_table(los_table,NumLos, ext_table, box100); 
   InitLOSMemory(NumLos);
   if(!PARTTYPE)
-    SPH_interpolation(NumLos,Npart, los_table);
+    SPH_interpolation(NumLos,Npart, los_table, &P);
   /*Free the particle list once we don't need it*/
-  free(P);
+  free_parts(&P);
   /*If the spectra flag is set, output the raw spectra to a file, 
    * instead of the flux power spectrum directly.*/
 #ifdef RAW_SPECTRA
   /*Output to a file*/
-  if(!(outname=malloc((strlen(outdir)+25)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
     fprintf(stderr, "Some problem with file output strings\n");
     exit(1);
@@ -131,46 +132,39 @@ int main(int argc, char **argv)
 #else /*If outputting flux power directly*/
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
-  if(rescale){
-    obs_flux= exp(-TAU_EFF);
-    scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
-    printf("scale=%g\n",scale);
-  }
+  /* Do this even if not rescaling, as we want to know the mean flux*/
+  obs_flux= exp(-TAU_EFF);
+  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
+  printf("scale=%g\n",scale);
   for(j=0; j<(NBINS+1)/2;j++)
     flux_power_avg[j]=0;
   pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-#pragma omp parallel
-  {
-    if(rescale){
-      /*Perform the scaling*/
-      #pragma omp for schedule(static, THREAD_ALLOC)
-      for(iproc=0; iproc<NBINS*NumLos; iproc++)
-      {
-        tau_H1[iproc]*=scale;
-      }
-    }
-    /*Calculate power spectrum*/
-    #pragma omp for schedule(static, THREAD_ALLOC)
-    for(iproc=0;iproc<NumLos;iproc++)
-    {
-        const double * tau_H1_local = &tau_H1[iproc*NBINS];
-        float flux_power_local[(NBINS+1)/2];
-        float flux_H1_local[NBINS];
-        int i,ii;
-        /* Calculate flux and flux power spectrum */
-        for(i=0; i<NBINS; i++)
-        {
-           flux_H1_local[i]=exp(-tau_H1_local[i]);
-        }
-        powerspectrum(NBINS, flux_H1_local, flux_power_local);
-        /*Write powerspectrum*/
-        for(i=0; i<(NBINS+1)/2;i++)
-        {
-            ii=i+(NBINS+1)/2*iproc;
-            flux_power[ii]=flux_power_local[i];
-        }
-    }/*End loop*/
-  }/*End parallel block*/
+  /*If no rescale, we output the non-rescaled power spectrum as well*/
+  if(!rescale){
+     calc_power_spectra(flux_power,tau_H1,1.0,NumLos);
+     /*Average the power spectrum*/
+     for(j=0; j<(NBINS+1)/2;j++)
+     {
+         for(jj=0; jj<NumLos; jj++)
+            flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
+         flux_power_avg[j]/=NumLos;
+     }
+     printf("Outputting average flux power spectrum\n");
+     outname=malloc((strlen(outdir)+25)*sizeof(char));
+     if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_no_rescale_flux_power.txt")))
+     {
+       fprintf(stderr, "Some problem with the strings\n");
+       exit(1);
+     }
+     output=fopen(outname,"w");
+     for(j=0; j<(NBINS+1)/2;j++)
+     {
+             /*First value is k*/
+        fprintf(output, "%g %g\n", j+0.5, flux_power_avg[j]);
+     }
+     fclose(output);
+  }
+  calc_power_spectra(flux_power,tau_H1,scale,NumLos);
   /*Average the power spectrum*/
   for(j=0; j<(NBINS+1)/2;j++)
   {
@@ -258,4 +252,42 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                 }
         }
         return;
+}
+
+void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLos)
+{
+    int iproc;
+#pragma omp parallel
+    {
+      /*Perform the scaling*/
+      if(scale != 1.0){
+         #pragma omp for schedule(static, THREAD_ALLOC)
+         for(iproc=0; iproc<NBINS*NumLos; iproc++)
+         {
+           tau_H1[iproc]*=scale;
+         }
+      }
+       /*Calculate power spectrum*/
+       #pragma omp for schedule(static, THREAD_ALLOC)
+       for(iproc=0;iproc<NumLos;iproc++)
+       {
+           const double * tau_H1_local = &tau_H1[iproc*NBINS];
+           float flux_power_local[(NBINS+1)/2];
+           float flux_H1_local[NBINS];
+           int i,ii;
+           /* Calculate flux and flux power spectrum */
+           for(i=0; i<NBINS; i++)
+           {
+              flux_H1_local[i]=exp(-tau_H1_local[i]);
+           }
+           powerspectrum(NBINS, flux_H1_local, flux_power_local);
+           /*Write powerspectrum*/
+           for(i=0; i<(NBINS+1)/2;i++)
+           {
+               ii=i+(NBINS+1)/2*iproc;
+               flux_power[ii]=flux_power_local[i];
+           }
+       }/*End loop*/
+     }/*End parallel block*/
+       return;
 }

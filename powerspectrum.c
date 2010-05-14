@@ -46,6 +46,7 @@ int powerspectrum(const int dims, float *field, float *power)
             power[dims/2]=outfield[dims/2]*outfield[dims/2];
 	for(k=0; k< (dims+1)/2;k++)
 	    power[k]/=dims2;
+        free(outfield);
 	return dims;
 }
 
