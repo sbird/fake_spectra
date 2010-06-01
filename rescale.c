@@ -113,7 +113,7 @@ int main(int argc, char **argv)
                  flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
               flux_power_avg[j]/=NumLos;
           }
-          sprintf(outname,"%s/%s_%g_flux_power.txt",outdir,inname,tau_eff);
+          sprintf(outname,"%s/%s_%d_flux_power.txt",outdir,inname,n);
           printf("Outputting %s\n",outname);
           output=fopen(outname,"w");
           for(j=0; j<(NBINS+1)/2;j++)
