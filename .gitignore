@@ -1,6 +1,7 @@
 *.o
 extract
 rescale
+statistic
 extract-icc
 tags
 .*.swp

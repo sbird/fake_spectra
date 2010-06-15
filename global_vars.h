@@ -84,6 +84,7 @@ void help(void);
 int powerspectrum(const int dims, float *field, float *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
 void calc_power_spectra(float *flux_power, double *tau_H1,double scale, int NumLos);
+void calc_pdf(float *flux_pdf, double *tau_H1,double scale, int NumLos);
 
 int load_snapshot(char *fname, int files, int old, pdata* P);
 void SPH_interpolation(int NumLos, int Ntype, los *los_table, pdata* P);
