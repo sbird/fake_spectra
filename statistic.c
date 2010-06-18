@@ -23,7 +23,7 @@
 #include "global_vars.h"
 #include "parameters.h"
 
-#define PBINS 20
+#define PBINS 21
 int output(float *array, int size, char *suffix, char *outdir);
 
 int main(int argc, char **argv)
