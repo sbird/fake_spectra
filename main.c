@@ -47,7 +47,7 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "f:o:i:t:n:rh")) !=-1)
+  while((c = getopt(argc, argv, "f:o:i:t:n:rh1")) !=-1)
   {
     switch(c)
       {
@@ -68,6 +68,10 @@ int main(int argc, char **argv)
            break;
         case 't':
            ext_table=optarg;
+           break;
+        case '1':
+           old=1;
+           fprintf(stderr, "WARNING: Reading old-style files is not really supported and may not work\n");
            break;
         case 'h':
         case '?':
@@ -254,7 +258,8 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
         return;
 }
 
-void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLos)
+#ifndef RAW_SPECTRA
+void calc_power_spectra(float *flux_power, double *tau_H1,double scale,double tau_eff,int NumLos)
 {
     int iproc;
 #pragma omp parallel
@@ -291,3 +296,4 @@ void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLo
      }/*End parallel block*/
        return;
 }
+#endif

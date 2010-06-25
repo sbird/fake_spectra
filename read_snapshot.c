@@ -105,6 +105,8 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
     char buf[200];
     int Nstart=0;
     int Ntype=0;
+    /*Particles *after* the ones we are interested in, for format 1 files*/
+    int Nfinish=0;
     if(files>1)
       sprintf(buf,"%s.%d",fname,i);
     else
@@ -116,18 +118,27 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
       fprintf(stderr,"can't open file `%s`\n\n",buf);
       exit(2);
     }
-    
+    /*Seek past the header*/
+    if(old) fseek(fd,2*sizeof(int)+sizeof(struct io_header_1),SEEK_CUR);
     /* Now read the particle data */ 
     Ntype = headers[i].npart[PARTTYPE];
     for(n=0; n<PARTTYPE; n++)
             Nstart+=headers[i].npart[n];
+    for(n=PARTTYPE+1; n<6; n++)
+            Nfinish+=headers[i].npart[n];
     /*Particle positions */
     printf("Reading position and velocity...\n");
+    /*Seek past particles we care not about*/
+    if(old) fseek(fd,3*Nstart*sizeof(float),SEEK_CUR);
     read_gadget_float3((*P).Pos+3*NumRead,"POS ",Nstart,Ntype,fd,old);
+    if(old) fseek(fd,3*(Nfinish+Nstart)*sizeof(float),SEEK_CUR);
     /* Peculiar velocites */
     read_gadget_float3((*P).Vel+3*NumRead,"VEL ",Nstart,Ntype,fd,old);
+    /*Seek past the IDs*/
+    if(old) fseek(fd,(2+Ntype+Nfinish+Nstart)*sizeof(int)+(3*Nfinish)*sizeof(float),SEEK_CUR);
     /* Particles masses  */
     printf("Reading mass and temp...\n");
+
     if(headers[i].mass[PARTTYPE])
         for(n=0;n<Ntype;n++)
           (*P).Mass[NumRead+n] = headers[i].mass[PARTTYPE];
@@ -137,10 +148,14 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
           omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
     else
           omegab = (*P).Mass[0]/((*P).Mass[0]+headers[0].mass[1])*omega0;
+    /*Seek past the last masses*/
+    if(old) fseek(fd,headers[i].npart[4]*sizeof(float),SEEK_CUR);
     if(PARTTYPE == 0)
       { 
         /*The internal energy of all the Sph particles is read in */
         read_gadget_float((*P).U+NumRead,"U   ",Nstart,Ntype,fd,old);
+        /*Seek past RHO*/
+        if(old) fseek(fd,2*sizeof(int)+Ntype*sizeof(float),SEEK_CUR);
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
@@ -151,15 +166,19 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
             /* Gadget-III changes the block names*/
             read_gadget_float((*P).Ne+NumRead,"NE  ",Nstart,Ntype,fd,old);
         #endif
-            /* The HI fraction, nHI/nH */
-            read_gadget_float((*P).NH0+NumRead,"NH  ",Nstart,Ntype,fd,old);
         #ifdef HELIUM
             read_gadget_float((*P).NHep+NumRead,"NHEP",Nstart,Ntype,fd,old);
         #endif  
+            /*Seek past two NHEP blocks*/
+            /* The HI fraction, nHI/nH */
+            read_gadget_float((*P).NH0+NumRead,"NH  ",Nstart,Ntype,fd,old);
+            /*An NHE block*/
           }
 
         /* The smoothing length */	  
-       read_gadget_float((*P).h+NumRead,"HSML",Nstart,Ntype,fd,old);
+       read_gadget_float((*P).h+NumRead,"HSML",0,Ntype,fd,old);
+       /*SFR: Don't need to read this.*/
+       /*if(old) fseek(fd,2*sizeof(int)+Ntype*sizeof(float),SEEK_CUR);*/
       }
     NumRead+=Ntype;
     fclose(fd);
