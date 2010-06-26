@@ -36,6 +36,8 @@ int main(int argc, char **argv)
   int statistic=2;
   int rescale=1;
   double scale=1.0;
+  double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000};
+  double tau_eff;
   float flux_power[(NBINS+1)/2];
   float flux_pdf[PBINS];
   char *inname=NULL;
@@ -111,15 +113,16 @@ int main(int argc, char **argv)
   printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",NumLos,tau_H1[0],tau_H1[NBINS*NumLos-1]);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
+  tau_eff=tau_effs[(int)(redshift-2.2)*5];
   if(rescale)
   {
-    scale=mean_flux(tau_H1, NBINS*NumLos,exp(-TAU_EFF),0.001 );
+    scale=mean_flux(tau_H1, NBINS*NumLos,exp(-tau_eff),1e-5 );
     printf("scale=%g\n",scale);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic == 2){
       pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-      calc_power_spectra(flux_power,tau_H1,scale,NumLos);
+      calc_power_spectra(flux_power,tau_H1,scale,tau_eff,NumLos);
       fftw_destroy_plan(pl);
       if(rescale)
               sprintf(suffix,"_flux_power.txt");
@@ -165,7 +168,7 @@ int output(float *array, int size, char *suffix, char *outdir)
      return 0;
 }
 
-void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLos)
+void calc_power_spectra(float *flux_power, double *tau_H1,double scale,double tau_eff,int NumLos)
 {
     int iproc;
     for(iproc=0; iproc<(NBINS+1)/2;iproc++)
@@ -189,7 +192,7 @@ void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLo
            /* Calculate flux and flux power spectrum */
            for(i=0; i<NBINS; i++)
            {
-              flux_H1_local[i]=exp(-tau_H1_local[i]);
+              flux_H1_local[i]=exp(-tau_H1_local[i])/exp(-tau_eff)-1;
            }
            powerspectrum(NBINS, flux_H1_local, flux_power_local);
            /*Write powerspectrum*/
