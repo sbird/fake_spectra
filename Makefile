@@ -18,8 +18,8 @@ OPTS += -DRAW_SPECTRA
 # Enable helium absorption
 CFLAGS += $(OPTS)
 COM_INC = global_vars.h parameters.h Makefile
-FFTW = /data/store/spb41/apps/fftw/lib
-LINK=$(CC)  -lsrfftw -lsfftw  -L$(FFTW)
+#FFTW = /data/store/spb41/apps/fftw/lib
+LINK=$(CC)  -lsrfftw -lsfftw  #-L$(FFTW)
 #LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
 
 .PHONY: all clean
