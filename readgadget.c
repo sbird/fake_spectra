@@ -33,8 +33,10 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
   if((nread = fread(ptr, size, nmemb, stream)) != nmemb)
     {
       int err;
-      if(feof(stream))
+      if(feof(stream)){
+              fprintf(stderr, "End of file reached!");
               return 0;
+      }
       fprintf(stderr, "fread error: %zd = fread(%d %zd %zd file)!\n",nread,fileno(stream),size,nmemb);
       err=ferror(stream);
       fprintf(stderr, "ferror gives: %d : %s\n",err,strerror(err));
@@ -76,13 +78,19 @@ void swap_Nbyte(char *data,int n,int m)
 /*-------- returns length of block found, -------------------------------------*/
 /*-------- the file fd points to starting point of block ----------------------*/
 /*-----------------------------------------------------------------------------*/
-int_blk find_block(FILE *fd,char *label)
+int_blk find_block(FILE *fd,char *in_label)
 {
   int_blk blocksize=0;
   char blocklabel[5]={"    "};
-
+  char label[5]={in_label[0],in_label[1],in_label[2],in_label[3],'\0'};
   rewind(fd);
-
+  /*This is a ridiculous hack to work around there being two NHEP blocks.*/
+  int ignore_first_nhep=0;
+  if(strcmp(label,"NHEQ")==0)
+  {
+      label[3]='P';
+      ignore_first_nhep=1;
+  }
   while(blocksize == 0)
     {
        SKIP;
@@ -118,12 +126,16 @@ int_blk find_block(FILE *fd,char *label)
          fprintf(stderr, "Found Block <%s> with %ld bytes\n",blocklabel,blocksize);
 #endif
            SKIP;
-	   if(strcmp(label,blocklabel)!=0)
+	   if(strcmp(label,blocklabel)!=0 || ignore_first_nhep)
 	     { 
                 fseek(fd,blocksize,1);
                 blocksize=0;
+                /*More ridiculous hack*/
+                if(strcmp(label,blocklabel)==0)
+                   ignore_first_nhep=0;
 	     }
-         }
+           }
+
     }
   return(blocksize-8);
 }

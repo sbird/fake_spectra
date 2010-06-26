@@ -159,16 +159,35 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
         /* The free electron fraction */
         if(headers[i].flag_cooling)
           {
+            float *temp;
+            int k;
             printf("Reading electron fractions...\n");
+            /* Some versions of Gadget have Ne, some have NHP, NHEP and NHEPP,
+             * which I map to NHEQ.*/
+            /* Use that the universe is neutral, so 
+             * NE = NHP + NHEP +2 NHEPP*/
         #ifndef GADGET3
+             temp=malloc(Ntype*sizeof(float));
+             if(temp == NULL){
+                     fprintf(stderr, "Error allocating temporary memory\n");
+                     exit(1);
+             }
             read_gadget_float((*P).Ne+NumRead,"NHP ",Nstart,Ntype,fd,old);
+            read_gadget_float(temp,"NHEP",Nstart,Ntype,fd,old);
+            for(k=0;k<Ntype;k++){
+                    (*P).Ne[NumRead+k]+=temp[k];
+            }
+            read_gadget_float(temp,"NHEQ",Nstart,Ntype,fd,old);
+            for(k=0;k<Ntype;k++){
+                    (*P).Ne[NumRead+k]+=2*temp[k];
+            }
+            free(temp);
         #else
-            /* Gadget-III changes the block names*/
             read_gadget_float((*P).Ne+NumRead,"NE  ",Nstart,Ntype,fd,old);
         #endif
         #ifdef HELIUM
-            read_gadget_float((*P).NHep+NumRead,"NHEP",Nstart,Ntype,fd,old);
-        #endif  
+            read_gadget_float((*P).NHep+NumRead,"NHE ",Nstart,Ntype,fd,old);
+        #endif 
             /*Seek past two NHEP blocks*/
             /* The HI fraction, nHI/nH */
             read_gadget_float((*P).NH0+NumRead,"NH  ",Nstart,Ntype,fd,old);
