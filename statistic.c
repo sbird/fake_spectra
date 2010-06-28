@@ -24,11 +24,12 @@
 #include "parameters.h"
 
 #define PBINS 21
-int output(float *array, int size, char *suffix, char *outdir);
+int output(double *array, int size, char *suffix, char *outdir);
 
 int main(int argc, char **argv)
 {
   int  NumLos=0;
+  int UsedLos=0;
   FILE *input;
   /*Which statistic to use: 1 is pdf, 2 is power,
    * 3 is transverse power, 4 is bispectrum.
@@ -38,8 +39,8 @@ int main(int argc, char **argv)
   double scale=1.0;
   double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000};
   double tau_eff;
-  float flux_power[(NBINS+1)/2];
-  float flux_pdf[PBINS];
+  double flux_power[(NBINS+1)/2];
+  double flux_pdf[PBINS];
   char *inname=NULL;
   char *outdir=NULL;
   char suffix[30];
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "s:o:i:n:rh")) !=-1)
+  while((c = getopt(argc, argv, "s:o:i:n:u:rh")) !=-1)
   {
     switch(c)
       {
@@ -63,6 +64,9 @@ int main(int argc, char **argv)
         case 's':
            statistic=atoi(optarg);
            break;
+        case 'u':
+           UsedLos = atoi(optarg);
+           break;
         case 'r':
            rescale=0;
            break;
@@ -73,6 +77,8 @@ int main(int argc, char **argv)
            exit(1);
       }
   }
+  if(UsedLos == 0)
+          UsedLos = NumLos;
   if(NumLos <=0){
           fprintf(stderr,"Need NUMLOS >0\n");
           help();
@@ -89,14 +95,14 @@ int main(int argc, char **argv)
           exit(99);
   }
 
-  InitLOSMemory(NumLos);
+  InitLOSMemory(UsedLos);
   if(!(input=fopen(inname,"rb"))){
         fprintf(stderr, "Could not open file %s for reading!\n",inname);
         exit(2);
   }
   fread(&redshift,sizeof(double),1,input);
   fseek(input,sizeof(double)*NBINS*NumLos*4,SEEK_CUR);
-  if(fread(tau_H1,sizeof(double),NBINS*NumLos,input) != NBINS*NumLos)     /* HI optical depth */
+  if(fread(tau_H1,sizeof(double),NBINS*UsedLos,input) != NBINS*UsedLos)     /* HI optical depth */
   {
           fprintf(stderr, "Could not read spectra!\n");
           exit(2);
@@ -110,19 +116,19 @@ int main(int argc, char **argv)
   }
 #endif
   fclose(input);
-  printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",NumLos,tau_H1[0],tau_H1[NBINS*NumLos-1]);
+  printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",UsedLos,tau_H1[0],tau_H1[NBINS*UsedLos-1]);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
   tau_eff=tau_effs[(int)(redshift-2.2)*5];
   if(rescale)
   {
-    scale=mean_flux(tau_H1, NBINS*NumLos,exp(-tau_eff),1e-5 );
+    scale=mean_flux(tau_H1, NBINS*UsedLos,exp(-tau_eff),1e-5 );
     printf("scale=%g\n",scale);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic == 2){
       pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-      calc_power_spectra(flux_power,tau_H1,scale,tau_eff,NumLos);
+      calc_power_spectra(flux_power,tau_H1,scale,tau_eff,UsedLos);
       fftw_destroy_plan(pl);
       if(rescale)
               sprintf(suffix,"_flux_power.txt");
@@ -132,7 +138,7 @@ int main(int argc, char **argv)
           exit(1);
   }
   if(statistic == 1){
-      calc_pdf(flux_pdf, tau_H1,scale,NumLos);
+      calc_pdf(flux_pdf, tau_H1,scale,UsedLos);
       if(rescale)
               sprintf(suffix,"_flux_pdf.txt");
       else
@@ -145,7 +151,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-int output(float *array, int size, char *suffix, char *outdir)
+int output(double *array, int size, char *suffix, char *outdir)
 {
      char *outname=NULL;
      FILE *out;
@@ -168,7 +174,7 @@ int output(float *array, int size, char *suffix, char *outdir)
      return 0;
 }
 
-void calc_power_spectra(float *flux_power, double *tau_H1,double scale,double tau_eff,int NumLos)
+void calc_power_spectra(double *flux_power, double *tau_H1,double scale,double tau_eff,int NumLos)
 {
     int iproc;
     for(iproc=0; iproc<(NBINS+1)/2;iproc++)
@@ -186,8 +192,8 @@ void calc_power_spectra(float *flux_power, double *tau_H1,double scale,double ta
        for(iproc=0;iproc<NumLos;iproc++)
        {
            const double * tau_H1_local = &tau_H1[iproc*NBINS];
-           float flux_power_local[(NBINS+1)/2];
-           float flux_H1_local[NBINS];
+           double flux_power_local[(NBINS+1)/2];
+           double flux_H1_local[NBINS];
            int i;
            /* Calculate flux and flux power spectrum */
            for(i=0; i<NBINS; i++)
@@ -211,7 +217,7 @@ void calc_power_spectra(float *flux_power, double *tau_H1,double scale,double ta
      return;
 }
 
-void calc_pdf(float *flux_pdf, double *tau_H1, double scale, int NumLos)
+void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos)
 {
     int i;
     for(i=0;i<PBINS; i++)

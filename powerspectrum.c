@@ -11,7 +11,7 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
-#include <srfftw.h>
+#include <drfftw.h>
 #include "global_vars.h"
 #include <omp.h>
 
@@ -19,15 +19,15 @@
 /*Little macro to work the storage order of the FFT.*/
 #define KVAL(n) ((n)<=dims/2 ? (n) : ((n)-dims))
 
-int powerspectrum(const int dims, float *field, float *power)
+int powerspectrum(const int dims, double *field, double *power)
 {
         fftw_real *outfield;
         int k;
         const int dims2=dims*dims;
-	if(sizeof(fftw_real) != sizeof(float))
+	if(sizeof(fftw_real) != sizeof(double))
 	{
-		fprintf(stderr, "sizeof fftw_real:%zd fftw_complex: %zd, float: %zd\n",sizeof(fftw_real), sizeof(fftw_complex), sizeof(float));
-		fprintf(stderr, "fftw_real is not a float. Perhaps you linked the wrong library?\n");
+		fprintf(stderr, "sizeof fftw_real:%zd fftw_complex: %zd, double: %zd\n",sizeof(fftw_real), sizeof(fftw_complex), sizeof(double));
+		fprintf(stderr, "fftw_real is not a double. Perhaps you linked the wrong library?\n");
 		exit(1);
 	}
 	outfield=malloc(dims*sizeof(fftw_real));

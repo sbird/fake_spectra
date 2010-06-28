@@ -81,10 +81,10 @@ int_blk read_gadget_float3(float *data,char *label,int offset, int read, FILE *f
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 /* These functions do the work*/
-int powerspectrum(const int dims, float *field, float *power);
+int powerspectrum(const int dims, double *field, double *power);
 double mean_flux(double * tau, double nbins, double obs_flux, double tol);
-void calc_power_spectra(float *flux_power, double *tau_H1,double scale, double tau_eff, int NumLos);
-void calc_pdf(float *flux_pdf, double *tau_H1,double scale, int NumLos);
+void calc_power_spectra(double *flux_power, double *tau_H1,double scale, double tau_eff, int NumLos);
+void calc_pdf(double *flux_pdf, double *tau_H1,double scale, int NumLos);
 
 int load_snapshot(char *fname, int files, int old, pdata* P);
 void SPH_interpolation(int NumLos, int Ntype, los *los_table, pdata* P);

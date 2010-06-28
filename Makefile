@@ -10,7 +10,7 @@ OPTS += -DPECVEL
 # Use peculiar velocites 
 OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
-#OPTS += -DGADGET3
+OPTS += -DGADGET3
 #Gadget III has slightly different block headers
 OPTS += -DRAW_SPECTRA
 # Output data file with optical depths rather than flux power spectrum.
@@ -35,10 +35,10 @@ read_snapshot.o: read_snapshot.c $(COM_INC)
 	$(CC) $(CFLAGS) -c read_snapshot.c
 
 rescale: rescale.c powerspectrum.o mean_flux.o $(COM_INC)
-	$(CC) $(CFLAGS) rescale.c  -L$(FFTW) -lsrfftw -lsfftw powerspectrum.o mean_flux.o -o rescale 
+	$(CC) $(CFLAGS) rescale.c  -L$(FFTW) -ldrfftw -ldfftw powerspectrum.o mean_flux.o -o rescale 
 
 statistic: statistic.c powerspectrum.o mean_flux.o $(COM_INC)
-	$(CC) $(CFLAGS) statistic.c -L$(FFTW) -lsrfftw -lsfftw powerspectrum.o mean_flux.o -o statistic
+	$(CC) $(CFLAGS) statistic.c -L$(FFTW) -ldrfftw -ldfftw powerspectrum.o mean_flux.o -o statistic
 
 readgadget.o: readgadget.c $(COM_INC)
 	$(CC) $(CFLAGS) -c readgadget.c

@@ -58,7 +58,6 @@ void SPH_interpolation(int NumLos, int Ntype,los *los_table,  pdata* P)
   const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
 #endif
   int iproc;
-
   /*   Initialise distance coordinate for iaxis */
   posaxis[0]=0.0;
   velaxis[0]=0.0;
@@ -390,7 +389,7 @@ void SPH_interpolation(int NumLos, int Ntype,los *los_table,  pdata* P)
         #ifdef HELIUM
         #ifdef RAW_SPECTRA
 	  n_He2[ii]      = rhoker_He2[i]/rhoker_H[i];  /* HI/H */
-          veloc_He2[ii]    = veloc_He2_local[i]; /* HI weighted km s^-1 */ 
+          veloc_He2[ii]  = veloc_He2_local[i]; /* HI weighted km s^-1 */ 
 	  temp_He2[ii]   = temp_He2_local[i]; /* HI weighted K */
         #endif
           tau_He2[ii]    = tau_He2_local[i];
