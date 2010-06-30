@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include "global_vars.h"
 
-double mean_flux(double * tau, double nbins, double obs_flux, double tol)
+double mean_flux(double * tau, int nbins, double obs_flux, double tol)
 {
     double mean_flux;
     double tau_mean_flux;
