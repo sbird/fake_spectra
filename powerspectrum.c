@@ -12,8 +12,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 #include <drfftw.h>
-#include "global_vars.h"
 #include <omp.h>
+#include "statistic.h"
 
 /* Computes the one-dimensional normalized power spectrum*/
 /*Little macro to work the storage order of the FFT.*/

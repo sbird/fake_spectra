@@ -19,7 +19,7 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "global_vars.h"
+#include "statistic.h"
 
 double mean_flux(double * tau, int nbins, double obs_flux, double tol)
 {
