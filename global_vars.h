@@ -1,10 +1,8 @@
 #ifndef GLOBAL_VARS_H
 #define GLOBAL_VARS_H
 
-/*Plan needs to be generated only once,
- * and used by each thread.*/
-#include <srfftw.h>
-fftw_plan pl;
+#include <stdlib.h>
+#include <stdio.h>
 
 /*Gadget particle header*/
 struct io_header_1
@@ -59,9 +57,10 @@ double  atime, redshift, omega0, omegaL, box100, h100, omegab;
 /*Pointers to arrays to use in SPH_interpolation*/
 #ifdef RAW_SPECTRA
 double *Delta,*n_H1,*veloc_H1,*temp_H1;
+#else 
+#include "statistic.h"
 #endif
 double *tau_H1, *posaxis,*velaxis;
-float *flux_power;
 #ifdef HELIUM
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 #endif
@@ -80,11 +79,6 @@ int_blk read_gadget_float(float *data,char *label,int offset, int read,FILE *fd,
 int_blk read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
-/* These functions do the work*/
-int powerspectrum(const int dims, double *field, double *power);
-double mean_flux(double * tau, int nbins, double obs_flux, double tol);
-void calc_power_spectra(double *flux_power, double *tau_H1,double scale, double tau_eff, int NumLos);
-void calc_pdf(double *flux_pdf, double *tau_H1,double scale, int NumLos);
 
 int load_snapshot(char *fname, int files, int old, pdata* P);
 void SPH_interpolation(int NumLos, int Ntype, los *los_table, pdata* P);

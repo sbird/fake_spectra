@@ -412,12 +412,11 @@ void InitLOSMemory(int NumLos)
   tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
   posaxis      = (double *) calloc(NBINS , sizeof(double));
   velaxis      = (double *) calloc(NBINS , sizeof(double));
-  flux_power   = (float *) calloc(NumLos * (NBINS+1)/2, sizeof(float));
   if(!posaxis  ||   !velaxis || 
   #ifdef RAW_SPECTRA
      !Delta ||  !n_H1 || !veloc_H1 || !temp_H1 || 
   #endif
-     !tau_H1 || !flux_power  )
+     !tau_H1 )
   {
       fprintf(stderr, "Failed to allocate memory!\n");
       exit(1);
@@ -444,8 +443,6 @@ void FreeLOSMemory(void)
   free(n_H1     ) ;
   free(veloc_H1 ) ;
   free(temp_H1  ) ;
-#else
-  free(flux_power);
 #endif
   free(posaxis)   ;
   free(velaxis)   ;

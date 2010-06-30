@@ -87,32 +87,19 @@ int main(int argc, char **argv)
 #endif
   fclose(input);
   printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",NumLos,tau_H1[0],tau_H1[NBINS*NumLos-1]);
-  /*Calculate mean flux*/
-  /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
-  /*Do this even if not rescaling, as we want to know the mean flux*/
-  pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
-
   inname=basename(inname);
   outname=malloc((strlen(outdir)+strlen(inname)+80)*sizeof(char));
   for(n=0; n<PTS; n++)
   {
           double scale=1;
-          float flux_power_avg[(NBINS+1)/2];
+          double flux_power_avg[(NBINS+1)/2];
           const double tau_eff=TAU_MIN+(TAU_MAX-TAU_MIN)/PTS*n;
           const double obs_flux=exp(-tau_eff);
+          /*Calculate mean flux*/
           scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
           printf("scale=%g\n",scale);
-          for(j=0; j<(NBINS+1)/2;j++)
-            flux_power_avg[j]=0;
           /*If no rescale, we output the non-rescaled power spectrum as well*/
-          calc_power_spectra(flux_power,tau_H1,scale,NumLos);
-          /*Average the power spectrum*/
-          for(j=0; j<(NBINS+1)/2;j++)
-          {
-              for(jj=0; jj<NumLos; jj++)
-                 flux_power_avg[j]+=flux_power[(NBINS+1)/2*jj+j];
-              flux_power_avg[j]/=NumLos;
-          }
+          calc_power_spectra(flux_power_avg,tau_H1,scale,tau_eff,NumLos);
           sprintf(outname,"%s/%s_%d_flux_power.txt",outdir,inname,n);
           printf("Outputting %s\n",outname);
           output=fopen(outname,"w");
@@ -125,47 +112,9 @@ int main(int argc, char **argv)
   }
   free(outname);
   FreeLOSMemory();
-  fftw_destroy_plan(pl);
   return 0;
 }
 
-void calc_power_spectra(float *flux_power, double *tau_H1,double scale,int NumLos)
-{
-    int iproc;
-#pragma omp parallel
-    {
-      /*Perform the scaling*/
-      if(scale != 1.0){
-         #pragma omp for schedule(static, THREAD_ALLOC)
-         for(iproc=0; iproc<NBINS*NumLos; iproc++)
-         {
-           tau_H1[iproc]*=scale;
-         }
-      }
-       /*Calculate power spectrum*/
-       #pragma omp for schedule(static, THREAD_ALLOC)
-       for(iproc=0;iproc<NumLos;iproc++)
-       {
-           const double * tau_H1_local = &tau_H1[iproc*NBINS];
-           float flux_power_local[(NBINS+1)/2];
-           float flux_H1_local[NBINS];
-           int i,ii;
-           /* Calculate flux and flux power spectrum */
-           for(i=0; i<NBINS; i++)
-           {
-              flux_H1_local[i]=exp(-tau_H1_local[i]);
-           }
-           powerspectrum(NBINS, flux_H1_local, flux_power_local);
-           /*Write powerspectrum*/
-           for(i=0; i<(NBINS+1)/2;i++)
-           {
-               ii=i+(NBINS+1)/2*iproc;
-               flux_power[ii]=flux_power_local[i];
-           }
-       }/*End loop*/
-     }/*End parallel block*/
-       return;
-}
 /*****************************************************************************/
 void InitLOSMemory(int NumLos)
 {  
