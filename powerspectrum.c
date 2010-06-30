@@ -38,7 +38,7 @@ int powerspectrum(const int dims, double *field, double *power)
 	rfftw_one(pl, &field[0], outfield);
 	/* Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
 	 * FFTW has a strange format for output array:
-    * F(0).re F(1).re ..F(n/2).re F((n+1)/2-1).im ...F(0).im */
+         * F(0).re F(1).re ..F(n/2).re F((n+1)/2-1).im ...F(1).im */
         power[0]=outfield[0]*outfield[0];
         for(k=1; k<(dims+1)/2; ++k)
            power[k]=outfield[k]*outfield[k]+outfield[dims-k]*outfield[dims-k];
