@@ -40,8 +40,8 @@ int main(int argc, char **argv)
   int statistic=2;
   int rescale=1;
   double scale=1.0;
-  double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000};
-  double tau_eff;
+/*   double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000}; */
+/*   double tau_eff; */
   double flux_power[(NBINS+1)/2];
   double flux_pdf[PBINS];
   char *inname=NULL;
@@ -133,15 +133,15 @@ int main(int argc, char **argv)
   printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",UsedLos,tau_H1[0],tau_H1[NBINS*UsedLos-1]);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
-  tau_eff=tau_effs[(int)(redshift-2.2)*5];
+/*   tau_eff=tau_effs[(int)(redshift-2.2)*5]; */
   if(rescale)
   {
-    scale=mean_flux(tau_H1, NBINS*UsedLos,exp(-tau_eff),1e-5 );
+    scale=mean_flux(tau_H1, NBINS*UsedLos,exp(-TAU_EFF),1e-5 );
     printf("scale=%g\n",scale);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic == 2){
-      calc_power_spectra(flux_power,tau_H1,scale,tau_eff,UsedLos);
+      calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos);
       if(rescale)
               sprintf(suffix,"_flux_power.txt");
       else
