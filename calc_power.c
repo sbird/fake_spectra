@@ -13,7 +13,7 @@ void calc_power_spectra(double *flux_power, double *tau_H1,double scale,double t
     /*Perform the scaling*/
     for(j=0; j<NBINS*NumLos; j++)
       tau_H1[j]*=scale;
-    for(j=1;j<NumLos-1;j++)
+    for(j=0;j<NumLos;j++)
     {
         /* Calculate flux and flux power spectrum */
         for(i=0; i<NBINS; i++)
@@ -28,7 +28,7 @@ void calc_power_spectra(double *flux_power, double *tau_H1,double scale,double t
     }
     /*Average the power spectrum*/
     for(j=0; j<(NBINS+1)/2;j++)
-        flux_power[j]/=(NumLos-2);
+        flux_power[j]/=NumLos;
     fftw_destroy_plan(pl);
     return;
 }
