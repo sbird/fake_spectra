@@ -18,21 +18,24 @@ OPTS += -DRAW_SPECTRA
 # Enable helium absorption
 CFLAGS += $(OPTS)
 COM_INC = parameters.h Makefile
-LINK=$(CC)  -ldrfftw -ldfftw
+FFTW =-ldrfftw -ldfftw
+LINK=$(CC)
 #LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
 
 .PHONY: all clean
 
 all: extract
 
-extract: main.o read_snapshot.o extract_spectra.o readgadget.o powerspectrum.o mean_flux.o calc_power.o smooth.o Makefile	
-	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) readgadget.o $(PG) powerspectrum.o $(PG) mean_flux.o calc_power.o smooth.o
+extract: main.o read_snapshot.o extract_spectra.o readgadget.o Makefile
+	# powerspectrum.o mean_flux.o calc_power.o smooth.o
+	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) readgadget.o 
+	#$(PG) powerspectrum.o $(PG) mean_flux.o calc_power.o smooth.o $(FFTW)
 
 rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) rescale.c -ldrfftw -ldfftw powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
+	$(CC) $(CFLAGS) rescale.c $(FFTW) powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
 
 statistic: statistic.c calc_power.o $(COM_INC)
-	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic -ldrfftw -ldfftw 
+	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic $(FFTW)
 
 read_snapshot.o: read_snapshot.c $(COM_INC)
 readgadget.o: readgadget.c $(COM_INC)
