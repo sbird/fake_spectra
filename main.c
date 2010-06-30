@@ -130,8 +130,10 @@ int main(int argc, char **argv)
   fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
   fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
 #endif
+#if 0
   fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
   fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
+#endif
   fclose(output);
 #else /*If outputting flux power directly*/
   /*Calculate mean flux*/
