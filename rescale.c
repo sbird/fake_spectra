@@ -13,14 +13,13 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#define RAW_SPECTRA 1
 #define _GNU_SOURCE
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "global_vars.h"
+#include "statistic.h"
 #include "parameters.h"
 #define PTS 30
 #define TAU_MEAN_MIN 0.2
@@ -29,6 +28,7 @@
 #define TAU_SLOPE_MAX 4.0
 #define TAU_MIN TAU_MEAN_MIN*pow((1.0+redshift)/4.0,TAU_SLOPE_MIN)
 #define TAU_MAX TAU_MEAN_MAX*pow((1.0+redshift)/4.0,TAU_SLOPE_MAX)
+void help(void);
 
 int main(int argc, char **argv)
 {
@@ -40,6 +40,8 @@ int main(int argc, char **argv)
   char *outname=NULL;
   char c;
   int j,jj,n;
+  double redshift;
+  double * tau_H1=NULL;
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
@@ -76,7 +78,12 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  InitLOSMemory(NumLos);
+  tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
+    if( !tau_H1)
+  {
+      fprintf(stderr, "Failed to allocate memory!\n");
+      exit(1);
+  }
   input=fopen(inname,"rb");
   fread(&redshift,sizeof(double),1,input);
   fseek(input,sizeof(double)*NBINS*NumLos*4,SEEK_CUR);
@@ -91,16 +98,16 @@ int main(int argc, char **argv)
   outname=malloc((strlen(outdir)+strlen(inname)+80)*sizeof(char));
   for(n=0; n<PTS; n++)
   {
-          double scale=1;
+          double scale=1.;
           double flux_power_avg[(NBINS+1)/2];
-          const double tau_eff=TAU_MIN+(TAU_MAX-TAU_MIN)/PTS*n;
+          const double tau_eff=TAU_MIN+n*(TAU_MAX-TAU_MIN)/(double)PTS;
           const double obs_flux=exp(-tau_eff);
           /*Calculate mean flux*/
-          scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
-          printf("scale=%g\n",scale);
+          scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,1e-5 );
+          printf("tau_eff = %g, scale=%g\n",tau_eff,scale);
           /*If no rescale, we output the non-rescaled power spectrum as well*/
           calc_power_spectra(flux_power_avg,tau_H1,scale,tau_eff,NumLos);
-          sprintf(outname,"%s/%s_%d_flux_power.txt",outdir,inname,n);
+          sprintf(outname,"%s/%d/%s_flux_power.txt",outdir,n, inname);
           printf("Outputting %s\n",outname);
           output=fopen(outname,"w");
           for(j=0; j<(NBINS+1)/2;j++)
@@ -111,41 +118,9 @@ int main(int argc, char **argv)
           fclose(output);
   }
   free(outname);
-  FreeLOSMemory();
+  free(tau_H1   ) ;
   return 0;
 }
-
-/*****************************************************************************/
-void InitLOSMemory(int NumLos)
-{  
-  tau_H1       = (double *) calloc((NumLos * NBINS) , sizeof(double));
-  flux_power   = (float *) calloc(NumLos * (NBINS+1)/2, sizeof(float));
-    if( !tau_H1 || !flux_power  )
-  {
-      fprintf(stderr, "Failed to allocate memory!\n");
-      exit(1);
-  }
-#ifdef HELIUM 
-  tau_He2       = (double *) calloc((NumLos * NBINS) , sizeof(double)); 
-  if(! tau_He2 )
-  {
-      fprintf(stderr, "Failed to allocate helium memory!\n");
-      exit(1);
-  }
-#endif
-}
-/*****************************************************************************/
-
-/*****************************************************************************/
-void FreeLOSMemory(void)
-{  
-  free(flux_power);
-  free(tau_H1   ) ;
-#ifdef HELIUM 
-  free(tau_He2   );
-#endif
-}
-/*****************************************************************************/
 void help()
 {
            fprintf(stderr, "Usage: ./extract -n NUMLOS -i filename -o output_directory\n");
