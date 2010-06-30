@@ -20,14 +20,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "global_vars.h"
+#include "statistic.h"
 #include "parameters.h"
 
 #define PBINS 21
 int output(double *array, int size, char *suffix, char *outdir);
+void help(void);
 
 int main(int argc, char **argv)
 {
+  double redshift;
+  double *tau_H1=NULL;
   int  NumLos=0;
   int UsedLos=0;
   FILE *input;
@@ -95,7 +98,18 @@ int main(int argc, char **argv)
           exit(99);
   }
 
-  InitLOSMemory(UsedLos);
+  if(!(tau_H1 = (double *) calloc((UsedLos * NBINS) , sizeof(double))))
+  {
+      fprintf(stderr, "Failed to allocate memory!\n");
+      exit(1);
+  }
+#ifdef HELIUM
+  if(!(tau_He2 = (double *) calloc((UsedLos * NBINS) , sizeof(double))))
+  {
+      fprintf(stderr, "Failed to allocate helium memory!\n");
+      exit(1);
+  }
+#endif
   if(!(input=fopen(inname,"rb"))){
         fprintf(stderr, "Could not open file %s for reading!\n",inname);
         exit(2);
@@ -127,9 +141,7 @@ int main(int argc, char **argv)
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic == 2){
-      pl=rfftw_create_plan(NBINS,FFTW_REAL_TO_COMPLEX, FFTW_MEASURE | FFTW_THREADSAFE);
       calc_power_spectra(flux_power,tau_H1,scale,tau_eff,UsedLos);
-      fftw_destroy_plan(pl);
       if(rescale)
               sprintf(suffix,"_flux_power.txt");
       else
@@ -147,7 +159,10 @@ int main(int argc, char **argv)
           exit(1);
   }
   /*Average the power spectrum*/
-  FreeLOSMemory();
+  free(tau_H1);
+#ifdef HELIUM
+  free(tau_He2);
+#endif
   return 0;
 }
 
@@ -174,49 +189,6 @@ int output(double *array, int size, char *suffix, char *outdir)
      return 0;
 }
 
-void calc_power_spectra(double *flux_power, double *tau_H1,double scale,double tau_eff,int NumLos)
-{
-    int iproc;
-    for(iproc=0; iproc<(NBINS+1)/2;iproc++)
-      flux_power[iproc]=0;
-#pragma omp parallel
-    {
-      /*Perform the scaling*/
-       #pragma omp for schedule(static, THREAD_ALLOC)
-       for(iproc=0; iproc<NBINS*NumLos; iproc++)
-       {
-         tau_H1[iproc]*=scale;
-       }
-       /*Calculate power spectrum*/
-       #pragma omp for schedule(static, THREAD_ALLOC)
-       for(iproc=0;iproc<NumLos;iproc++)
-       {
-           const double * tau_H1_local = &tau_H1[iproc*NBINS];
-           double flux_power_local[(NBINS+1)/2];
-           double flux_H1_local[NBINS];
-           int i;
-           /* Calculate flux and flux power spectrum */
-           for(i=0; i<NBINS; i++)
-           {
-              flux_H1_local[i]=exp(-tau_H1_local[i])/exp(-tau_eff)-1;
-           }
-           powerspectrum(NBINS, flux_H1_local, flux_power_local);
-           /*Write powerspectrum*/
-           for(i=0; i<(NBINS+1)/2;i++)
-           {
-               #pragma omp atomic
-               flux_power[i]+=flux_power_local[i];
-           }
-       }/*End loop*/
-     }/*End parallel block*/
-     /*Average the power spectrum*/
-     for(iproc=0; iproc<(NBINS+1)/2;iproc++)
-     {
-         flux_power[iproc]/=NumLos;
-     }
-     return;
-}
-
 void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos)
 {
     int i;
@@ -232,32 +204,7 @@ void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos)
     }
     return;
 }
-/*****************************************************************************/
-void InitLOSMemory(int NumLos)
-{
-  if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double))))
-  {
-      fprintf(stderr, "Failed to allocate memory!\n");
-      exit(1);
-  }
-#ifdef HELIUM
-  if(!(tau_He2 = (double *) calloc((NumLos * NBINS) , sizeof(double))))
-  {
-      fprintf(stderr, "Failed to allocate helium memory!\n");
-      exit(1);
-  }
-#endif
-}
-/*****************************************************************************/
 
-/*****************************************************************************/
-void FreeLOSMemory(void)
-{
-  free(tau_H1);
-#ifdef HELIUM
-  free(tau_He2);
-#endif
-}
 /*****************************************************************************/
 void help()
 {

@@ -19,7 +19,7 @@
 /*Little macro to work the storage order of the FFT.*/
 #define KVAL(n) ((n)<=dims/2 ? (n) : ((n)-dims))
 
-int powerspectrum(const int dims, double *field, double *power)
+int powerspectrum(const int dims, double *field, double *power, fftw_plan pl)
 {
         fftw_real *outfield;
         int k;
