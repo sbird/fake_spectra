@@ -141,19 +141,13 @@ int main(int argc, char **argv)
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic == 2){
       calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos);
-      if(rescale)
-              sprintf(suffix,"_flux_power.txt");
-      else
-              sprintf(suffix,"_no_rescale_flux_power.txt");
+      sprintf(suffix,"_flux_power.txt");
       if(output(flux_power, (NBINS+1)/2,suffix, outdir))
           exit(1);
   }
   if(statistic == 1){
       calc_pdf(flux_pdf, tau_H1,scale,UsedLos);
-      if(rescale)
-              sprintf(suffix,"_flux_pdf.txt");
-      else
-              sprintf(suffix,"_no_rescale_flux_pdf.txt");
+      sprintf(suffix,"_flux_pdf.txt");
       if(output(flux_pdf, PBINS,suffix, outdir))
           exit(1);
   }
