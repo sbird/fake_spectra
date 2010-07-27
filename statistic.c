@@ -193,7 +193,7 @@ void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos)
     /*Normalise*/
     for(i=0;i<PBINS;i++){
         flux_pdf[i]/=(NumLos*NBINS);
-        flux_pdf[i]*=PBINS;
+        flux_pdf[i]*=(PBINS-1);
     }
     return;
 }
