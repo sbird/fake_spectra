@@ -24,7 +24,7 @@ LINK=$(CC)
 
 .PHONY: all clean
 
-all: extract
+all: extract statistic
 
 extract: main.o read_snapshot.o extract_spectra.o readgadget.o Makefile
 	# powerspectrum.o mean_flux.o calc_power.o smooth.o
@@ -34,7 +34,7 @@ extract: main.o read_snapshot.o extract_spectra.o readgadget.o Makefile
 rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
 	$(CC) $(CFLAGS) rescale.c $(FFTW) powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
 
-statistic: statistic.c calc_power.o $(COM_INC)
+statistic: statistic.c calc_power.o mean_flux.o smooth.o $(COM_INC)
 	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic $(FFTW)
 
 read_snapshot.o: read_snapshot.c $(COM_INC)
