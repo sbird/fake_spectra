@@ -130,6 +130,7 @@ int main(int argc, char **argv)
                   fprintf(stderr, "Error allocating memory for tau\n");
                   exit(2);
   }
+  printf("Done interpolating, now calculating absorption\n");
 #pragma omp parallel
   {
      #pragma omp for
