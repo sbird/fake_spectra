@@ -184,6 +184,9 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
   return;
 }
 
+/*The size of the thread cache to use below*/
+#define CACHESZ 1024
+
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
 #ifndef HELIUM
@@ -201,10 +204,23 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
     const double dzgrid   = (boxsize-zmingrid) / (double)NBINS; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
-    int i,iproc;
+    int i;
+  #pragma omp parallel
+  {
+  /*This is a small thread-local caching mechanism, to avoid
+   * massive deadlock around the omp critial section.*/
+   int cindex=0;
+   double rho_H1[CACHESZ], temp_H1[CACHESZ],veloc_H1[CACHESZ];
+#ifdef HELIUM
+   double rho_He2[CACHESZ], temp_He2[CACHESZ],veloc_He2[CACHESZ];
+#endif
+   double rho_H[CACHESZ];
+   int bins[CACHESZ];
+    #pragma omp for
     for(i=0;i<Particles;i++)
     {
       double xx,yy,zz,hh,h2,h4,dr,dr2;
+      int iproc;
       /*     Positions (kpc) */
       xx = (*P).Pos[3*i+0];
       yy = (*P).Pos[3*i+1];
@@ -317,18 +333,58 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
 	        velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
 	        temker = temp * kernel; /* kg (kpc)^-3 * K */
-                rhoker_H[iproc*NBINS+j]  += kernel * XH;
-	        (*H1).rho[iproc*NBINS+j] += kernel * XH * H1frac;
-	        (*H1).veloc[iproc*NBINS+j] += velker * XH * H1frac;
-	        (*H1).temp[iproc*NBINS+j] += temker * XH * H1frac;
-              #ifdef HELIUM
-                (*He2).rho[iproc*NBINS+j] += kernel * XH * He2frac;
-                (*He2).veloc[iproc*NBINS+j] += velker * XH * He2frac;
-                (*He2).temp[iproc*NBINS+j] += temker * XH * He2frac;
-              #endif
+                /*Only one thread can update the global memory at a time.
+                 * This adds a small thread-local cache.
+                 * Add stuff to the cache*/
+                bins[cindex]=iproc*NBINS+j;
+                rho_H[cindex]  += kernel * XH;
+	        rho_H1[cindex] += kernel * XH * H1frac;
+	        veloc_H1[cindex] += velker * XH * H1frac;
+	        temp_H1[cindex] += temker * XH * H1frac;
+                #ifdef HELIUM
+                  rho_He2[cindex] += kernel * XH * He2frac;
+                  veloc_He2[cindex] += velker * XH * He2frac;
+                  temp_He2[cindex] += temker * XH * He2frac;
+                #endif
+                cindex++;
+                /*Empty the cache when it is full
+                 * This is a critical section*/
+                if(cindex == CACHESZ){
+                #pragma omp critical
+                {
+                        for(cindex=0;cindex<CACHESZ;cindex++){
+                           rhoker_H[bins[cindex]]  += rho_H[cindex];
+	                   (*H1).rho[bins[cindex]] += rho_H1[cindex];
+	                   (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
+	                   (*H1).temp[bins[cindex]] +=temp_H1[cindex];
+                         #ifdef HELIUM
+	                   (*He2).rho[bins[cindex]] += rho_He2[cindex];
+	                   (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
+	                   (*He2).temp[bins[cindex]] +=temp_He2[cindex];
+                         #endif
+                        }
+                }/*End critical block*/
+                cindex=0;
+                }
 	       }        /* loop over contributing vertices */
 	   }           /* dx^2+dy^2 < 4h^2 */
 	}  /*Loop over LOS*/               
     } /* Loop over particles*/
+    /*Also empty the cache at the end*/
+    #pragma omp critical
+    {
+            for(i=0;i<cindex;i++){
+               rhoker_H[bins[i]]  += rho_H[i];
+               (*H1).rho[bins[i]] += rho_H1[i];
+               (*H1).veloc[bins[i]] += veloc_H1[i];
+               (*H1).temp[bins[i]] +=temp_H1[i];
+             #ifdef HELIUM
+               (*He2).rho[bins[i]] += rho_He2[i];
+               (*He2).veloc[bins[i]] += veloc_He2[i];
+               (*He2).temp[bins[i]] +=temp_He2[i];
+             #endif
+            }
+    }/*End critical block*/
+  }/*End parallel*/
     return;
 }
