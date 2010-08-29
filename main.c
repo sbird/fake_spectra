@@ -130,23 +130,27 @@ int main(int argc, char **argv)
                   fprintf(stderr, "Error allocating memory for tau\n");
                   exit(2);
   }
-  for(i=0; i<NumLos; i++){
-    /*Make a bunch of pointers to the quantities for THIS LOS*/
-    interp H1_i=H1;
-#ifdef HELIUM
-    interp He2_i=He2;
-#endif
-    H1_i.rho+=(i*NBINS);
-    H1_i.temp+=(i*NBINS);
-    H1_i.veloc+=(i*NBINS);
-  #ifndef HELIUM
-    Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, Hz,h100, box100,atime,omegab);
-  #else
-    He2_i.rho+=(i*NBINS);
-    He2_i.temp+=(i*NBINS);
-    He2_i.veloc+=(i*NBINS);
-    Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime,omegab);
-  #endif
+#pragma omp parallel
+  {
+     #pragma omp for
+     for(i=0; i<NumLos; i++){
+       /*Make a bunch of pointers to the quantities for THIS LOS*/
+       interp H1_i=H1;
+       #ifdef HELIUM
+          interp He2_i=He2;
+       #endif
+       H1_i.rho+=(i*NBINS);
+       H1_i.temp+=(i*NBINS);
+       H1_i.veloc+=(i*NBINS);
+       #ifndef HELIUM
+         Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, Hz,h100, box100,atime,omegab);
+       #else
+         He2_i.rho+=(i*NBINS);
+         He2_i.temp+=(i*NBINS);
+         He2_i.veloc+=(i*NBINS);
+         Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime,omegab);
+       #endif
+     }
   }
   /*Output the raw spectra to a file*/ 
   if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
