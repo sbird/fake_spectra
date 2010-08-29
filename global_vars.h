@@ -60,7 +60,7 @@ double *Delta,*n_H1,*veloc_H1,*temp_H1;
 #else 
 #include "statistic.h"
 #endif
-double *tau_H1, *posaxis,*velaxis;
+double *tau_H1,*velaxis;
 #ifdef HELIUM
 double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 #endif
@@ -81,7 +81,8 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 
 int load_snapshot(char *fname, int files, int old, pdata* P);
-void SPH_interpolation(int NumLos, int Ntype, los *los_table, pdata* P);
+void SPH_interpolation(int NumLos, int Ntype, const los *los_table, const pdata* P);
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
+void calc_rho_temp_vel(double * rhoker_H, double * rhoker_H1, double *veloc_H1_local, double *temp_H1_local, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
 #endif
