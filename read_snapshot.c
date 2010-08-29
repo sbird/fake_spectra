@@ -20,7 +20,8 @@
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int load_snapshot(char *fname, int files,int old, pdata *P)
+int load_snapshot(char *fname, int files,int old, pdata *P,
+  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab)
 {
   FILE *fd;
   gadget_header *headers;
@@ -55,12 +56,11 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
      //By now we should have the header data.
      fclose(fd);
   }
-  atime= headers[0].time;
-  redshift= headers[0].redshift;
-  box100 = headers[0].BoxSize;
-  omega0 = headers[0].Omega0;
-  omegaL = headers[0].OmegaLambda;
-  h100 = headers[0].HubbleParam;
+  (*atime)= headers[0].time;
+  (*redshift)= headers[0].redshift;
+  (*box100) = headers[0].BoxSize;
+  (*h100) = headers[0].HubbleParam;
+  (*Hz)=100.0*(*h100) * sqrt(1.+headers[0].Omega0*(1./(*atime)-1.)+headers[0].OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
   /*Check that the headers all match*/
   for(i=0; i<files; i++)
   {
@@ -76,12 +76,12 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
     for(k=0; k<6; k++)
         if(headers[i].mass[k]==0 && headers[i].npart[k])
           ntot_withmasses+= headers[i].npart[k];
-    if(atime != headers[i].time ||
-       redshift!= headers[i].redshift ||
-       box100 != headers[i].BoxSize ||
-       omega0 != headers[i].Omega0 ||
-       omegaL != headers[i].OmegaLambda ||
-       h100 != headers[i].HubbleParam  || 
+    if(headers[0].time != headers[i].time ||
+       headers[0].redshift!= headers[i].redshift ||
+       headers[0].BoxSize != headers[i].BoxSize ||
+       headers[0].Omega0 != headers[i].Omega0 ||
+       headers[0].OmegaLambda != headers[i].OmegaLambda ||
+       headers[0].HubbleParam != headers[i].HubbleParam  || 
        headers[i].mass[1] !=headers[0].mass[1] ) 
        {
             fprintf(stderr, "Error. File headers are inconsistent.\n");
@@ -91,9 +91,9 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
   printf("NumPart=[%d,%d,%d,%d,%d,%d], ",NumPart[0],NumPart[1],NumPart[2],NumPart[3],NumPart[4],NumPart[5]);
   printf("Masses=[%g %g %g %g %g %g], ",headers[0].mass[0],headers[0].mass[1],headers[0].mass[2],headers[0].mass[3],headers[0].mass[4],headers[0].mass[5]);
   printf("Particles with mass = %d\n\n",ntot_withmasses);
-  printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",redshift,omega0,omegaL);
-  printf("Expansion factor = %f\n",atime);
-  printf("Hubble = %g Box=%g \n",h100,box100);
+  printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),headers[0].Omega0,headers[0].OmegaLambda);
+  printf("Expansion factor = %f\n",(*atime));
+  printf("Hubble = %g Box=%g \n",(*h100),(*box100));
 
   if(!(alloc_parts(P,NumPart[PARTTYPE])))
   {
@@ -145,9 +145,9 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
     else
         read_gadget_float((*P).Mass+NumRead,"MASS",Nstart,Ntype,fd,old);
     if(headers[i].mass[0])
-          omegab = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*omega0;
+          (*omegab) = headers[0].mass[PARTTYPE]/(headers[0].mass[PARTTYPE]+headers[0].mass[1])*headers[0].Omega0;
     else
-          omegab = (*P).Mass[0]/((*P).Mass[0]+headers[0].mass[1])*omega0;
+          (*omegab) = (*P).Mass[0]/((*P).Mass[0]+headers[0].mass[1])*headers[0].Omega0;
     /*Seek past the last masses*/
     if(old) fseek(fd,headers[i].npart[4]*sizeof(float),SEEK_CUR);
     if(PARTTYPE == 0)
@@ -204,7 +204,7 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
   }
   printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, (*P).Mass[NumRead-1],omegab);
+  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, (*P).Mass[NumRead-1],(*omegab));
   printf("P[%d].U = %f\n\n", NumRead, (*P).U[NumRead-1]);
   printf("P[%d].Ne = %e\n", NumRead, (*P).Ne[NumRead-1]);
   printf("P[%d].NH0 = %e\n", NumRead, (*P).NH0[NumRead-1]);

@@ -22,17 +22,16 @@
 /*****************************************************************************/
 /* This function rescales various things and calculates the absorption*/
 #ifndef HELIUM
-void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1)
+void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab)
 #else
-void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2)
+void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab)
 #endif
 {
-  const double Hz=100.0*h100 * sqrt(1.+omega0*(1./atime-1.)+omegaL*((atime*atime) -1.))/atime;
   const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
     /* Critical matter/energy density at z = 0.0 */
   const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
   /* Mean hydrogen mass density of the Universe */
-  const double critH = (rhoc * OMEGAB * XH) / (atime*atime*atime); /* kgm^-3*/
+  const double critH = (rhoc * omegab * XH) / (atime*atime*atime); /* kgm^-3*/
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */

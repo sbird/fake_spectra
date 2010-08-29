@@ -60,8 +60,6 @@ struct _los
 };
 typedef struct _los los;
 
-double  atime, redshift, omega0, omegaL, box100, h100, omegab;
-
 /*Pointers to arrays to use in SPH_interpolation*/
 #ifndef RAW_SPECTRA
 #include "statistic.h"
@@ -83,14 +81,15 @@ int_blk read_gadget_float3(float *data,char *label,int offset, int read, FILE *f
 int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 
-int load_snapshot(char *fname, int files, int old, pdata* P);
+int load_snapshot(char *fname, int files, int old, pdata* P,
+  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
 #ifndef HELIUM
-void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1);
 void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 #else
-void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2);
+void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
 #endif
 

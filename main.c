@@ -38,6 +38,7 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *indir=NULL;
   char c;
+  double  atime, redshift, Hz, box100, h100, omegab;
   struct particle_data P;
   double * rhoker_H;
   double * tau_H1;
@@ -100,7 +101,7 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  Npart=load_snapshot(indir, files, old, &P);
+  Npart=load_snapshot(indir, files, old, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
   populate_los_table(los_table,NumLos, ext_table, box100); 
   if(InitLOSMemory(&H1, NumLos) || 
       !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
@@ -128,9 +129,9 @@ int main(int argc, char **argv)
                   exit(2);
   }
   #ifndef HELIUM
-    Compute_Absorption(tau_H1, rhoker_H, &H1);
+    Compute_Absorption(tau_H1, rhoker_H, &H1, Hz,h100, box100,atime,omegab);
   #else
-    Compute_Absorption(tau_H1, rhoker_H, &H1, tau_He2,&He2);
+    Compute_Absorption(tau_H1, rhoker_H, &H1, tau_He2,&He2,Hz,h100,box100,atime,omegab);
   #endif
 
   /*Free the particle list once we don't need it*/
