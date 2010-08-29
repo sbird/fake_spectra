@@ -38,13 +38,14 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *indir=NULL;
   char c;
+  int i;
   double  atime, redshift, Hz, box100, h100, omegab;
   struct particle_data P;
-  double * rhoker_H;
-  double * tau_H1;
+  double * rhoker_H=NULL;
+  double * tau_H1=NULL;
   interp H1;
 #ifdef HELIUM
-  double *tau_He2;
+  double *tau_He2=NULL;
   interp He2;
 #endif
   /*Make sure stdout is line buffered even when not 
@@ -118,6 +119,7 @@ int main(int argc, char **argv)
     }
     SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
   #endif
+  /*Free the particle list once we don't need it*/
   free_parts(&P);
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
@@ -128,16 +130,25 @@ int main(int argc, char **argv)
                   fprintf(stderr, "Error allocating memory for tau\n");
                   exit(2);
   }
+  for(i=0; i<NumLos; i++){
+    /*Make a bunch of pointers to the quantities for THIS LOS*/
+    interp H1_i=H1;
+#ifdef HELIUM
+    interp He2_i=He2;
+#endif
+    H1_i.rho+=(i*NBINS);
+    H1_i.temp+=(i*NBINS);
+    H1_i.veloc+=(i*NBINS);
   #ifndef HELIUM
-    Compute_Absorption(tau_H1, rhoker_H, &H1, Hz,h100, box100,atime,omegab);
+    Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, Hz,h100, box100,atime,omegab);
   #else
-    Compute_Absorption(tau_H1, rhoker_H, &H1, tau_He2,&He2,Hz,h100,box100,atime,omegab);
+    He2_i.rho+=(i*NBINS);
+    He2_i.temp+=(i*NBINS);
+    He2_i.veloc+=(i*NBINS);
+    Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime,omegab);
   #endif
-
-  /*Free the particle list once we don't need it*/
-  /*If the spectra flag is set, output the raw spectra to a file, 
-   * instead of the flux power spectrum directly.*/
-  /*Output to a file*/
+  }
+  /*Output the raw spectra to a file*/ 
   if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
     fprintf(stderr, "Some problem with file output strings\n");
@@ -159,8 +170,11 @@ int main(int argc, char **argv)
   fclose(output);
   /*Free other memory*/
   free(outname);
+  free(tau_H1);
+  free(rhoker_H);
   FreeLOSMemory(&H1);
 #ifdef HELIUM
+  free(tau_He2);
   FreeLOSMemory(&He2);
 #endif
   return 0;
