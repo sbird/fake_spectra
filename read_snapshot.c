@@ -210,6 +210,36 @@ int load_snapshot(char *fname, int files,int old, pdata *P)
   printf("P[%d].NH0 = %e\n", NumRead, (*P).NH0[NumRead-1]);
   printf("P[%d].h = %f\n",NumRead, (*P).h[NumRead-1]);
   free(headers);
+#if 0 
+    int i;
+  /*   Convert to SI units from GADGET-3 units */
+  #pragma omp for schedule(static, 128)
+  for(i=0;i<Ntype;i++)
+  {
+      double mu;
+      int ic;
+      for(ic=0;ic<3;ic++)
+	{
+	  (*P).Pos[3*i+ic] *= rscale; /* m, physical */
+	  (*P).Vel[3*i+ic] *= vscale; /* km s^-1, physical */
+	}
+      
+      (*P).h[i] *= hscale;   /* m, physical */
+/*      (*P).Mass[i] = (*P).Mass[i] * mscale; *//* kg */
+      /*We leave mass in GADGET units, to prevent a floating overflow
+       * when we have poor resolution. (*P).Mass[i] only affects rhoker, 
+       * so we simply rescale rhoker later.*/ 
+
+      /* Mean molecular weight */
+      mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
+      (*P).U[i] *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
+  }
+  #pragma omp master
+  {
+    printf("Converted units.\n");
+  }
+  #pragma omp barrier
+#endif
   return NumRead;
 }
 

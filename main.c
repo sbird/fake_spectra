@@ -39,10 +39,12 @@ int main(int argc, char **argv)
   char *indir=NULL;
   char c;
   struct particle_data P;
-#ifndef RAW_SPECTRA
-  double obs_flux,scale=1;
-  double flux_power[(NBINS+1)/2];
-  int j,jj;
+  double * rhoker_H;
+  double * tau_H1;
+  interp H1;
+#ifdef HELIUM
+  double *tau_He2;
+  interp He2;
 #endif
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
@@ -100,14 +102,40 @@ int main(int argc, char **argv)
   }
   Npart=load_snapshot(indir, files, old, &P);
   populate_los_table(los_table,NumLos, ext_table, box100); 
-  InitLOSMemory(NumLos);
-  if(!PARTTYPE)
-    SPH_interpolation(NumLos,Npart, los_table, &P);
-  /*Free the particle list once we don't need it*/
+  if(InitLOSMemory(&H1, NumLos) || 
+      !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
+                  fprintf(stderr, "Error allocating LOS memory\n");
+                  exit(2);
+  }
+  #ifndef HELIUM
+    /*Do the hard SPH interpolation*/
+    SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+  #else
+    if(InitLOSMemory(&He2, NumLos)){
+                    fprintf(stderr, "Error allocating LOS memory\n");
+                    exit(2);
+    }
+    SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+  #endif
   free_parts(&P);
+  free(los_table);
+  if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
+  #ifdef HELIUM
+   || !(tau_He2 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
+  #endif
+                  ){
+                  fprintf(stderr, "Error allocating memory for tau\n");
+                  exit(2);
+  }
+  #ifndef HELIUM
+    Compute_Absorption(tau_H1, rhoker_H, &H1);
+  #else
+    Compute_Absorption(tau_H1, rhoker_H, &H1, tau_He2,&He2);
+  #endif
+
+  /*Free the particle list once we don't need it*/
   /*If the spectra flag is set, output the raw spectra to a file, 
    * instead of the flux power spectrum directly.*/
-#ifdef RAW_SPECTRA
   /*Output to a file*/
   if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
@@ -119,70 +147,21 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
   }
   fwrite(&redshift,sizeof(double),1,output);
-  fwrite(Delta,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
-  fwrite(n_H1,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
-  fwrite(temp_H1,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
-  fwrite(veloc_H1,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
-  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
+  fwrite(rhoker_H,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
+  if(WriteLOSData(&H1, tau_H1,NumLos, output)
 #ifdef HELIUM
-  fwrite(n_He2,sizeof(double),NBINS*NumLos,output);     /* n_HeII/n_H */
-  fwrite(temp_He2,sizeof(double),NBINS*NumLos,output);   /* T [K], HeII weighted */
-  fwrite(veloc_He2,sizeof(double),NBINS*NumLos,output); /* v_pec [km s^-1], HeII weighted */
-  fwrite(tau_He2,sizeof(double),NBINS*NumLos,output);   /* HeII optical depth */
+    || WriteLOSData(&He2,tau_He2,NumLos, output)
 #endif
-#if 0
-  fwrite(posaxis,sizeof(double),NBINS,output);          /* pixel positions, comoving kpc/h */
-  fwrite(velaxis,sizeof(double),NBINS,output);          /* pixel positions, km s^-1 */
-#endif
-  fclose(output);
-#else /*If outputting flux power directly*/
-  /*Calculate mean flux*/
-  /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
-  /* Do this even if not rescaling, as we want to know the mean flux*/
-  obs_flux= exp(-TAU_EFF);
-  scale=mean_flux(tau_H1, NBINS*NumLos,obs_flux,0.001 );
-  printf("scale=%g\n",scale);
-  /*If no rescale, we output the non-rescaled power spectrum as well*/
-  if(!rescale){
-     calc_power_spectra(flux_power,tau_H1,1.0,0,NumLos);
-     printf("Outputting average flux power spectrum\n");
-     outname=malloc((strlen(outdir)+25)*sizeof(char));
-     if(!strcpy(outname,outdir) || !(outname=strcat(outname, "_no_rescale_flux_power.txt")))
-     {
-       fprintf(stderr, "Some problem with the strings\n");
-       exit(1);
-     }
-     output=fopen(outname,"w");
-     for(j=0; j<(NBINS+1)/2;j++)
-     {
-             /*First value is k*/
-        fprintf(output, "%g %g\n", j+0.5, flux_power[j]);
-     }
-     fclose(output);
-  }
-  calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,NumLos);
-  /*Average the power spectrum*/
-  printf("Outputting non-rescaled average flux power spectrum\n");
-  if(!(outname=malloc((strlen(outdir)+25)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_flux_power.txt")))
-  {
-    fprintf(stderr, "Some problem with file output strings\n");
-    exit(1);
-  }
-  if(!(output=fopen(outname,"w")))
-  {
-          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
-  }
-  for(j=0; j<(NBINS+1)/2;j++)
-  {
-          /*First value is k*/
-     fprintf(output, "%g %g\n", j+0.5, flux_power[j]);
+    ){ 
+     fprintf(stderr, "Error writing spectra to disk!\n");
   }
   fclose(output);
-  #endif /* RAW_SPECTRA*/
   /*Free other memory*/
-  free(los_table);
   free(outname);
-  FreeLOSMemory();
+  FreeLOSMemory(&H1);
+#ifdef HELIUM
+  FreeLOSMemory(&He2);
+#endif
   return 0;
 }
 /**********************************************************************/
@@ -243,3 +222,34 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
         return;
 }
 
+/*****************************************************************************/
+int InitLOSMemory(interp* species,int NumLos)
+{  
+  (*species).rho        = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  (*species).veloc        = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  (*species).temp   = (double *) calloc((NumLos * NBINS) , sizeof(double));
+  if(!(*species).rho || !(*species).veloc || !(*species).temp)
+      return 1;
+  return 0;
+}
+/*****************************************************************************/
+
+int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output)
+{
+  int items=0;
+  items+=fwrite((*species).rho,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
+  items+=fwrite((*species).temp,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
+  items+=fwrite((*species).veloc,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
+  items+=fwrite(tau,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
+  if(items !=4*NBINS*NumLos)
+          return 1;
+  return 0;
+}
+
+/*****************************************************************************/
+void FreeLOSMemory(interp * species)
+{  
+  free((*species).rho);
+  free((*species).veloc);
+  free((*species).temp);
+}

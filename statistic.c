@@ -30,6 +30,7 @@ int main(int argc, char **argv)
 {
   double redshift;
   double *tau_H1=NULL;
+  double *tau_He2=NULL;
   int  NumLos=0;
   int UsedLos=0;
   FILE *input;

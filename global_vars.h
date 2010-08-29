@@ -38,6 +38,14 @@ struct particle_data
 };
 typedef struct particle_data pdata;
 
+struct _interp
+{
+   double *rho;
+   double *temp;
+   double *veloc;
+};
+typedef struct _interp interp;
+
 /*Allocate and free memory for the particle tables*/
 int alloc_parts(pdata* P, int np);
 void free_parts(pdata* P);
@@ -55,19 +63,14 @@ typedef struct _los los;
 double  atime, redshift, omega0, omegaL, box100, h100, omegab;
 
 /*Pointers to arrays to use in SPH_interpolation*/
-#ifdef RAW_SPECTRA
-double *Delta,*n_H1,*veloc_H1,*temp_H1;
-#else 
+#ifndef RAW_SPECTRA
 #include "statistic.h"
-#endif
-double *tau_H1,*velaxis;
-#ifdef HELIUM
-double *n_He2,*veloc_He2,*temp_He2,*tau_He2;
 #endif
 
 /*Functions to allocate memory.*/
-void InitLOSMemory(int NumLos);
-void FreeLOSMemory(void);
+int InitLOSMemory(interp * species, int NumLos);
+void FreeLOSMemory(interp * species);
+int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 
 #define int_blk int64_t
 void swap_Nbyte(char *data,int n,int m);
@@ -81,8 +84,14 @@ int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 
 int load_snapshot(char *fname, int files, int old, pdata* P);
-void SPH_interpolation(int NumLos, int Ntype, const los *los_table, const pdata* P);
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
-void calc_rho_temp_vel(double * rhoker_H, double * rhoker_H1, double *veloc_H1_local, double *temp_H1_local, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+#ifndef HELIUM
+void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1);
+void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+#else
+void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2);
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+#endif
+
 #endif
