@@ -1,4 +1,28 @@
 #include "statistic.h"
+#include <math.h>
+
+double gaussian(double x, double sigma){
+        return exp(-x*x/(2*sigma*sigma))/(sqrt(2*M_PI)*sigma);
+}
+
+int pstv(int a){
+        return a>0 ? a: -a;
+}
+void gaussian_smooth(double *in, double * out, int len,double sigma,double * kernel)
+{
+    int i,j;
+    int off=3*sigma;
+    /*Smooth the middle*/
+    for(i=0;i<len; i++){
+       out[i]=0;
+       for(j=-off; j<=off; j++){
+                int ind=(i+j)%len;
+                if(ind<0) ind+=len;
+                out[i]+=in[ind]*kernel[pstv(j)];
+       }
+    }
+    return;
+}
 
 
 void smooth(double *in, double * out, int len,int slen)

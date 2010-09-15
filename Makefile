@@ -1,5 +1,5 @@
 
-CC = icc -openmp -vec_report0
+CC = icc -openmp -vec_report0 -Wall
 #CC= gcc -fopenmp -Wall 
 CFLAGS =  -O2  -g
 OPTS = 
