@@ -210,11 +210,11 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
   /*This is a small thread-local caching mechanism, to avoid
    * massive deadlock around the omp critial section.*/
    int cindex=0;
-   double rho_H1[CACHESZ], temp_H1[CACHESZ],veloc_H1[CACHESZ];
+   double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
 #ifdef HELIUM
-   double rho_He2[CACHESZ], temp_He2[CACHESZ],veloc_He2[CACHESZ];
+   double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
 #endif
-   double rho_H[CACHESZ];
+   double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
     for(i=0;i<Particles;i++)
