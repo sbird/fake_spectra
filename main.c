@@ -30,7 +30,6 @@ int main(int argc, char **argv)
 {
   int Npart, NumLos=0, files=0;
   FILE *output;
-  int rescale=1;
   int old=0;
   los *los_table=NULL;
   char *ext_table=NULL;
@@ -51,7 +50,7 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "f:o:i:t:n:rh1")) !=-1)
+  while((c = getopt(argc, argv, "f:o:i:t:n:h1")) !=-1)
   {
     switch(c)
       {
@@ -66,9 +65,6 @@ int main(int argc, char **argv)
            break;
         case 'n':
            NumLos=atoi(optarg);
-           break;
-        case 'r':
-           rescale=0;
            break;
         case 't':
            ext_table=optarg;
@@ -188,8 +184,7 @@ int main(int argc, char **argv)
 void help()
 {
            fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
-                  "-t table_file will read line of sight coordinates from a table.\n"
-                  "-r turns off mean flux rescaling\n");
+                  "-t table_file will read line of sight coordinates from a table.\n");
            return;
 }
 
