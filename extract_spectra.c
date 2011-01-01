@@ -41,7 +41,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
   const double dzgrid   = (box100) / (double)NBINS; /* bin size (kpc) */
-  const double dzbin = box100/ (double)NBINS; /* bin size (comoving kpc/h) */
   const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
   const double vmax2 = vmax/2.0; /* kms^-1 */
   const double dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
