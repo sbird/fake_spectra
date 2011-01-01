@@ -235,7 +235,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
       for(iproc=0;iproc<NumLos;iproc++)
         { 
           double xproj,yproj,zproj;
-          int iaxis,iz,ioff,j,iiz,ii;
+          int iaxis,iz,ioff,j,iiz;
           /*Load a sightline from the table.*/
           iaxis = los_table[iproc].axis;
           xproj = los_table[iproc].xx;

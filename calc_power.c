@@ -1,3 +1,4 @@
+#include <math.h>
 #include "statistic.h"
 #include "parameters.h"
 
