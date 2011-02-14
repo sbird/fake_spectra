@@ -349,21 +349,28 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
                 /*Empty the cache when it is full
                  * This is a critical section*/
                 if(cindex == CACHESZ){
-                #pragma omp critical
-                {
-                        for(cindex=0;cindex<CACHESZ;cindex++){
-                           rhoker_H[bins[cindex]]  += rho_H[cindex];
-	                   (*H1).rho[bins[cindex]] += rho_H1[cindex];
-	                   (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
-	                   (*H1).temp[bins[cindex]] +=temp_H1[cindex];
-                         #ifdef HELIUM
-	                   (*He2).rho[bins[cindex]] += rho_He2[cindex];
-	                   (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
-	                   (*He2).temp[bins[cindex]] +=temp_He2[cindex];
-                         #endif
-                        }
-                }/*End critical block*/
-                cindex=0;
+                  #pragma omp critical
+                  {
+                          for(cindex=0;cindex<CACHESZ;cindex++){
+                             rhoker_H[bins[cindex]]  += rho_H[cindex];
+	                     (*H1).rho[bins[cindex]] += rho_H1[cindex];
+	                     (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
+	                     (*H1).temp[bins[cindex]] +=temp_H1[cindex];
+                           #ifdef HELIUM
+	                     (*He2).rho[bins[cindex]] += rho_He2[cindex];
+	                     (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
+	                     (*He2).temp[bins[cindex]] +=temp_He2[cindex];
+                           #endif
+                          }
+                  }/*End critical block*/
+                  /* Zero the cache at the end*/
+                  for(cindex=0;cindex<CACHESZ;cindex++){
+                          rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
+                  #ifdef HELIUM
+                          rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
+                  #endif
+                  }
+                  cindex=0;
                 }
 	       }        /* loop over contributing vertices */
 	   }           /* dx^2+dy^2 < 4h^2 */

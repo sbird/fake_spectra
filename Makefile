@@ -1,7 +1,7 @@
 
-CC = icc -openmp -vec_report0
+#CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
-CFLAGS =  -O2  -g
+CFLAGS =  -O2  -g -fopenmp -Wall -std=gnu99
 OPTS = 
 PG = 
 OPTS += -DPERIODIC
@@ -17,8 +17,8 @@ OPTS += -DVOIGT
 CFLAGS += $(OPTS)
 COM_INC = parameters.h Makefile
 FFTW =-ldrfftw -ldfftw
-LINK=$(CC)
-#LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
+#LINK=$(CC)
+LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
 
 .PHONY: all clean
 
