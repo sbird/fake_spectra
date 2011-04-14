@@ -23,14 +23,10 @@
 #include "parameters.h"
 
 
-/* Here we load a snapshot file. It can be distributed
- * onto several files (for files>1) */
-/**********************************************************************/
 int main(int argc, char **argv)
 {
-  int Npart, NumLos=0, files=0;
+  int Npart, NumLos=0;
   FILE *output;
-  int old=0;
   los *los_table=NULL;
   char *ext_table=NULL;
   char *outname=NULL;
@@ -50,13 +46,10 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
-  while((c = getopt(argc, argv, "f:o:i:t:n:h1")) !=-1)
+  while((c = getopt(argc, argv, "o:i:t:n:h")) !=-1)
   {
     switch(c)
       {
-        case 'f':
-           files=atoi(optarg);
-           break;
         case 'o':
            outdir=optarg;
            break;
@@ -69,10 +62,6 @@ int main(int argc, char **argv)
         case 't':
            ext_table=optarg;
            break;
-        case '1':
-           old=1;
-           fprintf(stderr, "WARNING: Reading old-style files is not really supported and may not work\n");
-           break;
         case 'h':
         case '?':
            help();
@@ -80,9 +69,9 @@ int main(int argc, char **argv)
            exit(1);
       }
   }
-  if(NumLos <=0 || files <=0)
+  if(NumLos <=0)
   {
-          fprintf(stderr,"Need NUMLOS and NUMFILES >0\n");
+          fprintf(stderr,"Need NUMLOS >0\n");
           help();
           exit(99);
   
@@ -98,7 +87,11 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  Npart=load_snapshot(indir, files, old, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+  Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+  if(Npart ==0){
+          fprintf(stderr,"No data loaded\n");
+          exit(99);
+  }
   populate_los_table(los_table,NumLos, ext_table, box100); 
   if(InitLOSMemory(&H1, NumLos) || 
       !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){

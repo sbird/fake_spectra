@@ -21,28 +21,26 @@
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int load_snapshot(char *fname, pdata *P,
+extern "C" int load_snapshot(char *fname, pdata *P,
   double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab)
 {
-  gadget_header header;
-  GadgetReader::Gsnap snap(fname);
+  GadgetReader::GSnap snap(fname);
   int64_t NumPart;
   (*atime)= snap.GetHeader().time;
   (*redshift)= snap.GetHeader().redshift;
   (*box100) = snap.GetHeader().BoxSize;
   (*h100) = snap.GetHeader().HubbleParam;
-  (*Hz)=100.0*(*h100) * sqrt(1.+snap.GetHeader().Omega0*(1./(*atime)-1.)+headers[0].OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
+  (*Hz)=100.0*(*h100) * sqrt(1.+snap.GetHeader().Omega0*(1./(*atime)-1.)+snap.GetHeader().OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
   NumPart = snap.GetNpart(PARTTYPE);
   if(NumPart ==0)
           return 0;
-  printf("NumPart=[%d,%d,%d,%d,%d,%d), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
+  printf("NumPart=[%ld,%ld,%ld,%ld,%ld,%ld), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
   printf("Masses=[%g %g %g %g %g %g], ",snap.GetHeader().mass[0],snap.GetHeader().mass[1],snap.GetHeader().mass[2],snap.GetHeader().mass[3],snap.GetHeader().mass[4],snap.GetHeader().mass[5]);
-  printf("Particles with mass = %d\n\n",ntot_withmasses);
   printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),snap.GetHeader().Omega0,snap.GetHeader().OmegaLambda);
   printf("Expansion factor = %f\n",(*atime));
   printf("Hubble = %g Box=%g \n",(*h100),(*box100));
 
-  if(!(alloc_parts(P,NumPart[PARTTYPE])))
+  if(!(alloc_parts(P,NumPart)))
   {
     fprintf(stderr,"failed to allocate memory.\n\n");
     exit(1);
@@ -54,10 +52,9 @@ int load_snapshot(char *fname, pdata *P,
   printf("Reading mass and temp...\n");
   /*DANGER: This assumes that we are reading baryons and that masses are constant*/
   if(snap.GetHeader().mass[PARTTYPE])
-      for(n=0;n<Ntype;n++)
         (*P).Mass = snap.GetHeader().mass[PARTTYPE];
   else
-        snap.GetBlock("MASS",(*P).Mass,1,0,0);
+        snap.GetBlock("MASS",&((*P).Mass),1,0,0);
   (*omegab) = (*P).Mass/((*P).Mass+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
@@ -65,9 +62,8 @@ int load_snapshot(char *fname, pdata *P,
       /*The internal energy of all the Sph particles is read in */
       snap.GetBlock("U   ",(*P).U,NumPart,0,0);      
       /* The free electron fraction */
-      if(headers[i].flag_cooling)
+      if(snap.GetHeader().flag_cooling)
         {
-          float *temp;
           int k;
           printf("Reading electron fractions...\n");
           /* Some versions of Gadget have Ne, some have NHP, NHEP and NHEPP,
@@ -78,7 +74,6 @@ int load_snapshot(char *fname, pdata *P,
           snap.GetBlock("NHP ",(*P).Ne,NumPart,0,0);      
           /*Use the space for HSML as temp space*/
           snap.GetBlock("NHEP",(*P).h,NumPart,0,0);      
-          read_gadget_float(temp,"NHEP",Nstart,Ntype,fd,old);
           for(k=0;k<NumPart;k++){
                   (*P).Ne[k]+=(*P).h[k];
           }
@@ -101,12 +96,11 @@ int load_snapshot(char *fname, pdata *P,
     }
   printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-  printf("P[%d].Mass = %e Ω_B=%g\n\n", NumRead, (*P).Mass[NumRead-1],(*omegab));
-  printf("P[%d].U = %f\n\n", NumRead, (*P).U[NumRead-1]);
-  printf("P[%d].Ne = %e\n", NumRead, (*P).Ne[NumRead-1]);
-  printf("P[%d].NH0 = %e\n", NumRead, (*P).NH0[NumRead-1]);
-  printf("P[%d].h = %f\n",NumRead, (*P).h[NumRead-1]);
-  free(headers);
+  printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass,(*omegab));
+  printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
+  printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
+  printf("P[%ld].NH0 = %e\n", NumPart, (*P).NH0[NumPart-1]);
+  printf("P[%ld].h = %f\n",NumPart, (*P).h[NumPart-1]);
 #if 0 
     int i;
   /*   Convert to SI units from GADGET-3 units */
@@ -137,24 +131,24 @@ int load_snapshot(char *fname, pdata *P,
   }
   #pragma omp barrier
 #endif
-  return NumRead;
+  return NumPart;
 }
 
-int alloc_parts(pdata* P, int np)
+extern "C" int alloc_parts(pdata* P, int np)
 {
-    return ((*P).Vel=malloc(np*3*sizeof(float))) &&
-    ((*P).Pos=malloc(np*3*sizeof(float))) &&
+    return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
+    ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
 /*     ((*P).Mass=malloc(np*sizeof(float))) && */
-    ((*P).U=malloc(np*sizeof(float))) &&
-    ((*P).NH0=malloc(np*sizeof(float))) &&
-    ((*P).Ne=malloc(np*sizeof(float))) &&
+    ((*P).U=(float *)malloc(np*sizeof(float))) &&
+    ((*P).NH0=(float *)malloc(np*sizeof(float))) &&
+    ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
 #ifdef HELIUM
-    ((*P).NHep=malloc(np*sizeof(float))) &&
+    ((*P).NHep=(float *)malloc(np*sizeof(float))) &&
 #endif
-    ((*P).h=malloc(np*sizeof(float)));
+    ((*P).h=(float *)malloc(np*sizeof(float)));
 }
 
-void free_parts(pdata* P)
+extern "C" void free_parts(pdata* P)
 {
     free((*P).Vel);
     free((*P).Pos);
