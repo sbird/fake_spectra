@@ -41,7 +41,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
   const double dzgrid   = (box100) / (double)NBINS; /* bin size (kpc) */
-  const double dzbin = box100/ (double)NBINS; /* bin size (comoving kpc/h) */
   const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
   const double vmax2 = vmax/2.0; /* kms^-1 */
   const double dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
@@ -210,11 +209,11 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
   /*This is a small thread-local caching mechanism, to avoid
    * massive deadlock around the omp critial section.*/
    int cindex=0;
-   double rho_H1[CACHESZ], temp_H1[CACHESZ],veloc_H1[CACHESZ];
+   double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
 #ifdef HELIUM
-   double rho_He2[CACHESZ], temp_He2[CACHESZ],veloc_He2[CACHESZ];
+   double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
 #endif
-   double rho_H[CACHESZ];
+   double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
     for(i=0;i<Particles;i++)
@@ -236,7 +235,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
       for(iproc=0;iproc<NumLos;iproc++)
         { 
           double xproj,yproj,zproj;
-          int iaxis,iz,ioff,j,iiz,ii;
+          int iaxis,iz,ioff,j,iiz;
           /*Load a sightline from the table.*/
           iaxis = los_table[iproc].axis;
           xproj = los_table[iproc].xx;
@@ -330,7 +329,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        
 	        kernel *= hinv3; 
 
-	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
+	        kernel *= (*P).Mass; /* kg (kpc)^-3 */
 	        velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
 	        temker = temp * kernel; /* kg (kpc)^-3 * K */
                 /*Only one thread can update the global memory at a time.
@@ -350,21 +349,28 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
                 /*Empty the cache when it is full
                  * This is a critical section*/
                 if(cindex == CACHESZ){
-                #pragma omp critical
-                {
-                        for(cindex=0;cindex<CACHESZ;cindex++){
-                           rhoker_H[bins[cindex]]  += rho_H[cindex];
-	                   (*H1).rho[bins[cindex]] += rho_H1[cindex];
-	                   (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
-	                   (*H1).temp[bins[cindex]] +=temp_H1[cindex];
-                         #ifdef HELIUM
-	                   (*He2).rho[bins[cindex]] += rho_He2[cindex];
-	                   (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
-	                   (*He2).temp[bins[cindex]] +=temp_He2[cindex];
-                         #endif
-                        }
-                }/*End critical block*/
-                cindex=0;
+                  #pragma omp critical
+                  {
+                          for(cindex=0;cindex<CACHESZ;cindex++){
+                             rhoker_H[bins[cindex]]  += rho_H[cindex];
+	                     (*H1).rho[bins[cindex]] += rho_H1[cindex];
+	                     (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
+	                     (*H1).temp[bins[cindex]] +=temp_H1[cindex];
+                           #ifdef HELIUM
+	                     (*He2).rho[bins[cindex]] += rho_He2[cindex];
+	                     (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
+	                     (*He2).temp[bins[cindex]] +=temp_He2[cindex];
+                           #endif
+                          }
+                  }/*End critical block*/
+                  /* Zero the cache at the end*/
+                  for(cindex=0;cindex<CACHESZ;cindex++){
+                          rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
+                  #ifdef HELIUM
+                          rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
+                  #endif
+                  }
+                  cindex=0;
                 }
 	       }        /* loop over contributing vertices */
 	   }           /* dx^2+dy^2 < 4h^2 */

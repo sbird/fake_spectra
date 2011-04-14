@@ -1,7 +1,9 @@
+#Change this to where you installed GadgetReader
+GREAD=${CURDIR}/../GadgetReader
 
-CC = icc -openmp -vec_report0
+#CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
-CFLAGS =  -O2  -g
+CFLAGS =  -O2  -g -fopenmp -Wall -std=gnu99
 OPTS = 
 PG = 
 OPTS += -DPERIODIC
@@ -14,19 +16,20 @@ OPTS += -DVOIGT
 #Gadget III has slightly different block headers
 #OPTS += -DHELIUM
 # Enable helium absorption
-CFLAGS += $(OPTS)
+CFLAGS += $(OPTS) 
+CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h Makefile
 FFTW =-ldrfftw -ldfftw
-LINK=$(CC)
-#LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
+#LINK=$(CC)
+LINK=$(CXX) -lm -lgomp -lsrfftw -lsfftw -lrgad -L$(FFTW) -L${GREAD} -rpath,${GREAD}
 
 .PHONY: all clean
 
 all: extract statistic
 
-extract: main.o read_snapshot.o extract_spectra.o readgadget.o Makefile
+extract: main.o read_snapshot.o extract_spectra.o Makefile
 	# powerspectrum.o mean_flux.o calc_power.o smooth.o
-	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) readgadget.o 
+	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) 
 	#$(PG) powerspectrum.o $(PG) mean_flux.o calc_power.o smooth.o $(FFTW)
 
 rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
@@ -35,8 +38,7 @@ rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
 statistic: statistic.c calc_power.o mean_flux.o smooth.o $(COM_INC)
 	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic $(FFTW)
 
-read_snapshot.o: read_snapshot.c $(COM_INC)
-readgadget.o: readgadget.c $(COM_INC)
+read_snapshot.o: read_snapshot.cpp $(COM_INC)
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
 smooth.o:smooth.c
 calc_power.o: calc_power.c smooth.o powerspectrum.o 

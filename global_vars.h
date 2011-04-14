@@ -3,34 +3,14 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
-/*Gadget particle header*/
-struct io_header_1
-{
-  int      npart[6];
-  double   mass[6];
-  double   time;
-  double   redshift;
-  int      flag_sfr;
-  int      flag_feedback;
-  int      npartTotal[6];
-  int      flag_cooling;
-  int      num_files;
-  double   BoxSize;
-  double   Omega0;
-  double   OmegaLambda;
-  double   HubbleParam; 
-  int      flag_stellarage;
-  int      flag_metals;
-  char     fill[88];  /* fills to 256 Bytes */
-};
-typedef struct io_header_1 gadget_header;
 
 struct particle_data 
 {
   float *Pos;
   float *Vel;
-  float *Mass;
+  float Mass;
   float *U, *NH0, *Ne, *h;
 #ifdef HELIUM
   float *NHep;
@@ -47,7 +27,13 @@ struct _interp
 typedef struct _interp interp;
 
 /*Allocate and free memory for the particle tables*/
+#ifdef __cplusplus
+extern "C"
+#endif
 int alloc_parts(pdata* P, int np);
+#ifdef __cplusplus
+extern "C"
+#endif
 void free_parts(pdata* P);
 
 /*Structure for storing a sightline*/
@@ -70,18 +56,12 @@ int InitLOSMemory(interp * species, int NumLos);
 void FreeLOSMemory(interp * species);
 int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 
-#define int_blk int64_t
-void swap_Nbyte(char *data,int n,int m);
-size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream); 
-int_blk find_block(FILE *fd,char *label);
-int_blk read_gadget_float(float *data,char *label,int offset, int read,FILE *fd, int old);
-/* The final argument, if one, means it will attempt to read an old format file
- * It may not work, due to the wide variation in GADGET type one files. */
-int_blk read_gadget_float3(float *data,char *label,int offset, int read, FILE *fd, int old);
-int read_gadget_head(gadget_header *out_header, FILE *fd, int old);
 void help(void);
 
-int load_snapshot(char *fname, int files, int old, pdata* P,
+#ifdef __cplusplus
+extern "C"
+#endif
+int load_snapshot(char *fname, pdata* P,
   double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
