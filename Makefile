@@ -1,3 +1,5 @@
+#Change this to where you installed GadgetReader
+GREAD=${CURDIR}/../GadgetReader
 
 #CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
@@ -14,11 +16,11 @@ OPTS += -DVOIGT
 #Gadget III has slightly different block headers
 #OPTS += -DHELIUM
 # Enable helium absorption
-CFLAGS += $(OPTS)
+CFLAGS += $(OPTS) -I${GREAD}
 COM_INC = parameters.h Makefile
 FFTW =-ldrfftw -ldfftw
 #LINK=$(CC)
-LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
+LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW) -L${GREAD} -rpath,${GREAD}
 
 .PHONY: all clean
 
