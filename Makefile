@@ -3,7 +3,7 @@ GREAD=${CURDIR}/../GadgetReader
 
 #CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
-CFLAGS =  -O2  -g -fopenmp -Wall -std=gnu99
+CFLAGS =  -O2  -g -fopenmp -Wall
 OPTS = 
 PG = 
 OPTS += -DPERIODIC
@@ -19,18 +19,16 @@ OPTS += -DVOIGT
 CFLAGS += $(OPTS) 
 CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h Makefile
-FFTW =-ldrfftw -ldfftw
+FFTW =-lfftw3
 #LINK=$(CC)
-LINK=$(CXX) -lm -lgomp -lsrfftw -lsfftw -lrgad -L$(FFTW) -L${GREAD} -rpath,${GREAD}
+LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl-rpath,${GREAD}
 
 .PHONY: all clean
 
 all: extract statistic
 
 extract: main.o read_snapshot.o extract_spectra.o Makefile
-	# powerspectrum.o mean_flux.o calc_power.o smooth.o
 	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) 
-	#$(PG) powerspectrum.o $(PG) mean_flux.o calc_power.o smooth.o $(FFTW)
 
 rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
 	$(CC) $(CFLAGS) rescale.c $(FFTW) powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
