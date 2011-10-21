@@ -50,12 +50,14 @@ extern "C" int load_snapshot(char *fname, pdata *P,
   snap.GetBlock("VEL ",(*P).Vel,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
   /* Particles masses  */
   printf("Reading mass and temp...\n");
-  /*DANGER: This assumes that we are reading baryons and that masses are constant*/
-  if(snap.GetHeader().mass[PARTTYPE])
-        (*P).Mass = snap.GetHeader().mass[PARTTYPE];
+  if(snap.GetHeader().mass[PARTTYPE]){
+        int i;
+        for(i=0; i< NumPart;i++)
+           (*P).Mass[i] = snap.GetHeader().mass[PARTTYPE];
+  }
   else
-        snap.GetBlock("MASS",&((*P).Mass),1,0,0);
-  (*omegab) = (*P).Mass/((*P).Mass+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
+        snap.GetBlock("MASS",&((*P).Mass),NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  (*omegab) = (*P).Mass[0]/((*P).Mass[0]+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
     { 
@@ -96,7 +98,7 @@ extern "C" int load_snapshot(char *fname, pdata *P,
     }
   printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
   printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-  printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass,(*omegab));
+  printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass[0],(*omegab));
   printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
   printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
   printf("P[%ld].NH0 = %e\n", NumPart, (*P).NH0[NumPart-1]);
@@ -138,7 +140,7 @@ extern "C" int alloc_parts(pdata* P, int np)
 {
     return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
     ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
-/*     ((*P).Mass=malloc(np*sizeof(float))) && */
+     ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
     ((*P).U=(float *)malloc(np*sizeof(float))) &&
     ((*P).NH0=(float *)malloc(np*sizeof(float))) &&
     ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
@@ -152,7 +154,7 @@ extern "C" void free_parts(pdata* P)
 {
     free((*P).Vel);
     free((*P).Pos);
-/*     free((*P).Mass); */
+    free((*P).Mass);
     free((*P).U);
     free((*P).NH0);
     free((*P).Ne);

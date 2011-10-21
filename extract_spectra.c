@@ -329,7 +329,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        
 	        kernel *= hinv3; 
 
-	        kernel *= (*P).Mass; /* kg (kpc)^-3 */
+	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
 	        velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
 	        temker = temp * kernel; /* kg (kpc)^-3 * K */
                 /*Only one thread can update the global memory at a time.

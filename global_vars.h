@@ -10,7 +10,7 @@ struct particle_data
 {
   float *Pos;
   float *Vel;
-  float Mass;
+  float *Mass;
   float *U, *NH0, *Ne, *h;
 #ifdef HELIUM
   float *NHep;
