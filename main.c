@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 
 void help()
 {
-           fprintf(stderr, "Usage: ./extract -f NUMFILES -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
+           fprintf(stderr, "Usage: ./extract -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
                   "-t table_file will read line of sight coordinates from a table.\n");
            return;
 }
