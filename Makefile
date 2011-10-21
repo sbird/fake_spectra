@@ -12,31 +12,34 @@ OPTS += -DPECVEL
 # Use peculiar velocites 
 OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
+OPTS += -DHDF5
+#Support for loading HDF5 files
 #OPTS += -DGADGET3
 #Gadget III has slightly different block headers
 #OPTS += -DHELIUM
 # Enable helium absorption
 CFLAGS += $(OPTS) 
 CXXFLAGS += $(CFLAGS) -I${GREAD}
-COM_INC = parameters.h Makefile
+COM_INC = parameters.h
 FFTW =-lfftw3
 #LINK=$(CC)
-LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl-rpath,${GREAD}
+LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean
 
 all: extract statistic
 
-extract: main.o read_snapshot.o extract_spectra.o Makefile
-	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) 
+extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o
+	$(LINK) $(CFLAGS) -o $@ $(PG) $^
 
 rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) rescale.c $(FFTW) powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
+	$(CC) $(CFLAGS) $(FFTW) $^ -o $@
 
-statistic: statistic.c calc_power.o mean_flux.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic $(FFTW)
+statistic: statistic.c calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
+	$(CC) $(CFLAGS) $(FFTW) $^ -o $@
 
 read_snapshot.o: read_snapshot.cpp $(COM_INC)
+read_hdf_snapshot.o: read_hdf_snapshot.c $(COM_INC)
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
 smooth.o:smooth.c
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
@@ -45,6 +48,6 @@ mean_flux.o: mean_flux.c $(COM_INC)
 main.o: main.c global_vars.h $(COM_INC)
 
 clean:
-	rm -f *.o  extract
+	rm -f *.o  extract rescale statistic
 
 
