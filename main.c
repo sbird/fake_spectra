@@ -21,6 +21,9 @@
 #include <unistd.h>
 #include "global_vars.h"
 #include "parameters.h"
+#ifdef HDF5
+  #include <hdf5.h>
+#endif
 
 
 int main(int argc, char **argv)
@@ -87,8 +90,13 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
-  if(Npart ==0){
+  #ifdef HDF5
+    if(H5Fis_hdf5(indir))
+        Npart=load_hdf5_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+    else
+  #endif
+        Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+  if(Npart <=0){
           fprintf(stderr,"No data loaded\n");
           exit(99);
   }

@@ -63,6 +63,10 @@ extern "C"
 #endif
 int load_snapshot(char *fname, pdata* P,
   double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
+#ifdef HDF5
+int load_hdf5_snapshot(char *fname, pdata* P,
+  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
+#endif
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 
 #ifndef HELIUM
