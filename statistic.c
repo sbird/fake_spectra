@@ -206,7 +206,7 @@ void help()
 {
            fprintf(stderr, "Usage: ./statistic -n NUMLOS -i input spectra -o output_directory\n"
                            "-r turns off rescaling -s statistic: 1 is pdf, 2 is power,\n"
-                           "3 is transverse power, 4 is bispectrum");
+                           "3 is transverse power, 4 is bispectrum\n");
            return;
 }
 
