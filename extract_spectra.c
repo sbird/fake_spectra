@@ -63,20 +63,14 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
        (*H1).veloc[i]  = vscale*(*H1).veloc[i]/(*H1).rho[i]; /* HI weighted km s^-1 */ 
        (*H1).temp[i]   = tscale*(*H1).temp[i]/(*H1).rho[i]; /* HI weighted K */
        (*H1).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
-       rhoker_H[i] *= mscale*pow(rscale,-3);
       }
       else{
         (*H1).veloc[i]=1;
         (*H1).temp[i]=1;
       }
-    }
+      rhoker_H[i] *= mscale*pow(rscale,-3);
 #ifdef HELIUM
-    for(i = 0;i<NBINS;i++){
-      /* If there are no particles in this bin, rhoker will be zero. 
-       * In this case, we set temp and veloc arbitrarily to one, 
-       * to avoid nans propagating. Zero rho will imply zero absorption 
-       * anyway. */
-      if((*He2).rho[i]){       
+      if((*He2).rho[i]){
        (*He2).veloc[i]  = vscale*(*He2).veloc[i]/(*He2).rho[i]; /* HI weighted km s^-1 */ 
        (*He2).temp[i]   = tscale*(*He2).temp[i]/(*He2).rho[i]; /* HI weighted K */
        (*He2).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
@@ -85,8 +79,8 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
         (*He2).veloc[i]=1;
         (*He2).temp[i]=1;
       }
-    }
 #endif
+    }
     /* Compute the HI Lya spectra */
     for(i=0;i<NBINS;i++){
         for(j=0;j<NBINS;j++)
@@ -183,7 +177,7 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 }
 
 /*The size of the thread cache to use below*/
-#define CACHESZ 1024
+#define CACHESZ 128
 
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
