@@ -77,9 +77,33 @@ int load_hdf5_snapshot(char *infname, pdata *P,
   hid_t hdf_group,hdf_file;
   hsize_t length;
   /*Copy of input filename for extension*/
-  char fname[strlen(infname)+2];
-  char ffname[strlen(infname)+7];
-  strncpy(fname, infname,strlen(infname));
+  char fname[strlen(infname)+10];
+  char ffname[strlen(infname)+16];
+  /*Switch off error handling so that we can check whether a
+   * file is HDF5 */
+  /* Save old error handler */
+  hid_t error_stack=0;
+  herr_t (*old_func)(hid_t, void*);
+  void *old_client_data;
+  H5Eget_auto(error_stack, &old_func, &old_client_data);
+  /* Turn off error handling */
+  H5Eset_auto(error_stack, NULL, NULL);
+
+  /*Were we handed an HDF5 file?*/
+  if(H5Fis_hdf5(infname) <= 0){
+     /*If we weren't, were we handed an HDF5 file without the suffix?*/
+     strncpy(fname, infname,strlen(infname));
+     strncpy(fname+strlen(infname), ".0.hdf5\0",10);
+     if (H5Fis_hdf5(fname) <= 0)
+        return -1;
+  }
+  else{
+     strncpy(fname, infname,strlen(infname));
+  }
+
+  /* Restore previous error handler */
+  H5Eset_auto(error_stack, old_func, old_client_data);
+
   /*See if we have been handed the first file of a set: 
    * our method for dealing with this closely mirrors 
    * HDF5s family mode, but we cannot use this, because
@@ -88,7 +112,7 @@ int load_hdf5_snapshot(char *infname, pdata *P,
   /*Replace a possible 0.hdf5 in the filename 
    * with a printf style specifier for opening*/
   if(zero)
-    strncpy(zero, ".%d.hdf5",strlen(zero)+2);
+    strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
 
   /*First open first file to get header properties*/ 
   sprintf(ffname,fname,fileno);

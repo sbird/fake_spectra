@@ -91,9 +91,8 @@ int main(int argc, char **argv)
           exit(2);
   }
   #ifdef HDF5
-    if(H5Fis_hdf5(indir))
-        Npart=load_hdf5_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
-    else
+    Npart=load_hdf5_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+    if(Npart < 0)
   #endif
         Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
   if(Npart <=0){
