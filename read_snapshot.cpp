@@ -56,7 +56,7 @@ extern "C" int load_snapshot(char *fname, pdata *P,
            (*P).Mass[i] = snap.GetHeader().mass[PARTTYPE];
   }
   else
-        snap.GetBlock("MASS",&((*P).Mass),NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
+        snap.GetBlock("MASS",(*P).Mass,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
   (*omegab) = (*P).Mass[0]/((*P).Mass[0]+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
