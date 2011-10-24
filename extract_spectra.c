@@ -80,7 +80,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
        (*He2).veloc[i]  = vscale*(*He2).veloc[i]/(*He2).rho[i]; /* HI weighted km s^-1 */ 
        (*He2).temp[i]   = tscale*(*He2).temp[i]/(*He2).rho[i]; /* HI weighted K */
        (*He2).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
-       rhoker_H[i] *= mscale*pow(rscale,-3);
       }
       else{
         (*He2).veloc[i]=1;
