@@ -23,7 +23,7 @@ CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h
 FFTW =-lfftw3
 #LINK=$(CC)
-LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl-rpath,${GREAD} -lhdf5 -lhdf5_hl
+LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean
 
