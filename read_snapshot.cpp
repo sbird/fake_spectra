@@ -50,13 +50,22 @@ extern "C" int load_snapshot(char *fname, pdata *P,
   snap.GetBlock("VEL ",(*P).Vel,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
   /* Particles masses  */
   printf("Reading mass and temp...\n");
-  if(snap.GetHeader().mass[PARTTYPE]){
-        int i;
-        for(i=0; i< NumPart;i++)
+  if(snap.GetHeader().mass[PARTTYPE])
+        for(int i=0; i< NumPart;i++)
            (*P).Mass[i] = snap.GetHeader().mass[PARTTYPE];
+  else{
+        /*Set up types to skip; skip all types not in the mass array*/
+        int skip = (1<<N_TYPE)-1-(1<<PARTTYPE);
+        for(int i=0; i< N_TYPE; i++)
+           if(snap.GetHeader().mass[i])
+                   skip-=1<<i;
+        snap.GetBlock("MASS",(*P).Mass,NumPart,0, skip);
   }
-  else
-        snap.GetBlock("MASS",(*P).Mass,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  for(int i=0; i< NumPart;i++)
+  if ((*P).Mass[i] != (*P).Mass[0]){
+        fprintf(stderr, "i=%d N = %ld Mass change: %g\n",i,NumPart, (*P).Mass[i]);
+        exit(0);
+  }
   (*omegab) = (*P).Mass[0]/((*P).Mass[0]+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
