@@ -1,9 +1,33 @@
 #Change this to where you installed GadgetReader
 GREAD=${CURDIR}/../GadgetReader
 
+ifeq ($(CC),cc)
+  ICC:=$(shell which icc --tty-only 2>&1)
+  #Can we find icc?
+  ifeq (/icc,$(findstring /icc,${ICC}))
+     CC = icc -vec_report0
+     CXX = icpc
+  else
+     GCC:=$(shell which gcc --tty-only 2>&1)
+     #Can we find gcc?
+     ifeq (/gcc,$(findstring /gcc,${GCC}))
+        CC = gcc
+        CXX = g++
+     endif
+  endif
+endif
+
+#Are we using gcc or icc?
+ifeq (icc,$(findstring icc,${CC}))
+  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD}
+  LINK +=${CXX} -openmp
+else
+  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD}
+  LINK +=${CXX} -openmp $(PRO)
+  LFLAGS += -lm -lgomp
+endif
 #CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
-CFLAGS =  -O2  -g -fopenmp -Wall
 OPTS = 
 PG = 
 OPTS += -DPERIODIC
@@ -15,29 +39,30 @@ OPTS += -DVOIGT
 OPTS += -DHDF5
 #Support for loading HDF5 files
 #OPTS += -DGADGET3
-#Gadget III has slightly different block headers
+#This is misnamed: in reality it looks for NE instead of NHEP and NHEPP
 #OPTS += -DHELIUM
 # Enable helium absorption
 CFLAGS += $(OPTS) 
 CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h
-FFTW =-lfftw3
 #LINK=$(CC)
-LINK=$(CXX) -lm -lgomp -lfftw3 -lrgad -L$(FFTW) -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
+LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean
 
-all: extract statistic
+all: extract statistic rescale
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o
-	$(LINK) $(CFLAGS) -o $@ $(PG) $^
+	$(LINK) $(LFLAGS) $^ -o $@
 
-rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) $(FFTW) $^ -o $@
+rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
+	$(LINK) $(LFLAGS) $^ -o $@
 
-statistic: statistic.c calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
-	$(CC) $(CFLAGS) $(FFTW) $^ -o $@
+statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
+	$(LINK) $(LFLAGS) $^ -o $@
 
+rescale.o: rescale.c $(COM_INC)
+statistic.o: statistic.c $(COM_INC)
 read_snapshot.o: read_snapshot.cpp $(COM_INC)
 read_hdf_snapshot.o: read_hdf_snapshot.c $(COM_INC)
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
