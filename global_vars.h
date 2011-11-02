@@ -64,8 +64,9 @@ extern "C"
 int load_snapshot(char *fname, pdata* P,
   double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
 #ifdef HDF5
-int load_hdf5_snapshot(char *fname, pdata* P,
-  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
+int load_hdf5_header(char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
+int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno);
+int find_first_hdf_file(const char *infname, char *fname);
 #endif
 void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
 

@@ -222,8 +222,8 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
       hh = (*P).h[i]*0.5; /*Factor of two in this kernel definition*/
       h2 = hh*hh; 
       h4 = 4.*h2;           /* 2 smoothing lengths squared */
-      if((Particles <20) ||  ((i % (Particles/20)) ==0))
-             printf("Interpolating particle %d.\n",i);
+/*       if((Particles <20) ||  ((i % (Particles/20)) ==0)) */
+/*              printf("Interpolating particle %d.\n",i); */
 	  
       for(iproc=0;iproc<NumLos;iproc++)
         { 

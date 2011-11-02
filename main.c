@@ -25,6 +25,17 @@
   #include <hdf5.h>
 #endif
 
+/*Open a file for reading to check it exists*/
+int file_readable(const char * filename)
+{
+     FILE * file;
+     if ((file = fopen(filename, "r"))){
+          fclose(file);
+          return 1;
+     }
+     return 0;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -35,6 +46,9 @@ int main(int argc, char **argv)
   char *outname=NULL;
   char *outdir=NULL;
   char *indir=NULL;
+#ifdef HDF5
+  char *fname=NULL;
+#endif
   char c;
   int i;
   double  atime, redshift, Hz, box100, h100, omegab;
@@ -90,33 +104,78 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  #ifdef HDF5
-    Npart=load_hdf5_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
-    if(Npart < 0)
-  #endif
-        Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
-  if(Npart <=0){
-          fprintf(stderr,"No data loaded\n");
-          exit(99);
-  }
-  populate_los_table(los_table,NumLos, ext_table, box100); 
   if(InitLOSMemory(&H1, NumLos) || 
       !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
                   fprintf(stderr, "Error allocating LOS memory\n");
                   exit(2);
   }
-  #ifndef HELIUM
-    /*Do the hard SPH interpolation*/
-    SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
-  #else
-    if(InitLOSMemory(&He2, NumLos)){
-                    fprintf(stderr, "Error allocating LOS memory\n");
-                    exit(2);
+#ifdef HELIUM
+  if(InitLOSMemory(&He2, NumLos)){
+                  fprintf(stderr, "Error allocating LOS memory\n");
+                  exit(2);
+  }
+#endif
+  #ifdef HDF5
+    if(!(fname= malloc((strlen(indir)+10)*sizeof(char)))){
+        fprintf(stderr, "Failed to allocate string mem\n");
+        exit(1);
     }
-    SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+    /*First open first file to get header properties*/
+    if ( find_first_hdf_file(indir,fname) == 0
+        && load_hdf5_header(fname, &atime, &redshift, &Hz, &box100, &h100) == 0 ){
+        int fileno=0;
+        /*Copy of input filename for extension*/
+        char ffname[strlen(indir)+16];
+        /*See if we have been handed the first file of a set:
+         * our method for dealing with this closely mirrors
+         * HDF5s family mode, but we cannot use this, because
+         * our files may not all be the same size.*/
+        char *zero = strstr(fname,".0.hdf5");
+        /*Replace a possible 0.hdf5 in the filename
+         * with a printf style specifier for opening*/
+        if(zero)
+          strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
+
+        populate_los_table(los_table,NumLos, ext_table, box100);
+        /*Loop over files. Keep going until we run out, skipping over broken files.
+         * The call to file_readable is an easy way to shut up HDF5's error message.*/
+        sprintf(ffname,fname,fileno);
+        while(file_readable(ffname) && H5Fis_hdf5(ffname) > 0){
+              /* P is allocated inside load_hdf5_snapshot*/
+              Npart=load_hdf5_snapshot(ffname, &P,&omegab,fileno);
+              if(Npart > 0){
+           #ifndef HELIUM
+              SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+           #else
+              SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+           #endif
+              }
+              /*Free the particle list once we don't need it*/
+              if(Npart >= 0)
+              free_parts(&P);
+              fileno++;
+              sprintf(ffname,fname,fileno);
+        }
+    }
+    else{
   #endif
-  /*Free the particle list once we don't need it*/
-  free_parts(&P);
+        Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+        if(Npart <=0){
+                fprintf(stderr,"No data loaded\n");
+                exit(99);
+        }
+        populate_los_table(los_table,NumLos, ext_table, box100);
+        /*Do the hard SPH interpolation*/
+        #ifndef HELIUM
+          SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+        #else
+          SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+        #endif
+        /*Free the particle list once we don't need it*/
+        free_parts(&P);
+#ifdef HDF5
+    }
+#endif
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
   #ifdef HELIUM
