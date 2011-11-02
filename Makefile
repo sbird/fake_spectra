@@ -48,7 +48,7 @@ COM_INC = parameters.h
 #LINK=$(CC)
 LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
-.PHONY: all clean
+.PHONY: all clean dist
 
 all: extract statistic rescale
 
@@ -75,4 +75,6 @@ main.o: main.c global_vars.h $(COM_INC)
 clean:
 	rm -f *.o  extract rescale statistic
 
+dist: Makefile calc_power.c extract_spectra.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h
+	tar -czf flux_extract.tar.gz $^
 
