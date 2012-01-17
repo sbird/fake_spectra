@@ -19,6 +19,8 @@
 #include "global_vars.h"
 #include "parameters.h"
 
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos, int *index_nr_lines, double *dr2_lines);
+
 /*****************************************************************************/
 /* This function rescales various things and calculates the absorption*/
 #ifndef HELIUM
@@ -211,69 +213,39 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
     #pragma omp for
     for(i=0;i<Particles;i++)
     {
-      double xx,yy,zz,hh,h2,h4,dr,dr2;
-      int iproc;
+      int ind;
       /*     Positions (kpc) */
-      xx = (*P).Pos[3*i+0];
-      yy = (*P).Pos[3*i+1];
-      zz = (*P).Pos[3*i+2];
+      const double xx = (*P).Pos[3*i+0];
+      const double yy = (*P).Pos[3*i+1];
+      const double zz = (*P).Pos[3*i+2];
           
       /* Resolution length (kpc) */
-      hh = (*P).h[i]*0.5; /*Factor of two in this kernel definition*/
-      h2 = hh*hh; 
-      h4 = 4.*h2;           /* 2 smoothing lengths squared */
+      const double hh = (*P).h[i]*0.5; /*Factor of two in this kernel definition*/
+      const double h2 = hh*hh;
+      const double h4 = 4.*h2;           /* 2 smoothing lengths squared */
 /*       if((Particles <20) ||  ((i % (Particles/20)) ==0)) */
 /*              printf("Interpolating particle %d.\n",i); */
-	  
-      for(iproc=0;iproc<NumLos;iproc++)
-        { 
-          double xproj,yproj,zproj;
-          int iaxis,iz,ioff,j,iiz;
+      int index_nr_lines[NumLos];
+      double dr2_lines[NumLos];
+      int num_nr_lines=get_list_of_near_lines(xx,yy,zz,hh,boxsize,los_table,NumLos,index_nr_lines,dr2_lines);
+      for(ind=0;ind<num_nr_lines;ind++)
+      {
+          int iproc=index_nr_lines[ind];
+          double dr2=dr2_lines[ind];
+          int iz,ioff,j,iiz;
           /*Load a sightline from the table.*/
-          iaxis = los_table[iproc].axis;
-          xproj = los_table[iproc].xx;
-          yproj = los_table[iproc].yy;
-          zproj = los_table[iproc].zz;
-     
-      
-	  /*    Distance to projection axis */	  
-	  if (iaxis == 1) 
-	    dr = fabs(yy-yproj);
-          else 
-	    dr = fabs(xx-xproj);
-	  
-	  if (dr > box2) 
-	    dr = boxsize - dr; /* Keep dr between 0 and box/2 */
-	  
-	  if (dr > 2.*hh) /* dr less than 2 smoothing lengths */
-	    continue;
-	  dr2 = dr*dr;
-	      
-	  if (iaxis == 1)
-	    dr = fabs(zz - zproj);
-          else if (iaxis == 2)
-	    dr = fabs(zz - zproj);
-          else if(iaxis == 3)
-            dr = fabs(yy - yproj);
-	      
-	  if (dr > box2)  
-	    dr = boxsize - dr; /* between 0 and box/2 */
+          const int iaxis = los_table[iproc].axis;
+          const double H1frac = (*P).NH0[i]; /* nHI/nH */
+#ifdef HELIUM
+          const double He2frac = (*P).NHep[i]; /* nHeII/nH */
+#endif
+          const double hinv2 = 1. / h2; /* 1/h^2 */
+          const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
-	  dr2 = dr2 + (dr*dr);
-	  
-	  if (dr2 <= h4)
-	  {
-	     const double H1frac = (*P).NH0[i]; /* nHI/nH */ 
-          #ifdef HELIUM
-             const double He2frac = (*P).NHep[i]; /* nHeII/nH */
-          #endif
-	     const double hinv2 = 1. / h2; /* 1/h^2 */
-	     const double hinv3 = hinv2 / hh; /* 1/h^3 */
-	     
-	     const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
-             const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-	     const double temp = (*P).U[i]*mu; /* T in some strange units */
-             double dzmax,zgrid;
+          const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
+          const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
+          const double temp = (*P).U[i]*mu; /* T in some strange units */
+          double dzmax,zgrid;
 	     
 	     /* Central vertex to contribute to */
 	     if (iaxis == 1)
@@ -289,7 +261,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	     /* Loop over contributing vertices */
 	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
 	       {
-                 double deltaz,dz,dist2,q,kernel,velker,temker;
+                 double deltaz,dz,q,kernel,velker,temker;
 	         j = iiz;
 	         j = ((j-1+10*NBINS) % NBINS);
 	         
@@ -311,10 +283,10 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        if(dz > box2) 
 	  	   dz = boxsize - dz;
 	        
-	        dist2 = dr2 + (dz*dz);		 
-	        if (dist2 > h4)
+	        dr2 = dr2 + (dz*dz);
+	        if (dr2 > h4)
 	  	   continue;
-	        q = sqrt(dist2 * hinv2);
+	        q = sqrt(dr2 * hinv2);
 	        if (q <= 1.)
 	          kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
 	        else
@@ -366,7 +338,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
                   cindex=0;
                 }
 	       }        /* loop over contributing vertices */
-	   }           /* dx^2+dy^2 < 4h^2 */
 	}  /*Loop over LOS*/               
     } /* Loop over particles*/
     /*Also empty the cache at the end*/
@@ -386,4 +357,57 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
     }/*End critical block*/
   }/*End parallel*/
     return;
+}
+
+/*This function takes a particle position and returns a list of the indices of lines near it in index_nr_lines
+ * Near is defined as: dx^2+dy^2 < 4h^2 */
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos, int *index_nr_lines, double *dr2_lines)
+{
+      const double h4 = 4.*hh*hh;           /* 2 smoothing lengths squared */
+      int iproc;
+      int num_nr_lines=0;
+      for(iproc=0;iproc<NumLos;iproc++)
+      {
+          double dr,dr2;
+          /*Load a sightline from the table.*/
+          const int iaxis = los_table[iproc].axis;
+          double xproj,yproj,zproj;
+
+          xproj = los_table[iproc].xx;
+          yproj = los_table[iproc].yy;
+          zproj = los_table[iproc].zz;
+
+	  /*    Distance to projection axis */
+	  if (iaxis == 1)
+	    dr = fabs(yy-yproj);
+          else
+	    dr = fabs(xx-xproj);
+
+          if(dr > 0.5*boxsize)
+	          dr = boxsize - dr; /* Keep dr between 0 and box/2 */
+          if(dr > 2.*hh)  /* dr less than 2 smoothing lengths */
+             continue;
+
+          dr2 = dr*dr;
+
+	  if (iaxis == 1)
+	    dr = fabs(zz - zproj);
+          else if (iaxis == 2)
+	    dr = fabs(zz - zproj);
+          else if(iaxis == 3)
+            dr = fabs(yy - yproj);
+
+	  if (dr > 0.5*boxsize)
+	    dr = boxsize - dr; /* between 0 and box/2 */
+
+	  dr2 = dr2 + (dr*dr);
+
+          /*If close in the second coord, save line*/
+	  if (dr2 <= h4){
+                  index_nr_lines[num_nr_lines]=iproc;
+                  dr2_lines[num_nr_lines]=dr2;
+                  num_nr_lines++;
+          }
+      }
+      return num_nr_lines;
 }
