@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   /*Which statistic to use: 1 is pdf, 2 is power,
    * 3 is transverse power, 4 is bispectrum.
    * Only 1 and 2 are implemented.*/
-  int statistic=2;
+  int statistic=0;
   int rescale=1;
   double scale=1.0;
 /*   double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000}; */
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
            NumLos=atoi(optarg);
            break;
         case 's':
-           statistic=atoi(optarg);
+           statistic+=atoi(optarg);
            break;
         case 'u':
            UsedLos = atoi(optarg);
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  if(statistic !=1 && statistic !=2){
+  if(!(statistic & 1 || statistic & 2)){
           fprintf(stderr, "Only flux pdf and flux power are implemented.\n");
           help();
           exit(99);
@@ -142,13 +142,13 @@ int main(int argc, char **argv)
     printf("scale=%g\n",scale);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
-  if(statistic == 2){
+  if(statistic & 2){
       calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos);
       sprintf(suffix,"_flux_power.txt");
       if(output(flux_power, (NBINS+1)/2,suffix, outdir))
           exit(1);
   }
-  if(statistic == 1){
+  if(statistic & 1){
       calc_pdf(flux_pdf, tau_H1,scale,UsedLos);
       sprintf(suffix,"_flux_pdf.txt");
       if(output(flux_pdf, PBINS,suffix, outdir))
