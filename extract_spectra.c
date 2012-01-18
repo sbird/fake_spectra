@@ -406,6 +406,8 @@ int find_index(double xx, sort_los* sort_los_table, const int NumLos)
         int low,high,mid;
         low=0;
         high=NumLos-1;
+        if(xx < sort_los_table[0].priax)
+                return 0;
         while(high - low > 1)
         {
             mid = (high + low) / 2;
