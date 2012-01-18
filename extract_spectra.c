@@ -301,7 +301,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	     /* Loop over contributing vertices */
 	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
 	       {
-                 double deltaz,dz,q,kernel,velker,temker;
+                 double deltaz,dz,dist2,q,kernel,velker,temker;
 	         j = iiz;
 	         j = ((j-1+10*NBINS) % NBINS);
 	         
@@ -323,10 +323,10 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        if(dz > box2) 
 	  	   dz = boxsize - dz;
 	        
-	        dr2 = dr2 + (dz*dz);
-	        if (dr2 > h4)
+	        dist2 = dr2 + (dz*dz);
+	        if (dist2 > h4)
 	  	   continue;
-	        q = sqrt(dr2 * hinv2);
+	        q = sqrt(dist2 * hinv2);
 	        if (q <= 1.)
 	          kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
 	        else
