@@ -29,7 +29,7 @@ extern "C" int load_snapshot(char *fname, pdata *P,
 #else
   const std::string blocks[14]={"HEAD","POS ","VEL ","ID  ","MASS","U   ","RHO ","NHP ","NHEP","NHEQ","NH  ","NHE ","HSML","SFR "};
   std::vector<std::string> BlockNames(blocks,blocks+14);
-  GadgetReader::GSnap snap(fname, &BlockNames);
+  GadgetReader::GSnap snap(fname, true,&BlockNames);
 #endif
   int64_t NumPart;
   (*atime)= snap.GetHeader().time;
