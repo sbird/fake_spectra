@@ -414,7 +414,7 @@ int find_index(double xx, sort_los* sort_los_table, const int NumLos)
             else
                 low = mid;
         }
-        return low;
+        return high;
 }
 
 int get_near_lines_2nd_axis(const double xx,const double yy,const double zz,const double h4, const double boxsize,const sort_los *sort_los_table, const los *los_table, int *index_nr_lines, double *dr2_lines, const int low, const int high)
@@ -437,6 +437,9 @@ int get_near_lines_2nd_axis(const double xx,const double yy,const double zz,cons
 	    dr = fabs(yy-yproj);
           else
 	    dr = fabs(xx-xproj);
+
+          if(dr > 0.5*boxsize)
+	          dr = boxsize - dr; /* Keep dr between 0 and box/2 */
 
           dr2 = dr*dr;
 
