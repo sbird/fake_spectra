@@ -164,8 +164,11 @@ int main(int argc, char **argv)
     }
     else{
   #endif
-        do{
-        Npart=load_snapshot(indir, 0,0,&P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+        if(load_header(indir,&atime, &redshift, &Hz, &box100, &h100) < 0){
+                fprintf(stderr,"No data loaded\n");
+                exit(2);
+        }
+        Npart=load_snapshot(indir, 0,0,&P, &omegab);
         if(Npart <=0){
                 fprintf(stderr,"No data loaded\n");
                 exit(99);
@@ -179,7 +182,6 @@ int main(int argc, char **argv)
         #endif
         /*Free the particle list once we don't need it*/
         free_parts(&P);
-        while
 #ifdef HDF5
     }
 #endif

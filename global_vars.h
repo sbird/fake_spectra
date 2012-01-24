@@ -59,10 +59,13 @@ int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 void help(void);
 
 #ifdef __cplusplus
-extern "C"
+extern "C"{
 #endif
-int64_t load_snapshot(char *fname, int64_t StartPart,int64_t MaxRead,pdata* P,
-  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab);
+int64_t load_snapshot(char *fname, int64_t StartPart,int64_t MaxRead,pdata* P, double *omegab);
+int load_header(char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
+#ifdef __cplusplus
+}
+#endif
 #ifdef HDF5
 int load_hdf5_header(char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno);

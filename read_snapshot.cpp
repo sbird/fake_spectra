@@ -18,11 +18,37 @@
 #include "parameters.h"
 #include "gadgetreader.hpp"
 
+
+extern "C" int load_header(char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
+{
+#ifdef GADGET3
+  GadgetReader::GSnap snap(fname);
+#else
+  const std::string blocks[14]={"HEAD","POS ","VEL ","ID  ","MASS","U   ","RHO ","NHP ","NHEP","NHEQ","NH  ","NHE ","HSML","SFR "};
+  std::vector<std::string> BlockNames(blocks,blocks+14);
+  GadgetReader::GSnap snap(fname, true,&BlockNames);
+#endif
+  if(snap.GetNumFiles() <= 0)
+          return -1;
+  (*atime)= snap.GetHeader().time;
+  (*redshift)= snap.GetHeader().redshift;
+  (*box100) = snap.GetHeader().BoxSize;
+  (*h100) = snap.GetHeader().HubbleParam;
+  (*Hz)=100.0*(*h100) * sqrt(1.+snap.GetHeader().Omega0*(1./(*atime)-1.)+snap.GetHeader().OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
+  printf("NumPart=[%ld,%ld,%ld,%ld,%ld,%ld), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
+  printf("Masses=[%g %g %g %g %g %g], ",snap.GetHeader().mass[0],snap.GetHeader().mass[1],snap.GetHeader().mass[2],snap.GetHeader().mass[3],snap.GetHeader().mass[4],snap.GetHeader().mass[5]);
+  printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),snap.GetHeader().Omega0,snap.GetHeader().OmegaLambda);
+  printf("Expansion factor = %f\n",(*atime));
+  printf("Hubble = %g Box=%g \n",(*h100),(*box100));
+  return 0;
+
+
+}
+
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, pdata *P,
-  double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab)
+extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, pdata *P, double *omegab)
 {
 #ifdef GADGET3
   GadgetReader::GSnap snap(fname);
@@ -32,25 +58,12 @@ extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, 
   GadgetReader::GSnap snap(fname, true,&BlockNames);
 #endif
   int64_t NumPart;
-  (*atime)= snap.GetHeader().time;
-  (*redshift)= snap.GetHeader().redshift;
-  (*box100) = snap.GetHeader().BoxSize;
-  (*h100) = snap.GetHeader().HubbleParam;
-  (*Hz)=100.0*(*h100) * sqrt(1.+snap.GetHeader().Omega0*(1./(*atime)-1.)+snap.GetHeader().OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
   if(MaxRead > 0)
         NumPart = std::min(MaxRead,snap.GetNpart(PARTTYPE)-StartPart);
   else
         NumPart = snap.GetNpart(PARTTYPE)-StartPart;
   if(NumPart ==0)
           return 0;
-  if(StartPart==0){
-        printf("NumPart=[%ld,%ld,%ld,%ld,%ld,%ld), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
-        printf("Masses=[%g %g %g %g %g %g], ",snap.GetHeader().mass[0],snap.GetHeader().mass[1],snap.GetHeader().mass[2],snap.GetHeader().mass[3],snap.GetHeader().mass[4],snap.GetHeader().mass[5]);
-        printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),snap.GetHeader().Omega0,snap.GetHeader().OmegaLambda);
-        printf("Expansion factor = %f\n",(*atime));
-        printf("Hubble = %g Box=%g \n",(*h100),(*box100));
-  }
-
   if(!(alloc_parts(P,NumPart)))
   {
     fprintf(stderr,"failed to allocate memory.\n\n");
