@@ -21,7 +21,7 @@
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-extern "C" int load_snapshot(char *fname, pdata *P,
+extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, pdata *P,
   double  *atime, double *redshift, double * Hz, double *box100, double *h100, double *omegab)
 {
 #ifdef GADGET3
@@ -37,25 +37,29 @@ extern "C" int load_snapshot(char *fname, pdata *P,
   (*box100) = snap.GetHeader().BoxSize;
   (*h100) = snap.GetHeader().HubbleParam;
   (*Hz)=100.0*(*h100) * sqrt(1.+snap.GetHeader().Omega0*(1./(*atime)-1.)+snap.GetHeader().OmegaLambda*((pow(*atime,2)) -1.))/(*atime);
-  NumPart = snap.GetNpart(PARTTYPE);
+  if(MaxRead > 0)
+        NumPart = std::min(MaxRead,snap.GetNpart(PARTTYPE)-StartPart);
+  else
+        NumPart = snap.GetNpart(PARTTYPE)-StartPart;
   if(NumPart ==0)
           return 0;
-  printf("NumPart=[%ld,%ld,%ld,%ld,%ld,%ld), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
-  printf("Masses=[%g %g %g %g %g %g], ",snap.GetHeader().mass[0],snap.GetHeader().mass[1],snap.GetHeader().mass[2],snap.GetHeader().mass[3],snap.GetHeader().mass[4],snap.GetHeader().mass[5]);
-  printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),snap.GetHeader().Omega0,snap.GetHeader().OmegaLambda);
-  printf("Expansion factor = %f\n",(*atime));
-  printf("Hubble = %g Box=%g \n",(*h100),(*box100));
+  if(StartPart==0){
+        printf("NumPart=[%ld,%ld,%ld,%ld,%ld,%ld), ",snap.GetNpart(0),snap.GetNpart(1),snap.GetNpart(2),snap.GetNpart(3),snap.GetNpart(4),snap.GetNpart(5));
+        printf("Masses=[%g %g %g %g %g %g], ",snap.GetHeader().mass[0],snap.GetHeader().mass[1],snap.GetHeader().mass[2],snap.GetHeader().mass[3],snap.GetHeader().mass[4],snap.GetHeader().mass[5]);
+        printf("Redshift=%g, Ω_M=%g Ω_L=%g\n",(*redshift),snap.GetHeader().Omega0,snap.GetHeader().OmegaLambda);
+        printf("Expansion factor = %f\n",(*atime));
+        printf("Hubble = %g Box=%g \n",(*h100),(*box100));
+  }
 
   if(!(alloc_parts(P,NumPart)))
   {
     fprintf(stderr,"failed to allocate memory.\n\n");
     exit(1);
   }
-  printf("Reading position and velocity...\n");
-  snap.GetBlock("POS ",(*P).Pos,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
-  snap.GetBlock("VEL ",(*P).Vel,NumPart,0, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  printf("Reading from %ld to %ld\n",StartPart,StartPart+NumPart);
+  snap.GetBlock("POS ",(*P).Pos,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  snap.GetBlock("VEL ",(*P).Vel,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
   /* Particles masses  */
-  printf("Reading mass and temp...\n");
   if(snap.GetHeader().mass[PARTTYPE])
         for(int i=0; i< NumPart;i++)
            (*P).Mass[i] = snap.GetHeader().mass[PARTTYPE];
@@ -65,7 +69,7 @@ extern "C" int load_snapshot(char *fname, pdata *P,
         for(int i=0; i< N_TYPE; i++)
            if(snap.GetHeader().mass[i])
                    skip-=1<<i;
-        snap.GetBlock("MASS",(*P).Mass,NumPart,0, skip);
+        snap.GetBlock("MASS",(*P).Mass,NumPart,StartPart, skip);
   }
   for(int i=0; i< NumPart;i++)
   if ((*P).Mass[i] != (*P).Mass[0]){
@@ -77,47 +81,49 @@ extern "C" int load_snapshot(char *fname, pdata *P,
   if(PARTTYPE == 0)
     { 
       /*The internal energy of all the Sph particles is read in */
-      snap.GetBlock("U   ",(*P).U,NumPart,0,0);      
+      snap.GetBlock("U   ",(*P).U,NumPart,StartPart,0);
       /* The free electron fraction */
       if(snap.GetHeader().flag_cooling)
         {
           int k;
-          printf("Reading electron fractions...\n");
           /* Some versions of Gadget have Ne, some have NHP, NHEP and NHEPP,
            * which I map to NHEQ.*/
           /* Use that the universe is neutral, so 
            * NE = NHP + NHEP +2 NHEPP*/
       #ifndef GADGET3
-          snap.GetBlock("NHP ",(*P).Ne,NumPart,0,0);      
+          snap.GetBlock("NHP ",(*P).Ne,NumPart,StartPart,0);
           /*Use the space for HSML as temp space*/
-          snap.GetBlock("NHEP",(*P).h,NumPart,0,0);      
+          snap.GetBlock("NHEP",(*P).h,NumPart,StartPart,0);
           for(k=0;k<NumPart;k++){
                   (*P).Ne[k]+=(*P).h[k];
           }
-          snap.GetBlock("NHEQ",(*P).h,NumPart,0,0);      
+          snap.GetBlock("NHEQ",(*P).h,NumPart,StartPart,0);
           for(k=0;k<NumPart;k++){
                   (*P).Ne[k]+=2*(*P).h[k];
           }
       #else
-          snap.GetBlock("NE  ",(*P).Ne,NumPart,0,0);      
+          snap.GetBlock("NE  ",(*P).Ne,NumPart,StartPart,0);
       #endif
       #ifdef HELIUM
-          snap.GetBlock("NHE ",(*P).NHep,NumPart,0,0);      
+          snap.GetBlock("NHE ",(*P).NHep,NumPart,StartPart,0);
       #endif 
           /* The HI fraction, nHI/nH */
-          snap.GetBlock("NH  ",(*P).NH0,NumPart,0,0);      
+          snap.GetBlock("NH  ",(*P).NH0,NumPart,StartPart,0);
           /*An NHE block*/
         }
      /* The smoothing length */
-     snap.GetBlock("HSML",(*P).h,NumPart,0,0);      
+     snap.GetBlock("HSML",(*P).h,NumPart,StartPart,0);
     }
-  printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
-  printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-  printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass[0],(*omegab));
-  printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
-  printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
-  printf("P[%ld].NH0 = %e\n", NumPart, (*P).NH0[NumPart-1]);
-  printf("P[%ld].h = %f\n",NumPart, (*P).h[NumPart-1]);
+
+  if(StartPart==0){
+        printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
+        printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
+        printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass[0],(*omegab));
+        printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
+        printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
+        printf("P[%ld].NH0 = %e\n", NumPart, (*P).NH0[NumPart-1]);
+        printf("P[%ld].h = %f\n",NumPart, (*P).h[NumPart-1]);
+  }
 #if 0 
     int i;
   /*   Convert to SI units from GADGET-3 units */

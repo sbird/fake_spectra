@@ -39,7 +39,9 @@ int file_readable(const char * filename)
 
 int main(int argc, char **argv)
 {
-  int Npart, NumLos=0;
+  int64_t Npart;
+  int NumLos=0;
+
   FILE *output;
   los *los_table=NULL;
   char *ext_table=NULL;
@@ -162,7 +164,8 @@ int main(int argc, char **argv)
     }
     else{
   #endif
-        Npart=load_snapshot(indir, &P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
+        do{
+        Npart=load_snapshot(indir, 0,0,&P,&atime, &redshift, &Hz, &box100, &h100, &omegab);
         if(Npart <=0){
                 fprintf(stderr,"No data loaded\n");
                 exit(99);
@@ -176,6 +179,7 @@ int main(int argc, char **argv)
         #endif
         /*Free the particle list once we don't need it*/
         free_parts(&P);
+        while
 #ifdef HDF5
     }
 #endif
