@@ -281,7 +281,11 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                                 fprintf(stderr, "Error reading table: %s. Possibly file is truncated?\n",strerror(errno));
                                 exit(3);
                         }
-                        if(axis > 3 || axis <0 || xx > boxm || xx < 0 || 
+                        if(axis > 3 || axis <0){
+                                fprintf(stderr, "Line %d of gives axis %d, which is silly.\n", lines+1, axis);
+                                exit(3);
+                        }
+                        if (xx > boxm || xx < 0 ||
                            yy > boxm || yy < 0 || zz > boxm || zz <0 ){
                                 fprintf(stderr, "Line %d of LOS table is: %d %f %f %f, which is silly for boxm %f.\n", lines+1, axis, xx, yy, zz, boxm);
                                 exit(3);
