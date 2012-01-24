@@ -51,6 +51,9 @@ int main(int argc, char **argv)
 #endif
   char c;
   int i;
+#ifndef NO_HEADER
+  int pad[32]={0};
+#endif
   double  atime, redshift, Hz, box100, h100, omegab;
   struct particle_data P;
   double * rhoker_H=NULL;
@@ -218,7 +221,17 @@ int main(int argc, char **argv)
   {
           fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
   }
+#ifndef NO_HEADER
+  /*Write a bit of a header. */
+  i=NBINS;
   fwrite(&redshift,sizeof(double),1,output);
+  fwrite(&box100,sizeof(double),1,output);
+  fwrite(&i,sizeof(int),1,output);
+  fwrite(&NumLos,sizeof(int),1,output);
+  /*Write some space for future header data: total header size is
+   * 128 bytes, with 24 full.*/
+  fwrite(&pad,sizeof(int),32-6,output);
+#endif
   fwrite(rhoker_H,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
   if(WriteLOSData(&H1, tau_H1,NumLos, output)
 #ifdef HELIUM
