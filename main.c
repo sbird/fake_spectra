@@ -164,24 +164,28 @@ int main(int argc, char **argv)
     }
     else{
   #endif
+        int64_t MaxRead=256*256*256,StartPart=0;
         if(load_header(indir,&atime, &redshift, &Hz, &box100, &h100) < 0){
                 fprintf(stderr,"No data loaded\n");
                 exit(2);
         }
-        Npart=load_snapshot(indir, 0,0,&P, &omegab);
-        if(Npart <=0){
-                fprintf(stderr,"No data loaded\n");
-                exit(99);
-        }
-        populate_los_table(los_table,NumLos, ext_table, box100);
-        /*Do the hard SPH interpolation*/
-        #ifndef HELIUM
-          SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
-        #else
-          SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
-        #endif
-        /*Free the particle list once we don't need it*/
-        free_parts(&P);
+        do{
+                Npart=load_snapshot(indir, StartPart,MaxRead,&P, &omegab);
+                if(Npart <=0){
+                        fprintf(stderr,"No data loaded\n");
+                        exit(99);
+                }
+                populate_los_table(los_table,NumLos, ext_table, box100);
+                /*Do the hard SPH interpolation*/
+                #ifndef HELIUM
+                  SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+                #else
+                  SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+                #endif
+                /*Free the particle list once we don't need it*/
+                free_parts(&P);
+                StartPart+=Npart;
+        }while(Npart == MaxRead);
 #ifdef HDF5
     }
 #endif
