@@ -46,6 +46,14 @@ struct _los
 };
 typedef struct _los los;
 
+/*Structure and comparison function for sorted list of los*/
+typedef struct _sort_los
+{
+        int orig_index;
+        double priax;
+        /*This is xx, unless iaxis=1, in which case it is yy*/
+} sort_los;
+
 /*Pointers to arrays to use in SPH_interpolation*/
 #ifndef RAW_SPECTRA
 #include "statistic.h"
@@ -71,14 +79,14 @@ int load_hdf5_header(char *infname, double  *atime, double *redshift, double * H
 int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno);
 int find_first_hdf_file(const char *infname, char *fname);
 #endif
-void populate_los_table(los *los_table, int NumLos, char *ext_table, double box);
+void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx, char * ext_table, double box);
 
 #ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 #else
 void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P);
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 #endif
 
 #endif

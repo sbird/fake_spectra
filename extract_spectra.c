@@ -19,26 +19,7 @@
 #include "global_vars.h"
 #include "parameters.h"
 
-/*Structure and comparison function for sorted list of los*/
-typedef struct _sort_los
-{
-        int orig_index;
-        double priax;
-        /*This is xx, unless iaxis=1, in which case it is yy*/
-} sort_los;
-
-int compare_xx(const void *a, const void *b)
-{
-  if(((sort_los *) a)->priax < (((sort_los *) b)->priax))
-    return -1;
-
-  if(((sort_los *) a)->priax > (((sort_los *) b)->priax))
-    return +1;
-
-  return 0;
-}
-
-int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
 
 /*****************************************************************************/
 /* This function rescales various things and calculates the absorption*/
@@ -203,41 +184,20 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
 #ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 #else
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 #endif
 {
       /* Loop over particles in LOS and do the SPH interpolation */
-      /* This first finds which particles are near this sight line. 
-       * Probably a faster way to do that. 
+      /* This first finds which sightlines are near the particle using the sorted los table 
        * Then adds the total density, temp. and velocity for near particles to 
-       * the binned totals for that sightline*/
+       * the binned totals for that sightline. Is O(N_part)*O(log n_los) */
     const double zmingrid = 0.0;
     const double dzgrid   = (boxsize-zmingrid) / (double)NBINS; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
     int i;
-   /*Make a table with a bit more indirection, so we can sort it*/
-   sort_los sort_los_table[NumLos];
-   /*Need a pointer to the separate structure for los with iaxis=1*/
-   sort_los *sort_los_table_xx;
-   int nxx=0,nother=0;
-   for(i=0;i<NumLos;i++){
-       if(los_table[i].axis==1){
-             sort_los_table[NumLos-1-nxx].orig_index=i;
-             sort_los_table[NumLos-1-nxx].priax=los_table[i].yy;
-             nxx++;
-       }else{
-             sort_los_table[nother].orig_index=i;
-             sort_los_table[nother].priax=los_table[i].xx;
-             nother++;
-       }
-   }
-   sort_los_table_xx=sort_los_table+NumLos-nxx;
-   /*Sort the tables: now the table is sorted we can use bsearch to find the element we are looking for*/
-   qsort(sort_los_table,NumLos-nxx,sizeof(sort_los),compare_xx);
-   qsort(sort_los_table_xx,nxx,sizeof(sort_los),compare_xx);
 
   #pragma omp parallel
   {
@@ -401,7 +361,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 
 /*This implements binary search for a given xx.
  * Returns the index of the last element where xx >= priax */
-int find_index(double xx, sort_los* sort_los_table, const int NumLos)
+int find_index(double xx, const sort_los* sort_los_table, const int NumLos)
 {
         int low,high,mid;
         low=0;
@@ -467,14 +427,14 @@ int get_near_lines_2nd_axis(const double xx,const double yy,const double zz,cons
 
 /*This function takes a particle position and returns a list of the indices of lines near it in index_nr_lines
  * Near is defined as: dx^2+dy^2 < 4h^2 */
-int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines)
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines)
 {
       const double h4 = 4.*hh*hh;           /* 2 smoothing lengths squared */
       int low,high;
       int num_nr_lines=0;
       double ff;
       /*Need a pointer to the separate structure for los with iaxis=1*/
-      sort_los *sort_los_table_xx;
+      const sort_los *sort_los_table_xx;
       sort_los_table_xx=sort_los_table+NumLos-nxx;
       if(nxx < NumLos){
         /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/

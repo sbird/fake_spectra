@@ -40,10 +40,11 @@ int file_readable(const char * filename)
 int main(int argc, char **argv)
 {
   int64_t Npart;
-  int NumLos=0;
+  int NumLos=0, nxx=0;
 
   FILE *output;
   los *los_table=NULL;
+  sort_los *sort_los_table=NULL;
   char *ext_table=NULL;
   char *outname=NULL;
   char *outdir=NULL;
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
          exit(99);
   }
   los_table=malloc(NumLos*sizeof(los));
+  sort_los_table=malloc(NumLos*sizeof(sort_los));
   if(!los_table){
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
@@ -141,7 +143,7 @@ int main(int argc, char **argv)
         if(zero)
           strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
 
-        populate_los_table(los_table,NumLos, ext_table, box100);
+        populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
         /*Loop over files. Keep going until we run out, skipping over broken files.
          * The call to file_readable is an easy way to shut up HDF5's error message.*/
         sprintf(ffname,fname,fileno);
@@ -150,9 +152,9 @@ int main(int argc, char **argv)
               Npart=load_hdf5_snapshot(ffname, &P,&omegab,fileno);
               if(Npart > 0){
            #ifndef HELIUM
-              SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+              SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
            #else
-              SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+              SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
            #endif
               }
               /*Free the particle list once we don't need it*/
@@ -175,12 +177,12 @@ int main(int argc, char **argv)
                         fprintf(stderr,"No data loaded\n");
                         exit(99);
                 }
-                populate_los_table(los_table,NumLos, ext_table, box100);
+                populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
                 /*Do the hard SPH interpolation*/
                 #ifndef HELIUM
-                  SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table, &P);
+                  SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
                 #else
-                  SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, &P);
+                  SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
                 #endif
                 /*Free the particle list once we don't need it*/
                 free_parts(&P);
@@ -189,6 +191,7 @@ int main(int argc, char **argv)
 #ifdef HDF5
     }
 #endif
+  free(sort_los_table);
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
   #ifdef HELIUM
@@ -271,12 +274,24 @@ void help()
            return;
 }
 
+int compare_xx(const void *a, const void *b)
+{
+  if(((sort_los *) a)->priax < (((sort_los *) b)->priax))
+    return -1;
+
+  if(((sort_los *) a)->priax > (((sort_los *) b)->priax))
+    return +1;
+
+  return 0;
+}
+
 /* Populate the line of sight table, either by random numbers or with some external input. */
-void populate_los_table(los * los_table, int NumLos, char * ext_table, double box)
+void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx, char * ext_table, double box)
 {
         FILE * fh;
         int lines=0;
-        int axis;
+        int axis,i;
+        int nother=0;
         float xx, yy, zz;
         /*If we have a file path, load the sightline table from there*/
         if(ext_table){
@@ -320,6 +335,25 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                         los_table[lines].zz=drand48()*box;
                 }
         }
+        /*Make a table with a bit more indirection, so we can sort it*/
+        /*Need a pointer to the separate structure for los with iaxis=1*/
+        sort_los *sort_los_table_xx;
+        for(i=0;i<NumLos;i++){
+            if(los_table[i].axis==1){
+                  sort_los_table[NumLos-1-*nxx].orig_index=i;
+                  sort_los_table[NumLos-1-*nxx].priax=los_table[i].yy;
+                  (*nxx)++;
+            }else{
+                  sort_los_table[nother].orig_index=i;
+                  sort_los_table[nother].priax=los_table[i].xx;
+                  nother++;
+            }
+        }
+        sort_los_table_xx=sort_los_table+NumLos-*nxx;
+        /*Sort the tables: now the table is sorted we can use bsearch to find the element we are looking for*/
+        qsort(sort_los_table,NumLos-*nxx,sizeof(sort_los),compare_xx);
+        qsort(sort_los_table_xx,*nxx,sizeof(sort_los),compare_xx);
+
         return;
 }
 
