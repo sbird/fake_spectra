@@ -1,7 +1,33 @@
+#Change this to where you installed GadgetReader
+GREAD=${CURDIR}/../GadgetReader
 
-CC = icc -openmp -vec_report0 -Wall
+ifeq ($(CC),cc)
+  ICC:=$(shell which icc --tty-only 2>&1)
+  #Can we find icc?
+  ifeq (/icc,$(findstring /icc,${ICC}))
+     CC = icc -vec_report0
+     CXX = icpc
+  else
+     GCC:=$(shell which gcc --tty-only 2>&1)
+     #Can we find gcc?
+     ifeq (/gcc,$(findstring /gcc,${GCC}))
+        CC = gcc
+        CXX = g++
+     endif
+  endif
+endif
+
+#Are we using gcc or icc?
+ifeq (icc,$(findstring icc,${CC}))
+  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD}
+  LINK +=${CXX} -openmp
+else
+  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD}
+  LINK +=${CXX} -openmp $(PRO)
+  LFLAGS += -lm -lgomp
+endif
+#CC = icc -openmp -vec_report0
 #CC= gcc -fopenmp -Wall 
-CFLAGS =  -O2  -g
 OPTS = 
 PG = 
 OPTS += -DPERIODIC
@@ -10,35 +36,35 @@ OPTS += -DPECVEL
 # Use peculiar velocites 
 OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
+OPTS += -DHDF5
+#Support for loading HDF5 files
 #OPTS += -DGADGET3
-#Gadget III has slightly different block headers
-OPTS += -DRAW_SPECTRA
-# Output data file with optical depths rather than flux power spectrum.
+#This is misnamed: in reality it looks for NE instead of NHEP and NHEPP
 #OPTS += -DHELIUM
 # Enable helium absorption
-CFLAGS += $(OPTS)
-COM_INC = parameters.h Makefile
-FFTW =-ldrfftw -ldfftw
-LINK=$(CC)
-#LINK=$(CC) -lm -lgomp -lsrfftw -lsfftw  -L$(FFTW)
+CFLAGS += $(OPTS) 
+CXXFLAGS += $(CFLAGS) -I${GREAD}
+COM_INC = parameters.h
+#LINK=$(CC)
+LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
-.PHONY: all clean
+.PHONY: all clean dist
 
-all: extract statistic
+all: extract statistic rescale
 
-extract: main.o read_snapshot.o extract_spectra.o readgadget.o Makefile
-	# powerspectrum.o mean_flux.o calc_power.o smooth.o
-	$(LINK) $(CFLAGS) -o extract $(PG) main.o $(PG) read_snapshot.o $(PG) extract_spectra.o $(PG) readgadget.o 
-	#$(PG) powerspectrum.o $(PG) mean_flux.o calc_power.o smooth.o $(FFTW)
+extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o
+	$(LINK) $(LFLAGS) $^ -o $@
 
-rescale: rescale.c powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) rescale.c $(FFTW) powerspectrum.o mean_flux.o calc_power.o smooth.o -o rescale 
+rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
+	$(LINK) $(LFLAGS) $^ -o $@
 
-statistic: statistic.c calc_power.o mean_flux.o smooth.o $(COM_INC)
-	$(CC) $(CFLAGS) statistic.c  powerspectrum.o mean_flux.o calc_power.o smooth.o -o statistic $(FFTW)
+statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
+	$(LINK) $(LFLAGS) $^ -o $@
 
-read_snapshot.o: read_snapshot.c $(COM_INC)
-readgadget.o: readgadget.c $(COM_INC)
+rescale.o: rescale.c $(COM_INC)
+statistic.o: statistic.c $(COM_INC)
+read_snapshot.o: read_snapshot.cpp $(COM_INC)
+read_hdf_snapshot.o: read_hdf_snapshot.c $(COM_INC)
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
 smooth.o:smooth.c
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
@@ -47,6 +73,8 @@ mean_flux.o: mean_flux.c $(COM_INC)
 main.o: main.c global_vars.h $(COM_INC)
 
 clean:
-	rm -f *.o  extract
+	rm -f *.o  extract rescale statistic
 
+dist: Makefile calc_power.c extract_spectra.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h
+	tar -czf flux_extract.tar.gz $^
 

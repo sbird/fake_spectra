@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *outname=NULL;
   char c;
-  int j,jj,n;
+  int j,n;
   double redshift;
   double * tau_H1=NULL;
   /*Make sure stdout is line buffered even when not 
