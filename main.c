@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 {
   int64_t Npart;
   int NumLos=0, nxx=0;
+  int64_t MaxRead=256*256*256,StartPart=0;
 
   FILE *output;
   los *los_table=NULL;
@@ -50,7 +51,8 @@ int main(int argc, char **argv)
   char *outdir=NULL;
   char *indir=NULL;
 #ifdef HDF5
-  char *fname=NULL;
+  char *ffname=NULL,*fname=NULL;
+  int fileno=0;
 #endif
   char c;
   int i;
@@ -61,6 +63,7 @@ int main(int argc, char **argv)
   struct particle_data P;
   double * rhoker_H=NULL;
   double * tau_H1=NULL;
+  int hdf5=0;
   interp H1;
 #ifdef HELIUM
   double *tau_He2=NULL;
@@ -123,74 +126,74 @@ int main(int argc, char **argv)
   }
 #endif
   #ifdef HDF5
-    if(!(fname= malloc((strlen(indir)+10)*sizeof(char)))){
+    if(!(fname= malloc((strlen(indir)+10)*sizeof(char))) ||
+       !(ffname= malloc((strlen(indir)+16)*sizeof(char)))){
         fprintf(stderr, "Failed to allocate string mem\n");
         exit(1);
     }
+    /*ffname is a copy of input filename for extension*/
     /*First open first file to get header properties*/
     if ( find_first_hdf_file(indir,fname) == 0
         && load_hdf5_header(fname, &atime, &redshift, &Hz, &box100, &h100) == 0 ){
-        int fileno=0;
-        /*Copy of input filename for extension*/
-        char ffname[strlen(indir)+16];
-        /*See if we have been handed the first file of a set:
-         * our method for dealing with this closely mirrors
-         * HDF5s family mode, but we cannot use this, because
-         * our files may not all be the same size.*/
-        char *zero = strstr(fname,".0.hdf5");
-        /*Replace a possible 0.hdf5 in the filename
-         * with a printf style specifier for opening*/
-        if(zero)
-          strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
-
-        populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
-        /*Loop over files. Keep going until we run out, skipping over broken files.
-         * The call to file_readable is an easy way to shut up HDF5's error message.*/
-        sprintf(ffname,fname,fileno);
-        while(file_readable(ffname) && H5Fis_hdf5(ffname) > 0){
-              /* P is allocated inside load_hdf5_snapshot*/
-              Npart=load_hdf5_snapshot(ffname, &P,&omegab,fileno);
-              if(Npart > 0){
-           #ifndef HELIUM
-              SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
-           #else
-              SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
-           #endif
-              }
-              /*Free the particle list once we don't need it*/
-              if(Npart >= 0)
-              free_parts(&P);
-              fileno++;
-              sprintf(ffname,fname,fileno);
-        }
+            /*See if we have been handed the first file of a set:
+             * our method for dealing with this closely mirrors
+             * HDF5s family mode, but we cannot use this, because
+             * our files may not all be the same size.*/
+            char *zero = strstr(fname,".0.hdf5");
+            /*Replace a possible 0.hdf5 in the filename
+             * with a printf style specifier for opening*/
+            if(zero)
+              strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
+            sprintf(ffname,fname,fileno);
+            hdf5=1;
     }
-    else{
-  #endif
-        int64_t MaxRead=256*256*256,StartPart=0;
-        if(load_header(indir,&atime, &redshift, &Hz, &box100, &h100) < 0){
+    /*If not an HDF5 file, try opening as a gadget file*/
+    else
+#endif
+     if(load_header(indir,&atime, &redshift, &Hz, &box100, &h100) < 0){
                 fprintf(stderr,"No data loaded\n");
                 exit(2);
-        }
-        do{
-                Npart=load_snapshot(indir, StartPart,MaxRead,&P, &omegab);
-                if(Npart <=0){
-                        fprintf(stderr,"No data loaded\n");
-                        exit(99);
-                }
-                populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
-                /*Do the hard SPH interpolation*/
-                #ifndef HELIUM
-                  SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
-                #else
-                  SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
-                #endif
-                /*Free the particle list once we don't need it*/
-                free_parts(&P);
-                StartPart+=Npart;
-        }while(Npart == MaxRead);
-#ifdef HDF5
     }
+    /*Setup the los tables*/
+    populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
+        /*Loop over files. Keep going until we run out, skipping over broken files.
+         * The call to file_readable is an easy way to shut up HDF5's error message.*/
+    while(1){
+          /* P is allocated inside load_snapshot*/
+#ifdef HDF5
+          if(hdf5){
+            /*If we ran out of files, we're done*/
+            if(!(file_readable(ffname) && H5Fis_hdf5(ffname) > 0))
+                    break;
+              Npart=load_hdf5_snapshot(ffname, &P,&omegab,fileno);
+          }
+          else
 #endif
+              Npart=load_snapshot(indir, StartPart,MaxRead,&P, &omegab);
+          if(Npart > 0){
+             /*Do the hard SPH interpolation*/
+          #ifndef HELIUM
+             SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
+          #else
+             SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
+          #endif
+          }
+          /*Free the particle list once we don't need it*/
+          if(Npart >= 0)
+            free_parts(&P);
+#ifdef HDF5
+          if(hdf5){
+                fileno++;
+                sprintf(ffname,fname,fileno);
+          }
+          else
+#endif
+                StartPart+=Npart;
+          /*If we haven't been able to read the maximum number of particles, 
+           * signals we have reached the end of the snapshot set*/
+          if(!hdf5 && (Npart != MaxRead))
+                  break;
+  }
   free(sort_los_table);
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
