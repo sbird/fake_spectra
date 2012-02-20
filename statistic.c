@@ -33,8 +33,13 @@ int main(int argc, char **argv)
 #ifdef HELIUM
   double *tau_He2=NULL;
 #endif
+#ifndef NO_HEADER
+  int pad[32];
+#endif
+  int nbins=NBINS;
   int  NumLos=0;
   int UsedLos=0;
+  double box100;
   FILE *input;
   /*Which statistic to use: 1 is pdf, 2 is power,
    * 3 is transverse power, 4 is bispectrum.
@@ -44,7 +49,7 @@ int main(int argc, char **argv)
   double scale=1.0;
 /*   double tau_effs[11]={0.178000, 0.2192, 0.2714000, 0.3285330, 0.379867, 0.42900, 0.513000, 0.600400, 0.657800,  0.756733,  0.896000}; */
 /*   double tau_eff; */
-  double flux_power[(NBINS+1)/2];
+  double *flux_power;
   double flux_pdf[PBINS];
   char *inname=NULL;
   char *outdir=NULL;
@@ -53,7 +58,11 @@ int main(int argc, char **argv)
   /*Make sure stdout is line buffered even when not
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
+#ifdef NO_HEADER
   while((c = getopt(argc, argv, "s:o:i:n:u:rh")) !=-1)
+#else
+  while((c = getopt(argc, argv, "s:o:i:u:rh")) !=-1)
+#endif
   {
     switch(c)
       {
@@ -63,9 +72,11 @@ int main(int argc, char **argv)
         case 'i':
            inname=optarg;
            break;
+#ifdef NO_HEADER
         case 'n':
            NumLos=atoi(optarg);
            break;
+#endif
         case 's':
            statistic+=atoi(optarg);
            break;
@@ -82,13 +93,6 @@ int main(int argc, char **argv)
            exit(1);
       }
   }
-  if(UsedLos == 0)
-          UsedLos = NumLos;
-  if(NumLos <=0){
-          fprintf(stderr,"Need NUMLOS >0\n");
-          help();
-          exit(99);
-  }
   if( !outdir || !inname){
          fprintf(stderr, "Specify output (%s) and input (%s) directories.\n",outdir, inname);
          help();
@@ -99,57 +103,77 @@ int main(int argc, char **argv)
           help();
           exit(99);
   }
-
-  if(!(tau_H1 = (double *) calloc((UsedLos * NBINS) , sizeof(double))))
-  {
+  if(!(input=fopen(inname,"rb"))){
+        fprintf(stderr, "Could not open file %s for reading!\n",inname);
+        exit(2);
+  }
+  /*read the header*/
+  fread(&redshift,sizeof(double),1,input);
+#ifndef NO_HEADER
+  /*Read a bit of a header. */
+  fread(&box100,sizeof(double),1,input);
+  fread(&nbins,sizeof(int),1,input);
+  fread(&NumLos,sizeof(int),1,input);
+  /*Write some space for future header data: total header size is
+   * 128 bytes, with 24 full.*/
+  fread(&pad,sizeof(int),32-6,input);
+#endif
+  if(UsedLos == 0)
+          UsedLos = NumLos;
+  printf("%s using %d sightlines\n",inname,UsedLos);
+  if(NumLos <=0){
+          fprintf(stderr,"Need NUMLOS >0\n");
+          help();
+          exit(99);
+  }
+  if(!(tau_H1 = (double *) calloc((UsedLos * nbins) , sizeof(double)))){
       fprintf(stderr, "Failed to allocate memory!\n");
       exit(1);
   }
+  if(!(flux_power = (double *) calloc(((nbins+1)/2) , sizeof(double)))){
+      fprintf(stderr, "Failed to allocate memory for flux_power\n");
+      exit(1);
+  }
 #ifdef HELIUM
-  if(!(tau_He2 = (double *) calloc((UsedLos * NBINS) , sizeof(double))))
+  if(!(tau_He2 = (double *) calloc((UsedLos * nbins) , sizeof(double))))
   {
       fprintf(stderr, "Failed to allocate helium memory!\n");
       exit(1);
   }
 #endif
-  if(!(input=fopen(inname,"rb"))){
-        fprintf(stderr, "Could not open file %s for reading!\n",inname);
-        exit(2);
-  }
-  fread(&redshift,sizeof(double),1,input);
-  fseek(input,sizeof(double)*NBINS*NumLos*4,SEEK_CUR);
-  if(fread(tau_H1,sizeof(double),NBINS*UsedLos,input) != NBINS*UsedLos)     /* HI optical depth */
+  fseek(input,sizeof(double)*nbins*NumLos*4,SEEK_CUR);
+  if(fread(tau_H1,sizeof(double),nbins*UsedLos,input) != nbins*UsedLos)     /* HI optical depth */
   {
           fprintf(stderr, "Could not read spectra!\n");
           exit(2);
   }
 #ifdef HELIUM
-  fseek(input,sizeof(double)*NBINS*NumLos*3,SEEK_CUR);
-  if(fread(tau_He2,sizeof(double),NBINS*NumLos,input) !=NBINS*NumLos)   /* HeII optical depth */
+  fseek(input,sizeof(double)*nbins*NumLos*3,SEEK_CUR);
+  if(fread(tau_He2,sizeof(double),nbins*NumLos,input) !=nbins*NumLos)   /* HeII optical depth */
   {
           fprintf(stderr, "Could not read spectra!\n");
           exit(2);
   }
 #endif
   fclose(input);
-  printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",UsedLos,tau_H1[0],tau_H1[NBINS*UsedLos-1]);
+  printf("NumLos=%d tau_H1[0]=%g tau_H1[N]=%g\n",UsedLos,tau_H1[0],tau_H1[nbins*UsedLos-1]);
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
 /*   tau_eff=tau_effs[(int)(redshift-2.2)*5]; */
   if(rescale)
   {
-    scale=mean_flux(tau_H1, NBINS*UsedLos,exp(-TAU_EFF),1e-5 );
+    scale=mean_flux(tau_H1, nbins*UsedLos,exp(-TAU_EFF),1e-5 );
     printf("scale=%g\n",scale);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic & 2){
       calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos);
       sprintf(suffix,"_flux_power.txt");
-      if(output(flux_power, (NBINS+1)/2,suffix, outdir))
+      if(output(flux_power, (nbins+1)/2,suffix, outdir))
           exit(1);
   }
   if(statistic & 1){
-      calc_pdf(flux_pdf, tau_H1,scale,UsedLos);
+      calc_pdf(flux_pdf, tau_H1,scale,UsedLos,nbins);
       sprintf(suffix,"_flux_pdf.txt");
       if(output(flux_pdf, PBINS,suffix, outdir))
           exit(1);
@@ -185,17 +209,17 @@ int output(double *array, int size, char *suffix, char *outdir)
      return 0;
 }
 
-void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos)
+void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos, int nbins)
 {
     int i;
     for(i=0;i<PBINS; i++)
         flux_pdf[i]=0;
     /* Calculate flux pdf */
-    for(i=0;i<NBINS*NumLos;i++)
+    for(i=0;i<nbins*NumLos;i++)
         flux_pdf[(int)round(exp(-scale*tau_H1[i])*(PBINS-1))]++;
     /*Normalise*/
     for(i=0;i<PBINS;i++){
-        flux_pdf[i]/=(NumLos*NBINS);
+        flux_pdf[i]/=(NumLos*nbins);
         flux_pdf[i]*=(PBINS-1);
     }
     return;
