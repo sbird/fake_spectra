@@ -237,10 +237,10 @@ int main(int argc, char **argv)
   {
           fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
   }
+  fwrite(&redshift,sizeof(double),1,output);
 #ifndef NO_HEADER
   /*Write a bit of a header. */
   i=NBINS;
-  fwrite(&redshift,sizeof(double),1,output);
   fwrite(&box100,sizeof(double),1,output);
   fwrite(&i,sizeof(int),1,output);
   fwrite(&NumLos,sizeof(int),1,output);
