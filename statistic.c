@@ -228,8 +228,8 @@ void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos, int nb
 /*****************************************************************************/
 void help()
 {
-           fprintf(stderr, "Usage: ./statistic -n NUMLOS -i input spectra -o output_directory\n"
-                           "-r turns off rescaling -s statistic: 1 is pdf, 2 is power,\n"
+           fprintf(stderr, "Usage: ./statistic -i input spectra -o output_directory\n"
+                           "-r turns off rescaling -s statistic: bit 1 is pdf, 2 is power,\n"
                            "3 is transverse power, 4 is bispectrum\n");
            return;
 }
