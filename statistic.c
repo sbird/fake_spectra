@@ -93,10 +93,13 @@ int main(int argc, char **argv)
            exit(1);
       }
   }
-  if( !outdir || !inname){
-         fprintf(stderr, "Specify output (%s) and input (%s) directories.\n",outdir, inname);
+  if(!inname){
+         fprintf(stderr, "Specify input (%s) directory with -i.\n",inname);
          help();
          exit(99);
+  }
+  if(!outdir){
+      outdir = inname;
   }
   if(!(statistic & 1 || statistic & 2)){
           fprintf(stderr, "Only flux pdf and flux power are implemented.\n");
@@ -188,7 +191,7 @@ int main(int argc, char **argv)
 
 int output(double *array, int size, char *suffix, char *outdir)
 {
-     char *outname=NULL;
+     char *outname=NULL, *replaceable;
      FILE *out;
      int j;
      outname=malloc((strlen(outdir)+strlen(suffix)+2)*sizeof(char));
@@ -196,6 +199,12 @@ int output(double *array, int size, char *suffix, char *outdir)
      {
        fprintf(stderr, "Some problem with the strings\n");
        return 1;
+     }
+     /*Replace _spectra.dat in the filename with the suffix, instead of appending*/
+     replaceable = strstr(outname, "_spectra.dat");
+     if(replaceable){
+       strcpy(replaceable,suffix);
+       *(replaceable+strlen(suffix))='\0';
      }
      if(!(out=fopen(outname,"w")))
      {
