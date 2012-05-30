@@ -156,6 +156,17 @@ int main(int argc, char **argv)
     }
     /*Setup the los tables*/
     populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
+  /*Output the raw spectra to a file*/ 
+  if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  {
+    fprintf(stderr, "Some problem with file output strings\n");
+    exit(1);
+  }
+  if(!(output=fopen(outname,"w")))
+  {
+          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
+          exit(1);
+  }
         /*Loop over files. Keep going until we run out, skipping over broken files.
          * The call to file_readable is an easy way to shut up HDF5's error message.*/
     while(1){
@@ -226,16 +237,6 @@ int main(int argc, char **argv)
          Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime,omegab);
        #endif
      }
-  }
-  /*Output the raw spectra to a file*/ 
-  if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
-  {
-    fprintf(stderr, "Some problem with file output strings\n");
-    exit(1);
-  }
-  if(!(output=fopen(outname,"w")))
-  {
-          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
   }
   fwrite(&redshift,sizeof(double),1,output);
 #ifndef NO_HEADER
