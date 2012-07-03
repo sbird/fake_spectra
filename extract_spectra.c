@@ -286,11 +286,15 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	        dist2 = dr2 + (dz*dz);
 	        if (dist2 > h4)
 	  	   continue;
-	        q = sqrt(dist2 * hinv2);
-	        if (q <= 1.)
-	          kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
-	        else
-	          kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
+                if(arepo)
+                    kernel = 1.;
+                else{
+	            q = sqrt(dist2 * hinv2);
+	            if (q <= 1.)
+                        kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
+	            else
+	                kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
+                }
 	        
 	        kernel *= hinv3; 
 
