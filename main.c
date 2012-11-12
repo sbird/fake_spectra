@@ -155,7 +155,8 @@ int main(int argc, char **argv)
                 exit(2);
     }
     /*Setup the los tables*/
-    populate_los_table(los_table,NumLos,sort_los_table,&nxx, ext_table, box100);
+    populate_los_table(los_table,NumLos, ext_table, box100);
+    populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
   /*Output the raw spectra to a file*/ 
   if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
@@ -290,12 +291,11 @@ int compare_xx(const void *a, const void *b)
 }
 
 /* Populate the line of sight table, either by random numbers or with some external input. */
-void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx, char * ext_table, double box)
+void populate_los_table(los * los_table, int NumLos, char * ext_table, double box)
 {
         FILE * fh;
         int lines=0;
-        int axis,i;
-        int nother=0;
+        int axis;
         float xx, yy, zz;
         /*If we have a file path, load the sightline table from there*/
         if(ext_table){
@@ -339,6 +339,12 @@ void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, 
                         los_table[lines].zz=drand48()*box;
                 }
         }
+}
+
+/*Populate the los table index*/
+void populate_sort_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx)
+{
+        int i,nother=0;
         /*Make a table with a bit more indirection, so we can sort it*/
         /*Need a pointer to the separate structure for los with iaxis=1*/
         sort_los *sort_los_table_xx;

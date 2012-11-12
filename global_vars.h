@@ -82,7 +82,8 @@ int load_hdf5_header(char *infname, double  *atime, double *redshift, double * H
 int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno);
 int find_first_hdf_file(const char *infname, char *fname);
 #endif
-void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx, char * ext_table, double box);
+void populate_los_table(los * los_table, int NumLos, char * ext_table, double box);
+void populate_sort_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx);
 
 #ifndef HELIUM
 void SPH_Interpolation(double * rhoker_H, interp * H1, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
