@@ -85,11 +85,11 @@ int find_first_hdf_file(const char *infname, char *fname);
 void populate_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx, char * ext_table, double box);
 
 #ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
+void SPH_Interpolation(double * rhoker_H, interp * H1, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 #else
 void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 #endif
 
 #endif

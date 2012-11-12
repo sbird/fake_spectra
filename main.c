@@ -184,9 +184,9 @@ int main(int argc, char **argv)
           if(Npart > 0){
              /*Do the hard SPH interpolation*/
           #ifndef HELIUM
-             SPH_Interpolation(rhoker_H,&H1,Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
+             SPH_Interpolation(rhoker_H,&H1,NBINS, Npart, XH, NumLos,box100, los_table,sort_los_table,nxx, &P);
           #else
-             SPH_Interpolation(rhoker_H,&H1, &He2, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
+             SPH_Interpolation(rhoker_H,&H1, &He2, NBINS, Npart, XH, NumLos,box100, los_table, sort_los_table, nxx,&P);
           #endif
           }
           /*Free the particle list once we don't need it*/

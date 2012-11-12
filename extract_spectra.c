@@ -177,16 +177,15 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
    }
   return;
 }
-
 /*The size of the thread cache to use below*/
 #define CACHESZ 128
 
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
 #ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * H1, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 #else
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 #endif
 {
       /* Loop over particles in LOS and do the SPH interpolation */
@@ -194,7 +193,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
        * Then adds the total density, temp. and velocity for near particles to 
        * the binned totals for that sightline. Is O(N_part)*O(log n_los) */
     const double zmingrid = 0.0;
-    const double dzgrid   = (boxsize-zmingrid) / (double)NBINS; /* bin size (kpc) */
+    const double dzgrid   = (boxsize-zmingrid) / (double)nbins; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
     int i;
@@ -243,7 +242,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
           const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
           const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
-          const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
+          const double mu = 1.0/(massfrac*(0.75+(*P).Ne[i]) + 0.25);
           const double temp = (*P).U[i]*mu; /* T in some strange units */
           double dzmax,zgrid;
 	     
@@ -263,7 +262,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
 	       {
                  double deltaz,dz,dist2,q,kernel,velker,temker;
 	         j = iiz;
-	         j = ((j-1+10*NBINS) % NBINS);
+	         j = ((j-1+10*nbins) % nbins);
 	         
 	         zgrid = zmingrid + (double)(j) * dzgrid;
 	         
@@ -304,15 +303,15 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int P
                 /*Only one thread can update the global memory at a time.
                  * This adds a small thread-local cache.
                  * Add stuff to the cache*/
-                bins[cindex]=iproc*NBINS+j;
-                rho_H[cindex]  += kernel * XH;
-	        rho_H1[cindex] += kernel * XH * H1frac;
-	        veloc_H1[cindex] += velker * XH * H1frac;
-	        temp_H1[cindex] += temker * XH * H1frac;
+                bins[cindex]=iproc*nbins+j;
+                rho_H[cindex]  += kernel * massfrac;
+	        rho_H1[cindex] += kernel * massfrac * H1frac;
+	        veloc_H1[cindex] += velker * massfrac * H1frac;
+	        temp_H1[cindex] += temker * massfrac * H1frac;
                 #ifdef HELIUM
-                  rho_He2[cindex] += kernel * XH * He2frac;
-                  veloc_He2[cindex] += velker * XH * He2frac;
-                  temp_He2[cindex] += temker * XH * He2frac;
+                  rho_He2[cindex] += kernel * massfrac * He2frac;
+                  veloc_He2[cindex] += velker * massfrac * He2frac;
+                  temp_He2[cindex] += temker * massfrac * He2frac;
                 #endif
                 cindex++;
                 /*Empty the cache when it is full
