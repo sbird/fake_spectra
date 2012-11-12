@@ -70,7 +70,8 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
         (*H1).veloc[i]=1;
         (*H1).temp[i]=1;
       }
-      rhoker_H[i] *= mscale*pow(rscale,-3);
+      if(rhoker_H)
+         rhoker_H[i] *= mscale*pow(rscale,-3);
 #ifdef HELIUM
       if((*He2).rho[i]){
        (*He2).veloc[i]  = vscale*(*He2).veloc[i]/(*He2).rho[i]; /* HI weighted km s^-1 */ 
@@ -166,15 +167,16 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 	}             /* HeI Spectrum convolution */
 #endif //HELIUM
       
-   for(i = 0;i<NBINS;i++)
-   {
-      (*H1).rho[i]      /= rhoker_H[i];  /* HI/H */
-   #ifdef HELIUM
-      (*He2).rho[i]      /= rhoker_H[i];  /* HI/H */
-   #endif /*HELIUM*/
-      rhoker_H[i]     = log10(mscale*rhoker_H[i]/critH);   /* log H density normalised by mean 
-                                                       H density of universe */
-   }
+   if(rhoker_H)
+      for(i = 0;i<NBINS;i++)
+      {
+         (*H1).rho[i]      /= rhoker_H[i];  /* HI/H */
+      #ifdef HELIUM
+         (*He2).rho[i]      /= rhoker_H[i];  /* HI/H */
+      #endif /*HELIUM*/
+         rhoker_H[i]     = log10(mscale*rhoker_H[i]/critH);   /* log H density normalised by mean 
+                                                          H density of universe */
+      }
   return;
 }
 /*The size of the thread cache to use below*/
@@ -320,7 +322,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                   #pragma omp critical
                   {
                           for(cindex=0;cindex<CACHESZ;cindex++){
-                             rhoker_H[bins[cindex]]  += rho_H[cindex];
 	                     (*H1).rho[bins[cindex]] += rho_H1[cindex];
 	                     (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
 	                     (*H1).temp[bins[cindex]] +=temp_H1[cindex];
@@ -330,6 +331,9 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
 	                     (*He2).temp[bins[cindex]] +=temp_He2[cindex];
                            #endif
                           }
+			  if(rhoker_H)
+                             for(cindex=0;cindex<CACHESZ;cindex++)
+                                rhoker_H[bins[cindex]]  += rho_H[cindex];
                   }/*End critical block*/
                   /* Zero the cache at the end*/
                   for(cindex=0;cindex<CACHESZ;cindex++){
@@ -347,7 +351,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
     #pragma omp critical
     {
             for(i=0;i<cindex;i++){
-               rhoker_H[bins[i]]  += rho_H[i];
                (*H1).rho[bins[i]] += rho_H1[i];
                (*H1).veloc[bins[i]] += veloc_H1[i];
                (*H1).temp[bins[i]] +=temp_H1[i];
@@ -357,6 +360,9 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                (*He2).temp[bins[i]] +=temp_He2[i];
              #endif
             }
+	    if(rhoker_H)
+               for(cindex=0;cindex<CACHESZ;cindex++)
+                  rhoker_H[bins[cindex]]  += rho_H[cindex];
     }/*End critical block*/
   }/*End parallel*/
     return;
