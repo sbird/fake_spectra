@@ -1,5 +1,7 @@
 #Change this to where you installed GadgetReader
 GREAD=${CURDIR}/../GadgetReader
+#Python include path
+PYINC=-I/usr/local/python/include/python2.6 -I/usr/local/python/x86_64/include/python2.6
 
 ifeq ($(CC),cc)
   ICC:=$(shell which icc --tty-only 2>&1)
@@ -19,10 +21,10 @@ endif
 
 #Are we using gcc or icc?
 ifeq (icc,$(findstring icc,${CC}))
-  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD}
+  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD} -fpic
   LINK +=${CXX} -openmp
 else
-  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD}
+  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD} -fPIC
   LINK +=${CXX} -openmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
@@ -38,7 +40,7 @@ OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
 OPTS += -DHDF5
 #Support for loading HDF5 files
-#OPTS += -DGADGET3
+OPTS += -DGADGET3 #-DJAMIE
 #This is misnamed: in reality it looks for NE instead of NHEP and NHEPP
 #OPTS += -DHELIUM
 # Enable helium absorption
@@ -50,9 +52,9 @@ LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist
 
-all: extract statistic rescale
+all: extract statistic rescale spectra.so
 
-extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o
+extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o
 	$(LINK) $(LFLAGS) $^ -o $@
 
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
@@ -61,6 +63,7 @@ rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
 statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
 	$(LINK) $(LFLAGS) $^ -o $@
 
+init.o: init.c $(COM_INC)
 rescale.o: rescale.c $(COM_INC)
 statistic.o: statistic.c $(COM_INC)
 read_snapshot.o: read_snapshot.cpp $(COM_INC)
@@ -72,6 +75,10 @@ powerspectrum.o: powerspectrum.c  $(COM_INC)
 mean_flux.o: mean_flux.c $(COM_INC)
 main.o: main.c global_vars.h $(COM_INC)
 
+py_module.o: py_module.c
+	$(CC) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^ -o $@
+spectra.so: py_module.o extract_spectra.o init.o
+	$(LINK) -shared $^ -o $@
 clean:
 	rm -f *.o  extract rescale statistic
 
