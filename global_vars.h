@@ -63,7 +63,7 @@ typedef struct _sort_los
 #endif
 
 /*Functions to allocate memory.*/
-int InitLOSMemory(interp * species, int NumLos);
+int InitLOSMemory(interp * species, int NumLos, int nbins);
 void FreeLOSMemory(interp * species);
 int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 
