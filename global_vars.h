@@ -12,9 +12,7 @@ struct particle_data
   float *Vel;
   float *Mass;
   float *U, *NH0, *Ne, *h;
-#ifdef HELIUM
   float *NHep;
-#endif
 };
 typedef struct particle_data pdata;
 
@@ -86,11 +84,10 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
 void populate_sort_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx);
 
 #ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 #else
 void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 #endif
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 
 #endif

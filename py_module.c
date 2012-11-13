@@ -9,7 +9,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Things which should be from input
     int nbins, NumLos;
     long long Npart;
-    double massfrac,box100;
+    double box100;
 
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h;
@@ -24,7 +24,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "iddO!O!O!O!O!O!O!O!O!O!O!",&nbins, &massfrac, &box100, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
+    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
       return NULL;
 
     NumLos = xx->dimensions[0];
@@ -53,7 +53,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
-    SPH_Interpolation(NULL,&species,nbins, Npart, massfrac, NumLos, box100, los_table,sort_los_table,nxx, &P);
+    SPH_Interpolation(NULL,&species,NULL,nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     //Build a tuple from the interp struct
     PyObject * for_return = Py_BuildValue("ddd",&(species.rho), &(species.temp), &(species.veloc));
@@ -74,7 +74,9 @@ PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
 
 static PyMethodDef spectrae[] = {
   {"SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
-   "Find LOS density by SPH interpolation"},
+   "Find LOS density by SPH interpolation: "
+   "    Arguments: nbins, massfrac,  "
+   "    "},
   {"Compute_Absorption", Py_Compute_Absorption, METH_VARARGS,
    "Compute absorption due to density"},
   {NULL, NULL, 0, NULL},

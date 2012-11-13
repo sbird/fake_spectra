@@ -184,11 +184,7 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
-#ifndef HELIUM
-void SPH_Interpolation(double * rhoker_H, interp * H1, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
-#else
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const double massfrac, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
-#endif
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 {
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which sightlines are near the particle using the sorted los table 
@@ -206,9 +202,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
    * massive deadlock around the omp critial section.*/
    int cindex=0;
    double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
-#ifdef HELIUM
    double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
-#endif
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
@@ -237,14 +231,12 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
           /*Load a sightline from the table.*/
           const int iaxis = los_table[iproc].axis;
           const double H1frac = (*P).NH0[i]; /* nHI/nH */
-#ifdef HELIUM
-          const double He2frac = (*P).NHep[i]; /* nHeII/nH */
-#endif
+          /* (*P).NHep[i] == nHeII/nH */
           const double hinv2 = 1. / h2; /* 1/h^2 */
           const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
           const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
-          const double mu = 1.0/(massfrac*(0.75+(*P).Ne[i]) + 0.25);
+          const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
           const double temp = (*P).U[i]*mu; /* T in some strange units */
           double dzmax,zgrid;
 	     
@@ -306,15 +298,15 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                  * This adds a small thread-local cache.
                  * Add stuff to the cache*/
                 bins[cindex]=iproc*nbins+j;
-                rho_H[cindex]  += kernel * massfrac;
-	        rho_H1[cindex] += kernel * massfrac * H1frac;
-	        veloc_H1[cindex] += velker * massfrac * H1frac;
-	        temp_H1[cindex] += temker * massfrac * H1frac;
-                #ifdef HELIUM
-                  rho_He2[cindex] += kernel * massfrac * He2frac;
-                  veloc_He2[cindex] += velker * massfrac * He2frac;
-                  temp_He2[cindex] += temker * massfrac * He2frac;
-                #endif
+                rho_H[cindex]  += kernel * XH;
+	            rho_H1[cindex] += kernel * XH * H1frac;
+	            veloc_H1[cindex] += velker * XH * H1frac;
+	            temp_H1[cindex] += temker * XH * H1frac;
+                if(He2){
+                  rho_He2[cindex] += kernel * XH * (*P).NHep[i];
+                  veloc_He2[cindex] += velker * XH * (*P).NHep[i];
+                  temp_He2[cindex] += temker * XH * (*P).NHep[i];
+                }
                 cindex++;
                 /*Empty the cache when it is full
                  * This is a critical section*/
@@ -322,26 +314,26 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                   #pragma omp critical
                   {
                           for(cindex=0;cindex<CACHESZ;cindex++){
-	                     (*H1).rho[bins[cindex]] += rho_H1[cindex];
-	                     (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
-	                     (*H1).temp[bins[cindex]] +=temp_H1[cindex];
-                           #ifdef HELIUM
-	                     (*He2).rho[bins[cindex]] += rho_He2[cindex];
-	                     (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
-	                     (*He2).temp[bins[cindex]] +=temp_He2[cindex];
-                           #endif
+	                        (*H1).rho[bins[cindex]] += rho_H1[cindex];
+	                        (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
+	                        (*H1).temp[bins[cindex]] +=temp_H1[cindex];
                           }
-			  if(rhoker_H)
+                          if(He2)
+                              for(cindex=0;cindex<CACHESZ;cindex++){
+                                 (*He2).rho[bins[cindex]] += rho_He2[cindex];
+                                 (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
+                                 (*He2).temp[bins[cindex]] +=temp_He2[cindex];
+                              }
+			               if(rhoker_H)
                              for(cindex=0;cindex<CACHESZ;cindex++)
                                 rhoker_H[bins[cindex]]  += rho_H[cindex];
                   }/*End critical block*/
                   /* Zero the cache at the end*/
-                  for(cindex=0;cindex<CACHESZ;cindex++){
-                          rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
-                  #ifdef HELIUM
-                          rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
-                  #endif
-                  }
+                  for(cindex=0;cindex<CACHESZ;cindex++)
+                      rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
+		          if(He2)
+                      for(cindex=0;cindex<CACHESZ;cindex++)
+                         rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
                   cindex=0;
                 }
 	       }        /* loop over contributing vertices */
@@ -354,13 +346,14 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                (*H1).rho[bins[i]] += rho_H1[i];
                (*H1).veloc[bins[i]] += veloc_H1[i];
                (*H1).temp[bins[i]] +=temp_H1[i];
-             #ifdef HELIUM
-               (*He2).rho[bins[i]] += rho_He2[i];
-               (*He2).veloc[bins[i]] += veloc_He2[i];
-               (*He2).temp[bins[i]] +=temp_He2[i];
-             #endif
             }
-	    if(rhoker_H)
+            if(He2)
+                for(i=0;i<cindex;i++){
+                   (*He2).rho[bins[i]] += rho_He2[i];
+                   (*He2).veloc[bins[i]] += veloc_He2[i];
+                   (*He2).temp[bins[i]] +=temp_He2[i];
+                }
+	        if(rhoker_H)
                for(cindex=0;cindex<CACHESZ;cindex++)
                   rhoker_H[bins[cindex]]  += rho_H[cindex];
     }/*End critical block*/
