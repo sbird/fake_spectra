@@ -236,6 +236,14 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
           const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
           const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
+          /*Mean molecular weight:
+           * \mu = 1 / molecules per unit weight
+           *     = X + Y /4 + E
+           *     where E = Ne * XH, and Y = (1-XH) / XH.
+           *     Can neglect metals as they are heavy.
+           *     Leading contribution is from electrons, which is already included
+           *     [+ Z / (12->16)] from metal species
+           *     [+ Z/16*4 ] for OIV from electrons. */
           const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
           const double temp = (*P).U[i]*mu; /* T in some strange units */
           double dzmax,zgrid;
