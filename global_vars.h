@@ -24,9 +24,6 @@ struct _interp
 };
 typedef struct _interp interp;
 
-/*Are we arepo?*/
-static int arepo;
-
 /*Allocate and free memory for the particle tables*/
 #ifdef __cplusplus
 extern "C"

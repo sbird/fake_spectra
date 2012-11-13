@@ -279,8 +279,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
 	        dist2 = dr2 + (dz*dz);
 	        if (dist2 > h4)
 	  	   continue;
-                if(arepo)
-                    kernel = 1.;
                 else{
 	            q = sqrt(dist2 * hinv2);
 	            if (q <= 1.)

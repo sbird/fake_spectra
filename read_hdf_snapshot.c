@@ -211,7 +211,6 @@ int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno)
         }
     /*Are we arepo? If we are we should have this array.*/
     if ( H5LTfind_dataset(hdf_group, "Number of faces of cell")){
-        arepo=1;
         /*Read in density*/
         if (length != get_single_dataset("Density",(*P).h,length,&hdf_group,fileno))
                 goto exit;
@@ -222,7 +221,6 @@ int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno)
                 (*P).h[i] = 1.5*pow(3*(*P).Mass[i]/(*P).h[i]/4/M_PI,0.33333333);
      }
     else{
-        arepo=0;
         /* The smoothing length for gadget*/
         if (length != get_single_dataset("SmoothingLength",(*P).h,length,&hdf_group,fileno))
             goto exit;
