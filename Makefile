@@ -52,7 +52,7 @@ LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist
 
-all: extract statistic rescale spectra.so
+all: extract statistic rescale _spectra_priv.so
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o
 	$(LINK) $(LFLAGS) $^ -o $@
@@ -77,7 +77,7 @@ main.o: main.c global_vars.h $(COM_INC)
 
 py_module.o: py_module.c
 	$(CC) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^ -o $@
-spectra.so: py_module.o extract_spectra.o init.o
+_spectra_priv.so: py_module.o extract_spectra.o init.o
 	$(LINK) -shared $^ -o $@
 clean:
 	rm -f *.o  extract rescale statistic

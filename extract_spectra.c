@@ -304,10 +304,14 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                  * This adds a small thread-local cache.
                  * Add stuff to the cache*/
                 bins[cindex]=iproc*nbins+j;
-                rho_H[cindex]  += kernel * XH;
-	            rho_H1[cindex] += kernel * XH * H1frac;
-	            veloc_H1[cindex] += velker * XH * H1frac;
-	            temp_H1[cindex] += temker * XH * H1frac;
+                if(rhoker_H)
+                    rho_H[cindex]  += kernel * XH;
+	        rho_H1[cindex] += kernel * XH * H1frac;
+	        veloc_H1[cindex] += velker * XH * H1frac;
+	        temp_H1[cindex] += temker * XH * H1frac;
+
+/*                 rho_metals[cindex] += kernel*XH *metalfrac; */
+
                 if(He2){
                   rho_He2[cindex] += kernel * XH * (*P).NHep[i];
                   veloc_He2[cindex] += velker * XH * (*P).NHep[i];
@@ -330,9 +334,9 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                                  (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
                                  (*He2).temp[bins[cindex]] +=temp_He2[cindex];
                               }
-			               if(rhoker_H)
+			  if(rhoker_H)
                              for(cindex=0;cindex<CACHESZ;cindex++)
-                                rhoker_H[bins[cindex]]  += rho_H[cindex];
+                                    rhoker_H[bins[cindex]]  += rho_H[cindex];
                   }/*End critical block*/
                   /* Zero the cache at the end*/
                   for(cindex=0;cindex<CACHESZ;cindex++)

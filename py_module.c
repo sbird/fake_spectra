@@ -2,7 +2,7 @@
 #include "numpy/arrayobject.h"
 #include "global_vars.h"
 
-/*Wraps the flux_extractor into a python module called spectra*/
+/*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 {
@@ -12,6 +12,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     double box100;
 
     //Input variables in np format
+    PyObject * data;
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h;
     PyArrayObject *xx, *yy, *zz, *axis;
 
@@ -34,7 +35,6 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los_table=malloc(NumLos*sizeof(sort_los));
     InitLOSMemory(&species,NumLos, nbins);
     //Initialise P from the data in the input numpy arrays.
-    //Need a way to make sure this data is a float
     P.Pos = (float *) pos->data;
     P.Vel = (float *) vel->data;
     P.Mass = (float *) mass->data;
@@ -56,7 +56,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     SPH_Interpolation(NULL,&species,NULL,nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     //Build a tuple from the interp struct
-    PyObject * for_return = Py_BuildValue("ddd",&(species.rho), &(species.temp), &(species.veloc));
+    PyObject * for_return = Py_BuildValue("O!O!O!",&PyArray_Type, &(species.rho), &PyArray_Type, &(species.temp), &PyArray_Type, &(species.veloc));
     //Free
     FreeLOSMemory(&species);
     free(los_table);
@@ -65,26 +65,17 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
-{
-    /*Not implemented*/
-    return NULL;
-}
-
-
 static PyMethodDef spectrae[] = {
-  {"SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
+  {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
    "Find LOS density by SPH interpolation: "
-   "    Arguments: nbins, massfrac,  "
+   "    Arguments: nbins, pos, vel, mass, u, nh0, ne, h, axis array, xx, yy, zz"
    "    "},
-  {"Compute_Absorption", Py_Compute_Absorption, METH_VARARGS,
-   "Compute absorption due to density"},
   {NULL, NULL, 0, NULL},
 };
 
 PyMODINIT_FUNC
-initspectra(void)
+init_spectra_priv(void)
 {
-  Py_InitModule("spectra", spectrae);
+  Py_InitModule("_spectra_priv", spectrae);
   import_array();
 }
