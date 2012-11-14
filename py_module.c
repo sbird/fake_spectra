@@ -20,7 +20,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     interp species;
 
     //Temp variables
-    int nxx, i;
+    int nxx=0, i;
     los *los_table=NULL;
     sort_los *sort_los_table=NULL;
     struct particle_data P;
