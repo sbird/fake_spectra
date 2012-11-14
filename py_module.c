@@ -10,7 +10,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     int nbins, NumLos;
     long long Npart;
     double box100;
-    npy_intp size;
+    npy_intp size[2];
     //Input variables in np format
     PyObject * data;
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h;
@@ -56,10 +56,11 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     SPH_Interpolation(NULL,&species,NULL,nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
-    size = NumLos*nbins;
-    rho_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
-    vel_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
-    temp_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
+    size[0] = NumLos;
+    size[1] = nbins;
+    rho_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
+    vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
+    temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     /*Is there a better way to do this?*/
     for(i=0; i< NumLos*nbins; i++){
         ((float *) rho_out->data)[i] = species.rho[i];

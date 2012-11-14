@@ -1,6 +1,5 @@
 import numpy as np
 import hsml
-
 from _spectra_priv import _SPH_Interpolate
 
 def SPH_Interpolate(data, los_table, nbins, box):
@@ -25,4 +24,4 @@ def SPH_Interpolate(data, los_table, nbins, box):
     yy=np.array(los_table.yy, dtype=np.float32)
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
-    return _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, hh, axis, xx, yy, zz)
+    return  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, hh, axis, xx, yy, zz)
