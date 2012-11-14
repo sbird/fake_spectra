@@ -10,11 +10,12 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     int nbins, NumLos;
     long long Npart;
     double box100;
-
+    npy_intp size;
     //Input variables in np format
     PyObject * data;
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h;
     PyArrayObject *xx, *yy, *zz, *axis;
+    PyArrayObject * rho_out, *temp_out, *vel_out;
 
     //For storing output
     interp species;
@@ -45,18 +46,28 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Initialise los_table from input
     for(i=0; i< NumLos; i++){
-	los_table[i].axis = ((int *) axis->data)[i];
-	los_table[i].xx = ((float *) xx->data)[i];
-	los_table[i].yy = ((float *) yy->data)[i];
-	los_table[i].zz = ((float *) zz->data)[i];
+        los_table[i].axis = ((int *) axis->data)[i];
+        los_table[i].xx = ((float *) xx->data)[i];
+        los_table[i].yy = ((float *) yy->data)[i];
+        los_table[i].zz = ((float *) zz->data)[i];
     }
 
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     SPH_Interpolation(NULL,&species,NULL,nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
+    size = NumLos*nbins;
+    rho_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
+    vel_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
+    temp_out = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_FLOAT);
+    /*Is there a better way to do this?*/
+    for(i=0; i< NumLos*nbins; i++){
+        ((float *) rho_out->data)[i] = species.rho[i];
+        ((float *) vel_out->data)[i] = species.veloc[i];
+        ((float *) temp_out->data)[i] = species.temp[i];
+    }
     //Build a tuple from the interp struct
-    PyObject * for_return = Py_BuildValue("O!O!O!",&PyArray_Type, &(species.rho), &PyArray_Type, &(species.temp), &PyArray_Type, &(species.veloc));
+    PyObject * for_return = Py_BuildValue("OOO",rho_out, vel_out, temp_out);
     //Free
     FreeLOSMemory(&species);
     free(los_table);
