@@ -22,9 +22,10 @@ struct _interp
    double *rho;
    double *temp;
    double *veloc;
-   double *metals;
 };
 typedef struct _interp interp;
+
+#define NMETALS 7
 
 /*Allocate and free memory for the particle tables*/
 #ifdef __cplusplus
@@ -87,6 +88,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const dou
 #else
 void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
 #endif
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2,interp * metals, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
 
 #endif

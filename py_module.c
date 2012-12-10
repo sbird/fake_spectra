@@ -4,8 +4,7 @@
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
-#define NMETALS 9
-
+/*****************************************************************************/
 /*Interface for SPH interpolation*/
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 {
@@ -18,10 +17,12 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     PyObject * data;
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h, *metals;
     PyArrayObject *xx, *yy, *zz, *axis;
-    PyArrayObject * rho_out, *temp_out, *vel_out, *metals_out;
+    PyArrayObject * rho_out, *temp_out, *vel_out;
+    PyArrayObject * rho_metals, *temp_metals, *vel_metals;
 
     //For storing output
-    interp species;
+    interp species, metal_spec;
+    interp* metal_ptr=&metal_spec;
 
     //Temp variables
     int nxx=0, i;
@@ -40,10 +41,12 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     InitLOSMemory(&species,NumLos, nbins);
     if ( metals->dimensions[0] > 0){
 	P.metals = (float *) metals->data;
-	species.metals   = (double *) calloc((NumLos * nbins * NMETALS) , sizeof(double));
+    	InitLOSMemory(&metal_spec,NumLos, nbins*NMETALS);
     }
-    else
+    else{
 	P.metals = NULL;
+	metal_ptr = NULL;
+    }
     //Initialise P from the data in the input numpy arrays.
     P.Pos = (float *) pos->data;
     P.Vel = (float *) vel->data;
@@ -63,7 +66,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
-    SPH_Interpolation(NULL,&species,NULL,nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
+    SPH_Interpolation(NULL,&species,NULL,metal_ptr, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     size[0] = NumLos;
     size[1] = nbins;
@@ -72,8 +75,11 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     rho_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
-    if (P.metals)
-	metals_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
+    if (metal_ptr){
+    	rho_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
+    	vel_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
+    	temp_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
+    }
     /*Is there a better way to do this?*/
     for(i=0; i< NumLos*nbins; i++){
         ((float *) rho_out->data)[i] = species.rho[i];
@@ -81,12 +87,14 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
         ((float *) temp_out->data)[i] = species.temp[i];
     }
     for(i=0; i< NumLos*nbins*NMETALS; i++){
-        ((float *) metals_out->data)[i] = species.metals[i];
+        ((float *) rho_metals->data)[i] = metal_spec.rho[i];
+        ((float *) vel_metals->data)[i] = metal_spec.veloc[i];
+        ((float *) temp_metals->data)[i] = metal_spec.temp[i];
     }
     //Build a tuple from the interp struct
     PyObject * for_return;
-    if(P.metals)
-	for_return = Py_BuildValue("OOO",rho_out, vel_out, temp_out, metals_out);
+    if(metal_ptr)
+	for_return = Py_BuildValue("OOOOOO",rho_out, vel_out, temp_out, rho_metals,vel_metals, temp_metals);
     else
 	for_return = Py_BuildValue("OOO",rho_out, vel_out, temp_out);
     //Free

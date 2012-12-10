@@ -28,7 +28,7 @@ def SPH_Interpolate(data, los_table, nbins, box):
     nh0 = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)
     ne = np.array(data["ElectronAbundance"],dtype=np.float32)
     try:
-        metals = np.array(data["GFM_Metals"],dtype=np.float32)
+        metals = np.array(data["GFM_Metals"],dtype=np.float32)[:,2:]
     except IOError:
         metals = np.array()
     hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)

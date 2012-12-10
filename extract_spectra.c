@@ -184,7 +184,7 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * metals, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 {
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which sightlines are near the particle using the sorted los table 
@@ -203,6 +203,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
    int cindex=0;
    double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
    double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
+   double rho_metals[CACHESZ][NMETALS]={0}, temp_metals[CACHESZ][NMETALS]={0},veloc_metals[CACHESZ][NMETALS]={0};
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
@@ -262,7 +263,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
 	     /* Loop over contributing vertices */
 	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
 	       {
-                 double deltaz,dz,dist2,q,kernel,velker,temker;
+                 double deltaz,dz,dist2,q,kernel,velker,temker, metker;
 	         j = iiz;
 	         j = ((j-1+10*nbins) % nbins);
 	         
@@ -305,17 +306,25 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                  * Add stuff to the cache*/
                 bins[cindex]=iproc*nbins+j;
                 if(rhoker_H)
-                    rho_H[cindex]  += kernel * XH;
-	        rho_H1[cindex] += kernel * XH * H1frac;
-	        veloc_H1[cindex] += velker * XH * H1frac;
-	        temp_H1[cindex] += temker * XH * H1frac;
+                    rho_H[cindex]  = kernel * XH;
+	        rho_H1[cindex] = kernel * XH * H1frac;
+	        veloc_H1[cindex] = velker * XH * H1frac;
+	        temp_H1[cindex] = temker * XH * H1frac;
 
-/*                 rho_metals[cindex] += kernel*XH *metalfrac; */
+                if(metals){
+                    for(int l=0;l<NMETALS;l++){
+                        /*GFM_Metals is the total mass in a metal species per unit gas mass.
+                         * So use it directly.*/
+                        rho_metals[cindex][l] = kernel * XH * (*P).metals[NMETALS*i+l];
+                        veloc_metals[cindex][l] = velker * XH * (*P).metals[NMETALS*i+l];
+                        temp_metals[cindex][l] = temker * XH * (*P).metals[NMETALS*i+l];
+                    }
+                }
 
                 if(He2){
-                  rho_He2[cindex] += kernel * XH * (*P).NHep[i];
-                  veloc_He2[cindex] += velker * XH * (*P).NHep[i];
-                  temp_He2[cindex] += temker * XH * (*P).NHep[i];
+                  rho_He2[cindex] = kernel * XH * (*P).NHep[i];
+                  veloc_He2[cindex] = velker * XH * (*P).NHep[i];
+                  temp_He2[cindex] = temker * XH * (*P).NHep[i];
                 }
                 cindex++;
                 /*Empty the cache when it is full
@@ -328,6 +337,14 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
 	                        (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
 	                        (*H1).temp[bins[cindex]] +=temp_H1[cindex];
                           }
+                          if(metals)
+                              for(cindex=0;cindex<CACHESZ;cindex++){
+                                  for(int l = 0; l < NMETALS; l++){
+                                      (*metals).rho[bins[cindex]*NMETALS+l] += rho_metals[cindex][l];
+                                      (*metals).veloc[bins[cindex]*NMETALS+l] += veloc_metals[cindex][l];
+                                      (*metals).temp[bins[cindex]*NMETALS+l] +=temp_metals[cindex][l];
+                                  }
+                              }
                           if(He2)
                               for(cindex=0;cindex<CACHESZ;cindex++){
                                  (*He2).rho[bins[cindex]] += rho_He2[cindex];
@@ -339,11 +356,13 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                                     rhoker_H[bins[cindex]]  += rho_H[cindex];
                   }/*End critical block*/
                   /* Zero the cache at the end*/
-                  for(cindex=0;cindex<CACHESZ;cindex++)
+                  for(cindex=0;cindex<CACHESZ;cindex++){
                       rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
-		          if(He2)
-                      for(cindex=0;cindex<CACHESZ;cindex++)
-                         rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
+                  }
+		  if(He2)
+                     for(cindex=0;cindex<CACHESZ;cindex++){
+                        rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
+                     }
                   cindex=0;
                 }
 	       }        /* loop over contributing vertices */
@@ -357,15 +376,23 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, const int n
                (*H1).veloc[bins[i]] += veloc_H1[i];
                (*H1).temp[bins[i]] +=temp_H1[i];
             }
+            if(metals)
+                for(i=0;i<cindex;i++){
+                    for(int l = 0; l < NMETALS; l++){
+                        (*metals).rho[bins[i]*NMETALS+l] += rho_metals[i][l];
+                        (*metals).veloc[bins[i]*NMETALS+l] += veloc_metals[i][l];
+                        (*metals).temp[bins[i]*NMETALS+l] +=temp_metals[i][l];
+                    }
+                }
             if(He2)
                 for(i=0;i<cindex;i++){
                    (*He2).rho[bins[i]] += rho_He2[i];
                    (*He2).veloc[bins[i]] += veloc_He2[i];
                    (*He2).temp[bins[i]] +=temp_He2[i];
                 }
-	        if(rhoker_H)
-               for(cindex=0;cindex<CACHESZ;cindex++)
-                  rhoker_H[bins[cindex]]  += rho_H[cindex];
+	    if(rhoker_H)
+                for(cindex=0;cindex<CACHESZ;cindex++)
+                   rhoker_H[bins[cindex]]  += rho_H[cindex];
     }/*End critical block*/
   }/*End parallel*/
     return;
