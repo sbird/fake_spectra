@@ -13,6 +13,7 @@ struct particle_data
   float *Mass;
   float *U, *NH0, *Ne, *h;
   float *NHep;
+  float *metals;
 };
 typedef struct particle_data pdata;
 
@@ -21,6 +22,7 @@ struct _interp
    double *rho;
    double *temp;
    double *veloc;
+   double *metals;
 };
 typedef struct _interp interp;
 

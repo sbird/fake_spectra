@@ -27,12 +27,16 @@ def SPH_Interpolate(data, los_table, nbins, box):
     u = np.array(data["InternalEnergy"],dtype=np.float32)
     nh0 = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)
     ne = np.array(data["ElectronAbundance"],dtype=np.float32)
+    try:
+        metals = np.array(data["GFM_Metals"],dtype=np.float32)
+    except IOError:
+        metals = np.array()
     hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
     xx=np.array(los_table.xx, dtype=np.float32)
     yy=np.array(los_table.yy, dtype=np.float32)
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
-    return  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, hh, axis, xx, yy, zz)
+    return  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metals, hh, axis, xx, yy, zz)
 
 
 #Speed of light
