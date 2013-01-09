@@ -1,7 +1,7 @@
 #Change this to where you installed GadgetReader
 GREAD=${CURDIR}/../GadgetReader
 #Python include path
-PYINC=-I/usr/local/python/include/python2.6 -I/usr/local/python/x86_64/include/python2.6
+PYINC=-I/usr/include/python2.6 -I/usr/include/python2.6
 
 ifeq ($(CC),cc)
   ICC:=$(shell which icc --tty-only 2>&1)
