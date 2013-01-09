@@ -174,7 +174,7 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
       #ifdef HELIUM
          (*He2).rho[i]      /= rhoker_H[i];  /* HI/H */
       #endif /*HELIUM*/
-         rhoker_H[i]     = log10(mscale*rhoker_H[i]/critH);   /* log H density normalised by mean 
+         rhoker_H[i]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean
                                                           H density of universe */
       }
   return;
