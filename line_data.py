@@ -2,14 +2,16 @@
 Species covered are:
 H, He,C, N, O, Ne, Mg, Si, Fe
 Reads the data from VPFIT's atom.dat file
-Ions are:
+Transitions are various.
 
 """
 
 import re
 
 class LineData:
-    """Class to aggregate a number of lines from VPFIT tables"""
+    """Class to aggregate a number of lines from VPFIT tables. Reads from atom.dat,
+    to get the results call get_line(species, ion), where ion is the transition number.
+    At the moment only lowest level transition in each sequence is read."""
     def __init__(self, vpdat = "/home/spb/codes/vpfit/atom.dat"):
         self.species = ('H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe')
         #Put in the masses by hand for simplicity
@@ -31,8 +33,8 @@ class LineData:
             #is this a line we care about?
             if self.species.count(specie) == 0 or ion < 0:
                 continue
-            (sigma_X, gamma_X, lambda_X) = parse_line_contents(inline)
-            line = Line(sigma_X, gamma_X, lambda_X)
+            (lambda_X, fosc_X, gamma_X) = parse_line_contents(inline)
+            line = Line(lambda_X, fosc_X, gamma_X)
             #Only add the first transition for lines
             if not (specie,ion) in self.lines:
                 self.lines[(specie,ion)]=line
@@ -40,16 +42,16 @@ class LineData:
 
     def get_line(self,specie, ion):
         """Get data for a particular line.
-        specie: number of species, ion: ionisation number (from 0)"""
+        specie: number of species, ion: transition number (from 1)"""
         lines = self.lines[(specie, ion)]
         return lines
 
 class Line:
     """Class to store the parameters of a single line"""
-    def __init__(self, sigma_X, gamma_X, lambda_X):
-        self.sigma_X = sigma_X
-        self.gamma_X = gamma_X
+    def __init__(self, lambda_X, fosc_X, gamma_X):
         self.lambda_X = lambda_X
+        self.fosc_X = fosc_X
+        self.gamma_X = gamma_X
 
 def find_species(line):
     """Parse a line to find which species it is: species is given by first two characters, unless the second character is a capital.
