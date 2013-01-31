@@ -86,13 +86,13 @@ void Convert_Density(double * rhoker_H, interp * species, const double h100, con
  * lambda_lya, gamma_lya, fosc_lya: parameters of the atomic transition (use those from VPFIT)
  * mass: mass of the species in amu
  * */
-void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
+void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   /*    Calculate the length scales to be used in the box */
   const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
-  const double dzgrid   = box100 * rscale / (double)NBINS; /* bin size m */
+  const double dzgrid   = box100 * rscale / (double) nbins; /* bin size m */
   const double dvbin = dzgrid * Hz / MPC; /* velocity bin size (kms^-1) */
 
   /* Absorption cross-sections m^2 */
@@ -100,8 +100,8 @@ void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const dou
   /* Prefactor for optical depth  */
   const double A_H1 = sigma_Lya*C*dzgrid/sqrt(M_PI);
   /* Compute the HI Lya spectra */
-  for(int i=0;i<NBINS;i++){
-      for(int j=0;j<NBINS;j++)
+  for(int i=0;i<nbins;i++){
+      for(int j=0;j<nbins;j++)
         {
           double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
           double vdiff_H1;

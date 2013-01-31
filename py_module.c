@@ -11,10 +11,9 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Things which should be from input
     int nbins, NumLos;
     long long Npart;
-    double box100;
+    double box100, h100, atime;
     npy_intp size[3];
     //Input variables in np format
-    PyObject * data;
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h, *metals;
     PyArrayObject *xx, *yy, *zz, *axis;
     PyArrayObject * rho_out, *temp_out, *vel_out;
@@ -30,7 +29,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &metals, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
+    if(!PyArg_ParseTuple(args, "idddO!O!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100, &h100, &atime, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &metals, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
       return NULL;
 
     NumLos = xx->dimensions[0];
@@ -40,33 +39,36 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los_table=malloc(NumLos*sizeof(sort_los));
     InitLOSMemory(&species,NumLos, nbins);
     if ( metals->dimensions[0] > 0){
-	P.metals = (float *) metals->data;
-    	InitLOSMemory(&metal_spec,NumLos, nbins*NMETALS);
+        P.metals = (float *) PyArray_GETPTR2(metals,0,0);
+        InitLOSMemory(&metal_spec,NumLos, nbins*NMETALS);
     }
     else{
-	P.metals = NULL;
-	metal_ptr = NULL;
+        P.metals = NULL;
+        metal_ptr = NULL;
     }
     //Initialise P from the data in the input numpy arrays.
-    P.Pos = (float *) pos->data;
-    P.Vel = (float *) vel->data;
-    P.Mass = (float *) mass->data;
-    P.U = (float *) u->data;
-    P.NH0 = (float *) nh0->data;
-    P.Ne = (float *) ne->data;
-    P.h = (float *) h->data;
+    P.Pos = (float *) PyArray_GETPTR2(pos,0,0);
+    P.Vel = (float *) PyArray_GETPTR2(vel,0,0);
+    P.Mass = (float *) PyArray_GETPTR1(mass,0);
+    P.U = (float *) PyArray_GETPTR1(u,0);
+    P.NH0 = (float *) PyArray_GETPTR1(nh0,0);
+    P.Ne = (float *) PyArray_GETPTR1(ne,0);
+    P.h = (float *) PyArray_GETPTR1(h,0);
 
     //Initialise los_table from input
     for(i=0; i< NumLos; i++){
-        los_table[i].axis = ((int *) axis->data)[i];
-        los_table[i].xx = ((float *) xx->data)[i];
-        los_table[i].yy = ((float *) yy->data)[i];
-        los_table[i].zz = ((float *) zz->data)[i];
+        los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
+        los_table[i].xx = *(float *) PyArray_GETPTR1(xx,i);
+        los_table[i].yy = *(float *) PyArray_GETPTR1(yy,i);
+        los_table[i].zz = *(float *) PyArray_GETPTR1(zz,i);
     }
 
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     SPH_Interpolation(NULL,&species,NULL,metal_ptr, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
+
+    //Convert units
+    Rescale_Units(&species, h100, atime);
 
     size[0] = NumLos;
     size[1] = nbins;
@@ -75,28 +77,28 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     rho_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
+    /*Is there a better way to do this?*/
+    for(i=0; i< NumLos*nbins; i++){
+        *(float *) PyArray_GETPTR1(rho_out,i) = species.rho[i];
+        *(float *) PyArray_GETPTR1(vel_out,i) = species.veloc[i];
+        *(float *) PyArray_GETPTR1(temp_out,i) = species.temp[i];
+    }
     if (metal_ptr){
     	rho_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
     	vel_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
     	temp_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
-    }
-    /*Is there a better way to do this?*/
-    for(i=0; i< NumLos*nbins; i++){
-        ((float *) rho_out->data)[i] = species.rho[i];
-        ((float *) vel_out->data)[i] = species.veloc[i];
-        ((float *) temp_out->data)[i] = species.temp[i];
-    }
-    for(i=0; i< NumLos*nbins*NMETALS; i++){
-        ((float *) rho_metals->data)[i] = metal_spec.rho[i];
-        ((float *) vel_metals->data)[i] = metal_spec.veloc[i];
-        ((float *) temp_metals->data)[i] = metal_spec.temp[i];
+        for(i=0; i< NumLos*nbins*NMETALS; i++){
+        *(float *) PyArray_GETPTR1(rho_metals,i) = metal_spec.rho[i];
+        *(float *) PyArray_GETPTR1(vel_metals,i) = metal_spec.veloc[i];
+        *(float *) PyArray_GETPTR1(temp_metals,i) = metal_spec.temp[i];
+        }
     }
     //Build a tuple from the interp struct
     PyObject * for_return;
     if(metal_ptr)
-	for_return = Py_BuildValue("OOOOOO",rho_out, vel_out, temp_out, rho_metals,vel_metals, temp_metals);
+	    for_return = Py_BuildValue("OOOOOO",rho_out, vel_out, temp_out, rho_metals,vel_metals, temp_metals);
     else
-	for_return = Py_BuildValue("OOO",rho_out, vel_out, temp_out);
+	    for_return = Py_BuildValue("OOO",rho_out, vel_out, temp_out);
     //Free
     FreeLOSMemory(&species);
     free(los_table);
