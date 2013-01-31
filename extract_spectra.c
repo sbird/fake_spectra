@@ -21,6 +21,38 @@
 
 int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
 
+/* Function to rescale the units of the density temperature and velocity skewers*/
+void Rescale_Units(interp * species, const double h100, const double atime, double * rhoker_H)
+{
+  /* Conversion factors from internal units */
+  const double rscale = (KPC*atime)/h100;   /* convert length to m */
+  const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
+  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
+  const double escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
+  const double tscale = ((GAMMA-1.0) * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* convert (with mu) T to K */
+  /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
+  /*    Calculate the length scales to be used in the box */
+
+    for(int i = 0;i<NBINS;i++){
+      /* If there are no particles in this bin, rhoker will be zero.
+       * In this case, we set temp and veloc arbitrarily to one,
+       * to avoid nans propagating. Zero rho will imply zero absorption
+       * anyway. */
+      if((*species).rho[i]){
+       (*species).veloc[i]  = vscale*(*species).veloc[i]/(*species).rho[i]; /* HI weighted km s^-1 */ 
+       (*species).temp[i]   = tscale*(*species).temp[i]/(*species).rho[i]; /* HI weighted K */
+       (*species).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
+      }
+      else{
+        (*species).veloc[i]=1;
+        (*species).temp[i]=1;
+      }
+      if(rhoker_H)
+         rhoker_H[i] *= mscale*pow(rscale,-3);
+    }
+    return;
+}
+
 /*****************************************************************************/
 /* This function rescales various things and calculates the absorption*/
 #ifndef HELIUM
@@ -36,10 +68,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
   const double critH = (rhoc * omegab * XH) / (atime*atime*atime); /* kgm^-3*/
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
-  const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
-  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
-  const double escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
-  const double tscale = ((GAMMA-1.0) * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* convert (with mu) T to K */
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
   const double dzgrid   = (box100) / (double)NBINS; /* bin size (kpc) */
@@ -56,34 +84,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
   const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
 #endif
   int i,j;
-    for(i = 0;i<NBINS;i++){
-      /* If there are no particles in this bin, rhoker will be zero. 
-       * In this case, we set temp and veloc arbitrarily to one, 
-       * to avoid nans propagating. Zero rho will imply zero absorption 
-       * anyway. */
-      if((*H1).rho[i]){       
-       (*H1).veloc[i]  = vscale*(*H1).veloc[i]/(*H1).rho[i]; /* HI weighted km s^-1 */ 
-       (*H1).temp[i]   = tscale*(*H1).temp[i]/(*H1).rho[i]; /* HI weighted K */
-       (*H1).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
-      }
-      else{
-        (*H1).veloc[i]=1;
-        (*H1).temp[i]=1;
-      }
-      if(rhoker_H)
-         rhoker_H[i] *= mscale*pow(rscale,-3);
-#ifdef HELIUM
-      if((*He2).rho[i]){
-       (*He2).veloc[i]  = vscale*(*He2).veloc[i]/(*He2).rho[i]; /* HI weighted km s^-1 */ 
-       (*He2).temp[i]   = tscale*(*He2).temp[i]/(*He2).rho[i]; /* HI weighted K */
-       (*He2).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
-      }
-      else{
-        (*He2).veloc[i]=1;
-        (*He2).temp[i]=1;
-      }
-#endif
-    }
     /* Compute the HI Lya spectra */
     for(i=0;i<NBINS;i++){
         for(j=0;j<NBINS;j++)
