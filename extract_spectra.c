@@ -19,8 +19,6 @@
 #include "global_vars.h"
 #include "parameters.h"
 
-int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
-
 /* Function to rescale the units of the density temperature and velocity skewers*/
 void Rescale_Units(interp * species, const double h100, const double atime, double * rhoker_H)
 {
@@ -182,6 +180,9 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 /*The size of the thread cache to use below*/
 #define CACHESZ 128
 
+/*Function defined below, used locally in SPH_Interpolation*/
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
+
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles*/
 void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * metals, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
@@ -203,7 +204,9 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
    int cindex=0;
    double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
    double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
-   double rho_metals[CACHESZ][NMETALS]={0}, temp_metals[CACHESZ][NMETALS]={0},veloc_metals[CACHESZ][NMETALS]={0};
+   double rho_metals[CACHESZ][NMETALS]={{0}};
+   double temp_metals[CACHESZ][NMETALS]={{0}};
+   double veloc_metals[CACHESZ][NMETALS]={{0}};
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
@@ -263,7 +266,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
 	     /* Loop over contributing vertices */
 	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
 	       {
-                 double deltaz,dz,dist2,q,kernel,velker,temker, metker;
+             double deltaz,dz,dist2,q,kernel,velker,temker;
 	         j = iiz;
 	         j = ((j-1+10*nbins) % nbins);
 	         
