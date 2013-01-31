@@ -10,40 +10,43 @@ import re
 
 class LineData:
     """Class to aggregate a number of lines from VPFIT tables"""
-    def __init__(self, vpdat = "atom.dat"):
+    def __init__(self, vpdat = "/home/spb/codes/vpfit/atom.dat"):
         self.species = ('H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe')
         #Put in the masses by hand for simplicity
         self.masses = ( 1.00794,4.002602,12.011,14.00674,15.9994,20.18,24.3050,28.0855,55.847 )
         #9 empty lists, one list per species
-        self.lines = [[]]*9
+        self.lines = {}
         self.read_vpfit(vpdat)
 
     def read_vpfit(self,vpdat):
         """Read VPFIT's atom.dat file for the 9 species"""
         vp = open(vpdat)
-        inline = vp.readline()
+        inline = "--"
         while inline != "":
-            (specie, ion) = find_species(inline)
+            inline = vp.readline()
+            try:
+                (specie, ion) = find_species(inline)
+            except ValueError:
+                continue
             #is this a line we care about?
             if self.species.count(specie) == 0 or ion < 0:
                 continue
             (sigma_X, gamma_X, lambda_X) = parse_line_contents(inline)
-            line = Line(ion, sigma_X, gamma_X, lambda_X)
-            self.lines[specie].append(line)
+            line = Line(sigma_X, gamma_X, lambda_X)
+            #Only add the first transition for lines
+            if not (specie,ion) in self.lines:
+                self.lines[(specie,ion)]=line
+#                 print "Read line: ",specie,ion
 
     def get_line(self,specie, ion):
         """Get data for a particular line.
         specie: number of species, ion: ionisation number (from 0)"""
-        lines = self.lines[specie]
-        for ll in lines:
-            if ll.ion == ion:
-                return ll
-        raise ValueError("Ion not found")
+        lines = self.lines[(specie, ion)]
+        return lines
 
 class Line:
     """Class to store the parameters of a single line"""
-    def __init__(self, ion, sigma_X, gamma_X, lambda_X):
-        self.ion = ion
+    def __init__(self, sigma_X, gamma_X, lambda_X):
         self.sigma_X = sigma_X
         self.gamma_X = gamma_X
         self.lambda_X = lambda_X
@@ -54,14 +57,12 @@ def find_species(line):
     Ionisation number is then a capital letter followed by three characters."""
     #Match a capital and possibly a lower case, followed by a capital followed by any three characters.
     mat = re.match(r"([A-Z]\s*[a-z]?)([A-Z].{3})",line)
+    if mat == None:
+        raise ValueError
     species = re.sub(r"\s","",mat.groups()[0])
     ion = mat.groups()[1]
     ion = re.sub(r"\s","",mat.groups()[1])
-    try:
-        ion_r = roman_to_int(ion)
-    except ValueError:
-        #This is some special ion species, probably with a *.
-        ion_r = -1
+    ion_r = roman_to_int(ion)
     return (species, ion_r)
 
 def parse_line_contents(line):
@@ -113,7 +114,7 @@ def roman_to_int(roman):
     """
     if type(roman) != type(""):
         raise TypeError, "expected string, got %s" % type(roman)
-    roman = roman.upper()
+    #roman = roman.upper()
     nums = ['M', 'D', 'C', 'L', 'X', 'V', 'I']
     ints = [1000, 500, 100, 50,  10,  5,   1]
     places = []
