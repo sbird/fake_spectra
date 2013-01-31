@@ -71,114 +71,72 @@ void Convert_Density(double * rhoker_H, interp * species, const double h100, con
   }
   return;
 }
+
 /*****************************************************************************/
-/* This function rescales various things and calculates the absorption*/
-#ifndef HELIUM
-void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const double h100, const double box100, const double atime)
-#else
-void Compute_Absorption(double * tau_H1, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime)
-#endif
+/* This function calculates absorption from a given integrated temperature, density
+ * and line profile properties.
+ * Note: a lot of variables are named _H1. This is historical: the function works for arbitrary species.
+ * Arguments are:
+ * tau_H1: Array to store the ouput optical depth
+ * H1 : species with density, velocity and temperature arrays
+ * Hz: conversion factor from linear to velocity space, Hubble(z) in km/s/Mpc
+ * box100: box size in comoving kpc/h
+ * h100: hubble constant h (~ 0.7)
+ * atime: a = 1/(1+z)
+ * lambda_lya, gamma_lya, fosc_lya: parameters of the atomic transition (use those from VPFIT)
+ * mass: mass of the species in amu
+ * */
+void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
-  /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
-  const double dzgrid   = (box100) / (double)NBINS; /* bin size (kpc) */
   const double vmax = box100 * Hz * rscale/ MPC; /* box size (kms^-1) */
-  const double vmax2 = vmax/2.0; /* kms^-1 */
-  const double dvbin = vmax / (double)NBINS; /* bin size (kms^-1) */
+  const double dzgrid   = box100 * rscale / (double)NBINS; /* bin size m */
+  const double dvbin = dzgrid * Hz / MPC; /* velocity bin size (kms^-1) */
 
   /* Absorption cross-sections m^2 */
-  const double sigma_Lya_H1  = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_H1  * FOSC_LYA;
+  const double sigma_Lya  = sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda_lya  * fosc_lya;
   /* Prefactor for optical depth  */
-  const double A_H1 = rscale*sigma_Lya_H1*C*dzgrid/sqrt(M_PI);  
-#ifdef HELIUM
-  const double sigma_Lya_He2 = sqrt(3.0*M_PI*SIGMA_T/8.0) * LAMBDA_LYA_HE2 * FOSC_LYA;
-  const double A_He2 =  sigma_Lya_He2*C*dzgrid/sqrt(M_PI);
-#endif
-  int i,j;
-    /* Compute the HI Lya spectra */
-    for(i=0;i<NBINS;i++){
-        for(j=0;j<NBINS;j++)
-          {
-            double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
-            double vdiff_H1;
-            
-            u_H1  = dvbin*j*1.0e3;
-        #ifdef PECVEL 
-            u_H1 +=(*H1).veloc[j]*1.0e3;
+  const double A_H1 = sigma_Lya*C*dzgrid/sqrt(M_PI);
+  /* Compute the HI Lya spectra */
+  for(int i=0;i<NBINS;i++){
+      for(int j=0;j<NBINS;j++)
+        {
+          double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
+          double vdiff_H1;
+
+          u_H1  = dvbin*j*1.0e3;
+      #ifdef PECVEL
+          u_H1 +=(*H1).veloc[j]*1.0e3;
+      #endif
+          /* Note this is indexed with i, above with j!
+           * This is the difference in velocities between two clouds
+           * on the same sightline*/
+          vdiff_H1  = fabs(dvbin*i*1.0e3 - u_H1); /* ms^-1 */
+       #ifdef PERIODIC
+          if (vdiff_H1 > (vmax/2.0*1.0e3))
+              vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
+       #endif
+          b_H1   = sqrt(2.0*BOLTZMANN*(*H1).temp[j]/(mass*PROTONMASS));
+          T0 = pow(vdiff_H1/b_H1,2);
+          T1 = exp(-T0);
+          /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */
+        #ifdef VOIGT
+          aa_H1 = gamma_lya*lambda_lya/(4.0*M_PI*b_H1);
+          T2 = 1.5/T0;
+          if(T0 < 1.0e-6)
+            profile_H1  = T1;
+          else
+            profile_H1  = T1 - aa_H1/sqrt(M_PI)/T0
+              *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
+        #else
+          profile_H1 = T1;
         #endif
-            /* Note this is indexed with i, above with j! 
-             * This is the difference in velocities between two clouds 
-             * on the same sightline*/
-            vdiff_H1  = fabs(dvbin*i*1.0e3 - u_H1); /* ms^-1 */
-         #ifdef PERIODIC  
-      	  if (vdiff_H1 > (vmax2*1.0e3))
-      	    vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
-         #endif
-            b_H1   = sqrt(2.0*BOLTZMANN*(*H1).temp[j]/(HMASS*PROTONMASS));
-            T0 = pow(vdiff_H1/b_H1,2);
-            T1 = exp(-T0);
-            /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
-          #ifdef VOIGT
-            aa_H1 = GAMMA_LYA_H1*LAMBDA_LYA_H1/(4.0*M_PI*b_H1);
-            T2 = 1.5/T0;	
-            if(T0 < 1.0e-6)
-              profile_H1  = T1;
-            else
-              profile_H1  = T1 - aa_H1/sqrt(M_PI)/T0 
-                *(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0);
-          #else   
-            profile_H1 = T1;
-          #endif
-            tau_H1j  = A_H1  * (*H1).rho[j]  * profile_H1 /(HMASS*PROTONMASS*b_H1) ;
-            tau_H1[i]  += tau_H1j;
-          }
-    }             /* Spectrum convolution */
-    /* Compute the HeI Lya spectra: Probably doesn't work now */
-#ifdef HELIUM
-      for(i=0;i<NBINS;i++)
-	{
-	  for(j=0;j<NBINS;j++)
-	    {
-              double T3,T4,T5,tau_He2j,aa_He2,u_He2,b_He2,profile_He2;
-              double vdiff_He2;
-	      
-              /* Note this is indexed with i, above with j! 
-               * This is the difference in velocities between two clouds 
-               * on the same sightline*/
-              u_He2 = dvbin*j*1.0e3;
-           #ifdef PECVEL
-              u_He2 += (*He2).veloc[j]*1.0e3;
-           #endif
-              vdiff_He2 = fabs(dvbin*i*1.0e3 - u_He2); /* ms^-1 */
-	      
-           #ifdef PERIODIC  
-		  if (vdiff_He2 > (vmax2*1.0e3))
-		     vdiff_He2 = (vmax*1.0e3) - vdiff_He2; 
-           #endif
-	      
-	      b_He2  = sqrt(2.0*BOLTZMANN*(*He2).temp[j]/(HEMASS*PROTONMASS));
-	      T3 = (vdiff_He2/b_He2)*(vdiff_He2/b_He2);
-	      T4 = exp(-T3);
-	      
-	      /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */ 
-#ifdef VOIGT
-		  aa_He2 = GAMMA_LYA_HE2*LAMBDA_LYA_HE2/(4.0*M_PI*b_He2);
-		  T5 = 1.5/T3; 
-		   if(T3 < 1.0e-6)
-		       profile_He2  = T4;
- 		  else
-		    profile_He2 = T4 - aa_He2/sqrt(M_PI)/T3 
-		    *(T4*T4*(4.0*T3*T3 + 7.0*T3 + 4.0 + T5) - T5 -1.0);
-#else   
-		  profile_He2 = T4;
-#endif
-	      tau_He2j = A_He2 * (*He2).rho[j] * profile_He2 /(HMASS*PROTONMASS*b_He2);
-	      tau_He2[i] += tau_He2j;
-	    }
-	}             /* HeI Spectrum convolution */
-#endif //HELIUM
+          tau_H1j  = A_H1  * (*H1).rho[j]  * profile_H1 /(mass*PROTONMASS*b_H1) ;
+          tau_H1[i]  += tau_H1j;
+        }
+  }             /* Spectrum convolution */
       
   return;
 }
@@ -200,7 +158,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
     const double dzgrid   = (boxsize-zmingrid) / (double)nbins; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
-    int i;
 
   #pragma omp parallel
   {
@@ -215,7 +172,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
     #pragma omp for
-    for(i=0;i<Particles;i++)
+    for(int i=0;i<Particles;i++)
     {
       int ind;
       /*     Positions (kpc) */
@@ -379,6 +336,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
     /*Also empty the cache at the end*/
     #pragma omp critical
     {
+        int i;
             for(i=0;i<cindex;i++){
                (*H1).rho[bins[i]] += rho_H1[i];
                (*H1).veloc[bins[i]] += veloc_H1[i];

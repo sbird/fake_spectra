@@ -223,22 +223,19 @@ int main(int argc, char **argv)
      for(i=0; i<NumLos; i++){
        /*Make a bunch of pointers to the quantities for THIS LOS*/
        interp H1_i=H1;
-       #ifdef HELIUM
-          interp He2_i=He2;
-       #endif
        H1_i.rho+=(i*NBINS);
        H1_i.temp+=(i*NBINS);
        H1_i.veloc+=(i*NBINS);
        Rescale_Units(&H1_i, h100, atime);
-       #ifndef HELIUM
-         Compute_Absorption(tau_H1+(i*NBINS), &H1_i, Hz,h100, box100,atime);
-       #else
-         He2_i.rho+=(i*NBINS);
-         He2_i.temp+=(i*NBINS);
-         He2_i.veloc+=(i*NBINS);
-         Rescale_Units(&He2_i, h100, atime, NULL);
-         Compute_Absorption(tau_H1+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime);
-       #endif
+       Compute_Absorption(tau_H1+(i*NBINS), &H1_i, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
+#ifdef HELIUM
+       interp He2_i=He2;
+       He2_i.rho+=(i*NBINS);
+       He2_i.temp+=(i*NBINS);
+       He2_i.veloc+=(i*NBINS);
+       Rescale_Units(&He2_i, h100, atime);
+       Compute_Absorption(tau_He2+(i*NBINS), &He2_i,Hz,h100,box100,atime,LAMBDA_LYA_HE2,GAMMA_LYA_HE2, FOSC_LYA,HEMASS);
+#endif
        Convert_Density(rhoker_H+(i*NBINS), &H1_i, h100, atime, omegab);
      }
   }
