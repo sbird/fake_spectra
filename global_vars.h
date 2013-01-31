@@ -84,11 +84,12 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
 void populate_sort_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx);
 
 #ifndef HELIUM
-void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab);
+void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const double h100, const double box100, const double atime);
 #else
-void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab);
+void Compute_Absorption(double * tau_H1, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime);
 #endif
 void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2,interp * metals, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P);
-void Rescale_Units(interp * species, const double h100, const double atime, double * rhoker_H);
+void Rescale_Units(interp * species, const double h100, const double atime);
+void Convert_Density(double * rhoker_H, interp * species, const double h100, const double atime, const double omegab);
 
 #endif

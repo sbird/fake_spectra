@@ -229,16 +229,17 @@ int main(int argc, char **argv)
        H1_i.rho+=(i*NBINS);
        H1_i.temp+=(i*NBINS);
        H1_i.veloc+=(i*NBINS);
-       Rescale_Units(&H1_i, h100, atime, rhoker_H+(i*NBINS));
+       Rescale_Units(&H1_i, h100, atime);
        #ifndef HELIUM
-         Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, Hz,h100, box100,atime,omegab);
+         Compute_Absorption(tau_H1+(i*NBINS), &H1_i, Hz,h100, box100,atime);
        #else
          He2_i.rho+=(i*NBINS);
          He2_i.temp+=(i*NBINS);
          He2_i.veloc+=(i*NBINS);
          Rescale_Units(&He2_i, h100, atime, NULL);
-         Compute_Absorption(tau_H1+(i*NBINS), rhoker_H+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime,omegab);
+         Compute_Absorption(tau_H1+(i*NBINS), &H1_i, tau_He2+(i*NBINS),&He2_i,Hz,h100,box100,atime);
        #endif
+       Convert_Density(rhoker_H+(i*NBINS), &H1_i, h100, atime, omegab);
      }
   }
   fwrite(&redshift,sizeof(double),1,output);

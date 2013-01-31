@@ -20,7 +20,7 @@
 #include "parameters.h"
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
-void Rescale_Units(interp * species, const double h100, const double atime, double * rhoker_H)
+void Rescale_Units(interp * species, const double h100, const double atime)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -31,39 +31,54 @@ void Rescale_Units(interp * species, const double h100, const double atime, doub
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
 
-    for(int i = 0;i<NBINS;i++){
-      /* If there are no particles in this bin, rhoker will be zero.
-       * In this case, we set temp and veloc arbitrarily to one,
-       * to avoid nans propagating. Zero rho will imply zero absorption
-       * anyway. */
-      if((*species).rho[i]){
-       (*species).veloc[i]  = vscale*(*species).veloc[i]/(*species).rho[i]; /* HI weighted km s^-1 */ 
-       (*species).temp[i]   = tscale*(*species).temp[i]/(*species).rho[i]; /* HI weighted K */
-       (*species).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
-      }
-      else{
-        (*species).veloc[i]=1;
-        (*species).temp[i]=1;
-      }
-      if(rhoker_H)
-         rhoker_H[i] *= mscale*pow(rscale,-3);
+  for(int i = 0;i<NBINS;i++){
+    /* If there are no particles in this bin, rhoker will be zero.
+     * In this case, we set temp and veloc arbitrarily to one,
+     * to avoid nans propagating. Zero rho will imply zero absorption
+     * anyway. */
+    if((*species).rho[i]){
+     (*species).veloc[i]  = vscale*(*species).veloc[i]/(*species).rho[i]; /* HI weighted km s^-1 */ 
+     (*species).temp[i]   = tscale*(*species).temp[i]/(*species).rho[i]; /* HI weighted K */
+     (*species).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
     }
-    return;
+    else{
+      (*species).veloc[i]=1;
+      (*species).temp[i]=1;
+    }
+  }
+  return;
 }
 
-/*****************************************************************************/
-/* This function rescales various things and calculates the absorption*/
-#ifndef HELIUM
-void Compute_Absorption(double * tau_H1, double *rhoker_H,interp * H1, const double Hz, const double h100, const double box100, const double atime, const double omegab)
-#else
-void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime, const double omegab)
-#endif
+/*Convert densities for this species into fraction of total hydrogen density.
+ * Also rescale rhoker_H */
+void Convert_Density(double * rhoker_H, interp * species, const double h100, const double atime, const double omegab)
 {
+  /* Conversion factors from internal units */
+  const double rscale = (KPC*atime)/h100;   /* convert length to m */
+  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
+  /*Cosmological factors*/
   const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
-    /* Critical matter/energy density at z = 0.0 */
+  /* Critical matter/energy density at z = 0.0 */
   const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
   /* Mean hydrogen mass density of the Universe */
   const double critH = (rhoc * omegab * XH) / (atime*atime*atime); /* kgm^-3*/
+  for(int i = 0;i<NBINS;i++)
+  {
+     rhoker_H[i] *= mscale*pow(rscale,-3);
+     (*species).rho[i]      /= rhoker_H[i];  /* HI/H */
+     rhoker_H[i]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean
+                                                      H density of universe */
+  }
+  return;
+}
+/*****************************************************************************/
+/* This function rescales various things and calculates the absorption*/
+#ifndef HELIUM
+void Compute_Absorption(double * tau_H1, interp * H1, const double Hz, const double h100, const double box100, const double atime)
+#else
+void Compute_Absorption(double * tau_H1, interp * H1,double * tau_He2,interp * He2, const double Hz, const double h100, const double box100, const double atime)
+#endif
+{
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
@@ -165,16 +180,6 @@ void Compute_Absorption(double * tau_H1, double *rhoker_H, interp * H1,double * 
 	}             /* HeI Spectrum convolution */
 #endif //HELIUM
       
-   if(rhoker_H)
-      for(i = 0;i<NBINS;i++)
-      {
-         (*H1).rho[i]      /= rhoker_H[i];  /* HI/H */
-      #ifdef HELIUM
-         (*He2).rho[i]      /= rhoker_H[i];  /* HI/H */
-      #endif /*HELIUM*/
-         rhoker_H[i]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean
-                                                          H density of universe */
-      }
   return;
 }
 /*The size of the thread cache to use below*/
