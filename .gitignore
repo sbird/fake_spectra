@@ -5,3 +5,5 @@ statistic
 extract-icc
 tags
 .*.swp
+*.pyc
+_spectra_priv.so
