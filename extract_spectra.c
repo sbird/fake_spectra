@@ -20,7 +20,7 @@
 #include "parameters.h"
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
-void Rescale_Units(interp * species, const double h100, const double atime)
+void Rescale_Units(interp * species, const int nbins, const double h100, const double atime)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -31,7 +31,7 @@ void Rescale_Units(interp * species, const double h100, const double atime)
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
 
-  for(int i = 0;i<NBINS;i++){
+  for(int i = 0;i<nbins;i++){
     /* If there are no particles in this bin, rhoker will be zero.
      * In this case, we set temp and veloc arbitrarily to one,
      * to avoid nans propagating. Zero rho will imply zero absorption

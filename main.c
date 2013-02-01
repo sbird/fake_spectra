@@ -226,14 +226,14 @@ int main(int argc, char **argv)
        H1_i.rho+=(i*NBINS);
        H1_i.temp+=(i*NBINS);
        H1_i.veloc+=(i*NBINS);
-       Rescale_Units(&H1_i, h100, atime);
+       Rescale_Units(&H1_i, NBINS, h100, atime);
        Compute_Absorption(tau_H1+(i*NBINS), &H1_i,NBINS, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
 #ifdef HELIUM
        interp He2_i=He2;
        He2_i.rho+=(i*NBINS);
        He2_i.temp+=(i*NBINS);
        He2_i.veloc+=(i*NBINS);
-       Rescale_Units(&He2_i, h100, atime);
+       Rescale_Units(&He2_i, NBINS, h100, atime);
        Compute_Absorption(tau_He2+(i*NBINS), &He2_i,NBINS,Hz,h100,box100,atime,LAMBDA_LYA_HE2,GAMMA_LYA_HE2, FOSC_LYA,HEMASS);
 #endif
        Convert_Density(rhoker_H+(i*NBINS), &H1_i, h100, atime, omegab);

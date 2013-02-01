@@ -68,7 +68,8 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     SPH_Interpolation(NULL,&species,NULL,metal_ptr, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     //Convert units
-    Rescale_Units(&species, h100, atime);
+    Rescale_Units(&species, nbins, h100, atime);
+    Rescale_Units(&metal_spec, nbins*NMETALS, h100, atime);
 
     size[0] = NumLos;
     size[1] = nbins;
@@ -78,19 +79,25 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_FLOAT);
     /*Is there a better way to do this?*/
-    for(i=0; i< NumLos*nbins; i++){
-        *(float *) PyArray_GETPTR1(rho_out,i) = species.rho[i];
-        *(float *) PyArray_GETPTR1(vel_out,i) = species.veloc[i];
-        *(float *) PyArray_GETPTR1(temp_out,i) = species.temp[i];
+    for(i=0; i< NumLos; i++){
+        for(int j=0; j< nbins; j++){
+            *(float *) PyArray_GETPTR2(rho_out,i,j) = species.rho[i*nbins+j];
+            *(float *) PyArray_GETPTR2(vel_out,i,j) = species.veloc[i*nbins+j];
+            *(float *) PyArray_GETPTR2(temp_out,i,j) = species.temp[i*nbins+j];
+        }
     }
     if (metal_ptr){
     	rho_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
     	vel_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
     	temp_metals = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_FLOAT);
-        for(i=0; i< NumLos*nbins*NMETALS; i++){
-        *(float *) PyArray_GETPTR1(rho_metals,i) = metal_spec.rho[i];
-        *(float *) PyArray_GETPTR1(vel_metals,i) = metal_spec.veloc[i];
-        *(float *) PyArray_GETPTR1(temp_metals,i) = metal_spec.temp[i];
+        for(i=0; i< NumLos; i++){
+            for(int j=0; j< nbins; j++){
+                for(int k=0; k < NMETALS; k++){
+                    *(float *) PyArray_GETPTR3(rho_metals,i,j,k) = metal_spec.rho[i*nbins+k*NMETALS+k];
+                    *(float *) PyArray_GETPTR3(vel_metals,i,j,k) = metal_spec.veloc[i*nbins+j*NMETALS+k];
+                    *(float *) PyArray_GETPTR3(temp_metals,i,j,k) = metal_spec.temp[i*nbins+j*NMETALS+k];
+                }
+            }
         }
     }
     //Build a tuple from the interp struct
