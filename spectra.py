@@ -125,11 +125,11 @@ def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mas
 
 class MetalLines:
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,los_table, snapshot, cloudy_dir, nbins = 1024):
+    def __init__(self,los_table, snapshot, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", nbins = 1024):
         #Get los table from group list
         f = h5py.File(snapshot)
         self.box = f["Header"].attrs["BoxSize"]
-        self.hubble = f["Header"].attrs["Hubble"]
+        self.hubble = f["Header"].attrs["HubbleParam"]
         self.atime = f["Header"].attrs["Time"]
         self.redshift = f["Header"].attrs["Redshift"]
         Omega0 = f["Header"].attrs["Omega0"]
@@ -138,13 +138,15 @@ class MetalLines:
         self.nbins = nbins
         self.xbins = np.arange(0,self.nbins)*self.box/self.nbins
         self.species = ['C','N','O','Ne','Mg','Si','Fe']
+        self.NumLos = np.size(los_table.axis)
         #Line data
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NMETALS, NSPECTRA, NBIN ]
-        (self.rho_HI, self.temp_HI, self.vel_HI, self.rho_metal, self.temp_metal, self.vel_metal) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box, self.hubble, self.atime)
+        (self.rho_HI, self.vel_HI, self.temp_HI, self.rho_metal, self.vel_metal, self.temp_metal) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box, self.hubble, self.atime)
         #Compute tau for HI
-        self.tau_HI = compute_absorption(self.xbins, self.rho_HI, self.vel_HI, self.temp_HI, self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
+        for n in np.arange(0,self.NumLos):
+            self.tau_HI = compute_absorption(self.xbins, self.rho_HI[n], self.vel_HI[n], self.temp_HI[n], self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
 
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)
@@ -157,7 +159,7 @@ class MetalLines:
            NOTE: May wish to special-case SiIII at some point
         """
         spec_ind = self.species.index(species)
-        metal_density = self.rho_metal[:, spec_ind]
+        metal_density = self.rho_metal[:, :, spec_ind]
         #Use the total metallicity from summing metal species, not from the GFM_Metallicity
         #variable as the difference is small (~ 4%)
         tot_met = np.sum(metal_density,axis=0)
@@ -165,7 +167,8 @@ class MetalLines:
         #Generate density of this ion: cloudy densities are in log_10
         ion_density = 10**ion * metal_density
         #Compute tau for this metal ion
-        tau_metal = compute_absorption(self.xbins, ion_density, self.vel_metal[:,spec_ind], self.temp_metal[:,spec_ind], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
+        for n in np.arange(0,self.NumLos):
+            tau_metal = compute_absorption(self.xbins, ion_density[n], self.vel_metal[n,:,spec_ind], self.temp_metal[n,:,spec_ind], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
         return tau_metal
 
 
