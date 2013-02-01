@@ -26,7 +26,19 @@ import convert_cloudy
 import line_data
 from _spectra_priv import _SPH_Interpolate
 
-def SPH_Interpolate(data, los_table, nbins, box, hub, atime):
+#Various physical constants
+#Speed of light
+C = 2.99e8
+#Boltzmann constant
+BOLTZMANN = 1.3806504e-23
+KPC = 3.08568025e19
+MPC = KPC * 1000
+SIGMA_T = 6.652458558e-29
+PROTONMASS = 1.66053886e-27 # 1 a.m.u
+SOLAR_MASS = 1.98892e30
+GAMMA = 5.0/3.0
+
+def SPH_Interpolate(data, los_table, nbins, box):
     """Interpolate particles to lines of sight, calculating density, temperature and velocity
     of various species along the line of sight.
 
@@ -40,10 +52,10 @@ def SPH_Interpolate(data, los_table, nbins, box, hub, atime):
         atime - 1/(1+z)
 
     Returns:
-        rho_HI
-        vel_HI
-        temp_HI
-        all as arrays along the line of sight
+        (HI, metals)
+        where HI is a Species class containing the neutral hydrogen
+        and metals is a list of NMETALS Species classes, each containing a metal species
+        If the GFM_Metals array is not found, will just return HI
     """
     pos = np.array(data["Coordinates"],dtype=np.float32)
     vel = np.array(data["Velocities"],dtype=np.float32)
@@ -51,28 +63,64 @@ def SPH_Interpolate(data, los_table, nbins, box, hub, atime):
     u = np.array(data["InternalEnergy"],dtype=np.float32)
     nh0 = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)
     ne = np.array(data["ElectronAbundance"],dtype=np.float32)
-    try:
-        metals = np.array(data["GFM_Metals"],dtype=np.float32)[:,2:]
-        #Deal with floating point roundoff - metals will sometimes be negative
-        metals[np.where(np.abs(metals) < 1e-10)] = 0
-    except IOError:
-        metals = np.array()
     hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
     xx=np.array(los_table.xx, dtype=np.float32)
     yy=np.array(los_table.yy, dtype=np.float32)
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
-    return  _SPH_Interpolate(nbins, box, hub, atime, pos, vel, mass, u, nh0, ne, metals, hh, axis, xx, yy, zz)
+    try:
+        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,2:]
+        #Deal with floating point roundoff - metal_in will sometimes be negative
+        metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
+        (rho_HI, vel_HI, temp_HI, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metal_in, hh, axis, xx, yy, zz)
+        HI = Species(rho_HI, vel_HI, temp_HI)
+        metals = [Species(rho_metal[:,:,0],vel_metal[:,:,0],temp_metal[:,:,0]),]
+        for mm in np.arange(1,np.shape(metals)[1]):
+            metals.append( Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm]))
+        return (HI, metals)
+    except IOError:
+        metals = np.array()
+        (rho_HI, vel_HI, temp_HI) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metals, hh, axis, xx, yy, zz)
+        HI = Species(rho_HI, vel_HI, temp_HI)
+        return HI
 
 
-#Speed of light
-C = 2.99e8
-#Boltzmann constant
-BOLTZMANN = 1.3806504e-23
-KPC = 3.08568025e19
-MPC = KPC * 1000
-SIGMA_T = 6.652458558e-29
-PROTONMASS = 1.66053886e-27 # 1 a.m.u
+class Species:
+    """Convenience class to aggregate rho, vel and temp for a class"""
+    def __init__(self, rho, vel, temp):
+        self.rho = rho
+        self.vel = vel
+        self.temp = temp
+
+    def rescale_units(self,h100, atime, mass):
+        """Rescale the units of the arrays from internal gadget units to
+        physical kg/m^3, km/s and K.
+        Arguments:
+            h100 = hubble constant
+            atime = scale factor
+            mass = mass of this species in amu
+            Needed for the conversion between comoving kpc/h to physical m"""
+        # Conversion factors from internal units
+        rscale = (KPC*atime)/h100    # convert length to m
+        vscale = np.sqrt(atime)        #convert velocity to kms^-1
+        mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
+        escale = 1.0e6           # convert energy/unit mass to J kg^-1
+        # convert (with mu) T to K
+        tscale = ((GAMMA-1.0) * mass * PROTONMASS * escale ) / BOLTZMANN
+        # Rescale density, vel and temp
+        #unweight vel and temp by HI density
+        ind = np.where(self.rho > 0)
+        self.vel[ind] *= vscale/self.rho[ind]
+        self.temp[ind] *= tscale/self.rho[ind]
+        self.rho[ind] *= mscale/rscale**3
+        #If there are no particles in this bin, rho will be zero.
+        #In this case, we set temp and veloc arbitrarily to one,
+        #to avoid nans propagating. Zero rho will imply zero absorption
+        #anyway.
+        ind = np.where(self.rho == 0)
+        self.vel[ind]=1
+        self.temp[ind]=1
+
 
 def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mass):
     """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
@@ -142,11 +190,16 @@ class MetalLines:
         #Line data
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
-        #Indexing is: rho_metals [ NMETALS, NSPECTRA, NBIN ]
-        (self.rho_HI, self.vel_HI, self.temp_HI, self.rho_metal, self.vel_metal, self.temp_metal) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box, self.hubble, self.atime)
+        #Indexing is: rho_metals [ NSPECTRA, NBIN ]
+        (self.HI, self.metals) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box)
+        masses = self.lines.masses.values()
+        self.HI.rescale_units(self.hubble, self.atime, masses[0])
+        for mm in np.arange(0, np.size(self.metals)):
+            self.metals[mm].rescale_units(self.hubble, self.atime, masses[mm])
         #Compute tau for HI
+        self.tau_HI=np.empty(np.shape(self.HI.rho))
         for n in np.arange(0,self.NumLos):
-            self.tau_HI = compute_absorption(self.xbins, self.rho_HI[n], self.vel_HI[n], self.temp_HI[n], self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
+            self.tau_HI[n] = compute_absorption(self.xbins, self.HI.rho[n], self.HI.vel[n], self.HI.temp[n], self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
 
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)
@@ -159,7 +212,7 @@ class MetalLines:
            NOTE: May wish to special-case SiIII at some point
         """
         spec_ind = self.species.index(species)
-        metal_density = self.rho_metal[:, :, spec_ind]
+        metal_density = self.metals[spec_ind].rho
         #Use the total metallicity from summing metal species, not from the GFM_Metallicity
         #variable as the difference is small (~ 4%)
         tot_met = np.sum(metal_density,axis=0)
@@ -167,8 +220,9 @@ class MetalLines:
         #Generate density of this ion: cloudy densities are in log_10
         ion_density = 10**ion * metal_density
         #Compute tau for this metal ion
+        tau_metal=np.empty(np.shape(self.metals[spec_ind].rho))
         for n in np.arange(0,self.NumLos):
-            tau_metal = compute_absorption(self.xbins, ion_density[n], self.vel_metal[n,:,spec_ind], self.temp_metal[n,:,spec_ind], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
+            tau_metal[n] = compute_absorption(self.xbins, ion_density[n], self.metals[spec_ind].vel[n], self.metals[spec_ind].temp[n], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
         return tau_metal
 
 

@@ -11,7 +11,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Things which should be from input
     int nbins, NumLos;
     long long Npart;
-    double box100, h100, atime;
+    double box100;
     npy_intp size[3];
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *u, *nh0, *ne, *h, *metals;
@@ -29,7 +29,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "idddO!O!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100, &h100, &atime, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &metals, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
+    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &nh0, &PyArray_Type, &ne, &PyArray_Type, &metals, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
       return NULL;
 
     NumLos = xx->dimensions[0];
@@ -66,10 +66,6 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     SPH_Interpolation(NULL,&species,NULL,metal_ptr, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
-
-    //Convert units
-    Rescale_Units(&species, nbins, h100, atime);
-    Rescale_Units(&metal_spec, nbins*NMETALS, h100, atime);
 
     size[0] = NumLos;
     size[1] = nbins;
@@ -118,7 +114,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 static PyMethodDef spectrae[] = {
   {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
    "Find LOS density by SPH interpolation: "
-   "    Arguments: nbins, box100, h100, atime, pos, vel, mass, u, nh0, ne, h, axis array, xx, yy, zz"
+   "    Arguments: nbins, box100, pos, vel, mass, u, nh0, ne, h, axis array, xx, yy, zz"
    "    "},
   {NULL, NULL, 0, NULL},
 };
