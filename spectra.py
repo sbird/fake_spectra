@@ -69,7 +69,7 @@ def SPH_Interpolate(data, los_table, nbins, box):
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
     try:
-        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,2:]
+        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
         #Deal with floating point roundoff - metal_in will sometimes be negative
         metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
         (rho_HI, vel_HI, temp_HI, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metal_in, hh, axis, xx, yy, zz)
@@ -185,7 +185,7 @@ class MetalLines:
         self.Hz = 100.0*self.hubble * np.sqrt(Omega0/self.atime**3 + OmegaLambda)
         self.nbins = nbins
         self.xbins = np.arange(0,self.nbins)*self.box/self.nbins
-        self.species = ['C','N','O','Ne','Mg','Si','Fe']
+        self.species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
         self.NumLos = np.size(los_table.axis)
         #Line data
         self.lines = line_data.LineData()
@@ -214,16 +214,14 @@ class MetalLines:
            NOTE: May wish to special-case SiIII at some point
         """
         spec_ind = self.species.index(species)
-        metal_density = self.metals[spec_ind].rho
-        #Use the total metallicity from summing metal species, not from the GFM_Metallicity
-        #variable as the difference is small (~ 4%)
-        tot_met = np.sum(metal_density,axis=0)
-        ion = self.cloudy.interpolate(self.redshift, tot_met, metal_density, spec_ind, ion)
-        #Generate density of this ion: cloudy densities are in log_10
-        ion_density = 10**ion * metal_density
+        ion_density = np.array(self.metals[spec_ind].rho)
         #Compute tau for this metal ion
         tau_metal=np.empty(np.shape(self.metals[spec_ind].rho))
         for n in np.arange(0,self.NumLos):
+            #For the density parameter use the hydrogen density at this pixel
+            #For metallicity pass the metallicity of this species and it will be converted to cloudy format
+            for i in np.arange(0,self.nbins):
+                ion_density[n,i] *= self.cloudy.ion(species, ion, self.redshift, ion_density[n,i], self.rho_H[n,i])
             tau_metal[n] = compute_absorption(self.xbins, ion_density[n], self.metals[spec_ind].vel[n], self.metals[spec_ind].temp[n], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
         return tau_metal
 

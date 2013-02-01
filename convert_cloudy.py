@@ -96,6 +96,9 @@ class CloudyTable:
         self.reds = np.array([1,2,3,4,5,6])
         self.mets = np.array([-4,-3,-2,-1,0,1])
         self.dens = np.array([-6,-5,-4,-3,-2,-1,0,1,2])
+        self.species = ("He", "C", "N", "O", "Ne", "Mg", "Si", "Fe")
+        #Solar abundances from Hazy table 7.1 as Z = n/n(H)
+        self.solar = np.array([0.1, 2.45e-4, 8.51e-5, 4.9e-4, 1.e-4, 3.47e-5, 3.47e-5, 2.82e-5])
         try:
             datafile = np.load(self.savefile)
             self.table = datafile["table"]
@@ -104,14 +107,26 @@ class CloudyTable:
             self.save_file()
         self.directory = directory
 
-    def interpolate(self,red, met, rho, species, ion):
+    def ion(self,species, ion, red, met, rho):
         """Interpolate a table onto given redshift, metallicity and density for species
-        Returns a log( ionisation fraction ) """
-        red_ints = interp1d(self.reds, self.table[species,:,:,:,ion],axis = 0)
+        Returns a log( ionisation fraction ).
+        rho is the density of hydrogen in atoms / cm^3. Internally the log is taken
+        met is the mass-weighted metallicity of a species
+        specified as Z = n/ n(H), and internally converted into
+        X = log_10(Z / Z_solar) for cloudy
+        red is the redshift
+        species is the element name of the metal species we want
+        ion is the ionisation number
+        Returns the fraction of this ion in the species
+        """
+        crho = np.alog10(rho)
+        cmet = np.alog10(met/self.solar[species])
+        cspe = self.species.index(species)
+        red_ints = interp1d(self.reds, self.table[cspe,:,:,:,ion],axis = 0)
         met_ints = interp1d(self.mets, red_ints(red),axis = 0)
-        dens_ints = interp1d(self.dens, met_ints(met),axis = 0)
-        ions = dens_ints(rho)
-        return ions
+        dens_ints = interp1d(self.dens, met_ints(cmet),axis = 0)
+        ions = dens_ints(crho)
+        return 10**ions
 
     def save_file(self):
         """
