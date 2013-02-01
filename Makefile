@@ -22,10 +22,10 @@ endif
 #Are we using gcc or icc?
 ifeq (icc,$(findstring icc,${CC}))
   CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD} -fpic -std=gnu99
-  LINK +=${CXX} -openmp
+  LINK +=${CXX} -O2 -openmp
 else
   CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD} -fPIC -std=gnu99
-  LINK +=${CXX} -openmp $(PRO)
+  LINK +=${CXX} -O2 -fopenmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
 #CC = icc -openmp -vec_report0
@@ -78,7 +78,7 @@ main.o: main.c global_vars.h $(COM_INC)
 py_module.o: py_module.c
 	$(CC) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^ -o $@
 _spectra_priv.so: py_module.o extract_spectra.o init.o
-	$(LINK) -shared $^ -o $@
+	$(LINK) $(LFLAGS) -shared $^ -o $@
 clean:
 	rm -f *.o  extract rescale statistic
 
