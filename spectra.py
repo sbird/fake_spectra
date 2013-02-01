@@ -38,9 +38,9 @@ PROTONMASS = 1.66053886e-27 # 1 a.m.u
 SOLAR_MASS = 1.98892e30
 GAMMA = 5.0/3.0
 
-def SPH_Interpolate(data, los_table, nbins, box):
+def SPH_Interpolate_metals(data, los_table, nbins, box):
     """Interpolate particles to lines of sight, calculating density, temperature and velocity
-    of various species along the line of sight.
+    of various metal species along the line of sight.
 
     This is a wrapper which calls the C function.
     Arguments:
@@ -52,38 +52,26 @@ def SPH_Interpolate(data, los_table, nbins, box):
         atime - 1/(1+z)
 
     Returns:
-        (HI, metals)
-        where HI is a Species class containing the neutral hydrogen
-        and metals is a list of NMETALS Species classes, each containing a metal species
-        If the GFM_Metals array is not found, will just return HI
+        list of Species classes, each containing a metal species
     """
     pos = np.array(data["Coordinates"],dtype=np.float32)
     vel = np.array(data["Velocities"],dtype=np.float32)
     mass = np.array(data["Masses"],dtype=np.float32)
     u = np.array(data["InternalEnergy"],dtype=np.float32)
-    nh0 = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)
     ne = np.array(data["ElectronAbundance"],dtype=np.float32)
     hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
     xx=np.array(los_table.xx, dtype=np.float32)
     yy=np.array(los_table.yy, dtype=np.float32)
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
-    try:
-        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
-        #Deal with floating point roundoff - metal_in will sometimes be negative
-        metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
-        (rho_HI, vel_HI, temp_HI, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metal_in, hh, axis, xx, yy, zz)
-        HI = Species(rho_HI, vel_HI, temp_HI)
-        metals = [Species(rho_metal[:,:,0],vel_metal[:,:,0],temp_metal[:,:,0]),]
-        for mm in np.arange(1,np.shape(metal_in)[1]):
-            metals.append( Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm]))
-        return (HI, metals)
-    except IOError:
-        metals = np.array()
-        (rho_HI, vel_HI, temp_HI) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metals, hh, axis, xx, yy, zz)
-        HI = Species(rho_HI, vel_HI, temp_HI)
-        return HI
-
+    metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
+    #Deal with floating point roundoff - metal_in will sometimes be negative
+    metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
+    (rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
+    metals = [Species(rho_metal[:,:,0],vel_metal[:,:,0],temp_metal[:,:,0]),]
+    for mm in np.arange(1,np.shape(metal_in)[1]):
+        metals.append( Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm]))
+    return metals
 
 class Species:
     """Convenience class to aggregate rho, vel and temp for a class"""
@@ -191,13 +179,7 @@ class MetalLines:
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (self.HI, self.metals) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box)
-        #Rescale HI
-        self.HI.rescale_units(self.hubble, self.atime, self.lines.get_mass('H'))
-        #Compute tau for HI
-        self.tau_HI=np.empty(np.shape(self.HI.rho))
-        for n in np.arange(0,self.NumLos):
-            self.tau_HI[n] = compute_absorption(self.xbins, self.HI.rho[n], self.HI.vel[n], self.HI.temp[n], self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
+        (self.metals) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box)
         #Rescale metals
         for mm in np.arange(0, np.size(self.metals)):
             mass = self.lines.get_mass(self.species[mm])
