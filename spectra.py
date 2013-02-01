@@ -75,7 +75,7 @@ def SPH_Interpolate(data, los_table, nbins, box):
         (rho_HI, vel_HI, temp_HI, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, nh0, ne, metal_in, hh, axis, xx, yy, zz)
         HI = Species(rho_HI, vel_HI, temp_HI)
         metals = [Species(rho_metal[:,:,0],vel_metal[:,:,0],temp_metal[:,:,0]),]
-        for mm in np.arange(1,np.shape(metals)[1]):
+        for mm in np.arange(1,np.shape(metal_in)[1]):
             metals.append( Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm]))
         return (HI, metals)
     except IOError:
@@ -192,14 +192,16 @@ class MetalLines:
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
         (self.HI, self.metals) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box)
-        masses = self.lines.masses.values()
-        self.HI.rescale_units(self.hubble, self.atime, masses[0])
-        for mm in np.arange(0, np.size(self.metals)):
-            self.metals[mm].rescale_units(self.hubble, self.atime, masses[mm])
+        #Rescale HI
+        self.HI.rescale_units(self.hubble, self.atime, self.lines.get_mass('H'))
         #Compute tau for HI
         self.tau_HI=np.empty(np.shape(self.HI.rho))
         for n in np.arange(0,self.NumLos):
             self.tau_HI[n] = compute_absorption(self.xbins, self.HI.rho[n], self.HI.vel[n], self.HI.temp[n], self.lines.get_line('H',1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass('H'))
+        #Rescale metals
+        for mm in np.arange(0, np.size(self.metals)):
+            mass = self.lines.get_mass(self.species[mm])
+            self.metals[mm].rescale_units(self.hubble, self.atime, mass)
 
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)
