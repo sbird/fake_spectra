@@ -154,15 +154,16 @@ class MetalLines:
         """Get the optical depth for a particular species out of self.species:
            (C, N, O, Ne, Mg, Si, Fe)
            and some ion number
+           NOTE: May wish to special-case SiIII at some point
         """
         spec_ind = self.species.index(species)
         metal_density = self.rho_metal[:, spec_ind]
         #Use the total metallicity from summing metal species, not from the GFM_Metallicity
         #variable as the difference is small (~ 4%)
         tot_met = np.sum(metal_density,axis=0)
-        ions = self.cloudy.interpolate(self.redshift, tot_met, metal_density, spec_ind, ion)
-        #Generate density of this ion
-        ion_density = ions[:,:,ion]* metal_density
+        ion = self.cloudy.interpolate(self.redshift, tot_met, metal_density, spec_ind, ion)
+        #Generate density of this ion: cloudy densities are in log_10
+        ion_density = 10**ion * metal_density
         #Compute tau for this metal ion
         tau_metal = compute_absorption(self.xbins, ion_density, self.vel_metal[:,spec_ind], self.temp_metal[:,spec_ind], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
         return tau_metal
