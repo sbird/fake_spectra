@@ -15,7 +15,7 @@ class LineData:
     def __init__(self, vpdat = "/home/spb/codes/vpfit/atom.dat"):
         self.species = ('H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe')
         #Put in the masses by hand for simplicity
-        self.masses = ( 1.00794,4.002602,12.011,14.00674,15.9994,20.18,24.3050,28.0855,55.847 )
+        self.masses = {'H': 1.00794,'He': 4.002602,'C': 12.011,'N': 14.00674,'O': 15.9994,'Ne': 20.18,'Mg': 24.3050,'Si': 28.0855,'Fe': 55.847 }
         #9 empty lists, one list per species
         self.lines = {}
         self.read_vpfit(vpdat)
@@ -45,6 +45,10 @@ class LineData:
         specie: number of species, ion: transition number (from 1)"""
         lines = self.lines[(specie, ion)]
         return lines
+
+    def get_mass(self, specie):
+        """Get the mass in amu for a species"""
+        return self.masses[specie]
 
 class Line:
     """Class to store the parameters of a single line"""
