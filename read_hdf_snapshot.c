@@ -206,7 +206,7 @@ int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno)
           if (length != get_single_dataset("ElectronAbundance",(*P).Ne,length,&hdf_group,fileno))
              goto exit;
           /* The HI fraction, nHI/nH */
-          if (length != get_single_dataset("NeutralHydrogenAbundance",(*P).NH0,length,&hdf_group,fileno))
+          if (length != get_single_dataset("NeutralHydrogenAbundance",(*P).fraction,length,&hdf_group,fileno))
              goto exit;
         }
     /*Are we arepo? If we are we should have this array.*/
@@ -235,7 +235,7 @@ exit:
         printf("P[-1].Mass = %e\n", (*P).Mass[0]);
         printf("P[-1].U = %f\n\n", (*P).U[length-1]);
         printf("P[-1].Ne = %e\n",  (*P).Ne[length-1]);
-        printf("P[-1].NH0 = %e\n", (*P).NH0[length-1]);
+        printf("P[-1].NH0 = %e\n", (*P).fraction[length-1]);
         printf("P[-1].h = %f\n", (*P).h[length-1]);
   }
   return length;

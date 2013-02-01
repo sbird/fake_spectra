@@ -24,6 +24,9 @@
 #ifdef HDF5
   #include <hdf5.h>
 #endif
+#ifdef HELIUM
+  #error "Helium no longer supported like this: Use the python module"
+#endif
 
 /*Open a file for reading to check it exists*/
 int file_readable(const char * filename)
@@ -65,10 +68,7 @@ int main(int argc, char **argv)
   double * tau_H1=NULL;
   int hdf5=0;
   interp H1;
-#ifdef HELIUM
-  double *tau_He2=NULL;
-  interp He2;
-#endif
+  const int nspecies = 1;
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
@@ -114,17 +114,11 @@ int main(int argc, char **argv)
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
   }
-  if(InitLOSMemory(&H1, NumLos, NBINS) || 
+  if(InitLOSMemory(&H1, NumLos, nspecies*NBINS) || 
       !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
                   fprintf(stderr, "Error allocating LOS memory\n");
                   exit(2);
   }
-#ifdef HELIUM
-  if(InitLOSMemory(&He2, NumLos, NBINS)){
-                  fprintf(stderr, "Error allocating LOS memory\n");
-                  exit(2);
-  }
-#endif
   #ifdef HDF5
     if(!(fname= malloc((strlen(indir)+10)*sizeof(char))) ||
        !(ffname= malloc((strlen(indir)+16)*sizeof(char)))){
@@ -184,11 +178,7 @@ int main(int argc, char **argv)
               Npart=load_snapshot(indir, StartPart,MaxRead,&P, &omegab);
           if(Npart > 0){
              /*Do the hard SPH interpolation*/
-          #ifndef HELIUM
-             SPH_Interpolation(rhoker_H,&H1,NULL, NULL, NBINS, Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
-          #else
-             SPH_Interpolation(rhoker_H,&H1, &He2, NULL, NBINS, Npart, NumLos,box100, los_table, sort_los_table, nxx,&P);
-          #endif
+             SPH_Interpolation(rhoker_H,&H1, 1, NBINS, Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
           }
           /*Free the particle list once we don't need it*/
           if(Npart >= 0)
@@ -209,9 +199,6 @@ int main(int argc, char **argv)
   free(sort_los_table);
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
-  #ifdef HELIUM
-   || !(tau_He2 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
-  #endif
                   ){
                   fprintf(stderr, "Error allocating memory for tau\n");
                   exit(2);
@@ -228,14 +215,6 @@ int main(int argc, char **argv)
        H1_i.veloc+=(i*NBINS);
        Rescale_Units(&H1_i, NBINS, h100, atime);
        Compute_Absorption(tau_H1+(i*NBINS), &H1_i,NBINS, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
-#ifdef HELIUM
-       interp He2_i=He2;
-       He2_i.rho+=(i*NBINS);
-       He2_i.temp+=(i*NBINS);
-       He2_i.veloc+=(i*NBINS);
-       Rescale_Units(&He2_i, NBINS, h100, atime);
-       Compute_Absorption(tau_He2+(i*NBINS), &He2_i,NBINS,Hz,h100,box100,atime,LAMBDA_LYA_HE2,GAMMA_LYA_HE2, FOSC_LYA,HEMASS);
-#endif
        Convert_Density(rhoker_H+(i*NBINS), &H1_i, h100, atime, omegab);
      }
   }
@@ -251,11 +230,7 @@ int main(int argc, char **argv)
   fwrite(&pad,sizeof(int),32-6,output);
 #endif
   fwrite(rhoker_H,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
-  if(WriteLOSData(&H1, tau_H1,NumLos, output)
-#ifdef HELIUM
-    || WriteLOSData(&He2,tau_He2,NumLos, output)
-#endif
-    ){ 
+  if(WriteLOSData(&H1, tau_H1,NumLos, output)){ 
      fprintf(stderr, "Error writing spectra to disk!\n");
   }
   fclose(output);
@@ -264,10 +239,6 @@ int main(int argc, char **argv)
   free(tau_H1);
   free(rhoker_H);
   FreeLOSMemory(&H1);
-#ifdef HELIUM
-  free(tau_He2);
-  FreeLOSMemory(&He2);
-#endif
   return 0;
 }
 /**********************************************************************/

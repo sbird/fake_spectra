@@ -121,7 +121,7 @@ extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, 
           snap.GetBlock("NHE ",(*P).NHep,NumPart,StartPart,0);
       #endif 
           /* The HI fraction, nHI/nH */
-          snap.GetBlock("NH  ",(*P).NH0,NumPart,StartPart,0);
+          snap.GetBlock("NH  ",(*P).fraction,NumPart,StartPart,0);
           /*An NHE block*/
         }
      /* The smoothing length */
@@ -134,7 +134,7 @@ extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, 
         printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass[0],(*omegab));
         printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
         printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
-        printf("P[%ld].NH0 = %e\n", NumPart, (*P).NH0[NumPart-1]);
+        printf("P[%ld].NH0 = %e\n", NumPart, (*P).fraction[NumPart-1]);
         printf("P[%ld].h = %f\n",NumPart, (*P).h[NumPart-1]);
   }
 #if 0 
@@ -170,17 +170,15 @@ extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, 
   return NumPart;
 }
 
+/*Note this assumes only one species*/
 extern "C" int alloc_parts(pdata* P, int np)
 {
     return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
     ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
      ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
     ((*P).U=(float *)malloc(np*sizeof(float))) &&
-    ((*P).NH0=(float *)malloc(np*sizeof(float))) &&
+    ((*P).fraction=(float *)malloc(np*sizeof(float))) &&
     ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
-#ifdef HELIUM
-    ((*P).NHep=(float *)malloc(np*sizeof(float))) &&
-#endif
     ((*P).h=(float *)malloc(np*sizeof(float)));
 }
 
@@ -190,11 +188,8 @@ extern "C" void free_parts(pdata* P)
     free((*P).Pos);
     free((*P).Mass);
     free((*P).U);
-    free((*P).NH0);
+    free((*P).fraction);
     free((*P).Ne);
     free((*P).h);
-#ifdef HELIUM
-    free((*P).NHep);
-#endif
     return;
 }

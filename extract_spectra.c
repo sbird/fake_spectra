@@ -16,6 +16,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "global_vars.h"
 #include "parameters.h"
 
@@ -147,8 +148,12 @@ void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const dou
 int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
 
 /*****************************************************************************/
-/*This function does the hard work of looping over all the particles*/
-void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * metals, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
+/*This function does the hard work of looping over all the particles.
+ * Can handle an arbitrary number of species, in the array 'species'. 
+ * Number of species is given in nspecies. Note this does not actually have to be a metal species.
+ * The fractional abundance of the species, Z = n / n(H) should stored be in P.fraction
+ * */
+void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 {
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which sightlines are near the particle using the sorted los table 
@@ -164,13 +169,12 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
   /*This is a small thread-local caching mechanism, to avoid
    * massive deadlock around the omp critial section.*/
    int cindex=0;
-   double rho_H1[CACHESZ]={0}, temp_H1[CACHESZ]={0},veloc_H1[CACHESZ]={0};
-   double rho_He2[CACHESZ]={0}, temp_He2[CACHESZ]={0},veloc_He2[CACHESZ]={0};
-   double rho_metals[CACHESZ][NMETALS]={{0}};
-   double temp_metals[CACHESZ][NMETALS]={{0}};
-   double veloc_metals[CACHESZ][NMETALS]={{0}};
+   double rho[CACHESZ][nspecies], temp[CACHESZ][nspecies], veloc[CACHESZ][nspecies];
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
+   memset(rho, 0, CACHESZ*nspecies*sizeof(double));
+   memset(temp, 0, CACHESZ*nspecies*sizeof(double));
+   memset(veloc, 0, CACHESZ*nspecies*sizeof(double));
     #pragma omp for
     for(int i=0;i<Particles;i++)
     {
@@ -196,8 +200,6 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
           int iz,ioff,j,iiz;
           /*Load a sightline from the table.*/
           const int iaxis = los_table[iproc].axis;
-          const double H1frac = (*P).NH0[i]; /* nHI/nH */
-          /* (*P).NHep[i] == nHeII/nH */
           const double hinv2 = 1. / h2; /* 1/h^2 */
           const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
@@ -211,7 +213,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
            *     [+ Z / (12->16)] from metal species
            *     [+ Z/16*4 ] for OIV from electrons. */
           const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-          const double temp = (*P).U[i]*mu; /* T in some strange units */
+          const double p_temp = (*P).U[i]*mu; /* T in some strange units */
           double dzmax,zgrid;
 	     
 	     /* Central vertex to contribute to */
@@ -227,7 +229,7 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
 	     
 	     /* Loop over contributing vertices */
 	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
-	       {
+	     {
              double deltaz,dz,dist2,q,kernel,velker,temker;
 	         j = iiz;
 	         j = ((j-1+10*nbins) % nbins);
@@ -241,121 +243,81 @@ void SPH_Interpolation(double * rhoker_H, interp * H1, interp * He2, interp * me
 	        else
                   deltaz = zgrid - zz;
                
-	        if (deltaz > box2) 
-	  	deltaz = deltaz - boxsize;
-	        if (deltaz < -box2) 
-	  	deltaz = deltaz + boxsize;
+	        if (deltaz > box2)
+                deltaz = deltaz - boxsize;
+	        if (deltaz < -box2)
+                deltaz = deltaz + boxsize;
 	        
 	        dz = fabs(deltaz);
-	        if(dz > box2) 
-	  	   dz = boxsize - dz;
+	        if(dz > box2)
+                dz = boxsize - dz;
 	        
 	        dist2 = dr2 + (dz*dz);
 	        if (dist2 > h4)
-	  	   continue;
-                else{
+	  	        continue;
+            else{
 	            q = sqrt(dist2 * hinv2);
 	            if (q <= 1.)
                         kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
 	            else
 	                kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
-                }
+            }
 	        
 	        kernel *= hinv3; 
 
 	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
 	        velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
-	        temker = temp * kernel; /* kg (kpc)^-3 * K */
-                /*Only one thread can update the global memory at a time.
-                 * This adds a small thread-local cache.
-                 * Add stuff to the cache*/
-                bins[cindex]=iproc*nbins+j;
-                if(rhoker_H)
-                    rho_H[cindex]  = kernel * XH;
-	        rho_H1[cindex] = kernel * XH * H1frac;
-	        veloc_H1[cindex] = velker * XH * H1frac;
-	        temp_H1[cindex] = temker * XH * H1frac;
+	        temker = p_temp * kernel; /* kg (kpc)^-3 * K */
+            /*Only one thread can update the global memory at a time.
+             * This adds a small thread-local cache.
+             * Add stuff to the cache*/
+            bins[cindex]=iproc*nbins+j;
+            if(rhoker_H)
+                rho_H[cindex]  = kernel * XH;
 
-                if(metals){
-                    for(int l=0;l<NMETALS;l++){
-                        /*GFM_Metals is the total mass in a metal species per unit gas mass.
-                         * So use it directly.*/
-                        rho_metals[cindex][l] = kernel * XH * (*P).metals[NMETALS*i+l];
-                        veloc_metals[cindex][l] = velker * XH * (*P).metals[NMETALS*i+l];
-                        temp_metals[cindex][l] = temker * XH * (*P).metals[NMETALS*i+l];
+            for(int l=0;l<nspecies;l++){
+                /*GFM_Metals is the total mass in a metal species per unit gas mass.
+                 * So use it directly.*/
+                rho[cindex][l] = kernel * XH * (*P).fraction[nspecies*i+l];
+                veloc[cindex][l] = velker * XH * (*P).fraction[nspecies*i+l];
+                temp[cindex][l] = temker * XH * (*P).fraction[nspecies*i+l];
+            }
+            cindex++;
+            /*Empty the cache when it is full
+             * This is a critical section*/
+            if(cindex == CACHESZ){
+              #pragma omp critical
+              {
+			    if(rhoker_H)
+                    for(cindex=0;cindex<CACHESZ;cindex++){
+                        rhoker_H[bins[cindex]]  += rho_H[cindex];
+                    }
+                for(cindex=0;cindex<CACHESZ;cindex++){
+                    for(int l = 0; l < nspecies; l++){
+                        (*species).rho[bins[cindex]*nspecies+l] += rho[cindex][l];
+                        (*species).veloc[bins[cindex]*nspecies+l] += veloc[cindex][l];
+                        (*species).temp[bins[cindex]*nspecies+l] +=temp[cindex][l];
+                        /* Zero the cache at the end*/
+                        rho_H[cindex] = rho[cindex][l] = veloc[cindex][l] = temp[cindex][l] = 0;
                     }
                 }
-
-                if(He2){
-                  rho_He2[cindex] = kernel * XH * (*P).NHep[i];
-                  veloc_He2[cindex] = velker * XH * (*P).NHep[i];
-                  temp_He2[cindex] = temker * XH * (*P).NHep[i];
-                }
-                cindex++;
-                /*Empty the cache when it is full
-                 * This is a critical section*/
-                if(cindex == CACHESZ){
-                  #pragma omp critical
-                  {
-                          for(cindex=0;cindex<CACHESZ;cindex++){
-	                        (*H1).rho[bins[cindex]] += rho_H1[cindex];
-	                        (*H1).veloc[bins[cindex]] += veloc_H1[cindex];
-	                        (*H1).temp[bins[cindex]] +=temp_H1[cindex];
-                          }
-                          if(metals)
-                              for(cindex=0;cindex<CACHESZ;cindex++){
-                                  for(int l = 0; l < NMETALS; l++){
-                                      (*metals).rho[bins[cindex]*NMETALS+l] += rho_metals[cindex][l];
-                                      (*metals).veloc[bins[cindex]*NMETALS+l] += veloc_metals[cindex][l];
-                                      (*metals).temp[bins[cindex]*NMETALS+l] +=temp_metals[cindex][l];
-                                  }
-                              }
-                          if(He2)
-                              for(cindex=0;cindex<CACHESZ;cindex++){
-                                 (*He2).rho[bins[cindex]] += rho_He2[cindex];
-                                 (*He2).veloc[bins[cindex]] += veloc_He2[cindex];
-                                 (*He2).temp[bins[cindex]] +=temp_He2[cindex];
-                              }
-			  if(rhoker_H)
-                             for(cindex=0;cindex<CACHESZ;cindex++)
-                                    rhoker_H[bins[cindex]]  += rho_H[cindex];
-                  }/*End critical block*/
-                  /* Zero the cache at the end*/
-                  for(cindex=0;cindex<CACHESZ;cindex++){
-                      rho_H[cindex] = rho_H1[cindex] = veloc_H1[cindex] = temp_H1[cindex] = 0;
-                  }
-		  if(He2)
-                     for(cindex=0;cindex<CACHESZ;cindex++){
-                        rho_He2[cindex] = veloc_He2[cindex] = temp_He2[cindex] = 0;
-                     }
-                  cindex=0;
-                }
-	       }        /* loop over contributing vertices */
-	}  /*Loop over LOS*/               
+              }/*End critical block*/
+              cindex=0;
+            }
+	     }        /* loop over contributing vertices */
+	  }  /*Loop over LOS*/               
     } /* Loop over particles*/
     /*Also empty the cache at the end*/
     #pragma omp critical
     {
         int i;
-            for(i=0;i<cindex;i++){
-               (*H1).rho[bins[i]] += rho_H1[i];
-               (*H1).veloc[bins[i]] += veloc_H1[i];
-               (*H1).temp[bins[i]] +=temp_H1[i];
+        for(i=0;i<cindex;i++){
+            for(int l = 0; l < nspecies; l++){
+                (*species).rho[bins[i]*nspecies+l] += rho[i][l];
+                (*species).veloc[bins[i]*nspecies+l] += veloc[i][l];
+                (*species).temp[bins[i]*nspecies+l] +=temp[i][l];
             }
-            if(metals)
-                for(i=0;i<cindex;i++){
-                    for(int l = 0; l < NMETALS; l++){
-                        (*metals).rho[bins[i]*NMETALS+l] += rho_metals[i][l];
-                        (*metals).veloc[bins[i]*NMETALS+l] += veloc_metals[i][l];
-                        (*metals).temp[bins[i]*NMETALS+l] +=temp_metals[i][l];
-                    }
-                }
-            if(He2)
-                for(i=0;i<cindex;i++){
-                   (*He2).rho[bins[i]] += rho_He2[i];
-                   (*He2).veloc[bins[i]] += veloc_He2[i];
-                   (*He2).temp[bins[i]] +=temp_He2[i];
-                }
+        }
 	    if(rhoker_H)
                 for(cindex=0;cindex<CACHESZ;cindex++)
                    rhoker_H[bins[cindex]]  += rho_H[cindex];
