@@ -107,10 +107,11 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
+
 static PyMethodDef spectrae[] = {
   {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
    "Find LOS density by SPH interpolation: "
-   "    Arguments: nbins, pos, vel, mass, u, nh0, ne, h, axis array, xx, yy, zz"
+   "    Arguments: nbins, box100, h100, atime, pos, vel, mass, u, nh0, ne, h, axis array, xx, yy, zz"
    "    "},
   {NULL, NULL, 0, NULL},
 };
