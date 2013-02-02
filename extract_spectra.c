@@ -150,9 +150,10 @@ int get_list_of_near_lines(const double xx,const double yy,const double zz,const
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles.
  * Can handle an arbitrary number of species, in the array 'species'. 
- * Number of species is given in nspecies. Note this does not actually have to be a metal species.
+ * Number of species is given in nspecies. 
  * The fractional abundance of the species, Z = n / n(H) should stored be in P.fraction
- * */
+ * Output is stored in interp *species, and is rho, temp and vel, in internal gadget units. 
+ */
 void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
 {
       /* Loop over particles in LOS and do the SPH interpolation */

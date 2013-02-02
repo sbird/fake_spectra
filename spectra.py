@@ -52,7 +52,8 @@ def SPH_Interpolate_metals(data, los_table, nbins, box):
         atime - 1/(1+z)
 
     Returns:
-        list of Species classes, each containing a metal species
+        rho_H - hydrogen density along the line of sight
+        dictionary of Species classes, specifying density, temperature and velocity of the metal species along the line of sight.
     """
     pos = np.array(data["Coordinates"],dtype=np.float32)
     vel = np.array(data["Velocities"],dtype=np.float32)
@@ -64,14 +65,16 @@ def SPH_Interpolate_metals(data, los_table, nbins, box):
     yy=np.array(los_table.yy, dtype=np.float32)
     zz=np.array(los_table.zz, dtype=np.float32)
     axis=np.array(los_table.axis, dtype=np.int32)
+    #We exclude hydrogen
     metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
     #Deal with floating point roundoff - metal_in will sometimes be negative
     metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
-    (rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
-    metals = [Species(rho_metal[:,:,0],vel_metal[:,:,0],temp_metal[:,:,0]),]
+    (rho_H, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
+    species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
+    metals = {}
     for mm in np.arange(1,np.shape(metal_in)[1]):
-        metals.append( Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm]))
-    return metals
+        metals[species[mm]] = Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
+    return (rho_H, metals)
 
 class Species:
     """Convenience class to aggregate rho, vel and temp for a class"""
@@ -87,7 +90,8 @@ class Species:
             h100 = hubble constant
             atime = scale factor
             mass = mass of this species in amu
-            Needed for the conversion between comoving kpc/h to physical m"""
+            Needed for the conversion between comoving kpc/h to physical m.
+            Only do this ONCE."""
         # Conversion factors from internal units
         rscale = (KPC*atime)/h100    # convert length to m
         vscale = np.sqrt(atime)        #convert velocity to kms^-1
@@ -96,7 +100,7 @@ class Species:
         # convert (with mu) T to K
         tscale = ((GAMMA-1.0) * mass * PROTONMASS * escale ) / BOLTZMANN
         # Rescale density, vel and temp
-        #unweight vel and temp by HI density
+        # vel and temp are calculated weighted by density. Undo this.
         ind = np.where(self.rho > 0)
         self.vel[ind] *= vscale/self.rho[ind]
         self.temp[ind] *= tscale/self.rho[ind]
@@ -179,32 +183,34 @@ class MetalLines:
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (self.metals) = SPH_Interpolate(f["PartType0"], los_table, nbins, self.box)
+        (self.rho_H, self.metals) = SPH_Interpolate_metals(f["PartType0"], los_table, nbins, self.box)
         #Rescale metals
-        for mm in np.arange(0, np.size(self.metals)):
-            mass = self.lines.get_mass(self.species[mm])
-            self.metals[mm].rescale_units(self.hubble, self.atime, mass)
+        for (key, value) in self.metals:
+            mass = self.lines.get_mass(key)
+            value.rescale_units(self.hubble, self.atime, mass)
 
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)
 
 
-    def get_lines(self, species, ion):
-        """Get the optical depth for a particular species out of self.species:
-           (C, N, O, Ne, Mg, Si, Fe)
+    def get_lines(self, elem, ion):
+        """Get the optical depth for a particular element out of:
+           (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number
            NOTE: May wish to special-case SiIII at some point
         """
-        spec_ind = self.species.index(species)
-        ion_density = np.array(self.metals[spec_ind].rho)
+        species = self.metals[elem]
+        line = self.lines.get_line(elem,ion)
+        mass = self.lines.get_mass(elem)
+        ion_density = np.array(species.rho)
         #Compute tau for this metal ion
-        tau_metal=np.empty(np.shape(self.metals[spec_ind].rho))
+        tau_metal=np.empty(np.shape(species.rho))
         for n in np.arange(0,self.NumLos):
             #For the density parameter use the hydrogen density at this pixel
-            #For metallicity pass the metallicity of this species and it will be converted to cloudy format
+            #For metallicity pass the metallicity of this species at this bin (rho_Z/ rho_H) and it will be converted to cloudy format
             for i in np.arange(0,self.nbins):
-                ion_density[n,i] *= self.cloudy.ion(species, ion, self.redshift, ion_density[n,i], self.rho_H[n,i])
-            tau_metal[n] = compute_absorption(self.xbins, ion_density[n], self.metals[spec_ind].vel[n], self.metals[spec_ind].temp[n], self.lines.get_line(species,1),self.Hz,self.hubble, self.box, self.atime,self.lines.get_mass(species))
+                ion_density[n,i] *= self.cloudy.ion(elem, ion, self.redshift, ion_density[n,i]/self.rho_H[n,i], self.rho_H[n,i])
+            tau_metal[n] = compute_absorption(self.xbins, ion_density[n], species.vel[n], species.temp[n],line,self.Hz,self.hubble, self.box, self.atime,mass)
         return tau_metal
 
 
