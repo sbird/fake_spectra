@@ -32,8 +32,8 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     NumLos = PyArray_DIM(xx,0);
     Npart = PyArray_DIM(pos,0);
-    //NOTE if nspecies == 1, fractions must have shape [1,N], rather than [N]
-    nspecies = PyArray_DIM(fractions, 0);
+    //NOTE if nspecies == 1, fractions must have shape [N,1], rather than [N]
+    nspecies = PyArray_DIM(fractions, 1);
     //Malloc stuff
     los_table=malloc(NumLos*sizeof(los));
     sort_los_table=malloc(NumLos*sizeof(sort_los));
@@ -48,6 +48,15 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     rho_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
     vel_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
+
+    if ( !rho_H_out || !rho_out || !vel_out || !temp_out)
+        return NULL;
+
+    //Initialise output arrays to 0.
+    PyArray_FILLWBYTE(rho_H_out, 0);
+    PyArray_FILLWBYTE(rho_out, 0);
+    PyArray_FILLWBYTE(vel_out, 0);
+    PyArray_FILLWBYTE(temp_out, 0);
 
     //Here comes the cheat
     species.rho = (double *) PyArray_DATA(rho_out);
