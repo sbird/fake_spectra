@@ -27,7 +27,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
+    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
       return NULL;
 
     NumLos = PyArray_DIM(xx,0);
