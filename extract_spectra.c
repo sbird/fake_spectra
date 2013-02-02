@@ -311,8 +311,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
     /*Also empty the cache at the end*/
     #pragma omp critical
     {
-        int i;
-        for(i=0;i<cindex;i++){
+        for(int i=0;i<cindex;i++){
             for(int l = 0; l < nspecies; l++){
                 (*species).rho[bins[i]*nspecies+l] += rho[i][l];
                 (*species).veloc[bins[i]*nspecies+l] += veloc[i][l];
@@ -320,8 +319,8 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
             }
         }
 	    if(rhoker_H)
-                for(cindex=0;cindex<CACHESZ;cindex++)
-                   rhoker_H[bins[cindex]]  += rho_H[cindex];
+            for(int i=0;i<cindex;i++)
+                rhoker_H[bins[i]]  += rho_H[i];
     }/*End critical block*/
   }/*End parallel*/
     return;
