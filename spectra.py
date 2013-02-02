@@ -113,6 +113,12 @@ class Species:
         self.vel[ind]=1
         self.temp[ind]=1
 
+def rescale_units_rho_H(rho_H, h100, atime):
+    """Rescale the units on hydrogen density"""
+    # Conversion factors from internal units
+    rscale = (KPC*atime)/h100    # convert length to m
+    mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
+    return rho_H * mscale/rscale**3
 
 def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mass):
     """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
@@ -184,6 +190,8 @@ class MetalLines:
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
         (self.rho_H, self.metals) = SPH_Interpolate_metals(f["PartType0"], los_table, nbins, self.box)
+        #rescale H density
+        self.rho_H = rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
         for (key, value) in self.metals:
             mass = self.lines.get_mass(key)
