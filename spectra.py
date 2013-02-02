@@ -72,7 +72,7 @@ def SPH_Interpolate_metals(data, los_table, nbins, box):
     (rho_H, rho_metal, vel_metal, temp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
     species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
     metals = {}
-    for mm in np.arange(1,np.shape(metal_in)[1]):
+    for mm in np.arange(0,np.shape(metal_in)[1]):
         metals[species[mm]] = Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
     return (rho_H, metals)
 
@@ -114,11 +114,11 @@ class Species:
         self.temp[ind]=1
 
 def rescale_units_rho_H(rho_H, h100, atime):
-    """Rescale the units on hydrogen density"""
+    """Rescale the units on hydrogen density from internal gadget units to kg / m^3"""
     # Conversion factors from internal units
     rscale = (KPC*atime)/h100    # convert length to m
     mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
-    return rho_H * mscale/rscale**3
+    return rho_H * (mscale/rscale**3)
 
 def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mass):
     """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
@@ -193,7 +193,7 @@ class MetalLines:
         #rescale H density
         self.rho_H = rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
-        for (key, value) in self.metals:
+        for (key, value) in self.metals.iteritems():
             mass = self.lines.get_mass(key)
             value.rescale_units(self.hubble, self.atime, mass)
 
@@ -210,14 +210,17 @@ class MetalLines:
         species = self.metals[elem]
         line = self.lines.get_line(elem,ion)
         mass = self.lines.get_mass(elem)
+        #To convert H density from kg/m^3 to atoms/cm^3
+        conv = 1./(PROTONMASS*100**3)
         ion_density = np.array(species.rho)
         #Compute tau for this metal ion
         tau_metal=np.empty(np.shape(species.rho))
         for n in np.arange(0,self.NumLos):
             #For the density parameter use the hydrogen density at this pixel
             #For metallicity pass the metallicity of this species at this bin (rho_Z/ rho_H) and it will be converted to cloudy format
-            for i in np.arange(0,self.nbins):
-                ion_density[n,i] *= self.cloudy.ion(elem, ion, self.redshift, ion_density[n,i]/self.rho_H[n,i], self.rho_H[n,i])
+            ind = np.where(ion_density[n,:] > 0)
+            for i in np.array(ind).ravel():
+                ion_density[n,i] *= self.cloudy.ion(elem, ion, self.redshift, ion_density[n,i]/self.rho_H[n,i], self.rho_H[n,i]/conv)
             tau_metal[n] = compute_absorption(self.xbins, ion_density[n], species.vel[n], species.temp[n],line,self.Hz,self.hubble, self.box, self.atime,mass)
         return tau_metal
 

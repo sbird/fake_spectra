@@ -42,8 +42,9 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Number of metal species
     size[2] = nspecies;
     
-    /*Allocate array space. This is (I hope) contiguous.
-     * CHECK ORDER*/
+    /* Allocate array space. This is (I hope) contiguous.
+     * Note: for an array of shape (a,b), element (i,j) can be accessed as
+     * [i*b+j] */
     rho_H_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
     rho_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
     vel_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
