@@ -39,7 +39,7 @@ PROTONMASS = 1.66053886e-27 # 1 a.m.u
 SOLAR_MASS = 1.98892e30
 GAMMA = 5.0/3.0
 
-def SPH_Interpolate_metals(base, num, los_table, nbins):
+def SPH_Interpolate_metals(num,base, los_table, nbins):
     """Interpolate particles to lines of sight, calculating density, temperature and velocity
     of various metal species along the line of sight.
 
@@ -56,11 +56,12 @@ def SPH_Interpolate_metals(base, num, los_table, nbins):
         rho_H - hydrogen density along the line of sight
         dictionary of Species classes, specifying density, temperature and velocity of the metal species along the line of sight.
     """
-    files = hdfsim.get_all_files(base, num)
+    files = hdfsim.get_all_files(num, base)
     ff = h5py.File(files[0])
     box = ff["Header"].attrs["BoxSize"]
     ff.close()
-    for ff in files:
+    for fn in files:
+        ff = h5py.File(fn)
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
         vel = np.array(data["Velocities"],dtype=np.float32)
@@ -74,6 +75,7 @@ def SPH_Interpolate_metals(base, num, los_table, nbins):
         axis=np.array(los_table.axis, dtype=np.int32)
         #We exclude hydrogen
         metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
+        ff.close()
         #Deal with floating point roundoff - metal_in will sometimes be negative
         metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
         (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
@@ -190,14 +192,15 @@ def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mas
 
 class MetalLines:
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,base, num, los_table, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", nbins = 1024):
-        f = hdfsim.get_file(base, num, 0)
+    def __init__(self,num, base, los_table, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", nbins = 1024):
+        f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]
         self.hubble = f["Header"].attrs["HubbleParam"]
         self.atime = f["Header"].attrs["Time"]
         self.redshift = f["Header"].attrs["Redshift"]
         Omega0 = f["Header"].attrs["Omega0"]
         OmegaLambda = f["Header"].attrs["OmegaLambda"]
+        f.close()
         self.Hz = 100.0*self.hubble * np.sqrt(Omega0/self.atime**3 + OmegaLambda)
         self.nbins = nbins
         self.xbins = np.arange(0,self.nbins)*self.box/self.nbins
@@ -207,7 +210,7 @@ class MetalLines:
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (self.rho_H, self.metals) = SPH_Interpolate_metals(base, num, los_table, nbins)
+        (self.rho_H, self.metals) = SPH_Interpolate_metals(num, base, los_table, nbins)
         #rescale H density
         self.rho_H = rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
