@@ -157,7 +157,7 @@ def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mas
     rscale = (KPC*atime)/h100  # convert length to m
     #  Calculate the length scales to be used in the box
     vmax = box100 * Hz * rscale/ MPC # box size (kms^-1)
-    dzgrid   = box100 * rscale / 1.*nbins # bin size m
+    dzgrid   = box100 * rscale / (1.*nbins) # bin size m
     dvbin = dzgrid * Hz / MPC # velocity bin size (kms^-1)
 
     #Absorption cross-sections m^2
