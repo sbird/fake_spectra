@@ -4,6 +4,7 @@ import numpy as np
 import hdfsim
 import convert_cloudy
 import line_data
+import spectra
 
 class MetalLines:
     """Generate metal line spectra from simulation snapshot"""
@@ -25,9 +26,9 @@ class MetalLines:
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (self.rho_H, self.metals) = SPH_Interpolate_metals(num, base, los_table, nbins)
+        (self.rho_H, self.metals) = spectra.SPH_Interpolate_metals(num, base, los_table, nbins)
         #rescale H density
-        self.rho_H = rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
+        self.rho_H = spectra.rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
         for (key, value) in self.metals.iteritems():
             mass = self.lines.get_mass(key)
@@ -47,7 +48,7 @@ class MetalLines:
         line = self.lines.get_line(elem,ion)
         mass = self.lines.get_mass(elem)
         #To convert H density from kg/m^3 to atoms/cm^3
-        conv = 1./(PROTONMASS*100**3)
+        conv = 1./(spectra.PROTONMASS*100**3)
         ion_density = np.array(species.rho)
         #Compute tau for this metal ion
         tau_metal=np.empty(np.shape(species.rho))
@@ -57,21 +58,24 @@ class MetalLines:
             ind = np.where(ion_density[n,:] > 0)
             for i in np.array(ind).ravel():
                 ion_density[n,i] *= self.cloudy.ion(elem, ion, self.redshift, ion_density[n,i]/self.rho_H[n,i], self.rho_H[n,i]/conv)
-            tau_metal[n] = compute_absorption(self.xbins, ion_density[n], species.vel[n], species.temp[n],line,self.Hz,self.hubble, self.box, self.atime,mass)
+            tau_metal[n] = spectra.compute_absorption(self.xbins, ion_density[n], species.vel[n], species.temp[n],line,self.Hz,self.hubble, self.box, self.atime,mass)
         return tau_metal
 
-    def vel_width(self, vbins, tau):
+    def vel_width(self, tau):
         """Find the velocity width of a line"""
+        #  Size of a single velocity bin
+        dvbin = self.box / (1.*self.nbins) * self.Hz *self.atime /self.hubble / 1000 # velocity bin size (kms^-1)
+
         tot_tau = np.sum(tau)
         cent = np.where(tau == np.max(tau))
         tot = tau[cent]
         if tau[cent] > 0.9 *tot_tau:
-            return vbins[cent] - vbins[cent-1]
+            return dvbin
         i = 0
         #Extend the region of interest until we have enough tau
         while tot < 0.9*tot_tau:
             i+=1
             tot += tau[cent-i] + tau[cent+i]
         #Return the width
-        return vbins[cent+i] - vbins[cent-i]
+        return dvbin*i*2
 
