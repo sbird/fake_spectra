@@ -170,7 +170,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
   /*This is a small thread-local caching mechanism, to avoid
    * massive deadlock around the omp critial section.*/
    int cindex=0;
-   double rho[CACHESZ][nspecies], temp[CACHESZ][nspecies], veloc[CACHESZ][nspecies];
+   double rho[CACHESZ*nspecies], temp[CACHESZ*nspecies], veloc[CACHESZ*nspecies];
    double rho_H[CACHESZ]={0};
    int bins[CACHESZ];
    memset(rho, 0, CACHESZ*nspecies*sizeof(double));
@@ -279,9 +279,9 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
             for(int l=0;l<nspecies;l++){
                 /*GFM_Metals is the total mass in a metal species per unit gas mass.
                  * So use it directly.*/
-                rho[cindex][l] = kernel * XH * (*P).fraction[nspecies*i+l];
-                veloc[cindex][l] = velker * XH * (*P).fraction[nspecies*i+l];
-                temp[cindex][l] = temker * XH * (*P).fraction[nspecies*i+l];
+                rho[cindex*nspecies+l] = kernel * XH * (*P).fraction[nspecies*i+l];
+                veloc[cindex*nspecies +l] = velker * XH * (*P).fraction[nspecies*i+l];
+                temp[cindex*nspecies+l] = temker * XH * (*P).fraction[nspecies*i+l];
             }
             cindex++;
             /*Empty the cache when it is full
@@ -295,11 +295,11 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
                     }
                 for(cindex=0;cindex<CACHESZ;cindex++){
                     for(int l = 0; l < nspecies; l++){
-                        (*species).rho[bins[cindex]*nspecies+l] += rho[cindex][l];
-                        (*species).veloc[bins[cindex]*nspecies+l] += veloc[cindex][l];
-                        (*species).temp[bins[cindex]*nspecies+l] +=temp[cindex][l];
+                        (*species).rho[bins[cindex]*nspecies+l] += rho[cindex*nspecies+l];
+                        (*species).veloc[bins[cindex]*nspecies+l] += veloc[cindex*nspecies+l];
+                        (*species).temp[bins[cindex]*nspecies+l] +=temp[cindex*nspecies+l];
                         /* Zero the cache at the end*/
-                        rho_H[cindex] = rho[cindex][l] = veloc[cindex][l] = temp[cindex][l] = 0;
+                        rho_H[cindex] = rho[cindex*nspecies+l] = veloc[cindex*nspecies+l] = temp[cindex*nspecies+l] = 0;
                     }
                 }
               }/*End critical block*/
@@ -313,9 +313,9 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
     {
         for(int i=0;i<cindex;i++){
             for(int l = 0; l < nspecies; l++){
-                (*species).rho[bins[i]*nspecies+l] += rho[i][l];
-                (*species).veloc[bins[i]*nspecies+l] += veloc[i][l];
-                (*species).temp[bins[i]*nspecies+l] +=temp[i][l];
+                (*species).rho[bins[i]*nspecies+l] += rho[i*nspecies+l];
+                (*species).veloc[bins[i]*nspecies+l] += veloc[i*nspecies+l];
+                (*species).temp[bins[i]*nspecies+l] +=temp[i*nspecies+l];
             }
         }
 	    if(rhoker_H)
