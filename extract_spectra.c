@@ -274,14 +274,14 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
              * Add stuff to the cache*/
             bins[cindex]=iproc*nbins+j;
             if(rhoker_H)
-                rho_H[cindex]  = kernel * XH;
+                rho_H[cindex]  = kernel;
 
             for(int l=0;l<nspecies;l++){
                 /*GFM_Metals is the total mass in a metal species per unit gas mass.
                  * So use it directly.*/
-                rho[cindex*nspecies+l] = kernel * XH * (*P).fraction[nspecies*i+l];
-                veloc[cindex*nspecies +l] = velker * XH * (*P).fraction[nspecies*i+l];
-                temp[cindex*nspecies+l] = temker * XH * (*P).fraction[nspecies*i+l];
+                rho[cindex*nspecies+l] = kernel * (*P).fraction[nspecies*i+l];
+                veloc[cindex*nspecies +l] = velker * (*P).fraction[nspecies*i+l];
+                temp[cindex*nspecies+l] = temker * (*P).fraction[nspecies*i+l];
             }
             cindex++;
             /*Empty the cache when it is full
