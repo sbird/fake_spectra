@@ -15,7 +15,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     npy_intp size[3];
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *u, *ne, *h, *fractions;
-    PyArrayObject *xx, *yy, *zz, *axis;
+    PyArrayObject *cofm, *axis;
     PyArrayObject *rho_H_out, *rho_out, *temp_out, *vel_out;
 
     //For storing output
@@ -27,10 +27,10 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &xx, &PyArray_Type, &yy, &PyArray_Type, &zz) )
+    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
 
-    NumLos = PyArray_DIM(xx,0);
+    NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     //NOTE if nspecies == 1, fractions must have shape [N,1], rather than [N]
     nspecies = PyArray_DIM(fractions, 1);
@@ -77,9 +77,9 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Initialise los_table from input
     for(i=0; i< NumLos; i++){
         los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
-        los_table[i].xx = *(float *) PyArray_GETPTR1(xx,i);
-        los_table[i].yy = *(float *) PyArray_GETPTR1(yy,i);
-        los_table[i].zz = *(float *) PyArray_GETPTR1(zz,i);
+        los_table[i].xx = *(float *) PyArray_GETPTR2(cofm,i,0);
+        los_table[i].yy = *(float *) PyArray_GETPTR2(cofm,i,1);
+        los_table[i].zz = *(float *) PyArray_GETPTR2(cofm,i,2);
     }
 
     //Do the work
@@ -99,7 +99,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 static PyMethodDef spectrae[] = {
   {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
    "Find LOS density by SPH interpolation: "
-   "    Arguments: nbins, box100, pos, vel, mass, u, ne, fractions, h, axis array, xx, yy, zz"
+   "    Arguments: nbins, box100, pos, vel, mass, u, ne, fractions, h, axis, cofm"
    "    "},
   {NULL, NULL, 0, NULL},
 };

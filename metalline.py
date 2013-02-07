@@ -2,31 +2,38 @@
 
 import numpy as np
 import hdfsim
+import halocat
 import convert_cloudy
 import line_data
 import spectra
 
 class MetalLines:
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, los_table, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", nbins = 1024):
+    def __init__(self,num, base, minpart = 400, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", nbins = 1024):
         f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]
         self.hubble = f["Header"].attrs["HubbleParam"]
         self.atime = f["Header"].attrs["Time"]
         self.redshift = f["Header"].attrs["Redshift"]
-        Omega0 = f["Header"].attrs["Omega0"]
+        self.omegam = f["Header"].attrs["Omega0"]
         OmegaLambda = f["Header"].attrs["OmegaLambda"]
+        self.npart=f["Header"].attrs["NumPart_Total"]+2**32*f["Header"].attrs["NumPart_Total_HighWord"]
         f.close()
-        self.Hz = 100.0*self.hubble * np.sqrt(Omega0/self.atime**3 + OmegaLambda)
+        self.Hz = 100.0*self.hubble * np.sqrt(self.omegam/self.atime**3 + OmegaLambda)
         self.nbins = nbins
         self.xbins = np.arange(0,self.nbins)*self.box/self.nbins
         self.species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
-        self.NumLos = np.size(los_table.axis)
+        #Load halo centers to push lines through them
+        min_mass = self.min_halo_mass(minpart)
+        (ind, self.sub_mass, self.sub_cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
+        self.NumLos = np.size(self.sub_mass)
+        #Random integers from [1,2,3]
+        self.axis = np.random.random_integers(3, size = self.NumLos)
         #Line data
         self.lines = line_data.LineData()
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (self.rho_H, self.metals) = spectra.SPH_Interpolate_metals(num, base, los_table, nbins)
+        (self.rho_H, self.metals) = spectra.SPH_Interpolate_metals(num, base, self.sub_cofm, self.axis, nbins)
         #rescale H density
         self.rho_H = spectra.rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
@@ -37,6 +44,14 @@ class MetalLines:
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)
 
+    def min_halo_mass(self, minpart = 400):
+        """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""
+        #This is rho_c in units of h^-1 1e10 M_sun (kpc/h)^-3
+        rhom = 2.78e+11* self.omegam / 1e10 / (1e3**3)
+        #Mass of an SPH particle, in units of 1e10 M_sun, x omega_m/ omega_b.
+        target_mass = self.box**3 * rhom / self.npart[0]
+        min_mass = target_mass * minpart
+        return min_mass
 
     def get_lines(self, elem, ion):
         """Get the optical depth for a particular element out of:

@@ -37,14 +37,15 @@ PROTONMASS = 1.66053886e-27 # 1 a.m.u
 SOLAR_MASS = 1.98892e30
 GAMMA = 5.0/3.0
 
-def SPH_Interpolate_metals(num,base, los_table, nbins):
+def SPH_Interpolate_metals(num,base, cofm, axis, nbins):
     """Interpolate particles to lines of sight, calculating density, temperature and velocity
     of various metal species along the line of sight.
 
     This is a wrapper which calls the C function.
     Arguments:
     	data - HDF5 dataset from snapshot. Use f["PartType0"]
-	    los_table - table of los positions. should have member arrays x, y, z and axis.
+	    cofm - table of los positions, as [n, 3] shape array.
+        axis - axis along which to put the sightline
 	    nbins - number of bins in each spectrum
 	    box - box size
         hub - hubble constant (eg 0.71)
@@ -67,16 +68,12 @@ def SPH_Interpolate_metals(num,base, los_table, nbins):
         u = np.array(data["InternalEnergy"],dtype=np.float32)
         ne = np.array(data["ElectronAbundance"],dtype=np.float32)
         hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-        xx=np.array(los_table.xx, dtype=np.float32)
-        yy=np.array(los_table.yy, dtype=np.float32)
-        zz=np.array(los_table.zz, dtype=np.float32)
-        axis=np.array(los_table.axis, dtype=np.int32)
         #We exclude hydrogen
         metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
         ff.close()
         #Deal with floating point roundoff - metal_in will sometimes be negative
         metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
-        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, xx, yy, zz)
+        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
         #Add new file to already made data
         try:
             rho_H += trho_H
