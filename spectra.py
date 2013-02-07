@@ -59,38 +59,43 @@ def SPH_Interpolate_metals(num,base, cofm, axis, nbins):
     ff = h5py.File(files[0])
     box = ff["Header"].attrs["BoxSize"]
     ff.close()
+    #Get array sizes
+    (rho_H, rho_metal, vel_metal, temp_metal) =  _interpolate_single_file(files.pop(),box,cofm, axis, nbins)
+    #Do remaining files
     for fn in files:
-        ff = h5py.File(fn)
-        data = ff["PartType0"]
-        pos = np.array(data["Coordinates"],dtype=np.float32)
-        vel = np.array(data["Velocities"],dtype=np.float32)
-        mass = np.array(data["Masses"],dtype=np.float32)
-        u = np.array(data["InternalEnergy"],dtype=np.float32)
-        ne = np.array(data["ElectronAbundance"],dtype=np.float32)
-        hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-        #We exclude hydrogen
-        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
-        ff.close()
-        #Deal with floating point roundoff - metal_in will sometimes be negative
-        metal_in[np.where(np.abs(metal_in) < 1e-10)] = 0
-        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
-        #Add new file to already made data
-        try:
-            rho_H += trho_H
-            rho_metal += trho_metal
-            vel_metal += tvel_metal
-            temp_metal += ttemp_metal
-            #If not made, make it
-        except NameError:
-            rho_H = trho_H
-            rho_metal = trho_metal
-            vel_metal = tvel_metal
-            temp_metal = ttemp_metal
+        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _interpolate_single_file(fn,box,cofm, axis, nbins)
+        #Add new file
+        rho_H += trho_H
+        rho_metal += trho_metal
+        vel_metal += tvel_metal
+        temp_metal += ttemp_metal
+        del trho_H
+        del trho_metal
+        del tvel_metal
+        del ttemp_metal
     species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
     metals = {}
-    for mm in np.arange(0,np.shape(metal_in)[1]):
+    for mm in np.arange(0,np.shape(rho_metal)[2]):
         metals[species[mm]] = Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
     return (rho_H, metals)
+
+
+def _interpolate_single_file(fn, box, cofm, axis, nbins):
+    """Read arrays and perform interpolation for a single file"""
+    ff = h5py.File(fn)
+    data = ff["PartType0"]
+    pos = np.array(data["Coordinates"],dtype=np.float32)
+    vel = np.array(data["Velocities"],dtype=np.float32)
+    mass = np.array(data["Masses"],dtype=np.float32)
+    u = np.array(data["InternalEnergy"],dtype=np.float32)
+    ne = np.array(data["ElectronAbundance"],dtype=np.float32)
+    hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
+    #We exclude hydrogen
+    metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
+    ff.close()
+    #Deal with floating point roundoff - metal_in will sometimes be negative
+    metal_in[np.where(metal_in < 0)] = 0
+    return _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
 
 class Species:
     """Convenience class to aggregate rho, vel and temp for a class"""
