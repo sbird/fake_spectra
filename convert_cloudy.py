@@ -126,6 +126,10 @@ class CloudyTable:
         cmet = np.log10(met/self.solar[cspe])
         red_ints = interp1d(self.reds, self.table[cspe,:,:,:,ion],axis = 0)
         met_ints = interp1d(self.mets, red_ints(red),axis = 0)
+        #For super small metallicities
+        #use the lowest ion fraction we have
+        if cmet < np.min(self.mets):
+            cmet = np.min(self.mets)
         dens_ints = interp1d(self.dens, met_ints(cmet),axis = 0)
         #For super small densities it won't make a difference,
         #so use the lowest ion fraction we have

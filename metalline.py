@@ -53,7 +53,7 @@ class MetalLines:
         min_mass = target_mass * minpart
         return min_mass
 
-    def get_lines(self, elem, ion):
+    def get_tau(self, elem, ion):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number
