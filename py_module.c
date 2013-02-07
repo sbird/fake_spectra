@@ -77,9 +77,9 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Initialise los_table from input
     for(i=0; i< NumLos; i++){
         los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
-        los_table[i].xx = *(float *) PyArray_GETPTR2(cofm,i,0);
-        los_table[i].yy = *(float *) PyArray_GETPTR2(cofm,i,1);
-        los_table[i].zz = *(float *) PyArray_GETPTR2(cofm,i,2);
+        los_table[i].xx = *(double *) PyArray_GETPTR2(cofm,i,0);
+        los_table[i].yy = *(double *) PyArray_GETPTR2(cofm,i,1);
+        los_table[i].zz = *(double *) PyArray_GETPTR2(cofm,i,2);
     }
 
     //Do the work
