@@ -19,7 +19,7 @@ class HaloSpectra(spectra.Spectra):
         self.NumLos = np.size(self.sub_mass)
         #Random integers from [1,2,3]
         axis = np.random.random_integers(3, size = self.NumLos)
-        spectra.Spectra.__init__(num, base, cofm, axis, nbins, cloudy_dir)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
 
     def min_halo_mass(self, minpart = 400):
         """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""

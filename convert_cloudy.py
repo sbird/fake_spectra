@@ -134,7 +134,7 @@ class CloudyTable:
         #so use the lowest ion fraction we have
         if crho < np.min(self.dens):
             crho = np.min(self.dens)
-        ions = np.zeroes(np.shape(rho))
+        ions = np.zeros(np.shape(rho))
         ions[ind] = dens_ints(crho)
         return 10**ions
 
