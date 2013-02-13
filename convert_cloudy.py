@@ -120,10 +120,9 @@ class CloudyTable:
         Returns the fraction of this ion in the species
         """
         cspe = self.species.index(species)
-        if rho == 0 or met == 0:
-            return 0
-        crho = np.log10(rho)
-        cmet = np.log10(met/self.solar[cspe])
+        ind = np.where(np.logical_and(rho != 0, met != 0))
+        crho = np.log10(rho[ind])
+        cmet = np.log10(met[ind]/self.solar[cspe])
         red_ints = interp1d(self.reds, self.table[cspe,:,:,:,ion],axis = 0)
         met_ints = interp1d(self.mets, red_ints(red),axis = 0)
         #For super small metallicities
@@ -135,7 +134,8 @@ class CloudyTable:
         #so use the lowest ion fraction we have
         if crho < np.min(self.dens):
             crho = np.min(self.dens)
-        ions = dens_ints(crho)
+        ions = np.zeroes(np.shape(rho))
+        ions[ind] = dens_ints(crho)
         return 10**ions
 
     def save_file(self):
