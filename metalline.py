@@ -80,12 +80,15 @@ class MetalLines:
         #  Size of a single velocity bin
         dvbin = self.box / (1.*self.nbins) * self.Hz *self.atime /self.hubble / 1000 # velocity bin size (kms^-1)
 
-        tot_tau = np.sum(tau)
-        cum_tau = np.cumsum(tau)
-        ind_low = np.where(cum_tau > 0.05 * tot_tau)
-        low = np.ravel(ind_low)[0]
-        ind_high = np.where(cum_tau > 0.95 * tot_tau)
-        high = np.ravel(ind_high)[0]
+        tot_tau = np.sum(tau,axis = 1)
+        cum_tau = np.cumsum(tau,axis = 1)
+        vel_width = np.zeros(np.shape(tot_tau))
+        for ll in np.arange(0, np.shape(tau)[1]):
+            ind_low = np.where(cum_tau[ll,:] > 0.05 * tot_tau[ll])
+            low = ind_low[0][-1]
+            ind_high = np.where(cum_tau[ll,:] > 0.95 * tot_tau[ll])
+            high = ind_high[0][0]
+            vel_width[ll] = dvbin*(high-low)
         #Return the width
-        return dvbin*(high - low)
+        return vel_width
 
