@@ -27,8 +27,6 @@ void Rescale_Units(interp * species, const int nbins, const double h100, const d
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   const double vscale = sqrt(atime);        /* convert velocity to kms^-1 */
   const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
-  const double escale = 1.0e6;           /* convert energy/unit mass to J kg^-1 */
-  const double tscale = ((GAMMA-1.0) * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* convert (with mu) T to K */
   /*const double hscale = rscale * 0.5;*/ /* Note the factor of 0.5 for this kernel definition */
   /*    Calculate the length scales to be used in the box */
 
@@ -38,8 +36,8 @@ void Rescale_Units(interp * species, const int nbins, const double h100, const d
      * to avoid nans propagating. Zero rho will imply zero absorption
      * anyway. */
     if((*species).rho[i]){
-     (*species).veloc[i]  = vscale*(*species).veloc[i]/(*species).rho[i]; /* HI weighted km s^-1 */ 
-     (*species).temp[i]   = tscale*(*species).temp[i]/(*species).rho[i]; /* HI weighted K */
+     (*species).veloc[i]  *= (vscale/(*species).rho[i]); /* HI weighted km s^-1 */
+     (*species).temp[i]   /= (*species).rho[i]; /* HI weighted K */
      (*species).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
     }
     else{
@@ -164,6 +162,16 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
     const double dzgrid   = (boxsize-zmingrid) / (double)nbins; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
+    //Do the T conversion here for convenience - internal energy is messy
+    const double escale = 1.0e6;           // convert energy/unit mass to J kg^-1
+    /* convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+     * T = U (γ-1) μ m_P / k_B
+     * where k_B is the Boltzmann constant
+     * γ is 5/3, the perfect gas constant
+     * m_P is the proton mass
+     * μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+     */
+    const double tscale = ((GAMMA-1.0) * PROTONMASS * escale ) / BOLTZMANN;
 
   #pragma omp parallel
   {
@@ -206,15 +214,15 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
           
           const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
           /*Mean molecular weight:
-           * \mu = 1 / molecules per unit weight
-           *     = X + Y /4 + E
-           *     where E = Ne * XH, and Y = (1-XH) / XH.
+           * \mu = 1 / molecules per unit atomic weight
+           *     = 1 / (X + Y /4 + E)
+           *     where E = Ne * X, and Y = (1-X).
            *     Can neglect metals as they are heavy.
            *     Leading contribution is from electrons, which is already included
            *     [+ Z / (12->16)] from metal species
            *     [+ Z/16*4 ] for OIV from electrons. */
           const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-          const double p_temp = (*P).U[i]*mu; /* T in some strange units */
+          const double p_temp = (*P).U[i]*mu * tscale; /* T in K */
           double dzmax,zgrid;
 	     
 	     /* Central vertex to contribute to */

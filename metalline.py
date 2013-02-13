@@ -1,4 +1,4 @@
-"""Class to gather and analse various metal line statistics"""
+"""Class to gather and analyse various metal line statistics"""
 
 import numpy as np
 import hdfsim
@@ -38,8 +38,7 @@ class MetalLines:
         self.rho_H = spectra.rescale_units_rho_H(self.rho_H, self.hubble, self.atime)
         #Rescale metals
         for (key, value) in self.metals.iteritems():
-            mass = self.lines.get_mass(key)
-            value.rescale_units(self.hubble, self.atime, mass)
+            value.rescale_units(self.hubble, self.atime)
 
         #Generate cloudy tables
         self.cloudy = convert_cloudy.CloudyTable(cloudy_dir)

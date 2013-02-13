@@ -104,27 +104,23 @@ class Species:
         self.vel = vel
         self.temp = temp
 
-    def rescale_units(self,h100, atime, mass):
+    def rescale_units(self,h100, atime):
         """Rescale the units of the arrays from internal gadget units to
         physical kg/m^3, km/s and K.
         Arguments:
             h100 = hubble constant
             atime = scale factor
-            mass = mass of this species in amu
             Needed for the conversion between comoving kpc/h to physical m.
             Only do this ONCE."""
         # Conversion factors from internal units
         rscale = (KPC*atime)/h100    # convert length to m
         vscale = np.sqrt(atime)        #convert velocity to kms^-1
         mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
-        escale = 1.0e6           # convert energy/unit mass to J kg^-1
-        # convert (with mu) T to K
-        tscale = ((GAMMA-1.0) * mass * PROTONMASS * escale ) / BOLTZMANN
-        # Rescale density, vel and temp
+        # Rescale density and vel. temp is already in K
         # vel and temp are calculated weighted by density. Undo this.
         ind = np.where(self.rho > 0)
         self.vel[ind] *= vscale/self.rho[ind]
-        self.temp[ind] *= tscale/self.rho[ind]
+        self.temp[ind] /=self.rho[ind]
         self.rho[ind] *= mscale/rscale**3
         #If there are no particles in this bin, rho will be zero.
         #In this case, we set temp and veloc arbitrarily to one,
