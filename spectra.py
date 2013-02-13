@@ -137,11 +137,9 @@ def rescale_units_rho_H(rho_H, h100, atime):
     mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
     return rho_H * (mscale/rscale**3)
 
-def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mass):
+def compute_absorption(nbins, rho, vel, temp, line, Hz, h100, box100, atime, mass):
     """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
     densities, velocities and temperatures.
-    xbins are the positions of each bin along the sightline. A good default is
-    xbins = np.range(0,NBINS)*Box/NBINS
 
     Optical depth is given by:
     tau (u) = sigma_X c / H(z) int_infty^infty n_x(x) V( u - x - v_pec, b(x) ) dx
@@ -149,7 +147,6 @@ def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mas
     and v_pec is the peculiar velocity.
     sigma_X is the cross-section for this transition.
     """
-    nbins = np.size(xbins)
     tau = np.zeros(nbins)
     #  Conversion factors from internal units
     rscale = (KPC*atime)/h100  # convert length to m
@@ -176,13 +173,14 @@ def compute_absorption(xbins, rho, vel, temp, line, Hz, h100, box100, atime, mas
         bb = np.sqrt(2.0*BOLTZMANN*temp/(mass*PROTONMASS))
         T0 = (vdiff/bb)**2
         T1 = np.exp(-T0)
-        # Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
         aa_H1 = line.gamma_X*line.lambda_X/(4.0*math.pi*bb)
         T2 = 1.5/T0
         ind = np.where(T0 > 1.e-6)
         profile = np.array(T1)
+        # Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
+        #This appears to break down for high T.
         profile[ind] = T1[ind] - aa_H1[ind]/np.sqrt(math.pi)/T0[ind]*(T1[ind]**2*(4.0*T0[ind]**2 + 7.0*T0[ind] + 4.0 + T2[ind]) - T2[ind] -1.0)
-        tau[i] += np.sum(A_H1  * rho  * profile /(mass*PROTONMASS*bb))
+        tau[i] = np.sum(A_H1  * rho  * profile /(mass*PROTONMASS*bb))
 
     return tau
 
