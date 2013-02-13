@@ -9,14 +9,15 @@
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 {
     //Things which should be from input
-    int nbins, NumLos, nspecies;
+    int nbins, NumLos, nspecies, rho_H;
     long long Npart;
     double box100;
+    double * rho_H_data=NULL;
     npy_intp size[3];
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *u, *ne, *h, *fractions;
     PyArrayObject *cofm, *axis;
-    PyArrayObject *rho_H_out, *rho_out, *temp_out, *vel_out;
+    PyArrayObject *rho_H_out=NULL, *rho_out, *temp_out, *vel_out;
 
     //For storing output
     interp species;
@@ -27,7 +28,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
-    if(!PyArg_ParseTuple(args, "idO!O!O!O!O!O!O!O!O!",&nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+    if(!PyArg_ParseTuple(args, "iidO!O!O!O!O!O!O!O!O!",&rho_H, &nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
 
     NumLos = PyArray_DIM(cofm,0);
@@ -45,19 +46,23 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     /* Allocate array space. This is (I hope) contiguous.
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
-    rho_H_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
     rho_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
     vel_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
 
-    if ( !rho_H_out || !rho_out || !vel_out || !temp_out)
+    if ( !rho_out || !vel_out || !temp_out)
         return NULL;
 
     //Initialise output arrays to 0.
-    PyArray_FILLWBYTE(rho_H_out, 0);
     PyArray_FILLWBYTE(rho_out, 0);
     PyArray_FILLWBYTE(vel_out, 0);
     PyArray_FILLWBYTE(temp_out, 0);
+
+    if(rho_H){
+        rho_H_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+        PyArray_FILLWBYTE(rho_H_out, 0);
+        rho_H_data = PyArray_DATA(rho_H_out);
+    }
 
     //Here comes the cheat
     species.rho = (double *) PyArray_DATA(rho_out);
@@ -84,10 +89,15 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
-    SPH_Interpolation(PyArray_DATA(rho_H_out),&species, nspecies, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
+    SPH_Interpolation(rho_H_data,&species, nspecies, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     //Build a tuple from the interp struct
-	PyObject * for_return = Py_BuildValue("OOOO",rho_H_out, rho_out, vel_out, temp_out);
+    PyObject * for_return;
+    if(rho_H)
+	    for_return = Py_BuildValue("OOOO",rho_H_out, rho_out, vel_out, temp_out);
+    else
+	    for_return = Py_BuildValue("OOO", rho_out, vel_out, temp_out);
+
     //Free
     free(los_table);
     free(sort_los_table);

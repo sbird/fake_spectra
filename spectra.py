@@ -80,30 +80,25 @@ class Spectra:
         #Line data
         self.lines = line_data.LineData()
 
-    def SPH_Interpolate_metals(self, elem, ion):
+    def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
         """Interpolate particles to lines of sight, calculating density, temperature and velocity
         of various metal species along the line of sight.
 
         This is a wrapper which calls the C function.
         Arguments:
-            num - Snapshot number
-            base - Name of base directory for snapshot
-	        cofm - table of los positions, as [n, 3] shape array.
-            axis - axis along which to put the sightline
-	        nbins - number of bins in each spectrum
             elem - Element to compute spectra of
             ion - Ion density to compute
-            cloudy_table - Object containing cloudy tables for ionisation fraction calculations
+            rho_H - If this is true, compute the bare hydrogen density
 
         Returns:
-            rho_H - hydrogen density along the line of sight
+            rho_H - hydrogen density along the line of sight if rho_H = True
             dictionary with a list of [density, velocity, temperature] for each species along the line of sight.
         """
         #Get array sizes
-        (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion)
+        (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion, get_rho_H)
         #Do remaining files
         for fn in self.files[1:]:
-            (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion)
+            (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion, get_rho_H)
             #Add new file
             rho_H += trho_H
             rho_metal += trho_metal
@@ -115,13 +110,16 @@ class Spectra:
             del ttemp_metal
         metals = {}
         #Rescale units
-        rho_H *= self.dscale
         for mm in np.arange(0,np.shape(rho_metal)[2]):
             metals[elem] = [self.rescale_units(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])]
-        return (rho_H, metals)
+        if get_rho_H:
+            rho_H *= self.dscale
+            return (rho_H, metals)
+        else:
+            return metals
 
 
-    def _interpolate_single_file(self,fn, elem, ion):
+    def _interpolate_single_file(self,fn, elem, ion, rho_H):
         """Read arrays and perform interpolation for a single file"""
         nelem = [self.species.index(ee) for ee in elem]
         ff = h5py.File(fn)
@@ -144,7 +142,10 @@ class Spectra:
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
         ion = self.cloudy_table.ion(elem, ion, self.red, metal_in, den)
-        return _SPH_Interpolate(self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
+        if rho_H:
+            return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
+        else:
+            return (None,)+_SPH_Interpolate(0,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
@@ -219,7 +220,7 @@ class Spectra:
         """
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        (rho_H, metals) = self.SPH_Interpolate_metals(elem, ion)
+        metals = self.SPH_Interpolate_metals(elem, ion)
 
         species = metals[elem]
         #Compute tau for this metal ion
