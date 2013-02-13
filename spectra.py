@@ -33,23 +33,24 @@ BOLTZMANN = 1.3806504e-23
 KPC = 3.08568025e19
 MPC = KPC * 1000
 SIGMA_T = 6.652458558e-29
-PROTONMASS = 1.66053886e-27 # 1 a.m.u
+PROTONMASS = 1.66053886e-27 # 1 a.m.u in kg
 SOLAR_MASS = 1.98892e30
 GAMMA = 5.0/3.0
 
-def SPH_Interpolate_metals(num,base, cofm, axis, nbins):
+def SPH_Interpolate_metals(num,base, cofm, axis, nbins, elem, ion, cloudy_table):
     """Interpolate particles to lines of sight, calculating density, temperature and velocity
     of various metal species along the line of sight.
 
     This is a wrapper which calls the C function.
     Arguments:
-    	data - HDF5 dataset from snapshot. Use f["PartType0"]
+        num - Snapshot number
+        base - Name of base directory for snapshot
 	    cofm - table of los positions, as [n, 3] shape array.
         axis - axis along which to put the sightline
 	    nbins - number of bins in each spectrum
-	    box - box size
-        hub - hubble constant (eg 0.71)
-        atime - 1/(1+z)
+        elem - Element to compute spectra of
+        ion - Ion density to compute
+        cloudy_table - Object containing cloudy tables for ionisation fraction calculations
 
     Returns:
         rho_H - hydrogen density along the line of sight
@@ -58,12 +59,19 @@ def SPH_Interpolate_metals(num,base, cofm, axis, nbins):
     files = hdfsim.get_all_files(num, base)
     ff = h5py.File(files[0])
     box = ff["Header"].attrs["BoxSize"]
+    red = ff["Header"].attrs["Redshift"]
+    atime = ff["Header"].attrs["Time"]
+    h100 = ff["Header"].attrs["HubbleParam"]
     ff.close()
+    # Conversion factors from internal units
+    rscale = (KPC*atime)/h100    # convert length to m
+    mscale = (1.0e10*SOLAR_MASS)/h100   # convert mass to kg
+    dscale = mscale / rscale **3 # Convert density to kg / m^3
     #Get array sizes
-    (rho_H, rho_metal, vel_metal, temp_metal) =  _interpolate_single_file(files.pop(),box,cofm, axis, nbins)
+    (rho_H, rho_metal, vel_metal, temp_metal) =  _interpolate_single_file(files.pop(),box,cofm, axis, nbins, elem, ion, cloudy_table, dscale, red)
     #Do remaining files
     for fn in files:
-        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _interpolate_single_file(fn,box,cofm, axis, nbins)
+        (trho_H, trho_metal, tvel_metal, ttemp_metal) =  _interpolate_single_file(fn,box,cofm, axis, nbins, elem, ion, cloudy_table, dscale, red)
         #Add new file
         rho_H += trho_H
         rho_metal += trho_metal
@@ -73,15 +81,16 @@ def SPH_Interpolate_metals(num,base, cofm, axis, nbins):
         del trho_metal
         del tvel_metal
         del ttemp_metal
-    species = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
     metals = {}
     for mm in np.arange(0,np.shape(rho_metal)[2]):
-        metals[species[mm]] = Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
+        metals[elem] = Species(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
     return (rho_H, metals)
 
 
-def _interpolate_single_file(fn, box, cofm, axis, nbins):
+def _interpolate_single_file(fn, box, cofm, axis, nbins, elem, ion, cloudy_table, dscale, red):
     """Read arrays and perform interpolation for a single file"""
+    species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
+    nelem = [species.index(ee) for ee in elem]
     ff = h5py.File(fn)
     data = ff["PartType0"]
     pos = np.array(data["Coordinates"],dtype=np.float32)
@@ -90,12 +99,19 @@ def _interpolate_single_file(fn, box, cofm, axis, nbins):
     u = np.array(data["InternalEnergy"],dtype=np.float32)
     ne = np.array(data["ElectronAbundance"],dtype=np.float32)
     hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-    #We exclude hydrogen
-    metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,1:]
+    #Get metallicity of this metal species
+    metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
+    #In kg/m^3
+    den = np.array(data["Density"], dtype = np.float32)*dscale
+    #In (hydrogen) atoms / cm^3
+    den /= (PROTONMASS*100**3)
     ff.close()
     #Deal with floating point roundoff - metal_in will sometimes be negative
     metal_in[np.where(metal_in < 0)] = 0
-    return _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
+    #Get density of this ion - we need to weight T and v by ion abundance
+    #Cloudy density in physical H atoms / cm^3
+    ion = cloudy_table.ion(elem, ion, red, metal_in, den)
+    return _SPH_Interpolate(nbins, box, pos, vel, mass, u, ne, metal_in*ion, hh, axis, cofm)
 
 class Species:
     """Convenience class to aggregate rho, vel and temp for a class"""
@@ -120,7 +136,7 @@ class Species:
         # vel and temp are calculated weighted by density. Undo this.
         ind = np.where(self.rho > 0)
         self.vel[ind] *= vscale/self.rho[ind]
-        self.temp[ind] /=self.rho[ind]
+        self.temp[ind] /= self.rho[ind]
         self.rho[ind] *= mscale/rscale**3
         #If there are no particles in this bin, rho will be zero.
         #In this case, we set temp and veloc arbitrarily to one,
