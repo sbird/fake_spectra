@@ -4,7 +4,7 @@
 import numpy as np
 import re
 import os.path as path
-from scipy.interpolate import interp1d
+import scipy.interpolate as intp
 
 #Max number of ion species to count
 nions = 17
@@ -76,21 +76,21 @@ def read_all_tables(nred, nmet, nrho, directory):
     Read a batch of tables on a grid of redshift (nred), metallicity (nmet) and density (nrho) from a directory.
     Subdirs are in the form: $RED_$MET_$DENS/
     Returns a table with the indices:
-    SPECIES, REDSHIFT, METALLICITY, DENSITY, ION
+    REDSHIFT, METALLICITY, DENSITY, SPECIES, ION
     """
     #Last two indices are num. species and n. ions
-    tables = np.empty([8, nred, nmet, nrho,nions])
+    tables = np.empty([nred, nmet, nrho,8, nions])
     for zz in range(1,nred+1):
         for ZZ in range(1, nmet+1):
             for rr in range(1, nrho+1):
                 strnums = str(zz)+"_"+str(ZZ)+"_"+str(rr)
                 ionfile = directory+"/"+strnums+"/ionization_"+strnums+".dat"
-                tables[:,zz-1,ZZ-1,rr-1,:] = convert_single_file(ionfile)
+                tables[zz-1,ZZ-1,rr-1,:,:] = convert_single_file(ionfile)
     return tables
 
 class CloudyTable:
     """Class to interpolate tables from cloudy for a desired density metallicity and redshift"""
-    def __init__(self,directory):
+    def __init__(self,directory, redshift):
         """Read a cloudy table from somewhere"""
         self.savefile = path.join(directory,"cloudy_table.npz")
         self.reds = np.array([1,2,3,4,5,6])
@@ -106,8 +106,13 @@ class CloudyTable:
             self.table = read_all_tables(np.size(self.reds), np.size(self.mets), np.size(self.dens), directory)
             self.save_file()
         self.directory = directory
+        #Set up interpolation objects
+        #Redshift is first axis.
+        red_ints = intp.interp1d(self.reds, self.table,axis = 0)
+        self.red_table = red_ints(redshift)
 
-    def ion(self,species, ion, red, met, rho):
+
+    def ion(self,species, ion, met, rho):
         """Interpolate a table onto given redshift, metallicity and density for species
         Returns a log( ionisation fraction ).
         rho is the density of hydrogen in atoms / cm^3. Internally the log is taken
@@ -116,27 +121,30 @@ class CloudyTable:
         X = log_10(Z / Z_solar) for cloudy
         red is the redshift
         species is the element name of the metal species we want
-        ion is the ionisation number
+        ion is the ionisation number, starting from 1, so CIV is ('C', 4).
         Returns the fraction of this ion in the species
         """
         cspe = self.species.index(species)
-        ind = np.where(np.logical_and(rho != 0, met != 0))
-        crho = np.log10(rho[ind])
-        cmet = np.log10(met[ind]/self.solar[cspe])
-        red_ints = interp1d(self.reds, self.table[cspe,:,:,:,ion],axis = 0)
-        met_ints = interp1d(self.mets, red_ints(red),axis = 0)
+        crho = np.log10(rho)
+        #So. The z value is flattened before use, which means you
+        #must be very careful to get x and y the right way around here.
+        #Shape (z) == (6,9) and it seems that this means the first value to
+        #pass to interp2d is the one with 9 entries.
+        #So, yes, this routine is using column-major order!
+        #From the documentation: "x can specify the column coordinates and y the row coordinates"
+        #Also note that bounds_error and fill_value do not in fact do anything at all -
+        #the interpolator will very happily interpolate outside its domain.
+        ints = intp.interp2d(self.dens, self.mets, self.red_table[:,:,cspe,ion-1])
         #For super small metallicities
-        #use the lowest ion fraction we have
-        if cmet < np.min(self.mets):
-            cmet = np.min(self.mets)
-        dens_ints = interp1d(self.dens, met_ints(cmet),axis = 0)
-        #For super small densities it won't make a difference,
-        #so use the lowest ion fraction we have
-        if crho < np.min(self.dens):
-            crho = np.min(self.dens)
-        ions = np.zeros(np.shape(rho))
-        ions[ind] = dens_ints(crho)
-        return 10**ions
+        #use the lowest ion fraction we have: most of these will be 1e-30, ie, zero metallicity.
+        min_met = self.solar[cspe]*10**np.min(self.mets)
+        met[np.where(met < min_met)] = min_met
+        cmet = np.log10(met/self.solar[cspe])
+        #REMOVE THIS LATER, when we have expanded the table: met -> 2 and dens -> 3
+        cmet[np.where(cmet > np.max(self.mets))] = np.max(self.mets)
+        crho[np.where(crho > np.max(self.dens))] = np.max(self.dens)
+        ions = np.array([ints(cmet[ii], crho[ii]) for ii in range(0, np.size(crho))])
+        return 10**np.ravel(ions)
 
     def save_file(self):
         """

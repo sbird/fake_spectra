@@ -76,7 +76,7 @@ class Spectra:
         #Species we can use
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
         #Generate cloudy tables
-        self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir)
+        self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
         #Line data
         self.lines = line_data.LineData()
 
@@ -86,12 +86,12 @@ class Spectra:
 
         This is a wrapper which calls the C function.
         Arguments:
-            elem - Element to compute spectra of
-            ion - Ion density to compute
-            rho_H - If this is true, compute the bare hydrogen density
+            elem - Element(s) to compute spectra of
+            ion - Ion density to compute. Only one ion allowed right now
+            get_rho_H - If this is true, compute the bare hydrogen density
 
         Returns:
-            rho_H - hydrogen density along the line of sight if rho_H = True
+            rho_H - hydrogen density along the line of sight if get_rho_H = True
             dictionary with a list of [density, velocity, temperature] for each species along the line of sight.
         """
         #Get array sizes
@@ -100,7 +100,8 @@ class Spectra:
         for fn in self.files[1:]:
             (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion, get_rho_H)
             #Add new file
-            rho_H += trho_H
+            if get_rho_H:
+                rho_H += trho_H
             rho_metal += trho_metal
             vel_metal += tvel_metal
             temp_metal += ttemp_metal
@@ -138,14 +139,21 @@ class Spectra:
         den /= (self.PROTONMASS*100**3)
         ff.close()
         #Deal with floating point roundoff - metal_in will sometimes be negative
-        metal_in[np.where(metal_in < 0)] = 0
+        #10^-30 is Cloudy's definition of zero.
+        metal_in[np.where(metal_in < 1e-30)] = 1e-30
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
-        ion = self.cloudy_table.ion(elem, ion, self.red, metal_in, den)
+        for ii in xrange(0,np.shape(metal_in)[1]):
+            metal_in[:,ii] *= self.cloudy_table.ion(elem, self.red, metal_in[:,ii], den)
         if rho_H:
             return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
         else:
             return (None,)+_SPH_Interpolate(0,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
+
+    def _find_nearby_particles(self, pos, hh):
+        """Filter particles to find those near sightlines"""
+        np.where(pos)
+        return None
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
