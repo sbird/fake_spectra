@@ -22,11 +22,11 @@ void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, co
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 {
     //Things which should be from input
-    int nbins, NumLos, nspecies, rho_H;
+    int nbins, NumLos, rho_H;
     long long Npart;
     double box100;
     double * rho_H_data=NULL;
-    npy_intp size[3];
+    npy_intp size[2];
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *u, *ne, *h, *fractions;
     PyArrayObject *cofm, *axis;
@@ -47,21 +47,21 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     //NOTE if nspecies == 1, fractions must have shape [N,1], rather than [N]
-    nspecies = PyArray_DIM(fractions, 1);
+/*     nspecies = PyArray_DIM(fractions, 1); */
     //Malloc stuff
     los_table=malloc(NumLos*sizeof(los));
     sort_los_table=malloc(NumLos*sizeof(sort_los));
     size[0] = NumLos;
     size[1] = nbins;
     //Number of metal species
-    size[2] = nspecies;
+/*     size[2] = nspecies; */
     
     /* Allocate array space. This is (I hope) contiguous.
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
-    rho_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
-    vel_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
-    temp_out = (PyArrayObject *) PyArray_SimpleNew(3, size, NPY_DOUBLE);
+    rho_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+    vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+    temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
 
     if ( !rho_out || !vel_out || !temp_out)
         return NULL;
@@ -95,7 +95,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     setup_los_data(los_table, cofm, axis, NumLos);
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
-    SPH_Interpolation(rho_H_data,&species, nspecies, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
+    SPH_Interpolation(rho_H_data,&species, 1, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
 
     //Build a tuple from the interp struct
     PyObject * for_return;

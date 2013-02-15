@@ -111,10 +111,8 @@ class Spectra:
             del trho_metal
             del tvel_metal
             del ttemp_metal
-        metals = {}
         #Rescale units
-        for mm in np.arange(0,np.shape(rho_metal)[2]):
-            metals[(elem,ion)] = self.rescale_units(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
+        metals = self.rescale_units(rho_metal, vel_metal, temp_metal)
         if get_rho_H:
             rho_H *= self.dscale
             return (rho_H, metals)
@@ -124,7 +122,7 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, rho_H):
         """Read arrays and perform interpolation for a single file"""
-        nelem = [self.species.index(ee) for ee in elem]
+        nelem = self.species.index(elem)
         ff = h5py.File(fn)
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
@@ -139,7 +137,6 @@ class Spectra:
         den = np.array(data["Density"], dtype = np.float32)*self.dscale
         #In (hydrogen) atoms / cm^3
         den /= (self.PROTONMASS*100**3)
-        ff.close()
         #Deal with floating point roundoff - metal_in will sometimes be negative
         #10^-30 is Cloudy's definition of zero.
         metal_in[np.where(metal_in < 1e-30)] = 1e-30
@@ -155,8 +152,15 @@ class Spectra:
         den = den[ind]
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
-        for ii in xrange(0,np.shape(metal_in)[1]):
-            metal_in[:,ii] *= self.cloudy_table.ion(elem, ion, metal_in[:,ii], den)
+        #Special case H1:
+        if elem == 'H':
+            if ion != 1:
+                raise ValueError
+            metal_in *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
+        else:
+            metal_in *= self.cloudy_table.ion(elem, ion, metal_in, den)
+        ff.close()
+        print np.shape(metal_in)
         if rho_H:
             return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
         else:
@@ -256,13 +260,13 @@ class Spectra:
         """
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        self.metals.update(self.SPH_Interpolate_metals(elem, ion))
+        [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
 
-        species = self.metals[(elem,ion)]
         #Compute tau for this metal ion
-        (nlos, nbins) = np.shape(species[0])
-        tau_metal = np.array([self.compute_absorption(elem, ion, species[0][n,:], species[1][n,:], species[2][n,:]) for n in xrange(0, nlos)])
-        return tau_metal
+        (nlos, nbins) = np.shape(rho)
+        tau = np.array([self.compute_absorption(elem, ion, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+        self.metals[(elem, ion)] = [rho, vel, temp, tau]
+        return tau
 
     def vel_width(self, tau):
         """Find the velocity width of a line"""
