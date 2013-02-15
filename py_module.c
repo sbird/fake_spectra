@@ -118,8 +118,8 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
     int NumLos;
     long long Npart;
     double box100;
-    PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
     int nxx=0;
+    PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
     los *los_table=NULL;
     sort_los *sort_los_table=NULL;
     npy_intp size;
@@ -131,8 +131,6 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
     Npart = PyArray_DIM(pos,0);
     los_table=malloc(NumLos*sizeof(los));
     sort_los_table=malloc(NumLos*sizeof(sort_los));
-    int index_nr_lines[NumLos];
-    double dr2_lines[NumLos];
     //Output array
     size = Npart;
     is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_BOOL);
@@ -141,21 +139,18 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
     setup_los_data(los_table, cofm, axis, NumLos);
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     //find lists
-    int tot = 0;
-/*     #pragma omp parallel for */
+    #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
+        int index_nr_lines[NumLos];
+        double dr2_lines[NumLos];
         float xx = *(float *) PyArray_GETPTR2(pos,i,0);
         float yy = *(float *) PyArray_GETPTR2(pos,i,1);
         float zz = *(float *) PyArray_GETPTR2(pos,i,2);
         float h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
         int num_nr_lines=get_list_of_near_lines(xx,yy,zz,h,box100,los_table,NumLos,sort_los_table,nxx,index_nr_lines,dr2_lines);
         if(num_nr_lines>0)
-        {
             *(short *)PyArray_GETPTR1(is_a_line,i) = 1;
-        tot++;
-        }
     }
-    printf("tot: %d (%ld)\n",tot, Npart);
     free(los_table);
     free(sort_los_table);
     return Py_BuildValue("O", is_a_line);
