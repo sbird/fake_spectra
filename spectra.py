@@ -25,7 +25,7 @@ import convert_cloudy
 import line_data
 import h5py
 import hdfsim
-from _spectra_priv import _SPH_Interpolate, _near_lines
+from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -69,10 +69,10 @@ class Spectra:
         mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
         self.dscale = mscale / rscale **3 # Convert density to kg / m^3
         #  Calculate the length scales to be used in the box
-        Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
-        self.vmax = self.box * Hz * rscale/ MPC # box size (kms^-1)
+        self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
+        self.vmax = self.box * self.Hz * rscale/ MPC # box size (kms^-1)
         self.dzgrid   = self.box * rscale / (1.*self.nbins) # bin size m
-        self.dvbin = self.dzgrid * Hz / MPC # velocity bin size (kms^-1)
+        self.dvbin = self.dzgrid * self.Hz / MPC # velocity bin size (kms^-1)
         #Species we can use
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
         #Generate cloudy tables
@@ -201,6 +201,22 @@ class Spectra:
         #Get line data
         line = self.lines.get_line(elem,ion)
         mass = self.lines.get_mass(elem)
+        tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X, line.gamma_X, line.fosc_X,mass)
+        return tau
+
+    def compute_absorption_python(self,elem, ion, rho, vel, temp):
+        """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
+        densities, velocities and temperatures.
+
+        Optical depth is given by:
+        tau (u) = sigma_X c / H(z) int_infty^infty n_x(x) V( u - x - v_pec, b(x) ) dx
+        where V is the Voigt profile, b(x)^2 = 2k_B T /m_x c^2 is the velocity dispersion.
+        and v_pec is the peculiar velocity.
+        sigma_X is the cross-section for this transition.
+        """
+        #Get line data
+        line = self.lines.get_line(elem,ion)
+        mass = self.lines.get_mass(elem)
         tau = np.zeros(self.nbins)
 
         #Absorption cross-sections m^2
@@ -245,9 +261,7 @@ class Spectra:
         species = self.metals[(elem,ion)]
         #Compute tau for this metal ion
         (nlos, nbins) = np.shape(species[0])
-        tau_metal=np.empty((nlos, nbins))
-        for n in xrange(0,nlos):
-            tau_metal[n,:] = self.compute_absorption(elem, ion, species[0][n,:], species[1][n,:], species[2][n,:])
+        tau_metal = np.array([self.compute_absorption(elem, ion, species[0][n,:], species[1][n,:], species[2][n,:]) for n in xrange(0, nlos)])
         return tau_metal
 
     def vel_width(self, tau):

@@ -156,6 +156,26 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
     return Py_BuildValue("O", is_a_line);
 }
 
+PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
+{
+    PyArrayObject * tau, *rho, *veloc, *temp;
+    int nbins;
+    npy_intp nbins_npy;
+    double *tau_C, *rho_C, *veloc_C, *temp_C;
+    double Hz, h100, box100, atime, lambda_lya, gamma_lya, fosc_lya, mass;
+    if(!PyArg_ParseTuple(args, "O!O!O!idddddddd",&PyArray_Type, &rho, &PyArray_Type, &veloc, &PyArray_Type, &temp,&nbins, &Hz, &h100, &box100, &atime, &lambda_lya, &gamma_lya,&fosc_lya,&mass) )
+        return NULL;
+    nbins_npy = nbins;
+
+    tau = (PyArrayObject *) PyArray_SimpleNew(1, &nbins_npy, NPY_DOUBLE);
+    PyArray_FILLWBYTE(tau, 0);
+    tau_C = (double *) PyArray_DATA(tau);
+    rho_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(rho));
+    veloc_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(veloc));
+    temp_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(temp));
+    Compute_Absorption(tau_C, rho_C, veloc_C, temp_C, nbins, Hz, h100, box100, atime, lambda_lya, gamma_lya, fosc_lya, mass);
+    return Py_BuildValue("O",tau);
+}
 
 static PyMethodDef spectrae[] = {
   {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
@@ -167,6 +187,10 @@ static PyMethodDef spectrae[] = {
    "return a list of booleans for those particles near "
    "a sightline."
    "   Arguments: box, pos, h, axis, cofm"},
+  {"_Compute_Absorption", Py_Compute_Absorption, METH_VARARGS,
+   "Compute tau along a sightline. "
+   "    Arguments: rho, veloc, temp, nbins, Hz, h100, box100, atime, lambda, gamma, fosc, mass"
+   "    "},
   {NULL, NULL, 0, NULL},
 };
 
