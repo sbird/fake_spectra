@@ -86,4 +86,6 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 void Rescale_Units(interp * species, const int nbins, const double h100, const double atime);
 void Convert_Density(double * rhoker_H, interp * species, const double h100, const double atime, const double omegab);
 
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
+
 #endif

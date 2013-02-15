@@ -4,6 +4,19 @@
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
+
+/*Helper function to copy los data into the form expected by the work functions*/
+void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, const int NumLos)
+{
+    //Initialise los_table from input
+    for(int i=0; i< NumLos; i++){
+        los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
+        los_table[i].xx = *(double *) PyArray_GETPTR2(cofm,i,0);
+        los_table[i].yy = *(double *) PyArray_GETPTR2(cofm,i,1);
+        los_table[i].zz = *(double *) PyArray_GETPTR2(cofm,i,2);
+    }
+}
+
 /*****************************************************************************/
 /*Interface for SPH interpolation*/
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
@@ -23,7 +36,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     interp species;
 
     //Temp variables
-    int nxx=0, i;
+    int nxx=0;
     los *los_table=NULL;
     sort_los *sort_los_table=NULL;
     struct particle_data P;
@@ -79,14 +92,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     P.h =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(h));
     P.fraction =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(fractions));
 
-    //Initialise los_table from input
-    for(i=0; i< NumLos; i++){
-        los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
-        los_table[i].xx = *(double *) PyArray_GETPTR2(cofm,i,0);
-        los_table[i].yy = *(double *) PyArray_GETPTR2(cofm,i,1);
-        los_table[i].zz = *(double *) PyArray_GETPTR2(cofm,i,2);
-    }
-
+    setup_los_data(los_table, cofm, axis, NumLos);
     //Do the work
     populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
     SPH_Interpolation(rho_H_data,&species, nspecies, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
@@ -105,12 +111,67 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
+/* When handed a list of particles, 
+ * return a list of bools with True for those nearby to a sightline*/
+PyObject * Py_near_lines(PyObject *self, PyObject *args)
+{
+    int NumLos;
+    long long Npart;
+    double box100;
+    PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
+    int nxx=0;
+    los *los_table=NULL;
+    sort_los *sort_los_table=NULL;
+    npy_intp size;
+
+    if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+      return NULL;
+    
+    NumLos = PyArray_DIM(cofm,0);
+    Npart = PyArray_DIM(pos,0);
+    los_table=malloc(NumLos*sizeof(los));
+    sort_los_table=malloc(NumLos*sizeof(sort_los));
+    int index_nr_lines[NumLos];
+    double dr2_lines[NumLos];
+    //Output array
+    size = Npart;
+    is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_BOOL);
+    PyArray_FILLWBYTE(is_a_line, 0);
+    //Setup los_tables
+    setup_los_data(los_table, cofm, axis, NumLos);
+    populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
+    //find lists
+    int tot = 0;
+/*     #pragma omp parallel for */
+    for(long long i=0; i < Npart; i++){
+        float xx = *(float *) PyArray_GETPTR2(pos,i,0);
+        float yy = *(float *) PyArray_GETPTR2(pos,i,1);
+        float zz = *(float *) PyArray_GETPTR2(pos,i,2);
+        float h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
+        int num_nr_lines=get_list_of_near_lines(xx,yy,zz,h,box100,los_table,NumLos,sort_los_table,nxx,index_nr_lines,dr2_lines);
+        if(num_nr_lines>0)
+        {
+            *(short *)PyArray_GETPTR1(is_a_line,i) = 1;
+        tot++;
+        }
+    }
+    printf("tot: %d (%ld)\n",tot, Npart);
+    free(los_table);
+    free(sort_los_table);
+    return Py_BuildValue("O", is_a_line);
+}
+
 
 static PyMethodDef spectrae[] = {
   {"_SPH_Interpolate", Py_SPH_Interpolation, METH_VARARGS,
    "Find LOS density by SPH interpolation: "
    "    Arguments: nbins, box100, pos, vel, mass, u, ne, fractions, h, axis, cofm"
    "    "},
+  {"_near_lines", Py_near_lines,METH_VARARGS,
+   "Give a list of particles and sightlines, "
+   "return a list of booleans for those particles near "
+   "a sightline."
+   "   Arguments: box, pos, h, axis, cofm"},
   {NULL, NULL, 0, NULL},
 };
 

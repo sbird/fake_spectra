@@ -142,9 +142,6 @@ void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const dou
 /*The size of the thread cache to use below*/
 #define CACHESZ 128
 
-/*Function defined below, used locally in SPH_Interpolation*/
-int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines);
-
 /*****************************************************************************/
 /*This function does the hard work of looping over all the particles.
  * Can handle an arbitrary number of species, in the array 'species'. 

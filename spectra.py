@@ -25,7 +25,7 @@ import convert_cloudy
 import line_data
 import h5py
 import hdfsim
-from _spectra_priv import _SPH_Interpolate
+from _spectra_priv import _SPH_Interpolate, _near_lines
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -79,6 +79,8 @@ class Spectra:
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
         #Line data
         self.lines = line_data.LineData()
+        #Empty dictionary to add results to
+        self.metals = {}
 
     def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
         """Interpolate particles to lines of sight, calculating density, temperature and velocity
@@ -112,7 +114,7 @@ class Spectra:
         metals = {}
         #Rescale units
         for mm in np.arange(0,np.shape(rho_metal)[2]):
-            metals[elem] = [self.rescale_units(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])]
+            metals[(elem,ion)] = self.rescale_units(rho_metal[:,:,mm], vel_metal[:,:,mm], temp_metal[:,:,mm])
         if get_rho_H:
             rho_H *= self.dscale
             return (rho_H, metals)
@@ -141,19 +143,29 @@ class Spectra:
         #Deal with floating point roundoff - metal_in will sometimes be negative
         #10^-30 is Cloudy's definition of zero.
         metal_in[np.where(metal_in < 1e-30)] = 1e-30
+        #Find particles we care about
+        ind = self.particles_near_lines(pos, hh)
+        pos = pos[ind,:]
+        vel = vel[ind,:]
+        mass = mass[ind]
+        u = u[ind]
+        ne = ne[ind]
+        hh = hh[ind]
+        metal_in = metal_in[ind]
+        den = den[ind]
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
         for ii in xrange(0,np.shape(metal_in)[1]):
-            metal_in[:,ii] *= self.cloudy_table.ion(elem, self.red, metal_in[:,ii], den)
+            metal_in[:,ii] *= self.cloudy_table.ion(elem, ion, metal_in[:,ii], den)
         if rho_H:
-            return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
+            return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
         else:
-            return (None,)+_SPH_Interpolate(0,self.nbins, self.box, pos, vel, mass, u, ne, metal_in*ion, hh, self.axis, self.cofm)
+            return (None,)+_SPH_Interpolate(0,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
 
-    def _find_nearby_particles(self, pos, hh):
-        """Filter particles to find those near sightlines"""
-        np.where(pos)
-        return None
+    def particles_near_lines(self, pos, hh):
+        """Filter a particle list, returning an index list of those near sightlines"""
+        ind = _near_lines(self.box, pos, hh, self.axis, self.cofm)
+        return ind
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
@@ -228,14 +240,14 @@ class Spectra:
         """
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        metals = self.SPH_Interpolate_metals(elem, ion)
+        self.metals.update(self.SPH_Interpolate_metals(elem, ion))
 
-        species = metals[elem]
+        species = self.metals[(elem,ion)]
         #Compute tau for this metal ion
         (nlos, nbins) = np.shape(species[0])
         tau_metal=np.empty((nlos, nbins))
         for n in xrange(0,nlos):
-            tau_metal[n,:] = self.compute_absorption(species[0][n,:], species[1][n,:], species[2][n,:],elem, ion)
+            tau_metal[n,:] = self.compute_absorption(elem, ion, species[0][n,:], species[1][n,:], species[2][n,:])
         return tau_metal
 
     def vel_width(self, tau):
