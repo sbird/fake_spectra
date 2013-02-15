@@ -18,7 +18,9 @@ class HaloSpectra(spectra.Spectra):
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
         self.NumLos = np.size(self.sub_mass)
         #Random integers from [1,2,3]
-        axis = np.random.random_integers(3, size = self.NumLos)
+#         axis = np.random.random_integers(3, size = self.NumLos)
+        #All through y axis
+        axis = 2*np.ones(self.NumLos)
         spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
 
     def min_halo_mass(self, minpart = 400):
