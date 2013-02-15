@@ -21,7 +21,7 @@
 #include "parameters.h"
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
-void Rescale_Units(interp * species, const int nbins, const double h100, const double atime)
+void Rescale_Units(double * rho, double * veloc, double * temp, const int nbins, const double h100, const double atime)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -35,14 +35,14 @@ void Rescale_Units(interp * species, const int nbins, const double h100, const d
      * In this case, we set temp and veloc arbitrarily to one,
      * to avoid nans propagating. Zero rho will imply zero absorption
      * anyway. */
-    if((*species).rho[i]){
-     (*species).veloc[i]  *= (vscale/(*species).rho[i]); /* HI weighted km s^-1 */
-     (*species).temp[i]   /= (*species).rho[i]; /* HI weighted K */
-     (*species).rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
+    if(rho[i]){
+     veloc[i]  *= (vscale/rho[i]); /* HI weighted km s^-1 */
+     temp[i]   /= rho[i]; /* HI weighted K */
+     rho[i] *= mscale*pow(rscale,-3); /*Put rhoker in m units*/
     }
     else{
-      (*species).veloc[i]=1;
-      (*species).temp[i]=1;
+      veloc[i]=1;
+      temp[i]=1;
     }
   }
   return;
@@ -50,7 +50,7 @@ void Rescale_Units(interp * species, const int nbins, const double h100, const d
 
 /*Convert densities for this species into fraction of total hydrogen density.
  * Also rescale rhoker_H */
-void Convert_Density(double * rhoker_H, interp * species, const double h100, const double atime, const double omegab)
+void Convert_Density(double * rhoker_H, double * rho, const double h100, const double atime, const double omegab)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -64,7 +64,7 @@ void Convert_Density(double * rhoker_H, interp * species, const double h100, con
   for(int i = 0;i<NBINS;i++)
   {
      rhoker_H[i] *= mscale*pow(rscale,-3);
-     (*species).rho[i]      /= rhoker_H[i];  /* HI/H */
+     rho[i]      /= rhoker_H[i];  /* HI/H */
      rhoker_H[i]     = log10(rhoker_H[i]/critH);   /* log H density normalised by mean
                                                       H density of universe */
   }
@@ -85,7 +85,7 @@ void Convert_Density(double * rhoker_H, interp * species, const double h100, con
  * lambda_lya, gamma_lya, fosc_lya: parameters of the atomic transition (use those from VPFIT)
  * mass: mass of the species in amu
  * */
-void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
+void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * temp, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
 {
   /* Conversion factors from internal units */
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
@@ -107,7 +107,7 @@ void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const dou
 
           u_H1  = dvbin*j*1.0e3;
       #ifdef PECVEL
-          u_H1 +=(*H1).veloc[j]*1.0e3;
+          u_H1 +=veloc[j]*1.0e3;
       #endif
           /* Note this is indexed with i, above with j!
            * This is the difference in velocities between two clouds
@@ -117,7 +117,7 @@ void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const dou
           if (vdiff_H1 > (vmax/2.0*1.0e3))
               vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
        #endif
-          b_H1   = sqrt(2.0*BOLTZMANN*(*H1).temp[j]/(mass*PROTONMASS));
+          b_H1   = sqrt(2.0*BOLTZMANN*temp[j]/(mass*PROTONMASS));
           T0 = pow(vdiff_H1/b_H1,2);
           T1 = exp(-T0);
           /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025 */
@@ -132,13 +132,14 @@ void Compute_Absorption(double * tau_H1, interp * H1, const int nbins, const dou
         #else
           profile_H1 = T1;
         #endif
-          tau_H1j  = A_H1  * (*H1).rho[j]  * profile_H1 /(mass*PROTONMASS*b_H1) ;
+          tau_H1j  = A_H1  * rho[j]  * profile_H1 /(mass*PROTONMASS*b_H1) ;
           tau_H1[i]  += tau_H1j;
         }
   }             /* Spectrum convolution */
       
   return;
 }
+
 /*The size of the thread cache to use below*/
 #define CACHESZ 128
 
@@ -399,7 +400,7 @@ int get_near_lines_2nd_axis(const double xx,const double yy,const double zz,cons
 
 /*This function takes a particle position and returns a list of the indices of lines near it in index_nr_lines
  * Near is defined as: dx^2+dy^2 < 4h^2 */
-int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,int nxx, int *index_nr_lines, double *dr2_lines)
+int get_list_of_near_lines(const double xx,const double yy,const double zz,const double hh, const double boxsize,const los *los_table, const int NumLos,const sort_los* sort_los_table,const int nxx, int *index_nr_lines, double *dr2_lines)
 {
       const double h4 = 4.*hh*hh;           /* 2 smoothing lengths squared */
       int low,high;

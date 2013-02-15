@@ -212,13 +212,9 @@ int main(int argc, char **argv)
      #pragma omp for
      for(i=0; i<NumLos; i++){
        /*Make a bunch of pointers to the quantities for THIS LOS*/
-       interp H1_i=H1;
-       H1_i.rho+=(i*NBINS);
-       H1_i.temp+=(i*NBINS);
-       H1_i.veloc+=(i*NBINS);
-       Rescale_Units(&H1_i, NBINS, h100, atime);
-       Compute_Absorption(tau_H1+(i*NBINS), &H1_i,NBINS, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
-       Convert_Density(rhoker_H+(i*NBINS), &H1_i, h100, atime, omegab);
+       Rescale_Units(H1.rho+i*NBINS, H1.veloc+i*NBINS, H1.temp+i*NBINS, NBINS, h100, atime);
+       Compute_Absorption(tau_H1+(i*NBINS), H1.rho+i*NBINS, H1.veloc+i*NBINS, H1.temp+i*NBINS,NBINS, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
+       Convert_Density(rhoker_H+(i*NBINS), H1.rho+i*NBINS, h100, atime, omegab);
      }
   }
   fwrite(&redshift,sizeof(double),1,output);
