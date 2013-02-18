@@ -179,7 +179,7 @@ int main(int argc, char **argv)
           if(Npart > 0){
              /*Rescale neutral fraction to take account of hydrogen fraction*/
               for(int ii = 0; ii< Npart; ii++)
-                P.h[ii]*=XH;
+                P.fraction[ii]*=XH;
              /*Do the hard SPH interpolation*/
              SPH_Interpolation(rhoker_H,&H1, 1, NBINS, Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
           }

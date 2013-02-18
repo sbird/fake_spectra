@@ -210,15 +210,15 @@ int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno)
              goto exit;
         }
     /*Are we arepo? If we are we should have this array.*/
-    if ( H5LTfind_dataset(hdf_group, "Number of faces of cell")){
+    if ( H5LTfind_dataset(hdf_group, "Volume")){
         /*Read in density*/
-        if (length != get_single_dataset("Density",(*P).h,length,&hdf_group,fileno))
+        if (length != get_single_dataset("Volume",(*P).h,length,&hdf_group,fileno))
                 goto exit;
-        /*Find cell length from density and volume.
+        /*Find cell length from volume, assuming a sphere.
          * Note that 4 pi/3**1/3 ~ 1.4, so the geometric 
          * factors nearly cancel and the cell is almost a cube.*/
         for(i=0;i<length;i++)
-                (*P).h[i] = 1.5*pow(3*(*P).Mass[i]/(*P).h[i]/4/M_PI,0.33333333);
+                (*P).h[i] = pow(3*(*P).h[i]/4/M_PI,0.33333333);
      }
     else{
         /* The smoothing length for gadget*/
