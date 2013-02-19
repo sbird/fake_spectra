@@ -276,7 +276,7 @@ class Spectra:
         tot_tau = np.sum(tau,axis = 1)
         cum_tau = np.cumsum(tau,axis = 1)
         vel_width = np.zeros(np.shape(tot_tau))
-        for ll in np.arange(0, np.shape(tau)[1]):
+        for ll in np.arange(0, np.shape(tau)[0]):
             ind_low = np.where(cum_tau[ll,:] > 0.05 * tot_tau[ll])
             low = ind_low[0][-1]
             ind_high = np.where(cum_tau[ll,:] > 0.95 * tot_tau[ll])
