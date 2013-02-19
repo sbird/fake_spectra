@@ -52,7 +52,7 @@ class Spectra:
         self.num = num
         self.base = base
         self.cofm = cofm
-        self.axis = axis
+        self.axis = np.array(axis, dtype = np.int32)
         self.nbins = nbins
         #Snapshot data
         self.files = hdfsim.get_all_files(num, base)
@@ -156,11 +156,11 @@ class Spectra:
         if elem == 'H':
             if ion != 1:
                 raise ValueError
+            # Hydrogen mass frac in the data array
             metal_in *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
         else:
             metal_in *= self.cloudy_table.ion(elem, ion, metal_in, den)
         ff.close()
-        print np.shape(metal_in)
         if rho_H:
             return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
         else:
