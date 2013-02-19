@@ -51,7 +51,11 @@ class LineData:
         return self.masses[specie]
 
 class Line:
-    """Class to store the parameters of a single line"""
+    """Class to store the parameters of a single line.
+    Data is:
+        lambda_X - line width in angstroms (10^-10 m)
+        fosc_X - oscillator strength
+        gamma_X - line's gamma"""
     def __init__(self, lambda_X, fosc_X, gamma_X):
         self.lambda_X = lambda_X
         self.fosc_X = fosc_X

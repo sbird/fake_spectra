@@ -205,7 +205,8 @@ class Spectra:
         #Get line data
         line = self.lines.get_line(elem,ion)
         mass = self.lines.get_mass(elem)
-        tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X, line.gamma_X, line.fosc_X,mass)
+        #Don't forget to convert line width from A to m!
+        tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
         return tau
 
     def compute_absorption_python(self,elem, ion, rho, vel, temp):
@@ -220,6 +221,7 @@ class Spectra:
         """
         #Get line data
         line = self.lines.get_line(elem,ion)
+        line.lambda_X*=1e-10
         mass = self.lines.get_mass(elem)
         tau = np.zeros(self.nbins)
 
