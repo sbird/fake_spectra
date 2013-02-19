@@ -42,8 +42,8 @@ class Spectra:
         self.light = 2.99e8
         #Boltzmann constant
         self.BOLTZMANN = 1.3806504e-23
-        KPC = 3.08568025e19
-        MPC = KPC * 1000
+        self.KPC = 3.08568025e19
+        MPC = self.KPC * 1000
         self.SIGMA_T = 6.652458558e-29
         self.PROTONMASS = 1.66053886e-27 # 1 a.m.u in kg
         self.SOLAR_MASS = 1.98892e30
@@ -65,7 +65,7 @@ class Spectra:
         self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
         ff.close()
         # Conversion factors from internal units
-        rscale = (KPC*self.atime)/self.hubble    # convert length to m
+        rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
         mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
         self.dscale = mscale / rscale **3 # Convert density to kg / m^3
         #  Calculate the length scales to be used in the box
@@ -278,9 +278,9 @@ class Spectra:
         vel_width = np.zeros(np.shape(tot_tau))
         for ll in np.arange(0, np.shape(tau)[0]):
             ind_low = np.where(cum_tau[ll,:] > 0.05 * tot_tau[ll])
-            low = ind_low[0][-1]
+            low = ind_low[0][0]
             ind_high = np.where(cum_tau[ll,:] > 0.95 * tot_tau[ll])
-            high = ind_high[0][0]
+            high = ind_high[0][-1]
             vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
