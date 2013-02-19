@@ -37,14 +37,21 @@ class LineData:
             line = Line(lambda_X, fosc_X, gamma_X)
             #Only add the first transition for lines
             if not (specie,ion) in self.lines:
-                self.lines[(specie,ion)]=line
+                self.lines[(specie,ion)]=[line,]
+            else:
+                self.lines[(specie,ion)].append(line)
 #                 print "Read line: ",specie,ion
 
-    def get_line(self,specie, ion):
+    def __getitem__(self,specion):
         """Get data for a particular line.
-        specie: number of species, ion: transition number (from 1)"""
-        lines = self.lines[(specie, ion)]
+        specion: a tuple of (specie, ion)
+        specie: number of species
+        ion: transition number (from 1)"""
+        lines = self.lines[specion]
         return lines
+
+    def __len__(self):
+        return len(self.lines)
 
     def get_mass(self, specie):
         """Get the mass in amu for a species"""
