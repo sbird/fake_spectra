@@ -10,7 +10,7 @@ void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, co
 {
     //Initialise los_table from input
     for(int i=0; i< NumLos; i++){
-        los_table[i].axis = *(int *) PyArray_GETPTR1(axis,i);
+        los_table[i].axis = *(npy_int32 *) PyArray_GETPTR1(axis,i);
         los_table[i].xx = *(double *) PyArray_GETPTR2(cofm,i,0);
         los_table[i].yy = *(double *) PyArray_GETPTR2(cofm,i,1);
         los_table[i].zz = *(double *) PyArray_GETPTR2(cofm,i,2);
@@ -149,7 +149,7 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
         float h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
         int num_nr_lines=get_list_of_near_lines(xx,yy,zz,h,box100,los_table,NumLos,sort_los_table,nxx,index_nr_lines,dr2_lines);
         if(num_nr_lines>0)
-            *(short *)PyArray_GETPTR1(is_a_line,i) = 1;
+            *(npy_bool *)PyArray_GETPTR1(is_a_line,i) = NPY_TRUE;
     }
     free(los_table);
     free(sort_los_table);
