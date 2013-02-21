@@ -18,11 +18,14 @@ class HaloSpectra(spectra.Spectra):
         min_mass = self.min_halo_mass(minpart)
         f.close()
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
-        self.NumLos = np.size(self.sub_mass)
+        self.NumLos = np.size(self.sub_mass)*3
         #Random integers from [1,2,3]
 #         axis = np.random.random_integers(3, size = self.NumLos)
         #All through y axis
-        axis = 2*np.ones(self.NumLos)
+        axis = np.ones(self.NumLos)
+        axis[self.NumLos/3:2*self.NumLos/3] = 2
+        axis[2*self.NumLos/3:self.NumLos] = 3
+        cofm = np.repeat(cofm,3,axis=0)
         spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
 
     def min_halo_mass(self, minpart = 400):
@@ -42,7 +45,7 @@ class HaloSpectra(spectra.Spectra):
         #Units: h/s   s/m                        kpc/h      m/kpc
         return h100/self.light*(1+self.red)**2*self.box*self.KPC
 
-    def vel_width_hist(self,tau, dv=0.1):
+    def vel_width_hist(self, tau, col_rho, dv=0.1):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with velocities in the interval
@@ -69,13 +72,14 @@ class HaloSpectra(spectra.Spectra):
         v_table = np.arange(0, np.log10(np.max(vel_width)), dv)
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         dX=self.absorption_distance()
-        nn = np.histogram(np.log10(vel_width),v_table)[0] / (1.*nlos)
+        ind = np.where(np.log10(col_rho) > 20.3)
+        nn = np.histogram(np.log10(vel_width[ind]),v_table)[0] / (1.*nlos)
         vels=nn/(dv*10**bin*dX)
         return (10**bin, vels)
 
-    def plot_vel_width(self, tau, dv=0.1):
+    def plot_vel_width(self, tau, col_rho, dv=0.1):
         """Plot the velocity widths of this snapshot"""
-        (bin, vels) = self.vel_width_hist(tau,dv)
+        (bin, vels) = self.vel_width_hist(tau,col_rho, dv)
         plt.loglog(bin, vels)
 
     def plot_spectrum(self, tau, i):

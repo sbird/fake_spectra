@@ -301,4 +301,14 @@ class Spectra:
         #Return the width
         return vel_width
 
+    def NHI(self):
+        """Get the neutral hydrogen column densities for each line"""
+        [rho, vel, temp] = self.SPH_Interpolate_metals('H', 1)
+        #Column density in kg / m^3 (* box [comoving kpc/h in physical m])
+        col_rho = np.sum(rho, axis=1)*self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
+        #In atoms / m^2
+        col_rho /= self.PROTONMASS
+        #In atoms / cm^2
+        col_rho /= 100**2
+        return col_rho
 
