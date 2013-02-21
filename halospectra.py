@@ -42,7 +42,7 @@ class HaloSpectra(spectra.Spectra):
         #Units: h/s   s/m                        kpc/h      m/kpc
         return h100/self.light*(1+self.red)**2*self.box*self.KPC
 
-    def vel_width_hist(self,tau, dv=0.2):
+    def vel_width_hist(self,tau, dv=0.1):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with velocities in the interval
@@ -55,7 +55,7 @@ class HaloSpectra(spectra.Spectra):
         So we have f(N) = d n/ dv dX
         and n(N) = number of absorbers per sightline in this velocity bin.
         ie, f(N) = n / Δv / ΔX
-        Note f(N) has dimensions of km/s, because v has units of km/s and X is dimensionless.
+        Note f(N) has dimensions of s/km, because v has units of km/s and X is dimensionless.
 
         Parameters:
             tau - optical depth along sightline
@@ -73,6 +73,32 @@ class HaloSpectra(spectra.Spectra):
         vels=nn/(dv*10**bin*dX)
         return (10**bin, vels)
 
-    def plot_vel_width(self, tau):
-        (bin, vels) = self.vel_width_hist(tau)
+    def plot_vel_width(self, tau, dv=0.1):
+        """Plot the velocity widths of this snapshot"""
+        (bin, vels) = self.vel_width_hist(tau,dv)
         plt.loglog(bin, vels)
+
+    def plot_spectrum(self, tau, i):
+        """Plot the spectrum of a line, centered on the deepest point,
+           and marking the 90% velocity width."""
+        #  Size of a single velocity bin
+        tot_tau = np.sum(tau[i,:])
+        #Deal with periodicity by making sure the deepest point is in the middle
+        tau_l = tau[i,:]
+        max = np.max(tau_l)
+        ind_m = np.where(tau_l == max)[0][0]
+        tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+        plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
+        cum_tau = np.cumsum(tau_l)
+        ind_low = np.where(cum_tau > 0.05 * tot_tau)
+        low = ind_low[0][0]*self.dvbin
+        ind_high = np.where(cum_tau > 0.95 * tot_tau)
+        high = ind_high[0][0]*self.dvbin
+        if high - low > 0:
+            plt.plot([low,low],[0,1])
+            plt.plot([high,high],[0,1])
+        plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
+        plt.ylim(-0.05,1.05)
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
+
+

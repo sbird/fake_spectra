@@ -85,7 +85,8 @@ class Spectra:
     def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
         """Interpolate particles to lines of sight, calculating density, temperature and velocity
         of various metal species along the line of sight.
-
+        HI is special-cased.
+        Note: the ionisation fraction is just cloudy. Some self-shielding might be useful.
         This is a wrapper which calls the C function.
         Arguments:
             elem - Element(s) to compute spectra of
@@ -192,7 +193,7 @@ class Spectra:
         temp[ind]=1
         return [rho, vel, temp]
 
-    def compute_absorption(self,elem, ion, rho, vel, temp):
+    def compute_absorption(self,elem, ion, ll, rho, vel, temp):
         """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
         densities, velocities and temperatures.
 
@@ -203,13 +204,20 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get line data
-        line = self.lines[(elem,ion)]
+        line = self.lines[(elem,ion)][ll]
         mass = self.lines.get_mass(elem)
         #Don't forget to convert line width from A to m!
         tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
         return tau
 
-    def compute_absorption_python(self,elem, ion, rho, vel, temp):
+    def find_max_tau(self, elem, ion, rho, vel, temp):
+        """Find which of the transitions gives the largest maximal optical depth."""
+        line = self.lines[(elem,ion)]
+        mass = self.lines.get_mass(elem)
+        maxes = [np.max(_Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,ll.lambda_X*1e-10, ll.gamma_X, ll.fosc_X,mass)) for ll in line]
+        return np.where(maxes == np.max(maxes))
+
+    def compute_absorption_python(self,elem, ion, ll, rho, vel, temp):
         """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
         densities, velocities and temperatures.
 
@@ -220,7 +228,7 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get line data
-        line = self.lines[(elem,ion)]
+        line = self.lines[(elem,ion)][ll]
         line.lambda_X*=1e-10
         mass = self.lines.get_mass(elem)
         tau = np.zeros(self.nbins)
@@ -254,11 +262,10 @@ class Spectra:
 
         return tau
 
-    def get_tau(self, elem, ion):
+    def get_tau(self, elem, ion, ll):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number
-           NOTE: May wish to special-case SiIII at some point
         """
         #generate metal and hydrogen spectral densities
         #Indexing is: rho_metals [ NSPECTRA, NBIN ]
@@ -266,21 +273,30 @@ class Spectra:
 
         #Compute tau for this metal ion
         (nlos, nbins) = np.shape(rho)
-        tau = np.array([self.compute_absorption(elem, ion, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+        tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
         self.metals[(elem, ion)] = [rho, vel, temp, tau]
         return tau
 
     def vel_width(self, tau):
-        """Find the velocity width of a line"""
+        """Find the velocity width of a line
+           defined as the width of 90% of the integrated optical depth.
+           This is a little complicated by periodic boxes,
+           so we internally cycle the line until the deepest absorption
+           is in the middle"""
         #  Size of a single velocity bin
         tot_tau = np.sum(tau,axis = 1)
-        cum_tau = np.cumsum(tau,axis = 1)
         vel_width = np.zeros(np.shape(tot_tau))
         for ll in np.arange(0, np.shape(tau)[0]):
-            ind_low = np.where(cum_tau[ll,:] > 0.05 * tot_tau[ll])
+            #Deal with periodicity by making sure the deepest point is in the middle
+            tau_l = tau[ll,:]
+            max = np.max(tau_l)
+            ind_m = np.where(tau_l == max)[0][0]
+            tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+            cum_tau = np.cumsum(tau_l)
+            ind_low = np.where(cum_tau > 0.05 * tot_tau[ll])
             low = ind_low[0][0]
-            ind_high = np.where(cum_tau[ll,:] > 0.95 * tot_tau[ll])
-            high = ind_high[0][-1]
+            ind_high = np.where(cum_tau > 0.95 * tot_tau[ll])
+            high = ind_high[0][0]
             vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
