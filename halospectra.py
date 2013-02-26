@@ -18,14 +18,18 @@ class HaloSpectra(spectra.Spectra):
         min_mass = self.min_halo_mass(minpart)
         f.close()
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
-        self.NumLos = np.size(self.sub_mass)*3
+        self.NumLos = np.size(self.sub_mass)*6
         #Random integers from [1,2,3]
 #         axis = np.random.random_integers(3, size = self.NumLos)
         #All through y axis
         axis = np.ones(self.NumLos)
         axis[self.NumLos/3:2*self.NumLos/3] = 2
         axis[2*self.NumLos/3:self.NumLos] = 3
-        cofm = np.repeat(cofm,3,axis=0)
+        cofm = np.repeat(cofm,6,axis=0)
+        axis = np.repeat(axis,2)
+        #Perturb the second set of sightlines within the virial radius
+        np.random.seed(23)
+        cofm[self.NumLos/2:] += (np.random.random_sample((self.NumLos/2,3))-0.5)*np.tile(np.repeat(self.sub_radii,3),(3,1)).T*2
         spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
 
     def min_halo_mass(self, minpart = 400):
@@ -45,7 +49,7 @@ class HaloSpectra(spectra.Spectra):
         #Units: h/s   s/m                        kpc/h      m/kpc
         return h100/self.light*(1+self.red)**2*self.box*self.KPC
 
-    def vel_width_hist(self, tau, col_rho, dv=0.1):
+    def vel_width_hist(self, tau, col_rho, DLA_frac=1e-3, dv=0.1):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with velocities in the interval
@@ -55,6 +59,12 @@ class HaloSpectra(spectra.Spectra):
         That is, there is presumed to be only one halo in along the sightline
         encountering a given halo.
 
+        To avoid having to compute a representative sample of sightlines
+        (since we will only use the 0.1% of them that are DLAs) we compute
+        the fraction of sightlines that are in this velocity bin out of the total sample of DLAs,
+        and multiply by the DLA fraction, obtained from the cddf.
+        Thus we only need a representative sample of DLAs.
+
         So we have f(N) = d n/ dv dX
         and n(N) = number of absorbers per sightline in this velocity bin.
         ie, f(N) = n / Δv / ΔX
@@ -63,6 +73,7 @@ class HaloSpectra(spectra.Spectra):
         Parameters:
             tau - optical depth along sightline
             dv - bin spacing
+            DLA_frac - fraction of sightlines in the box which are DLAs.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
@@ -73,7 +84,7 @@ class HaloSpectra(spectra.Spectra):
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         dX=self.absorption_distance()
         ind = np.where(np.log10(col_rho) > 20.3)
-        nn = np.histogram(np.log10(vel_width[ind]),v_table)[0] / (1.*nlos)
+        nn = np.histogram(np.log10(vel_width[ind]),v_table)[0] / (1.*np.size(vel_width[ind]))*DLA_frac
         vels=nn/(dv*10**bin*dX)
         return (10**bin, vels)
 
