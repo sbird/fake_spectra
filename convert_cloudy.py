@@ -94,8 +94,8 @@ class CloudyTable:
         """Read a cloudy table from somewhere"""
         self.savefile = path.join(directory,"cloudy_table.npz")
         self.reds = np.array([1,2,3,4,5,6])
-        self.mets = np.array([-4,-3,-2,-1,0,1])
-        self.dens = np.array([-6,-5,-4,-3,-2,-1,0,1,2])
+        self.mets = np.array([-4,-3,-2,-1,0,1,2])
+        self.dens = np.array([-6,-5,-4,-3,-2,-1,0,1,2,3])
         self.species = ("He", "C", "N", "O", "Ne", "Mg", "Si", "Fe")
         #Solar abundances from Hazy table 7.1 as Z = n/n(H)
         self.solar = np.array([0.1, 2.45e-4, 8.51e-5, 4.9e-4, 1.e-4, 3.47e-5, 3.47e-5, 2.82e-5])
@@ -140,9 +140,6 @@ class CloudyTable:
         min_met = self.solar[cspe]*10**np.min(self.mets)
         met[np.where(met < min_met)] = min_met
         cmet = np.log10(met/self.solar[cspe])
-        #REMOVE THIS LATER, when we have expanded the table: met -> 2 and dens -> 3
-        cmet[np.where(cmet > np.max(self.mets))] = np.max(self.mets)
-        crho[np.where(crho > np.max(self.dens))] = np.max(self.dens)
         ions = np.array([ints(cmet[ii], crho[ii]) for ii in range(0, np.size(crho))])
         return 10**np.ravel(ions)
 
