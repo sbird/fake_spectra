@@ -1,4 +1,4 @@
-# vim: set fileencoding=utf-8
+# -*- coding: utf-8 -*-
 """Class to gather and analyse various metal line statistics"""
 
 import numpy as np
@@ -49,7 +49,12 @@ class HaloSpectra(spectra.Spectra):
         #Units: h/s   s/m                        kpc/h      m/kpc
         return h100/self.light*(1+self.red)**2*self.box*self.KPC
 
-    def vel_width_hist(self, tau, col_rho, DLA_frac=1e-3, dv=0.1):
+    def absorption_distance_dz(self):
+        """Compute dX/dz = H_0 (1+z)^2 / H(z) (which is independent of h)"""
+        zp1 = 1+self.red
+        return zp1**2/np.sqrt(self.OmegaM*zp1**3+(1-self.OmegaM))
+
+    def vel_width_hist(self, tau, col_rho, DLA_frac=0.00126,dv=0.1):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with velocities in the interval
@@ -80,13 +85,14 @@ class HaloSpectra(spectra.Spectra):
         """
         vel_width = self.vel_width(tau)
         nlos = np.shape(tau)[0]
-        v_table = np.arange(0, np.log10(np.max(vel_width)), dv)
+        v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         dX=self.absorption_distance()
         ind = np.where(np.log10(col_rho) > 20.3)
-        nn = np.histogram(np.log10(vel_width[ind]),v_table)[0] / (1.*np.size(vel_width[ind]))*DLA_frac
-        vels=nn/(dv*10**bin*dX)
-        return (10**bin, vels)
+        nn = np.histogram(vel_width[ind],v_table)[0] / (1.*np.size(vel_width[ind]))*DLA_frac
+        width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
+        vels=nn/(width*dX)
+        return (bin, vels)
 
     def plot_vel_width(self, tau, col_rho, dv=0.1):
         """Plot the velocity widths of this snapshot"""
