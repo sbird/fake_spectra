@@ -324,3 +324,19 @@ class Spectra:
         col_rho /= 100**2
         return col_rho
 
+    def delta(self, rho):
+        """Get a density in units of delta = ρ/bar{ρ} -1.
+        Supplied density should be in physical kg/m^3."""
+        #Gravitational constant in SI
+        GRAVITY = 6.67428e-11
+        # 100kms^-1Mpc^-1 in SI
+        H0 = 1.0e5/(self.KPC*1e3)
+        # Critical matter/energy density at z = 0
+        rhoc = 3.0 * (H0*self.hubble)*(H0*self.hubble) / (8.0 * math.pi * GRAVITY)
+        #Primordial hydrogen mass-fraction
+        XH = 0.76
+        #Mean hydrogen mass density of the Universe in kg/m^3
+        critH = (rhoc * self.omegab * XH) / self.atime**3
+
+        # H density normalised by mean
+        return rho/critH
