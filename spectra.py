@@ -130,7 +130,6 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, rho_H):
         """Read arrays and perform interpolation for a single file"""
-        nelem = self.species.index(elem)
         ff = h5py.File(fn)
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
@@ -139,10 +138,6 @@ class Spectra:
         u = np.array(data["InternalEnergy"],dtype=np.float32)
         ne = np.array(data["ElectronAbundance"],dtype=np.float32)
         hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-        #In kg/m^3
-        den = np.array(data["Density"], dtype = np.float32)*self.dscale
-        #In (hydrogen) atoms / cm^3
-        den /= (self.PROTONMASS*100**3)
         #Find particles we care about
         ind = self.particles_near_lines(pos, hh)
         pos = pos[ind,:]
@@ -151,29 +146,11 @@ class Spectra:
         u = u[ind]
         ne = ne[ind]
         hh = hh[ind]
-        den = den[ind]
-        #Get metallicity of this metal species
-        try:
-            metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
-            #Deal with floating point roundoff - metal_in will sometimes be negative
-            #10^-30 is Cloudy's definition of zero.
-            metal_in[np.where(metal_in < 1e-30)] = 1e-30
-            metal_in = metal_in[ind]
-        except KeyError:
-            #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
-            metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3])
-            metal_in = metal_abund[nelem]
-        #Get density of this ion - we need to weight T and v by ion abundance
-        #Cloudy density in physical H atoms / cm^3
-        #Special case H1:
-        if elem == 'H':
-            if ion != 1:
-                raise ValueError
-            # Hydrogen mass frac in the data array
-            metal_in = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]*metal_in
-        else:
-            metal_in = self.cloudy_table.ion(elem, ion, metal_in, den)*metal_in
         ff.close()
+        metal_in = self.get_mass_frac(fn, elem, ion, ind)
+        for xx in [pos, vel, mass, u, ne, hh]:
+            if np.size(np.where(np.isnan(xx))[0]) > 0:
+                raise ValueError
         if rho_H:
             return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
         else:
@@ -183,6 +160,56 @@ class Spectra:
         """Filter a particle list, returning an index list of those near sightlines"""
         ind = _near_lines(self.box, pos, hh, self.axis, self.cofm)
         return ind
+
+    def get_mass_frac(self,fn,elem, ion,ind=None):
+        """Get the mass fraction of a given species from a snapshot.
+        Arguments:
+            fn = file to read
+            elem = name of element
+            ion = ion species
+            ind = optional pre-computed index list of particles we care about
+        Returns mass_frac - mass fraction of this ion
+        """
+        nelem = self.species.index(elem)
+        ff = h5py.File(fn)
+        data = ff["PartType0"]
+        if ind==None:
+            pos = np.array(data["Coordinates"],dtype=np.float32)
+            hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
+            #Find particles we care about
+            ind = self.particles_near_lines(pos, hh)
+
+        #Get metallicity of this metal species
+        try:
+            mass_frac = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
+            #Deal with floating point roundoff - mass_frac will sometimes be negative
+            #10^-30 is Cloudy's definition of zero.
+            mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
+            mass_frac = mass_frac[ind]
+        except KeyError:
+            #If GFM_Metals is not defined, fall back to a guess.
+            #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
+            metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3],dtype=np.float32)
+            mass_frac = metal_abund[nelem]*np.ones(np.shape(data["Density"]),dtype=np.float32)
+
+        #In kg/m^3
+        den = np.array(data["Density"], dtype = np.float32)*self.dscale
+        #In (hydrogen) atoms / cm^3
+        den /= (self.PROTONMASS*100**3)
+        den = den[ind]
+        #Get density of this ion - we need to weight T and v by ion abundance
+        #Cloudy density in physical H atoms / cm^3
+        #Special case H1:
+        if elem == 'H':
+            if ion != 1:
+                raise ValueError
+            # Hydrogen mass frac in the data array
+            mass_frac *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
+        else:
+            mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
+        ff.close()
+        return mass_frac
+
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
@@ -301,8 +328,8 @@ class Spectra:
         for ll in np.arange(0, np.shape(tau)[0]):
             #Deal with periodicity by making sure the deepest point is in the middle
             tau_l = tau[ll,:]
-            max = np.max(tau_l)
-            ind_m = np.where(tau_l == max)[0][0]
+            max_t = np.max(tau_l)
+            ind_m = np.where(tau_l == max_t)[0][0]
             tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
             cum_tau = np.cumsum(tau_l)
             ind_low = np.where(cum_tau > 0.05 * tot_tau[ll])
