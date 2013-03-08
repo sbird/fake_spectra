@@ -17,6 +17,20 @@ void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, co
     }
 }
 
+
+/*Check whether the passed array has type typename. Returns 1 if it doesn't, 0 if it does.*/
+int check_type(PyArrayObject * arr, int typename)
+{
+  return !PyArray_EquivTypes(PyArray_DESCR(arr), PyArray_DescrFromType(typename));
+}
+
+int check_float(PyArrayObject * arr)
+{
+  return check_type(arr, NPY_FLOAT);
+}
+
+
+
 /*****************************************************************************/
 /*Interface for SPH interpolation*/
 PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
@@ -42,7 +56,25 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     struct particle_data P;
     //Get our input
     if(!PyArg_ParseTuple(args, "iidO!O!O!O!O!O!O!O!O!",&rho_H, &nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+    {
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use nbins, box100, pos, vel, mass, u, ne, fractions, h, axis, cofm\n");
       return NULL;
+    }
+
+    //Check that our input has the right types
+    if(check_float(pos) || check_float(vel) || check_float(mass) || check_float(u) || check_float(ne) || check_float(h) || check_float(fractions)){
+       PyErr_SetString(PyExc_TypeError, "One of the data arrays does not have 32-bit float type\n");
+       return NULL;
+    }
+    if(check_type(cofm,NPY_DOUBLE)){
+      PyErr_SetString(PyExc_TypeError, "Sightline positions must have 64-bit float type\n");
+      return NULL;
+    }
+    if(check_type(axis, NPY_INT32)){
+      PyErr_SetString(PyExc_TypeError, "Axis must be a 32-bit integer\n");
+      return NULL;
+    }
+
 
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
@@ -63,8 +95,10 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     vel_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
     temp_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
 
-    if ( !rho_out || !vel_out || !temp_out)
+    if ( !rho_out || !vel_out || !temp_out){
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output arrays\n");
         return NULL;
+    }
 
     //Initialise output arrays to 0.
     PyArray_FILLWBYTE(rho_out, 0);
