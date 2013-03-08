@@ -54,21 +54,16 @@ class HaloSpectra(spectra.Spectra):
         zp1 = 1+self.red
         return zp1**2/np.sqrt(self.OmegaM*zp1**3+(1-self.OmegaM))
 
-    def vel_width_hist(self, tau, col_rho, DLA_frac=0.00126,dv=0.1):
+    def vel_width_hist(self, tau, col_rho, dv=0.1):
         """
-        This computes the DLA column density function, which is the number
-        of absorbers per sight line with velocities in the interval
-        [v, v+dv] at the absorption distance X.
-        Absorption distance is simply a single simulation box.
-        A sightline is assumed to be equivalent to one grid cell.
-        That is, there is presumed to be only one halo in along the sightline
-        encountering a given halo.
-
         To avoid having to compute a representative sample of sightlines
         (since we will only use the 0.1% of them that are DLAs) we compute
-        the fraction of sightlines that are in this velocity bin out of the total sample of DLAs,
+        the fraction of sightlines that are in this velocity bin out a
+        representative sample of DLAs.
+
+        This also matches the data from Prochaska.
+        However, it does not match Pontzen 2008, who
         and multiply by the DLA fraction, obtained from the cddf.
-        Thus we only need a representative sample of DLAs.
 
         So we have f(N) = d n/ dv dX
         and n(N) = number of absorbers per sightline in this velocity bin.
@@ -78,7 +73,6 @@ class HaloSpectra(spectra.Spectra):
         Parameters:
             tau - optical depth along sightline
             dv - bin spacing
-            DLA_frac - fraction of sightlines in the box which are DLAs.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
@@ -89,7 +83,7 @@ class HaloSpectra(spectra.Spectra):
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         dX=self.absorption_distance()
         ind = np.where(np.log10(col_rho) > 20.3)
-        nn = np.histogram(vel_width[ind],v_table)[0] / (1.*np.size(vel_width[ind]))*DLA_frac
+        nn = np.histogram(vel_width[ind],v_table)[0] / (1.*np.size(vel_width[ind]))
         width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
         vels=nn/(width*dX)
         return (bin, vels)

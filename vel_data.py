@@ -18,9 +18,10 @@ def plot_prochaska_2008_data():
   width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
   
   #This is the avg. fraction of DLAs per unit absorption distance.
-  DLAdX = 0.065
+  #It is needed to match the normalisation of Pontzen 2008.
+  #DLAdX = 0.065
   
-  norm = width* (1.*np.size(vel_data))/DLAdX
+  norm = width* (1.*np.size(vel_data))
   
   vels = nn / norm
   #Use poisson errors
