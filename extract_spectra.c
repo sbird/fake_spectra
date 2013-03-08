@@ -295,7 +295,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
             if(cindex == CACHESZ){
               #pragma omp critical
               {
-			    if(rhoker_H)
+		if(rhoker_H)
                     for(cindex=0;cindex<CACHESZ;cindex++){
                         rhoker_H[bins[cindex]]  += rho_H[cindex];
                     }

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Python module for generating fake spectra from an N-body catalogue.
 
 Note in Arepo we have GFM_Metals and GFM_Metallicity.
@@ -63,7 +64,12 @@ class Spectra:
         self.hubble = ff["Header"].attrs["HubbleParam"]
         self.OmegaM = ff["Header"].attrs["Omega0"]
         self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
+        #Calculate omega_baryon (approximately)
+        mass_dm = ff["Header"].attrs["MassTable"][1]*ff["Header"].attrs["NumPart_ThisFile"][1]
+        mass_bar = np.sum(ff["PartType0"]["Masses"])
+        self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
         ff.close()
+
         # Conversion factors from internal units
         rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
         mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
@@ -96,6 +102,7 @@ class Spectra:
         Returns:
             rho_H - hydrogen density along the line of sight if get_rho_H = True
             dictionary with a list of [density, velocity, temperature] for each species along the line of sight.
+            Units are physical kg/m^3, km/s and K.
         """
         #Get array sizes
         (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion, get_rho_H)
@@ -116,7 +123,7 @@ class Spectra:
         metals = self.rescale_units(rho_metal, vel_metal, temp_metal)
         if get_rho_H:
             rho_H *= self.dscale
-            return (rho_H, metals)
+            return [rho_H,]+ metals
         else:
             return metals
 
