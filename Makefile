@@ -48,39 +48,34 @@ CFLAGS += $(OPTS)
 CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h
 #LINK=$(CC)
-LFLAGS+=-lfftw3 -lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
+LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist
 
 all: extract statistic rescale _spectra_priv.so
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o
-	$(LINK) $(LFLAGS) $^ -o $@
+	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
-	$(LINK) $(LFLAGS) $^ -o $@
+	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
 statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
-	$(LINK) $(LFLAGS) $^ -o $@
+	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-init.o: init.c $(COM_INC)
-rescale.o: rescale.c $(COM_INC)
-statistic.o: statistic.c $(COM_INC)
-read_snapshot.o: read_snapshot.cpp $(COM_INC)
-read_hdf_snapshot.o: read_hdf_snapshot.c $(COM_INC)
+%.o: %.c $(COM_INC)
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
-smooth.o:smooth.c
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
-powerspectrum.o: powerspectrum.c  $(COM_INC)
-mean_flux.o: mean_flux.c $(COM_INC)
 main.o: main.c global_vars.h $(COM_INC)
 
 py_module.o: py_module.c
 	$(CC) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^ -o $@
+
 _spectra_priv.so: py_module.o extract_spectra.o init.o
 	$(LINK) $(LFLAGS) -shared $^ -o $@
+
 clean:
-	rm -f *.o  extract rescale statistic
+	rm -f *.o  extract rescale statistic _spectra_priv.so
 
 dist: Makefile calc_power.c extract_spectra.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h
 	tar -czf flux_extract.tar.gz $^
