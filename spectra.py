@@ -139,15 +139,10 @@ class Spectra:
         u = np.array(data["InternalEnergy"],dtype=np.float32)
         ne = np.array(data["ElectronAbundance"],dtype=np.float32)
         hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-        #Get metallicity of this metal species
-        metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
         #In kg/m^3
         den = np.array(data["Density"], dtype = np.float32)*self.dscale
         #In (hydrogen) atoms / cm^3
         den /= (self.PROTONMASS*100**3)
-        #Deal with floating point roundoff - metal_in will sometimes be negative
-        #10^-30 is Cloudy's definition of zero.
-        metal_in[np.where(metal_in < 1e-30)] = 1e-30
         #Find particles we care about
         ind = self.particles_near_lines(pos, hh)
         pos = pos[ind,:]
@@ -156,8 +151,18 @@ class Spectra:
         u = u[ind]
         ne = ne[ind]
         hh = hh[ind]
-        metal_in = metal_in[ind]
         den = den[ind]
+        #Get metallicity of this metal species
+        try:
+            metal_in = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
+            #Deal with floating point roundoff - metal_in will sometimes be negative
+            #10^-30 is Cloudy's definition of zero.
+            metal_in[np.where(metal_in < 1e-30)] = 1e-30
+            metal_in = metal_in[ind]
+        except KeyError:
+            #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
+            metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3])
+            metal_in = metal_abund[nelem]
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
         #Special case H1:
@@ -165,9 +170,9 @@ class Spectra:
             if ion != 1:
                 raise ValueError
             # Hydrogen mass frac in the data array
-            metal_in *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
+            metal_in = np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]*metal_in
         else:
-            metal_in *= self.cloudy_table.ion(elem, ion, metal_in, den)
+            metal_in = self.cloudy_table.ion(elem, ion, metal_in, den)*metal_in
         ff.close()
         if rho_H:
             return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
