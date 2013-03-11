@@ -64,44 +64,62 @@ class HaloSpectra(spectra.Spectra):
         zp1 = 1+self.red
         return zp1**2/np.sqrt(self.OmegaM*zp1**3+(1-self.OmegaM))
 
-    def vel_width_hist(self, tau, col_rho, dv=0.1):
+    def vel_width_hist(self, tau, dv=0.1, col_rho=None):
         """
-        To avoid having to compute a representative sample of sightlines
-        (since we will only use the 0.1% of them that are DLAs) we compute
-        the fraction of sightlines that are in this velocity bin out a
-        representative sample of DLAs.
+        Compute a histogram of the velocity widths of our spectra, with the purpose of
+        comparing to the data of Prochaska 2008.
 
-        This also matches the data from Prochaska.
-        However, it does not match Pontzen 2008, who
-        and multiply by the DLA fraction, obtained from the cddf.
+        Note this does not match Pontzen 2008, who multiply by the DLA fraction (0.065) obtained from the cddf.
 
-        So we have f(N) = d n/ dv dX
+        So we have f(N) = d n/ dv
         and n(N) = number of absorbers per sightline in this velocity bin.
-        ie, f(N) = n / Δv / ΔX
-        Note f(N) has dimensions of s/km, because v has units of km/s and X is dimensionless.
+        Note f(N) has dimensions of s/km, because v has units of km/s.
 
         Parameters:
             tau - optical depth along sightline
             dv - bin spacing
+            col_rho - Prochaska used a subsample of spectra containing a DLA.
+                      If this value is not None, use it as HI column density measurements to select
+                      such a subsample. This does not change the resulting velocity widths.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
+        #Remember this is not in log...
+        if col_rho != None:
+          ind = np.where(col_rho > 10**20.3)
+          tau = tau[ind]
         vel_width = self.vel_width(tau)
-        nlos = np.shape(tau)[0]
+        nlos = np.shape(vel_width)[0]
+        print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        dX=self.absorption_distance()
-        ind = np.where(np.log10(col_rho) > 20.3)
-        nn = np.histogram(vel_width[ind],v_table)[0] / (1.*np.size(vel_width[ind]))
+        nn = np.histogram(vel_width,v_table)[0] / (1.*nlos)
         width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
-        vels=nn/(width*dX)
+        vels=nn/width
         return (bin, vels)
 
-    def plot_vel_width(self, tau, col_rho, dv=0.1):
-        """Plot the velocity widths of this snapshot"""
-        (bin, vels) = self.vel_width_hist(tau,col_rho, dv)
-        plt.loglog(bin, vels)
+    def plot_vel_width(self, tau, dv=0.1, col_rho=None):
+        """Plot the velocity widths of this snapshot
+           Parameters:
+            tau - optical depth along sightline
+            dv - bin spacing
+            col_rho - Prochaska used a subsample of spectra containing a DLA.
+                      If this value is not None, use it as HI column density measurements to select
+                      such a subsample. This does not change the resulting velocity widths.
+
+        """
+        (bin, vels) = self.vel_width_hist(tau, dv, col_rho)
+        plt.semilogy(bin, vels)
+
+    def get_col_density(self, elem, ion):
+        """Get the column density in each pixel for a given species, assuming rho was already calculated"""
+        rho = self.metals[(elem, ion)][0]
+        #Size of a bin in physical m
+        binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
+        #Convert from physical kg/m^2 to atoms/cm^2
+        convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
+        return rho*binsz*convert
 
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,
