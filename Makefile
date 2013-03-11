@@ -77,6 +77,6 @@ _spectra_priv.so: py_module.o extract_spectra.o init.o
 clean:
 	rm -f *.o  extract rescale statistic _spectra_priv.so
 
-dist: Makefile calc_power.c extract_spectra.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h
+dist: Makefile calc_power.c extract_spectra.c py_module.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c
 	tar -czf flux_extract.tar.gz $^
 

@@ -22,7 +22,7 @@ def plot_prochaska_2008_data():
   #DLAdX = 0.065
   
   norm = width* (1.*np.size(vel_data))
-  
+
   vels = nn / norm
   #Use poisson errors
   verr = (np.sqrt(nn))/norm

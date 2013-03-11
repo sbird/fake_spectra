@@ -13,7 +13,7 @@ Because these are not all the species, GFM_Metals will not sum to 1
 and sum(GFM_Metals[2:])  < GFM_Metallicity
 
 However, it should be true that
-1- sum(GFM_Metals[:]) + GFM_Metals[2:] = GFM_Metallicity
+sum(GFM_Metals[:2]) +  GFM_Metallicity ~ 1
 
 Also note that there is some instability at very low metallicities - the code will often return +-1e-20.
 """
@@ -295,7 +295,6 @@ class Spectra:
             ind = np.where(T0 > 1.e-6)
             profile = np.array(T1)
             # Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-            #This appears to break down for high T.
             profile[ind] = T1[ind] - aa_H1[ind]/np.sqrt(math.pi)/T0[ind]*(T1[ind]**2*(4.0*T0[ind]**2 + 7.0*T0[ind] + 4.0 + T2[ind]) - T2[ind] -1.0)
             tau[i] = np.sum(A_H1  * rho  * profile /(mass*self.PROTONMASS*bb))
 
