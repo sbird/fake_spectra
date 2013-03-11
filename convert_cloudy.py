@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 """Short script to read cloudy table files and output numpy arrays."""
 
 import numpy as np
@@ -142,6 +142,11 @@ class CloudyTable:
         cmet = np.log10(met/self.solar[cspe])
         ions = np.array([ints(cmet[ii], crho[ii]) for ii in range(0, np.size(crho))])
         return 10**np.ravel(ions)
+
+    def get_solar(self,species):
+        """Get the solar metallicity for a species"""
+        cspe = self.species.index(species)
+        return self.solar[cspe]
 
     def save_file(self):
         """
