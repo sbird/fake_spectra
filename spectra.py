@@ -328,6 +328,9 @@ class Spectra:
             #Deal with periodicity by making sure the deepest point is in the middle
             tau_l = tau[ll,:]
             max_t = np.max(tau_l)
+            if max_t == 0:
+              vel_width[ll] = 0
+              continue
             ind_m = np.where(tau_l == max_t)[0][0]
             tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
             cum_tau = np.cumsum(tau_l)
@@ -366,3 +369,48 @@ class Spectra:
 
         # H density normalised by mean
         return rho/critH
+
+    def vel_width_hist(self, tau, dv=0.1, col_rho=None):
+        """
+        Compute a histogram of the velocity widths of our spectra, with the purpose of
+        comparing to the data of Prochaska 2008.
+
+        Note this does not match Pontzen 2008, who multiply by the DLA fraction (0.065) obtained from the cddf.
+
+        So we have f(N) = d n/ dv
+        and n(N) = number of absorbers per sightline in this velocity bin.
+        Note f(N) has dimensions of s/km, because v has units of km/s.
+
+        Parameters:
+            tau - optical depth along sightline
+            dv - bin spacing
+            col_rho - Prochaska used a subsample of spectra containing a DLA.
+                      If this value is not None, use it as HI column density measurements to select
+                      such a subsample. This does not change the resulting velocity widths.
+
+        Returns:
+            (v, f_table) - v (binned in log) and corresponding f(N)
+        """
+        #Remember this is not in log...
+        if col_rho != None:
+          ind = np.where(col_rho > 10**20.3)
+          tau = tau[ind]
+        vel_width = self.vel_width(tau)
+        nlos = np.shape(vel_width)[0]
+        print 'nlos = ',nlos
+        v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
+        bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        nn = np.histogram(vel_width,v_table)[0] / (1.*nlos)
+        width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
+        vels=nn/width
+        return (bin, vels)
+
+    def get_col_density(self, elem, ion):
+        """Get the column density in each pixel for a given species, assuming rho was already calculated"""
+        rho = self.metals[(elem, ion)][0]
+        #Size of a bin in physical m
+        binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
+        #Convert from physical kg/m^2 to atoms/cm^2
+        convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
+        return rho*binsz*convert
+
