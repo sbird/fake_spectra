@@ -3,14 +3,15 @@
 
 import numpy as np
 import hdfsim
+import math
 import halocat
 import spectra
 import matplotlib.pyplot as plt
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, minpart = 400, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
-        #Load halo centers to push lines through them
+    def __init__(self,num, base, repeat = 3, minpart = 400, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
+        #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.OmegaM = f["Header"].attrs["Omega0"]
         self.box = f["Header"].attrs["BoxSize"]
@@ -18,18 +19,27 @@ class HaloSpectra(spectra.Spectra):
         min_mass = self.min_halo_mass(minpart)
         f.close()
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
-        self.NumLos = np.size(self.sub_mass)*6
-        #Random integers from [1,2,3]
-#         axis = np.random.random_integers(3, size = self.NumLos)
+        self.NumLos = np.size(self.sub_mass)*repeat
         #All through y axis
         axis = np.ones(self.NumLos)
         axis[self.NumLos/3:2*self.NumLos/3] = 2
         axis[2*self.NumLos/3:self.NumLos] = 3
-        cofm = np.repeat(cofm,6,axis=0)
-        axis = np.repeat(axis,2)
-        #Perturb the second set of sightlines within the virial radius
+        cofm = np.repeat(cofm,repeat,axis=0)
+        axis = np.repeat(axis,repeat/3)
+        #Perturb the sightlines within a sphere of half the virial radius.
+        #We want a representative sample of DLAs.
+        maxr = self.sub_radii/2.
+        #Generate random sphericals
+        theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
+        phi = 2*math.pi*np.random.random_sample(self.NumLos)
+        rr = np.repeat(maxr,repeat)*np.random.random_sample(self.NumLos)
+        #Add them to halo centers
+        cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
+        cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
+        cofm[:,2]+=rr*np.cos(theta)
+        #Re-seed for repeatability
         np.random.seed(23)
-        cofm[self.NumLos/2:] += (np.random.random_sample((self.NumLos/2,3))-0.5)*np.tile(np.repeat(self.sub_radii,3),(3,1)).T*2
+
         spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
 
     def min_halo_mass(self, minpart = 400):
@@ -115,5 +125,3 @@ class HaloSpectra(spectra.Spectra):
         plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
         plt.xlim(0,np.size(tau_l)*self.dvbin)
-
-
