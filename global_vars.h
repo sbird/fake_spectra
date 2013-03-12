@@ -52,11 +52,6 @@ typedef struct _sort_los
         /*This is xx, unless iaxis=1, in which case it is yy*/
 } sort_los;
 
-/*Pointers to arrays to use in SPH_interpolation*/
-#ifndef RAW_SPECTRA
-#include "statistic.h"
-#endif
-
 /*Functions to allocate memory.*/
 int InitLOSMemory(interp * species, int NumLos, int nbins);
 void FreeLOSMemory(interp * species);
