@@ -156,8 +156,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
       /* This first finds which sightlines are near the particle using the sorted los table 
        * Then adds the total density, temp. and velocity for near particles to 
        * the binned totals for that sightline. Is O(N_part)*O(log n_los) */
-    const double zmingrid = 0.0;
-    const double dzgrid   = (boxsize-zmingrid) / (double)nbins; /* bin size (kpc) */
+    const double dzgrid   = boxsize / (double)nbins; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
     //Do the T conversion here for convenience - internal energy is messy
@@ -225,11 +224,11 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	     
 	     /* Central vertex to contribute to */
 	     if (iaxis == 1)
-	       iz = (xx - zmingrid) * dzinv +1  ;
+	       iz = xx * dzinv +1  ;
 	     else if (iaxis == 2) 
-	       iz = (yy - zmingrid) * dzinv +1 ;
+	       iz = yy * dzinv +1 ;
 	     else 
-	       iz = (zz - zmingrid) * dzinv +1;
+	       iz = zz * dzinv +1;
 	     
 	     dzmax = sqrt(fabs(h4 - dr2));
 	     ioff = (int)(dzmax * dzinv) +1;
@@ -241,7 +240,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	         j = iiz;
 	         j = ((j-1+10*nbins) % nbins);
 	         
-	         zgrid = zmingrid + (double)(j) * dzgrid;
+	         zgrid = (double)(j) * dzgrid;
 	         
 	        if (iaxis == 1)
                   deltaz = zgrid - xx;
