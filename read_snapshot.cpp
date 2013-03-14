@@ -16,10 +16,11 @@
 #include <math.h>
 #include "global_vars.h"
 #include "parameters.h"
+#include "index_table.h"
 #include "gadgetreader.hpp"
 
 
-extern "C" int load_header(char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
+int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
 {
 #ifdef GADGET3
   GadgetReader::GSnap snap(fname);
@@ -48,7 +49,7 @@ extern "C" int load_header(char *fname,double  *atime, double *redshift, double 
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, pdata *P, double *omegab)
+int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata *P, double *omegab)
 {
 #ifdef GADGET3
   GadgetReader::GSnap snap(fname);
@@ -170,26 +171,3 @@ extern "C" int64_t load_snapshot(char *fname,int64_t StartPart,int64_t MaxRead, 
   return NumPart;
 }
 
-/*Note this assumes only one species*/
-extern "C" int alloc_parts(pdata* P, int np)
-{
-    return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
-    ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
-     ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
-    ((*P).U=(float *)malloc(np*sizeof(float))) &&
-    ((*P).fraction=(float *)malloc(np*sizeof(float))) &&
-    ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
-    ((*P).h=(float *)malloc(np*sizeof(float)));
-}
-
-extern "C" void free_parts(pdata* P)
-{
-    free((*P).Vel);
-    free((*P).Pos);
-    free((*P).Mass);
-    free((*P).U);
-    free((*P).fraction);
-    free((*P).Ne);
-    free((*P).h);
-    return;
-}

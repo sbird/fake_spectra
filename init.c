@@ -72,3 +72,27 @@ void FreeLOSMemory(interp * species)
   free((*species).veloc);
   free((*species).temp);
 }
+
+/*Note this assumes only one species*/
+int alloc_parts(pdata* P, int np)
+{
+    return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
+    ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
+     ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
+    ((*P).U=(float *)malloc(np*sizeof(float))) &&
+    ((*P).fraction=(float *)malloc(np*sizeof(float))) &&
+    ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
+    ((*P).h=(float *)malloc(np*sizeof(float)));
+}
+
+void free_parts(pdata* P)
+{
+    free((*P).Vel);
+    free((*P).Pos);
+    free((*P).Mass);
+    free((*P).U);
+    free((*P).fraction);
+    free((*P).Ne);
+    free((*P).h);
+    return;
+}

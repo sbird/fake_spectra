@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
-#include "global_vars.h"
+#include "types.h"
+#include "index_table.h"
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
@@ -19,9 +20,9 @@ void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, co
 
 
 /*Check whether the passed array has type typename. Returns 1 if it doesn't, 0 if it does.*/
-int check_type(PyArrayObject * arr, int typename)
+int check_type(PyArrayObject * arr, int npy_typename)
 {
-  return !PyArray_EquivTypes(PyArray_DESCR(arr), PyArray_DescrFromType(typename));
+  return !PyArray_EquivTypes(PyArray_DESCR(arr), PyArray_DescrFromType(npy_typename));
 }
 
 int check_float(PyArrayObject * arr)
@@ -33,7 +34,7 @@ int check_float(PyArrayObject * arr)
 
 /*****************************************************************************/
 /*Interface for SPH interpolation*/
-PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
+extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 {
     //Things which should be from input
     int nbins, NumLos, rho_H;
@@ -50,9 +51,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     interp species;
 
     //Temp variables
-    int nxx=0;
     los *los_table=NULL;
-    sort_los *sort_los_table=NULL;
     struct particle_data P;
     //Get our input
     if(!PyArg_ParseTuple(args, "iidO!O!O!O!O!O!O!O!O!",&rho_H, &nbins, &box100,  &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &u, &PyArray_Type, &ne, &PyArray_Type, &fractions, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
@@ -81,8 +80,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //NOTE if nspecies == 1, fractions must have shape [N,1], rather than [N]
 /*     nspecies = PyArray_DIM(fractions, 1); */
     //Malloc stuff
-    los_table=malloc(NumLos*sizeof(los));
-    sort_los_table=malloc(NumLos*sizeof(sort_los));
+    los_table=(los *)malloc(NumLos*sizeof(los));
     size[0] = NumLos;
     size[1] = nbins;
     //Number of metal species
@@ -108,7 +106,7 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     if(rho_H){
         rho_H_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
         PyArray_FILLWBYTE(rho_H_out, 0);
-        rho_H_data = PyArray_DATA(rho_H_out);
+        rho_H_data = (double *) PyArray_DATA(rho_H_out);
     }
 
     //Here comes the cheat
@@ -128,8 +126,8 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     setup_los_data(los_table, cofm, axis, NumLos);
     //Do the work
-    populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
-    SPH_Interpolation(rho_H_data,&species, 1, nbins, Npart, NumLos, box100, los_table,sort_los_table,nxx, &P);
+    IndexTable sort_los_table(los_table, NumLos, box100);
+    SPH_Interpolation(rho_H_data,&species, 1, nbins, Npart, NumLos, box100, los_table,sort_los_table, &P);
 
     //Build a tuple from the interp struct
     PyObject * for_return;
@@ -140,22 +138,19 @@ PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Free
     free(los_table);
-    free(sort_los_table);
 
     return for_return;
 }
 
 /* When handed a list of particles, 
  * return a list of bools with True for those nearby to a sightline*/
-PyObject * Py_near_lines(PyObject *self, PyObject *args)
+extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
 {
     int NumLos;
     long long Npart;
     double box100;
-    int nxx=0;
     PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
     los *los_table=NULL;
-    sort_los *sort_los_table=NULL;
     npy_intp size;
 
     if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
@@ -163,34 +158,32 @@ PyObject * Py_near_lines(PyObject *self, PyObject *args)
     
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
-    los_table=malloc(NumLos*sizeof(los));
-    sort_los_table=malloc(NumLos*sizeof(sort_los));
+    los_table=(los *)malloc(NumLos*sizeof(los));
     //Output array
     size = Npart;
     is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_BOOL);
     PyArray_FILLWBYTE(is_a_line, 0);
     //Setup los_tables
     setup_los_data(los_table, cofm, axis, NumLos);
-    populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
+    IndexTable sort_los_table(los_table, NumLos, box100);
+
     //find lists
     #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
-        int index_nr_lines[NumLos];
-        double dr2_lines[NumLos];
-        float xx = *(float *) PyArray_GETPTR2(pos,i,0);
-        float yy = *(float *) PyArray_GETPTR2(pos,i,1);
-        float zz = *(float *) PyArray_GETPTR2(pos,i,2);
+	float pos[3];
+        pos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
+        pos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
+        pos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
         float h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
-        int num_nr_lines=get_list_of_near_lines(xx,yy,zz,h,box100,los_table,NumLos,sort_los_table,nxx,index_nr_lines,dr2_lines);
-        if(num_nr_lines>0)
+	std::map<int, double> nearby=sort_los_table.get_near_lines(pos,h);
+        if(nearby.size()>0)
             *(npy_bool *)PyArray_GETPTR1(is_a_line,i) = NPY_TRUE;
     }
     free(los_table);
-    free(sort_los_table);
     return Py_BuildValue("O", is_a_line);
 }
 
-PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
+extern "C" PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
 {
     PyArrayObject * tau, *rho, *veloc, *temp;
     int nbins;

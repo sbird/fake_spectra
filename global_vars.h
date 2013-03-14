@@ -9,19 +9,20 @@
 /*Functions to allocate memory.*/
 void help(void);
 
+/*Functions to load Gadget-2 snapshots.*/
+int64_t load_snapshot(const char *fname, int64_t StartPart,int64_t MaxRead,pdata* P, double *omegab);
+int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 
 #ifdef __cplusplus
 extern "C"{
 #endif
+int alloc_parts(pdata* P, int np);
+void free_parts(pdata* P);
+
 int InitLOSMemory(interp * species, int NumLos, int nbins);
 void FreeLOSMemory(interp * species);
 int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 
-/*Allocate and free memory for the particle tables*/
-int alloc_parts(pdata* P, int np);
-void free_parts(pdata* P);
-int64_t load_snapshot(const char *fname, int64_t StartPart,int64_t MaxRead,pdata* P, double *omegab);
-int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 #ifdef HDF5
 int load_hdf5_header(const char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno);
