@@ -20,12 +20,11 @@ int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 /*Allocate and free memory for the particle tables*/
 int alloc_parts(pdata* P, int np);
 void free_parts(pdata* P);
-int64_t load_snapshot(char *fname, int64_t StartPart,int64_t MaxRead,pdata* P, double *omegab);
-int load_header(char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
+int64_t load_snapshot(const char *fname, int64_t StartPart,int64_t MaxRead,pdata* P, double *omegab);
+int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 #ifdef HDF5
-int load_hdf5_header(char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
-int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno);
-int find_first_hdf_file(const char *infname, char *fname);
+int load_hdf5_header(const char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
+int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno);
 #endif
 void populate_los_table(los * los_table, int NumLos, char * ext_table, double box);
 #ifdef __cplusplus

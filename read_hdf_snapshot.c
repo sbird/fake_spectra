@@ -48,37 +48,8 @@ hsize_t get_triple_dataset(const char *name, void * data_ptr, hsize_t data_lengt
           return vlength[0];
 }
 
-int find_first_hdf_file(const char *infname, char *fname)
-{
-  /*Switch off error handling so that we can check whether a
-   * file is HDF5 */
-  /* Save old error handler */
-  hid_t error_stack=0;
-  herr_t (*old_func)(hid_t, void*);
-  void *old_client_data;
-  H5Eget_auto(error_stack, &old_func, &old_client_data);
-  /* Turn off error handling */
-  H5Eset_auto(error_stack, NULL, NULL);
-
-  /*Were we handed an HDF5 file?*/
-  if(H5Fis_hdf5(infname) <= 0){
-     /*If we weren't, were we handed an HDF5 file without the suffix?*/
-     strncpy(fname, infname,strlen(infname));
-     strncpy(fname+strlen(infname), ".0.hdf5\0",10);
-     if (H5Fis_hdf5(fname) <= 0)
-        return -1;
-  }
-  else{
-     strncpy(fname, infname,strlen(infname));
-  }
-
-  /* Restore previous error handler */
-  H5Eset_auto(error_stack, old_func, old_client_data);
-  return 0;
-}
-
 /* this routine loads header data from the first file of an HDF5 snapshot.*/
-int load_hdf5_header(char *ffname, double  *atime, double *redshift, double * Hz, double *box100, double *h100)
+int load_hdf5_header(const char *ffname, double  *atime, double *redshift, double * Hz, double *box100, double *h100)
 {
   int i;
   int npart[N_TYPE];
@@ -135,7 +106,7 @@ int load_hdf5_header(char *ffname, double  *atime, double *redshift, double * Hz
   
 /* This routine loads particle data from a single HDF5 snapshot file.
  * A snapshot may be distributed into multiple files. */
-int load_hdf5_snapshot(char *ffname, pdata *P, double *omegab, int fileno)
+int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
 {
   int i;
   int npart[N_TYPE];

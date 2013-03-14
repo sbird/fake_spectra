@@ -16,14 +16,45 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+//For getopt
+#include <unistd.h>
+//For strerror
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 #include "global_vars.h"
 #include "parameters.h"
 #include "index_table.h"
+#include <string>
+#include <sstream>
+#include <iostream>
 #ifdef HDF5
-  #include <hdf5.h>
+#include <hdf5.h>
+
+std::string find_first_hdf_file(const std::string& infname)
+{
+  /*Switch off error handling so that we can check whether a
+   * file is HDF5 */
+  /* Save old error handler */
+  hid_t error_stack=0;
+  herr_t (*old_func)(hid_t, void*);
+  void *old_client_data;
+  H5Eget_auto(error_stack, &old_func, &old_client_data);
+  /* Turn off error handling */
+  H5Eset_auto(error_stack, NULL, NULL);
+  std::string fname = infname;
+
+  /*Were we handed an HDF5 file?*/
+  if(H5Fis_hdf5(fname.c_str()) <= 0){
+     /*If we weren't, were we handed an HDF5 file without the suffix?*/
+     fname = infname+std::string(".0.hdf5");
+     if (H5Fis_hdf5(fname.c_str()) <= 0)
+        fname = std::string();
+  }
+
+  /* Restore previous error handler */
+  H5Eset_auto(error_stack, old_func, old_client_data);
+  return fname;
+}
 #endif
 #ifdef HELIUM
   #error "Helium no longer supported like this: Use the python module"
@@ -50,13 +81,8 @@ int main(int argc, char **argv)
   FILE *output;
   los *los_table=NULL;
   char *ext_table=NULL;
-  char *outname=NULL;
-  char *outdir=NULL;
-  char *indir=NULL;
-#ifdef HDF5
-  char *ffname=NULL,*fname=NULL;
-  int fileno=0;
-#endif
+  std::string outname;
+  std::string indir;
   char c;
   int i;
 #ifndef NO_HEADER
@@ -66,7 +92,6 @@ int main(int argc, char **argv)
   struct particle_data P;
   double * rhoker_H=NULL;
   double * tau_H1=NULL;
-  int hdf5=0;
   interp H1;
   const int nspecies = 1;
   /*Make sure stdout is line buffered even when not 
@@ -77,10 +102,10 @@ int main(int argc, char **argv)
     switch(c)
       {
         case 'o':
-           outdir=optarg;
+           outname=std::string(optarg)+std::string("_spectra.dat");
            break;
         case 'i':
-           indir=optarg;
+           indir=std::string(optarg);
            break;
         case 'n':
            NumLos=atoi(optarg);
@@ -95,70 +120,53 @@ int main(int argc, char **argv)
            exit(1);
       }
   }
-  if(NumLos <=0)
-  {
-          fprintf(stderr,"Need NUMLOS >0\n");
+  if(NumLos <=0) {
+          std::cerr<<"Need NUMLOS >0"<<std::endl;
           help();
           exit(99);
-  
   }
-  if( !outdir || !indir)
-  {
-         fprintf(stderr, "Specify output (%s) and input (%s) directories.\n",outdir, indir);
+  if(indir.empty()) {
+         std::cerr<<"Specify input ("<<indir<<") directory."<<std::endl;
          help();
          exit(99);
   }
   los_table=(los *) malloc(NumLos*sizeof(los));
   if(!los_table){
-          fprintf(stderr, "Error allocating memory for sightline table\n");
+          std::cerr<<"Error allocating memory for sightline table"<<std::endl;
           exit(2);
   }
   if(InitLOSMemory(&H1, NumLos, nspecies*NBINS) || 
       !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
-                  fprintf(stderr, "Error allocating LOS memory\n");
+                  std::cerr<<"Error allocating LOS memory\n"<<std::endl;
                   exit(2);
   }
   #ifdef HDF5
-    if(!(fname= (char *)malloc((strlen(indir)+10)*sizeof(char))) ||
-       !(ffname= (char *) malloc((strlen(indir)+16)*sizeof(char)))){
-        fprintf(stderr, "Failed to allocate string mem\n");
-        exit(1);
-    }
     /*ffname is a copy of input filename for extension*/
     /*First open first file to get header properties*/
-    if ( find_first_hdf_file(indir,fname) == 0
-        && load_hdf5_header(fname, &atime, &redshift, &Hz, &box100, &h100) == 0 ){
+    std::string fname = find_first_hdf_file(indir);
+    std::string ffname = fname;
+    unsigned i_fileno=0;
+    int fileno=0;
+    if ( !fname.empty() && load_hdf5_header(fname.c_str(), &atime, &redshift, &Hz, &box100, &h100) == 0 ){
             /*See if we have been handed the first file of a set:
              * our method for dealing with this closely mirrors
              * HDF5s family mode, but we cannot use this, because
              * our files may not all be the same size.*/
-            char *zero = strstr(fname,".0.hdf5");
-            /*Replace a possible 0.hdf5 in the filename
-             * with a printf style specifier for opening*/
-            if(zero)
-              strncpy(zero, ".%d.hdf5\0",strlen(zero)+3);
-            sprintf(ffname,fname,fileno);
-            hdf5=1;
+	    i_fileno = fname.find(".0.hdf5")+1;
     }
     /*If not an HDF5 file, try opening as a gadget file*/
     else
 #endif
-     if(load_header(indir,&atime, &redshift, &Hz, &box100, &h100) < 0){
-                fprintf(stderr,"No data loaded\n");
+     if(load_header(indir.c_str(),&atime, &redshift, &Hz, &box100, &h100) < 0){
+                std::cerr<<"No data loaded\n";
                 exit(2);
     }
     /*Setup the los tables*/
     populate_los_table(los_table,NumLos, ext_table, box100);
     IndexTable sort_los_table(los_table, NumLos, box100);
-  /*Output the raw spectra to a file*/ 
-  if(!(outname=(char *) malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  if(!(output=fopen(outname.c_str(),"w")))
   {
-    fprintf(stderr, "Some problem with file output strings\n");
-    exit(1);
-  }
-  if(!(output=fopen(outname,"w")))
-  {
-          fprintf(stderr, "Error opening %s: %s\n",outname, strerror(errno));
+          fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));
           exit(1);
   }
         /*Loop over files. Keep going until we run out, skipping over broken files.
@@ -166,15 +174,15 @@ int main(int argc, char **argv)
     while(1){
           /* P is allocated inside load_snapshot*/
 #ifdef HDF5
-          if(hdf5){
+          if(i_fileno){
             /*If we ran out of files, we're done*/
-            if(!(file_readable(ffname) && H5Fis_hdf5(ffname) > 0))
+            if(!(file_readable(ffname.c_str()) && H5Fis_hdf5(ffname.c_str()) > 0))
                     break;
-              Npart=load_hdf5_snapshot(ffname, &P,&omegab,fileno);
+              Npart=load_hdf5_snapshot(ffname.c_str(), &P,&omegab,fileno);
           }
           else
 #endif
-              Npart=load_snapshot(indir, StartPart,MaxRead,&P, &omegab);
+              Npart=load_snapshot(indir.c_str(), StartPart,MaxRead,&P, &omegab);
           if(Npart > 0){
              /*Rescale neutral fraction to take account of hydrogen fraction*/
               for(int ii = 0; ii< Npart; ii++)
@@ -186,16 +194,22 @@ int main(int argc, char **argv)
           if(Npart >= 0)
             free_parts(&P);
 #ifdef HDF5
-          if(hdf5){
+          if(i_fileno){
                 fileno++;
-                sprintf(ffname,fname,fileno);
+                if(i_fileno != std::string::npos){
+		  std::ostringstream convert;
+		  convert<<fileno;
+                  ffname = fname.replace(i_fileno, 1, convert.str());
+		}
+                else
+                 break;
           }
           else
 #endif
                 StartPart+=Npart;
           /*If we haven't been able to read the maximum number of particles, 
            * signals we have reached the end of the snapshot set*/
-          if(!hdf5 && (Npart != MaxRead))
+          if(!i_fileno && (Npart != MaxRead))
                   break;
   }
   free(los_table);
@@ -232,7 +246,6 @@ int main(int argc, char **argv)
   }
   fclose(output);
   /*Free other memory*/
-  free(outname);
   free(tau_H1);
   free(rhoker_H);
   FreeLOSMemory(&H1);
