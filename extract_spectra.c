@@ -203,7 +203,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
       {
           int iproc=index_nr_lines[ind];
           double dr2=dr2_lines[ind];
-          int iz,ioff,j,iiz;
+          int iz,ioff;
           /*Load a sightline from the table.*/
           const int iaxis = los_table[iproc].axis;
           const double hinv2 = 1. / h2; /* 1/h^2 */
@@ -224,21 +224,20 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	     
 	     /* Central vertex to contribute to */
 	     if (iaxis == 1)
-	       iz = xx * dzinv +1  ;
+	       iz = xx * dzinv;
 	     else if (iaxis == 2) 
-	       iz = yy * dzinv +1 ;
+	       iz = yy * dzinv;
 	     else 
-	       iz = zz * dzinv +1;
+	       iz = zz * dzinv;
 	     
 	     dzmax = sqrt(fabs(h4 - dr2));
-	     ioff = (int)(dzmax * dzinv) +1;
+	     ioff = (int)(dzmax * dzinv);
 	     
 	     /* Loop over contributing vertices */
-	     for(iiz = iz-ioff; iiz < iz+ioff+1 ; iiz++)
+	     for(int iiz = iz-ioff; iiz < iz+ioff+1; iiz++)
 	     {
-             double deltaz,dz,dist2,q,kernel,velker,temker;
-	         j = iiz;
-	         j = ((j-1+10*nbins) % nbins);
+                 double deltaz,dz,dist2,q,kernel,velker,temker;
+	         int j = ((iiz+10*nbins) % nbins);
 	         
 	         zgrid = (double)(j) * dzgrid;
 	         
