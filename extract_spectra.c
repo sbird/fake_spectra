@@ -267,7 +267,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	            else
 	                kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
             }
-	        
+
 	        kernel *= hinv3; 
 
 	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
@@ -353,7 +353,7 @@ int find_index(double xx, const sort_los* sort_los_table, const int NumLos)
 int get_near_lines_2nd_axis(const double xx,const double yy,const double zz,const double h4, const double boxsize,const sort_los *sort_los_table, const los *los_table, int *index_nr_lines, double *dr2_lines, const int low, const int high)
 {
       int ind,num_nr_lines=0;
-      for(ind=low;ind<high;ind++)
+      for(ind=low;ind<=high;ind++)
       {
           double dr,dr2;
           const int iproc=sort_los_table[ind].orig_index;
@@ -420,7 +420,7 @@ int get_list_of_near_lines(const double xx,const double yy,const double zz,const
                 ff+=boxsize;
         low=find_index(ff,sort_los_table,NumLos-nxx);
         /*This should be the case unless wrapping has occurred*/
-        if(low < high)
+        if(low <= high)
           num_nr_lines+=get_near_lines_2nd_axis(xx,yy,zz,h4, boxsize,sort_los_table, los_table, index_nr_lines+num_nr_lines, dr2_lines, low, high);
         else{
           num_nr_lines+=get_near_lines_2nd_axis(xx,yy,zz,h4, boxsize,sort_los_table, los_table, index_nr_lines+num_nr_lines, dr2_lines, 0, high);
@@ -430,18 +430,18 @@ int get_list_of_near_lines(const double xx,const double yy,const double zz,const
       if(nxx > 0){
         /*Do the same thing with the table where iaxis=1*/
         /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/
-        /* First find highest index where xx + 2 hh > priax */
+        /* First find highest index where xx + 2 hh >= priax */
         ff=yy+2*hh;
         if(ff > boxsize)
                 ff-=boxsize;
         high=find_index(ff,sort_los_table_xx,nxx);
-        /* Now find lowest index in what remains where xx - 2 hh < priax */
+        /* Now find highest index in what remains where xx - 2 hh >= priax */
         ff=yy-2*hh;
         if(ff < 0)
                 ff+=boxsize;
         low=find_index(ff,sort_los_table_xx,nxx);
         /*This should be the case unless wrapping has occurred*/
-        if(low < high)
+        if(low <= high)
           num_nr_lines+=get_near_lines_2nd_axis(xx,yy,zz,h4, boxsize,sort_los_table_xx, los_table, index_nr_lines+num_nr_lines, dr2_lines, low, high);
         else{
           num_nr_lines+=get_near_lines_2nd_axis(xx,yy,zz,h4, boxsize,sort_los_table_xx, los_table, index_nr_lines+num_nr_lines, dr2_lines, 0, high);
