@@ -2,17 +2,6 @@
 #include <errno.h>
 #include <string.h>
 
-int compare_xx(const void *a, const void *b)
-{
-  if(((sort_los *) a)->priax < (((sort_los *) b)->priax))
-    return -1;
-
-  if(((sort_los *) a)->priax > (((sort_los *) b)->priax))
-    return +1;
-
-  return 0;
-}
-
 /* Populate the line of sight table, either by random numbers or with some external input. */
 void populate_los_table(los * los_table, int NumLos, char * ext_table, double box)
 {
@@ -62,32 +51,6 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                         los_table[lines].zz=drand48()*box;
                 }
         }
-}
-
-/*Populate the los table index*/
-void populate_sort_los_table(los * los_table, int NumLos, sort_los * sort_los_table, int * nxx)
-{
-        int i,nother=0;
-        /*Make a table with a bit more indirection, so we can sort it*/
-        /*Need a pointer to the separate structure for los with iaxis=1*/
-        sort_los *sort_los_table_xx;
-        for(i=0;i<NumLos;i++){
-            if(los_table[i].axis==1){
-                  sort_los_table[NumLos-1-*nxx].orig_index=i;
-                  sort_los_table[NumLos-1-*nxx].priax=los_table[i].yy;
-                  (*nxx)++;
-            }else{
-                  sort_los_table[nother].orig_index=i;
-                  sort_los_table[nother].priax=los_table[i].xx;
-                  nother++;
-            }
-        }
-        sort_los_table_xx=sort_los_table+NumLos-*nxx;
-        /*Sort the tables: now the table is sorted we can use bsearch to find the element we are looking for*/
-        qsort(sort_los_table,NumLos-*nxx,sizeof(sort_los),compare_xx);
-        qsort(sort_los_table_xx,*nxx,sizeof(sort_los),compare_xx);
-
-        return;
 }
 
 /*****************************************************************************/

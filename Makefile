@@ -54,7 +54,7 @@ LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 all: extract statistic rescale _spectra_priv.so
 
-extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o
+extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o index_table.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
@@ -64,6 +64,8 @@ statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_I
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
 %.o: %.c $(COM_INC)
+%.o: %.cpp $(COM_INC)
+
 extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
 main.o: main.c global_vars.h $(COM_INC)
@@ -77,6 +79,6 @@ _spectra_priv.so: py_module.o extract_spectra.o init.o
 clean:
 	rm -f *.o  extract rescale statistic _spectra_priv.so
 
-dist: Makefile calc_power.c extract_spectra.c py_module.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c
+dist: Makefile calc_power.c extract_spectra.c py_module.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c index_table.cpp
 	tar -czf flux_extract.tar.gz $^
 
