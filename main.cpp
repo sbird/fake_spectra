@@ -209,7 +209,10 @@ int main(int argc, char **argv)
                 StartPart+=Npart;
           /*If we haven't been able to read the maximum number of particles, 
            * signals we have reached the end of the snapshot set*/
-          if(!i_fileno && (Npart != MaxRead))
+	#ifdef HDF5
+	  if(!i_fileno)
+	#endif
+          if(Npart != MaxRead)
                   break;
   }
   free(los_table);
