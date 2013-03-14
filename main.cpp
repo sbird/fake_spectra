@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include "global_vars.h"
 #include "parameters.h"
+#include "index_table.h"
 #ifdef HDF5
   #include <hdf5.h>
 #endif
@@ -43,12 +44,11 @@ int file_readable(const char * filename)
 int main(int argc, char **argv)
 {
   int64_t Npart;
-  int NumLos=0, nxx=0;
+  int NumLos=0;
   int64_t MaxRead=256*256*256,StartPart=0;
 
   FILE *output;
   los *los_table=NULL;
-  sort_los *sort_los_table=NULL;
   char *ext_table=NULL;
   char *outname=NULL;
   char *outdir=NULL;
@@ -108,8 +108,7 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  los_table=malloc(NumLos*sizeof(los));
-  sort_los_table=malloc(NumLos*sizeof(sort_los));
+  los_table=(los *) malloc(NumLos*sizeof(los));
   if(!los_table){
           fprintf(stderr, "Error allocating memory for sightline table\n");
           exit(2);
@@ -120,8 +119,8 @@ int main(int argc, char **argv)
                   exit(2);
   }
   #ifdef HDF5
-    if(!(fname= malloc((strlen(indir)+10)*sizeof(char))) ||
-       !(ffname= malloc((strlen(indir)+16)*sizeof(char)))){
+    if(!(fname= (char *)malloc((strlen(indir)+10)*sizeof(char))) ||
+       !(ffname= (char *) malloc((strlen(indir)+16)*sizeof(char)))){
         fprintf(stderr, "Failed to allocate string mem\n");
         exit(1);
     }
@@ -150,9 +149,9 @@ int main(int argc, char **argv)
     }
     /*Setup the los tables*/
     populate_los_table(los_table,NumLos, ext_table, box100);
-    populate_sort_los_table(los_table, NumLos, sort_los_table, &nxx);
+    IndexTable sort_los_table(los_table, NumLos, box100);
   /*Output the raw spectra to a file*/ 
-  if(!(outname=malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
+  if(!(outname=(char *) malloc((strlen(outdir)+29)*sizeof(char))) || !strcpy(outname,outdir) || !(outname=strcat(outname, "_spectra.dat")))
   {
     fprintf(stderr, "Some problem with file output strings\n");
     exit(1);
@@ -181,7 +180,7 @@ int main(int argc, char **argv)
               for(int ii = 0; ii< Npart; ii++)
                 P.fraction[ii]*=XH;
              /*Do the hard SPH interpolation*/
-             SPH_Interpolation(rhoker_H,&H1, 1, NBINS, Npart, NumLos,box100, los_table,sort_los_table,nxx, &P);
+             SPH_Interpolation(rhoker_H,&H1, 1, NBINS, Npart, NumLos,box100, los_table,sort_los_table, &P);
           }
           /*Free the particle list once we don't need it*/
           if(Npart >= 0)
@@ -199,7 +198,6 @@ int main(int argc, char **argv)
           if(!hdf5 && (Npart != MaxRead))
                   break;
   }
-  free(sort_los_table);
   free(los_table);
   if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
                   ){

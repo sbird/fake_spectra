@@ -21,10 +21,10 @@ endif
 
 #Are we using gcc or icc?
 ifeq (icc,$(findstring icc,${CC}))
-  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD} -fpic -std=gnu99
+  CFLAGS +=-O2 -g -c -w1 -openmp -I${GREAD} -fpic
   LINK +=${CXX} -O2 -openmp
 else
-  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD} -fPIC -std=gnu99
+  CFLAGS +=-O2 -g -c -Wall -fopenmp -I${GREAD} -fPIC
   LINK +=${CXX} -O2 -fopenmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
@@ -46,13 +46,14 @@ OPTS += -DGADGET3 #-DJAMIE
 # Enable helium absorption
 CFLAGS += $(OPTS) 
 CXXFLAGS += $(CFLAGS) -I${GREAD}
-COM_INC = parameters.h
+COM_INC = parameters.h types.h
 #LINK=$(CC)
 LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist
 
-all: extract statistic rescale _spectra_priv.so
+all: extract statistic rescale
+#	_spectra_priv.so
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o index_table.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
@@ -66,9 +67,9 @@ statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_I
 %.o: %.c $(COM_INC)
 %.o: %.cpp $(COM_INC)
 
-extract_spectra.o: global_vars.h extract_spectra.c $(COM_INC)
+extract_spectra.o: index_table.h extract_spectra.cpp $(COM_INC)
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
-main.o: main.c global_vars.h $(COM_INC)
+main.o: main.cpp global_vars.h index_table.h $(COM_INC)
 
 py_module.o: py_module.c
 	$(CC) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^ -o $@
@@ -79,6 +80,6 @@ _spectra_priv.so: py_module.o extract_spectra.o init.o
 clean:
 	rm -f *.o  extract rescale statistic _spectra_priv.so
 
-dist: Makefile calc_power.c extract_spectra.c py_module.c global_vars.h main.c mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c index_table.cpp
+dist: Makefile calc_power.c extract_spectra.c py_module.c global_vars.h main.cpp mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c index_table.cpp
 	tar -czf flux_extract.tar.gz $^
 

@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "global_vars.h"
+#include "index_table.h"
 #include "parameters.h"
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
@@ -150,7 +150,7 @@ void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * 
  * The fractional abundance of the species, Z = n / n(H) should stored be in P.fraction
  * Output is stored in interp *species, and is rho, temp and vel, in internal gadget units. 
  */
-void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table,const sort_los *sort_los_table,const int nxx, const pdata *P)
+void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table, IndexTable& sort_los_table,const pdata *P)
 {
       /* Loop over particles in LOS and do the SPH interpolation */
       /* This first finds which sightlines are near the particle using the sorted los table 
@@ -184,7 +184,6 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
     #pragma omp for
     for(int i=0;i<Particles;i++)
     {
-      int ind;
       /*     Positions (kpc) */
       const double xx = (*P).Pos[3*i+0];
       const double yy = (*P).Pos[3*i+1];
@@ -196,13 +195,11 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
       const double h4 = 4.*h2;           /* 2 smoothing lengths squared */
 /*       if((Particles <20) ||  ((i % (Particles/20)) ==0)) */
 /*              printf("Interpolating particle %d.\n",i); */
-      int index_nr_lines[NumLos];
-      double dr2_lines[NumLos];
-      int num_nr_lines=get_list_of_near_lines(xx,yy,zz,hh,boxsize,los_table,NumLos,sort_los_table,nxx,index_nr_lines,dr2_lines);
-      for(ind=0;ind<num_nr_lines;ind++)
+      std::map<int, double> nearby=sort_los_table.get_near_lines((*P).Pos+3*i,hh);
+      for(std::map<int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
       {
-          int iproc=index_nr_lines[ind];
-          double dr2=dr2_lines[ind];
+          int iproc=it->first;
+          double dr2=it->second;
           int iz,ioff;
           /*Load a sightline from the table.*/
           const int iaxis = los_table[iproc].axis;
