@@ -6,4 +6,6 @@ extract-icc
 tags
 .*.swp
 *.pyc
+*.gch
 _spectra_priv.so
+flux_extract.tar.gz
