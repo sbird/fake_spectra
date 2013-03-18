@@ -85,7 +85,7 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     size[1] = nbins;
     //Number of metal species
 /*     size[2] = nspecies; */
-    
+
     /* Allocate array space. This is (I hope) contiguous.
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
@@ -114,7 +114,7 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     species.temp = (double *) PyArray_DATA(temp_out);
     species.veloc = (double *) PyArray_DATA(vel_out);
 
-    //Initialise P from the data in the input numpy arrays. 
+    //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.
     P.Pos =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(pos));
     P.Vel =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(vel));
@@ -142,7 +142,7 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-/* When handed a list of particles, 
+/* When handed a list of particles,
  * return a list of bools with True for those nearby to a sightline*/
 extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
 {
@@ -155,7 +155,7 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
 
     if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
-    
+
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     los_table=(los *)malloc(NumLos*sizeof(los));
@@ -170,12 +170,12 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     //find lists
     #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
-	float pos[3];
-        pos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
-        pos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
-        pos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
-        float h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
-	std::map<int, double> nearby=sort_los_table.get_near_lines(pos,h);
+	float ppos[3];
+        ppos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
+        ppos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
+        ppos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
+        double h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
+	std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
         if(nearby.size()>0)
             *(npy_bool *)PyArray_GETPTR1(is_a_line,i) = NPY_TRUE;
     }
