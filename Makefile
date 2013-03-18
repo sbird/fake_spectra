@@ -52,7 +52,7 @@ LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist
 
-all: extract statistic rescale _spectra_priv.so
+all: extract statistic rescale	_spectra_priv.so
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o index_table.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
@@ -69,7 +69,7 @@ statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_I
 calc_power.o: calc_power.c smooth.o powerspectrum.o 
 
 py_module.o: py_module.cpp $(COM_INC)
-	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $^
+	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
 _spectra_priv.so: py_module.o extract_spectra.o init.o index_table.o
 	$(LINK) $(LFLAGS) -shared $^ -o $@
