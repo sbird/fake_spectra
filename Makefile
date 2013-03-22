@@ -28,14 +28,12 @@ else
   LINK +=${CXX} -O2 -fopenmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
-#CC = icc -openmp -vec_report0
-#CC= gcc -fopenmp -Wall 
-OPTS = 
-PG = 
+OPTS =
+PG =
 OPTS += -DPERIODIC
 # Use a periodic spectra
 OPTS += -DPECVEL
-# Use peculiar velocites 
+# Use peculiar velocites
 OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
 OPTS += -DHDF5
@@ -44,7 +42,7 @@ OPTS += -DGADGET3 #-DJAMIE
 #This is misnamed: in reality it looks for NE instead of NHEP and NHEPP
 #OPTS += -DHELIUM
 # Enable helium absorption
-CFLAGS += $(OPTS) 
+CFLAGS += $(OPTS)
 CXXFLAGS += $(CFLAGS) -I${GREAD}
 COM_INC = parameters.h types.h global_vars.h index_table.h
 #LINK=$(CC)
@@ -57,16 +55,16 @@ all: extract statistic rescale	_spectra_priv.so
 extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o init.o index_table.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
-rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o $(COM_INC)
+rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o $(COM_INC)
+statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
 %.o: %.c $(COM_INC)
 %.o: %.cpp $(COM_INC)
 
-calc_power.o: calc_power.c smooth.o powerspectrum.o 
+calc_power.o: calc_power.c smooth.o powerspectrum.o
 
 py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
