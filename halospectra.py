@@ -19,13 +19,14 @@ class HaloSpectra(spectra.Spectra):
         min_mass = self.min_halo_mass(minpart)
         f.close()
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
-        self.NumLos = np.size(self.sub_mass)*repeat
+        self.NumLos = np.size(self.sub_mass)
         #All through y axis
         axis = np.ones(self.NumLos)
         axis[self.NumLos/3:2*self.NumLos/3] = 2
         axis[2*self.NumLos/3:self.NumLos] = 3
         cofm = np.repeat(cofm,repeat,axis=0)
-        axis = np.repeat(axis,repeat/3)
+        axis = np.repeat(axis,repeat)
+        self.NumLos*=repeat
         #Perturb the sightlines within a sphere of half the virial radius.
         #We want a representative sample of DLAs.
         maxr = self.sub_radii/2.
