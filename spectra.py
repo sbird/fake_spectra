@@ -26,6 +26,7 @@ import convert_cloudy
 import line_data
 import h5py
 import hdfsim
+import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
 
 class Spectra:
@@ -37,7 +38,7 @@ class Spectra:
             axis - axis along which to put the sightline
 	        nbins (optional) - number of bins in each spectrum
             cloudy_dir (optional) - Directory containing cloudy tables for ionisation fraction calculations"""
-    def __init__(self,num, base,cofm, axis, nbins=1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
+    def __init__(self,num, base,cofm, axis, nbins=1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -55,20 +56,29 @@ class Spectra:
         self.cofm = cofm
         self.axis = np.array(axis, dtype = np.int32)
         self.nbins = nbins
+        if savefile == None:
+            self.savefile=path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),"spectra.hdf5")
+        else:
+            self.savefile=savefile
         #Snapshot data
-        self.files = hdfsim.get_all_files(num, base)
-        ff = h5py.File(self.files[0])
-        self.box = ff["Header"].attrs["BoxSize"]
-        self.red = ff["Header"].attrs["Redshift"]
-        self.atime = ff["Header"].attrs["Time"]
-        self.hubble = ff["Header"].attrs["HubbleParam"]
-        self.OmegaM = ff["Header"].attrs["Omega0"]
-        self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
-        #Calculate omega_baryon (approximately)
-        mass_dm = ff["Header"].attrs["MassTable"][1]*ff["Header"].attrs["NumPart_ThisFile"][1]
-        mass_bar = np.sum(ff["PartType0"]["Masses"])
-        self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
-        ff.close()
+        try:
+            self.load_savefile(self.savefile)
+        except (IOError, KeyError):
+            self.files = hdfsim.get_all_files(num, base)
+            ff = h5py.File(self.files[0])
+            self.box = ff["Header"].attrs["BoxSize"]
+            self.red = ff["Header"].attrs["Redshift"]
+            self.atime = ff["Header"].attrs["Time"]
+            self.hubble = ff["Header"].attrs["HubbleParam"]
+            self.OmegaM = ff["Header"].attrs["Omega0"]
+            self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
+            #Calculate omega_baryon (approximately)
+            mass_dm = ff["Header"].attrs["MassTable"][1]*ff["Header"].attrs["NumPart_ThisFile"][1]
+            mass_bar = np.sum(ff["PartType0"]["Masses"])
+            self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
+            ff.close()
+            #Empty dictionary to add results to
+            self.metals = {}
 
         # Conversion factors from internal units
         rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
@@ -85,8 +95,49 @@ class Spectra:
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
         #Line data
         self.lines = line_data.LineData()
-        #Empty dictionary to add results to
+
+    def save_file(self):
+        """
+        Saves spectra to a file, because they are slow to generate.
+        File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
+        """
+        f=h5py.File(self.savefile,'w')
+        grp = f.create_group("Header")
+        grp.attrs["redshift"]=self.red
+        grp.attrs["hubble"]=self.hubble
+        grp.attrs["box"]=self.box
+        grp.attrs["omegam"]=self.OmegaM
+        grp.attrs["omegab"]=self.omegab
+        grp.attrs["omegal"]=self.OmegaLambda
+        grp_grid = f.create_group("metals")
+        for (key, value) in self.metals.iteritems():
+            try:
+                #Select by the element
+                gg = grp_grid[key[0]]
+            except KeyError:
+                grp_grid.create_group(key[0])
+                gg = grp_grid[key[0]]
+            gg.create_dataset(str(key[1]),data=value)
+        f.close()
+
+    def load_savefile(self,savefile=None):
+        """Load data from a file"""
+        #Name of savefile
+        f=h5py.File(savefile,'r')
+        grid_file=f["Header"]
+        self.redshift=grid_file.attrs["redshift"]
+        self.atime = 1./(1+self.redshift)
+        self.OmegaM=grid_file.attrs["omegam"]
+        self.omegab=grid_file.attrs["omegab"]
+        self.OmegaLambda=grid_file.attrs["omegal"]
+        self.hubble=grid_file.attrs["hubble"]
+        self.box=grid_file.attrs["box"]
         self.metals = {}
+        grp = f["metals"]
+        for elem in grp.keys():
+            for ion in grp[elem].keys():
+                self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
+        f.close()
 
     def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
         """Interpolate particles to lines of sight, calculating density, temperature and velocity
