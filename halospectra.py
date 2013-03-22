@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
+    def __init__(self,num, base, repeat = 3, minpart = 400, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.OmegaM = f["Header"].attrs["Omega0"]
@@ -41,7 +41,7 @@ class HaloSpectra(spectra.Spectra):
         #Re-seed for repeatability
         np.random.seed(23)
 
-        spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir,savefile=savefile)
 
     def min_halo_mass(self, minpart = 400):
         """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""

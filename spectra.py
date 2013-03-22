@@ -53,9 +53,6 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
-        self.cofm = cofm
-        self.axis = np.array(axis, dtype = np.int32)
-        self.nbins = nbins
         if savefile == None:
             self.savefile=path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),"spectra.hdf5")
         else:
@@ -64,6 +61,9 @@ class Spectra:
         try:
             self.load_savefile(self.savefile)
         except (IOError, KeyError):
+            self.cofm = cofm
+            self.axis = np.array(axis, dtype = np.int32)
+            self.nbins = nbins
             self.files = hdfsim.get_all_files(num, base)
             ff = h5py.File(self.files[0])
             self.box = ff["Header"].attrs["BoxSize"]
@@ -104,11 +104,15 @@ class Spectra:
         f=h5py.File(self.savefile,'w')
         grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
+        grp.attrs["nbins"]=self.nbins
         grp.attrs["hubble"]=self.hubble
         grp.attrs["box"]=self.box
         grp.attrs["omegam"]=self.OmegaM
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
+        grp = f.create_group("halos")
+        grp["cofm"]=self.cofm
+        grp["axis"]=self.axis
         grp_grid = f.create_group("metals")
         for (key, value) in self.metals.iteritems():
             try:
@@ -128,6 +132,7 @@ class Spectra:
         self.redshift=grid_file.attrs["redshift"]
         self.atime = 1./(1+self.redshift)
         self.OmegaM=grid_file.attrs["omegam"]
+        self.nbins=grid_file.attrs["nbins"]
         self.omegab=grid_file.attrs["omegab"]
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
@@ -137,6 +142,9 @@ class Spectra:
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
+        grp=f["halos"]
+        self.cofm = grp["cofm"]
+        self.axis = grp["axis"]
         f.close()
 
     def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
