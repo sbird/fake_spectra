@@ -74,7 +74,6 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
       return NULL;
     }
 
-
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     //NOTE if nspecies == 1, fractions must have shape [N,1], rather than [N]
@@ -85,6 +84,13 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     size[1] = nbins;
     //Number of metal species
 /*     size[2] = nspecies; */
+
+    if(NumLos != PyArray_DIM(axis,0))
+    {
+      PyErr_SetString(PyExc_ValueError, "cofm and axis should have the same length.\n");
+      return NULL;
+    }
+
 
     /* Allocate array space. This is (I hope) contiguous.
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
@@ -159,6 +165,13 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     los_table=(los *)malloc(NumLos*sizeof(los));
+
+    if(NumLos != PyArray_DIM(axis,0))
+    {
+      PyErr_SetString(PyExc_ValueError, "cofm and axis should have the same length.\n");
+      return NULL;
+    }
+
     //Output array
     size = Npart;
     is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_BOOL);
