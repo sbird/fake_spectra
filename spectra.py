@@ -65,7 +65,7 @@ class Spectra:
             self.axis = np.array(axis, dtype = np.int32)
             self.nbins = nbins
             self.files = hdfsim.get_all_files(num, base)
-            ff = h5py.File(self.files[0])
+            ff = h5py.File(self.files[0], "r")
             self.box = ff["Header"].attrs["BoxSize"]
             self.red = ff["Header"].attrs["Redshift"]
             self.atime = ff["Header"].attrs["Time"]
@@ -189,7 +189,7 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, rho_H):
         """Read arrays and perform interpolation for a single file"""
-        ff = h5py.File(fn)
+        ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
         vel = np.array(data["Velocities"],dtype=np.float32)
@@ -230,7 +230,7 @@ class Spectra:
         Returns mass_frac - mass fraction of this ion
         """
         nelem = self.species.index(elem)
-        ff = h5py.File(fn)
+        ff = h5py.File(fn,"r")
         data = ff["PartType0"]
         if ind==None:
             pos = np.array(data["Coordinates"],dtype=np.float32)
