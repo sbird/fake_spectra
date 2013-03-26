@@ -2,16 +2,16 @@
 """Contains the plotting-specific functions for the spectrum analysis code."""
 
 import convert_cloudy
-import halospectra
+import spectra
 import numpy as np
 import matplotlib.pyplot as plt
 
-class PlottingSpectra(halospectra.HaloSpectra):
-    def __init__(self,num, base, repeat = 3, minpart = 400, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
+class PlottingSpectra(spectra.Spectra):
+    def __init__(self,num, base, cofm, axis, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
         """Class to plot things connected with spectra."""
-        halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, nbins, cloudy_dir)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir, savefile)
 
-    def plot_vel_width(self, tau, dv=0.1, col_rho=None):
+    def plot_vel_width(self, tau, dv=0.1, col_rho=None, color="red"):
         """Plot the velocity widths of this snapshot
            Parameters:
             tau - optical depth along sightline
@@ -22,7 +22,7 @@ class PlottingSpectra(halospectra.HaloSpectra):
 
         """
         (bin, vels) = self.vel_width_hist(tau, dv, col_rho)
-        plt.semilogy(bin, vels)
+        plt.semilogy(bin, vels, color=color)
 
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -59,10 +59,10 @@ class PlotIonDensity:
         """Class to plot the ionisation fraction of elements as a function of density"""
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, red)
         self.red = red
-    
+
     def iondensity(self,elem,ion, metal = 0.1, den=(-2.,3)):
         """Plot the ionisation fraction of an ionic species as a function of hydrogen density.
-        Arguments: 
+        Arguments:
              elem, ion - specify the species to plot
              metal - metallicity as a fraction of solar for this species
              den - range of densities to plot

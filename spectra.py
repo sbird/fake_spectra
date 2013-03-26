@@ -129,8 +129,8 @@ class Spectra:
         #Name of savefile
         f=h5py.File(savefile,'r')
         grid_file=f["Header"]
-        self.redshift=grid_file.attrs["redshift"]
-        self.atime = 1./(1+self.redshift)
+        self.red=grid_file.attrs["redshift"]
+        self.atime = 1./(1+self.red)
         self.OmegaM=grid_file.attrs["omegam"]
         self.nbins=grid_file.attrs["nbins"]
         self.omegab=grid_file.attrs["omegab"]
@@ -452,7 +452,7 @@ class Spectra:
         """
         #Remember this is not in log...
         if col_rho != None:
-          ind = np.where(col_rho > 10**20.3)
+          ind = np.where(np.max(col_rho,axis=1) > 10**20.3)
           tau = tau[ind]
         vel_width = self.vel_width(tau)
         nlos = np.shape(vel_width)[0]
