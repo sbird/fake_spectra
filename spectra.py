@@ -53,7 +53,6 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
-        print np.size(self.axis), " sightlines"
         if savefile == None:
             self.savefile=path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),"spectra.hdf5")
         else:
@@ -62,6 +61,7 @@ class Spectra:
         try:
             self.load_savefile(self.savefile)
         except (IOError, KeyError):
+            print "Reloading from snapshot"
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
             self.nbins = nbins
@@ -96,6 +96,7 @@ class Spectra:
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
         #Line data
         self.lines = line_data.LineData()
+        print np.size(self.axis), " sightlines"
 
     def save_file(self):
         """
@@ -220,6 +221,7 @@ class Spectra:
         out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
         if not rho_H:
             out = (None,)+out
+        return out
 
     def particles_near_lines(self, pos, hh):
         """Filter a particle list, returning an index list of those near sightlines"""
