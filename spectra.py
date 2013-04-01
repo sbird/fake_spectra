@@ -53,6 +53,7 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
+        print np.size(self.axis), " sightlines"
         if savefile == None:
             self.savefile=path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),"spectra.hdf5")
         else:
@@ -101,7 +102,10 @@ class Spectra:
         Saves spectra to a file, because they are slow to generate.
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
-        f=h5py.File(self.savefile,'w')
+        try:
+            f=h5py.File(self.savefile,'w')
+        except IOError:
+            print "Could not open ",self.savefile," for writing"
         grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins
@@ -192,28 +196,30 @@ class Spectra:
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
-        vel = np.array(data["Velocities"],dtype=np.float32)
-        mass = np.array(data["Masses"],dtype=np.float32)
-        u = np.array(data["InternalEnergy"],dtype=np.float32)
-        ne = np.array(data["ElectronAbundance"],dtype=np.float32)
-        hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
+        hh = hsml.get_smooth_length(data)
         #Find particles we care about
         ind = self.particles_near_lines(pos, hh)
         pos = pos[ind,:]
-        vel = vel[ind,:]
-        mass = mass[ind]
-        u = u[ind]
-        ne = ne[ind]
         hh = hh[ind]
+        #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
+        vel = np.array(data["Velocities"],dtype=np.float32)
+        vel = vel[ind,:]
+        mass = np.array(data["Masses"],dtype=np.float32)
+        mass = mass[ind]
+        u = np.array(data["InternalEnergy"],dtype=np.float32)
+        u = u[ind]
+        ne = np.array(data["ElectronAbundance"],dtype=np.float32)
+        ne = ne[ind]
         ff.close()
         metal_in = self.get_mass_frac(fn, elem, ion, ind)
-        for xx in [pos, vel, mass, u, ne, hh]:
-            if np.size(np.where(np.isnan(xx))[0]) > 0:
-                raise ValueError
-        if rho_H:
-            return _SPH_Interpolate(1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
-        else:
-            return (None,)+_SPH_Interpolate(0,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
+        #for xx in [pos, vel, mass, u, ne, hh]:
+        #    if np.size(np.where(np.isnan(xx))[0]) > 0:
+        #        raise ValueError
+        #Get rid of ind so we have some memory for the interpolator
+        del ind
+        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
+        if not rho_H:
+            out = (None,)+out
 
     def particles_near_lines(self, pos, hh):
         """Filter a particle list, returning an index list of those near sightlines"""
