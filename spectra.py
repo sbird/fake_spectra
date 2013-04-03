@@ -248,11 +248,11 @@ class Spectra:
 
         #Get metallicity of this metal species
         try:
-            mass_frac = np.array(data["GFM_Metals"],dtype=np.float32)[:,nelem]
+            mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
+            mass_frac = mass_frac[ind]
             #Deal with floating point roundoff - mass_frac will sometimes be negative
             #10^-30 is Cloudy's definition of zero.
             mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
-            mass_frac = mass_frac[ind]
         except KeyError:
             #If GFM_Metals is not defined, fall back to a guess.
             #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
