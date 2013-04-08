@@ -78,9 +78,11 @@ def plot_max_col_den(sim, snap, ff=False):
     HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
     plt.loglog(HI_col_den, metal_col_den, 'o')
 
-def plot_vel_width_metcol(sim, snap):
+def plot_vel_width_metcol(sim, snap, ff=False):
     """Load a simulation and plot its velocity width"""
     halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     hspec.plot_vel_width(hspec.metals[("Si",2)][3])
@@ -134,15 +136,11 @@ plot_rel_vel_width(2,0,60, color="grey")
 save_figure(path.join(outdir,"cosmo_rel_vel_width_z3"))
 plt.clf()
 
-plot_vel_width_metcol(0, 60)
-vel_data.plot_prochaska_2008_data()
-save_figure(path.join(outdir,"cosmo0_rel_vel_width_metcol"))
-plt.clf()
-
-plot_vel_width_metcol(3, 60)
-vel_data.plot_prochaska_2008_data()
-save_figure(path.join(outdir,"cosmo3_rel_vel_width_metcol"))
-plt.clf()
+for ii in (0,3):
+    plot_vel_width_metcol(ii, 60)
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_rel_vel_width_metcol"))
+    plt.clf()
 
 for i in (0,1,2):
     plot_vel_width_DLA(0,zz[i],ff=True)
@@ -162,6 +160,11 @@ plt.clf()
 
 plot_vel_col_den(0, 60,ff=True)
 save_figure(path.join(outdir,"cosmo0_512z3_vvcoldens"))
+plt.clf()
+
+plot_vel_width_metcol(ii, 60, True)
+vel_data.plot_prochaska_2008_data()
+save_figure(path.join(outdir,"cosmo0_512_rel_vel_width_metcol"))
 plt.clf()
 
 for ii in (0,1,2,3):
