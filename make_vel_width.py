@@ -162,7 +162,7 @@ plot_vel_col_den(0, 60,ff=True)
 save_figure(path.join(outdir,"cosmo0_512z3_vvcoldens"))
 plt.clf()
 
-plot_vel_width_metcol(ii, 60, True)
+plot_vel_width_metcol(0, 60, True)
 vel_data.plot_prochaska_2008_data()
 save_figure(path.join(outdir,"cosmo0_512_rel_vel_width_metcol"))
 plt.clf()
