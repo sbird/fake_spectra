@@ -14,7 +14,7 @@ import numpy as np
 import sys
 from save_figure import save_figure
 
-base="/home/spb/papers/DLAfeedback/Cosmo/"
+base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/"
 print "Plots at: ",outdir
 
