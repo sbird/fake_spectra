@@ -148,8 +148,8 @@ class Spectra:
             for ion in grp[elem].keys():
                 self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
         grp=f["halos"]
-        self.cofm = grp["cofm"]
-        self.axis = grp["axis"]
+        self.cofm = np.array(grp["cofm"])
+        self.axis = np.array(grp["axis"])
         f.close()
 
     def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
@@ -464,7 +464,7 @@ class Spectra:
           tau = tau[ind]
         vel_width = self.vel_width(tau)
         nlos = np.shape(vel_width)[0]
-        print 'nlos = ',nlos
+        #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         nn = np.histogram(vel_width,v_table)[0] / (1.*nlos)
