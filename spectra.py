@@ -36,9 +36,9 @@ class Spectra:
             base - Name of base directory for snapshot
 	        cofm - table of los positions, as [n, 3] shape array.
             axis - axis along which to put the sightline
-	        nbins (optional) - number of bins in each spectrum
+	        res (optional) - Spectra pixel resolution in km/s.
             cloudy_dir (optional) - Directory containing cloudy tables for ionisation fraction calculations"""
-    def __init__(self,num, base,cofm, axis, nbins=1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
+    def __init__(self,num, base,cofm, axis, res=1., cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -64,7 +64,6 @@ class Spectra:
             print "Reloading from snapshot"
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
-            self.nbins = nbins
             self.files = hdfsim.get_all_files(num, base)
             ff = h5py.File(self.files[0], "r")
             self.box = ff["Header"].attrs["BoxSize"]
@@ -88,8 +87,14 @@ class Spectra:
         #  Calculate the length scales to be used in the box
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         self.vmax = self.box * self.Hz * rscale/ MPC # box size (kms^-1)
-        self.dzgrid   = self.box * rscale / (1.*self.nbins) # bin size m
-        self.dvbin = self.dzgrid * self.Hz / MPC # velocity bin size (kms^-1)
+        try:
+            self.dzgrid   = self.box * rscale / (1.*self.nbins) # bin size m
+            self.dvbin = self.dzgrid * self.Hz / MPC # velocity bin size (kms^-1)
+        except AttributeError:
+            #This will occur if we are not reloading from a snapshot
+            self.dvbin = res # velocity bin size (kms^-1)
+            self.dzgrid = self.dvbin * MPC / self.Hz #bin size m
+            self.nbins = int(self.box * rscale / self.dzgrid) #Number of bins to achieve the required resolution
         #Species we can use
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
         #Generate cloudy tables

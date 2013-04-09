@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm, axis, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir, savefile)
+    def __init__(self,num, base, cofm, axis, res=1., cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, cloudy_dir, savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 20, color="red"):
         """Plot the velocity widths of this snapshot
