@@ -504,3 +504,6 @@ class Spectra:
         convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
         return rho*binsz*convert
 
+    def get_tau(self, elem, ion):
+        """Get the optical depth for a given species, assuming already calculated"""
+        return self.metals[(elem, ion)][3]

@@ -27,7 +27,7 @@ class PlottingSpectra(spectra.Spectra):
 
         """
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
-        plt.semilogy(vbin, vels, color=color)
+        plt.loglog(vbin, vels, color=color)
 
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,

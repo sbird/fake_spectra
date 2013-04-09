@@ -10,7 +10,7 @@ def plot_prochaska_2008_data():
     vel_data = data[:,2]
 
     #These are the same bins Tescari uses
-    v_table = np.array([0,40,80,120,160,200,240,320,390,590,800])
+    v_table = np.array([12,40,80,120,160,200,240,320,390,590,800])
     center = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
 
     nn = np.histogram(vel_data,v_table)[0]
@@ -29,8 +29,8 @@ def plot_prochaska_2008_data():
     #These bins will have error bars that go to 0
     ind = np.where(nn == 1)
     verr[ind] *= (0.98)
-
     plt.errorbar(center,vels,xerr=[center-v_table[:-1],v_table[1:]-center],yerr=verr,fmt='.', color="black")
 
-    plt.semilogy(center, vels,'o')
+    plt.loglog(center, vels,'o')
+    plt.xlim(xmin=10)
     return (center, vels,verr)
