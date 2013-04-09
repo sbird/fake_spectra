@@ -96,7 +96,7 @@ class Spectra:
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
         #Line data
         self.lines = line_data.LineData()
-        print np.size(self.axis), " sightlines"
+        print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red
 
     def save_file(self):
         """
@@ -396,8 +396,8 @@ class Spectra:
             tau_l = tau[ll,:]
             max_t = np.max(tau_l)
             if max_t == 0:
-              vel_width[ll] = 0
-              continue
+                vel_width[ll] = 0
+                continue
             ind_m = np.where(tau_l == max_t)[0][0]
             tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
             cum_tau = np.cumsum(tau_l)
@@ -437,7 +437,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, tau, dv=0.1, col_rho=None):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 20):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -449,28 +449,46 @@ class Spectra:
         Note f(N) has dimensions of s/km, because v has units of km/s.
 
         Parameters:
-            tau - optical depth along sightline
+            elem - element to use
+            line - line to use (the components of this line must be pre-computed and stored in self.metals)
             dv - bin spacing
-            col_rho - Prochaska used a subsample of spectra containing a DLA.
-                      If this value is not None, use it as HI column density measurements to select
-                      such a subsample. This does not change the resulting velocity widths.
+            HI_cut - Prochaska used a subsample of spectra containing a DLA.
+                     If this value is not None, consider only HI column densities above this threshold.
+                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
+            met_cut - Discard spectra whose maximal metal column density is below this level.
+                      Removes unobservable systems.
+            unres - Remove systems with velocity widths below this value, where they are affected
+                    by the pixel size of the spectra.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
+        tau = self.metals[(elem, line)][3]
         #Remember this is not in log...
-        if col_rho != None:
-          ind = np.where(np.max(col_rho,axis=1) > 10**20.3)
-          tau = tau[ind]
+        if HI_cut != None:
+            rho = self.get_col_density("H",1)
+            ind = np.where(np.max(rho,axis=1) > HI_cut)
+            tau = tau[ind]
+            if met_cut != None:
+                rho = self.get_col_density(elem,line)
+                ind = np.where(np.max(rho[ind],axis=1) > met_cut)
+                tau = tau[ind]
+        elif met_cut != None:
+            rho = self.get_col_density(elem,line)
+            ind = np.where(np.max(rho,axis=1) > met_cut)
+            tau = tau[ind]
         vel_width = self.vel_width(tau)
+        if unres != None:
+            ind = np.where(vel_width > unres)
+            vel_width = vel_width[ind]
         nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
-        bin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         nn = np.histogram(vel_width,v_table)[0] / (1.*nlos)
         width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
         vels=nn/width
-        return (bin, vels)
+        return (vbin, vels)
 
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species, assuming rho was already calculated"""

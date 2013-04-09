@@ -7,22 +7,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
+    """Class to plot things connected with spectra."""
     def __init__(self,num, base, cofm, axis, nbins = 1024, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
-        """Class to plot things connected with spectra."""
         spectra.Spectra.__init__(self,num, base, cofm, axis, nbins, cloudy_dir, savefile)
 
-    def plot_vel_width(self, tau, dv=0.1, col_rho=None, color="red"):
+    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 20, color="red"):
         """Plot the velocity widths of this snapshot
-           Parameters:
-            tau - optical depth along sightline
+        Parameters:
+            elem - element to use
+            line - line to use (the components of this line must be pre-computed and stored in self.metals)
             dv - bin spacing
-            col_rho - Prochaska used a subsample of spectra containing a DLA.
-                      If this value is not None, use it as HI column density measurements to select
-                      such a subsample. This does not change the resulting velocity widths.
+            HI_cut - Prochaska used a subsample of spectra containing a DLA.
+                     If this value is not None, consider only HI column densities above this threshold.
+                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
+            met_cut - Discard spectra whose maximal metal column density is below this level.
+                      Removes unobservable systems.
+            unres - Remove systems with velocity widths below this value, where they are affected
+                    by the pixel size of the spectra.
 
         """
-        (bin, vels) = self.vel_width_hist(tau, dv, col_rho)
-        plt.semilogy(bin, vels, color=color)
+        (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
+        plt.semilogy(vbin, vels, color=color)
 
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -31,8 +36,8 @@ class PlottingSpectra(spectra.Spectra):
         tot_tau = np.sum(tau[i,:])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau_l = tau[i,:]
-        max = np.max(tau_l)
-        ind_m = np.where(tau_l == max)[0][0]
+        tmax = np.max(tau_l)
+        ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
         cum_tau = np.cumsum(tau_l)
@@ -49,14 +54,14 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
-        col_dens = self.get_col_density(self, elem, ion)
+        col_dens = self.get_col_density(elem, ion)
         vels = self.vel_width(self.metals[(elem, ion)][3])
         plt.loglog(np.max(col_dens,axis=1),vels)
 
 
 class PlotIonDensity:
+    """Class to plot the ionisation fraction of elements as a function of density"""
     def __init__(self, red, cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/"):
-        """Class to plot the ionisation fraction of elements as a function of density"""
         self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, red)
         self.red = red
 
