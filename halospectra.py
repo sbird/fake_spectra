@@ -6,7 +6,6 @@ import hdfsim
 import math
 import halocat
 import spectra
-import matplotlib.pyplot as plt
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
