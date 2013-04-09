@@ -90,8 +90,6 @@ def plot_vel_width_metcol(sim, snap, ff=False):
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     ind = np.where (metal_col_den > 1e13)
     hspec.plot_vel_width(tau[ind],color="blue")
-    ind = np.where (metal_col_den > 1e14)
-    hspec.plot_vel_width(tau[ind],color="red")
 
 def plot_vel_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
@@ -110,12 +108,31 @@ colors=["red", "blue", "orange", "purple"]
 for ss in (3,2,1,0):
     plot_vel_width_sim(ss, 60, colors[ss])
 
-
 vel_data.plot_prochaska_2008_data()
 plt.xlim(0, 1000)
 plt.title("Velocity Widths at z=3")
 save_figure(path.join(outdir,"cosmo_vel_width_z3"))
 plt.clf()
+
+#Do spectral resolution test
+plot_vel_width_sim(0, 60, "red")
+halo = "Cosmo0_V6"
+#Higher resolution spectrum
+hspec = ps.PlottingSpectra(60, base+halo, None, None, savefile=base+halo+"/snapdir_060/spectra2048.hdf5")
+tau = hspec.metals[("Si",2)][3]
+hspec.plot_vel_width(tau, color="blue")
+vel_data.plot_prochaska_2008_data()
+plt.xlim(0, 1000)
+plt.title("Velocity Widths at z=3")
+save_figure(path.join(outdir,"cosmo_vel_width_z3_spectra_pix"))
+plt.clf()
+
+metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
+vel= hspec.vel_width(hspec.metals[("Si",2)][3])
+plt.loglog(metal_col_den, vel, 'o')
+save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
+plt.clf()
+del hspec
 
 #A plot of the redshift evolution
 zz = [54,60,68]
@@ -139,7 +156,7 @@ plt.clf()
 for ii in (0,3):
     plot_vel_width_metcol(ii, 60)
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_rel_vel_width_metcol"))
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_col_z3"))
     plt.clf()
 
 for i in (0,1,2):
