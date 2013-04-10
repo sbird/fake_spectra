@@ -407,10 +407,6 @@ class Spectra:
             ind_m = np.where(tau_l == max_t)[0][0]
             tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
             cum_tau = np.cumsum(tau_l)
-            ind_low = np.where(cum_tau > 0.05 * tot_tau[ll])
-            low = ind_low[0][0]
-            ind_high = np.where(cum_tau > 0.95 * tot_tau[ll])
-            high = ind_high[0][0]
             #Use spline interpolation to find the edge of the bins.
             tdiff = cum_tau - 0.95*tot_tau[ll]
             x = np.arange(0,np.size(cum_tau))
