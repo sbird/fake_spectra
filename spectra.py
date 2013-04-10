@@ -26,6 +26,7 @@ import convert_cloudy
 import line_data
 import h5py
 import hdfsim
+from scipy.interpolate import UnivariateSpline
 import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
 
@@ -410,6 +411,14 @@ class Spectra:
             low = ind_low[0][0]
             ind_high = np.where(cum_tau > 0.95 * tot_tau[ll])
             high = ind_high[0][0]
+            #Use spline interpolation to find the edge of the bins.
+            tdiff = cum_tau - 0.95*tot_tau[ll]
+            x = np.arange(0,np.size(cum_tau))
+            spl = UnivariateSpline(x, tdiff, s=0)
+            high = spl.roots()
+            tdiff = cum_tau - 0.05*tot_tau[ll]
+            spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
+            low = spl.roots()
             vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
@@ -442,7 +451,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 20):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
