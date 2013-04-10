@@ -32,5 +32,4 @@ def plot_prochaska_2008_data():
     plt.errorbar(center,vels,xerr=[center-v_table[:-1],v_table[1:]-center],yerr=verr,fmt='.', color="black")
 
     plt.loglog(center, vels,'o')
-    plt.xlim(xmin=10)
     return (center, vels,verr)

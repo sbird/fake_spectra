@@ -17,14 +17,14 @@ base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/"
 print "Plots at: ",outdir
 
-def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None, met_cut = 1e13, unres = 20):
+def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None):
     """Load a simulation and plot its velocity width"""
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
         halo+="_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
-    hspec.plot_vel_width("Si", 2, color=color, HI_cut = HI_cut, met_cut = met_cut, unres = unres)
+    hspec.plot_vel_width("Si", 2, color=color, HI_cut = HI_cut)
 
 def plot_rel_vel_width(sim1, sim2, snap, color="black"):
     """Load and make a plot of the difference between two simulations"""
@@ -32,10 +32,8 @@ def plot_rel_vel_width(sim1, sim2, snap, color="black"):
     halo2 = "Cosmo"+str(sim2)+"_V6"
     hspec1 = ps.PlottingSpectra(snap, base+halo1, None, None)
     (vbin, vels1) = hspec1.vel_width_hist("Si", 2)
-    del hspec1
     hspec1 = ps.PlottingSpectra(snap, base+halo2, None, None)
     (vbin, vels2) = hspec1.vel_width_hist("Si", 2)
-    del hspec1
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color=color)
 
@@ -79,6 +77,17 @@ def plot_vel_width_metcol(sim, snap, ff=False):
     hspec.plot_vel_width("Si", 2, met_cut = 1e13, color="blue")
     vel_data.plot_prochaska_2008_data()
 
+def plot_vel_width_unres(sim, snap, ff=False):
+    """Load a simulation and plot its velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec.plot_vel_width("Si", 2)
+    hspec.plot_vel_width("Si", 2, unres = None, color="blue")
+    vel_data.plot_prochaska_2008_data()
+
 def plot_vel_width_DLA(sim, snap, ff=False):
     """Plot the effect of the HI cut"""
     halo = "Cosmo"+str(sim)+"_V6"
@@ -107,10 +116,9 @@ def test_spec_resolution():
     hspec = ps.PlottingSpectra(68, base+halo, None, None, savefile=base+halo+"/snapdir_068/spectra.hdf5")
     hspec.plot_vel_width("Si",2, color="red")
     hspec2 = ps.PlottingSpectra(68, base+halo, None, None, savefile=base+halo+"/snapdir_068/spectra4096.hdf5")
-    hspec2.plot_vel_width("Si", 2, color="blue", unres=10)
-    del hspec2
+    hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
-    plt.xlim(10, 1000)
+    plt.xlim(1, 1000)
     plt.ylim(1e-5, 2e-2)
     save_figure(path.join(outdir,"cosmo_vel_width_z3_spectra_pix"))
     plt.clf()
@@ -118,7 +126,14 @@ def test_spec_resolution():
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     vel= hspec.vel_width(hspec.metals[("Si",2)][3])
     plt.loglog(metal_col_den, vel, 'o')
-    del hspec
+    save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix_low"))
+    plt.clf()
+
+    metal_col_den = np.max(hspec2.get_col_density("Si", 2),axis=1)
+    vel= hspec.vel_width(hspec2.metals[("Si",2)][3])
+    plt.loglog(metal_col_den, vel, 'o')
+    save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
+    plt.clf()
 
 colors=["red", "blue", "orange", "black"]
 
@@ -130,21 +145,18 @@ plt.clf()
 #Best-fit base model
 plot_vel_width_sim(0, 60, "blue", HI_cut = 10**20.3)
 vel_data.plot_prochaska_2008_data()
-plt.xlim(10, 1000)
 plt.ylim(1e-5, 2e-2)
+plt.xlim(5, 1000)
 save_figure(path.join(outdir,"cosmo_vel_width_z3"))
 plt.clf()
 
 test_spec_resolution()
-save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
-plt.clf()
 
 #The vel widths for different simulations
 for ss in (3,0):
     plot_vel_width_sim(ss, 60, colors[ss])
 
 vel_data.plot_prochaska_2008_data()
-plt.xlim(10, 1000)
 save_figure(path.join(outdir,"cosmo_feedback_z3"))
 plt.clf()
 
@@ -154,7 +166,6 @@ for ii in (0,1,2):
     plot_vel_width_sim(0, zz[ii], color=colors[ii])
 
 vel_data.plot_prochaska_2008_data()
-plt.xlim(10, 1000)
 plt.title("Velocity Widths at z=4-2")
 save_figure(path.join(outdir,"cosmo_vel_width_zz"))
 plt.clf()
@@ -177,6 +188,12 @@ for ii in (0,3):
     #Plot effect of HI cut
     plot_vel_width_DLA(ii,60)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_DLA"))
+    plt.clf()
+
+for ii in (0,3):
+    #Plot effect of HI cut
+    plot_vel_width_unres(ii,60)
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres"))
     plt.clf()
 
 for ii in (0,1,2,3):
