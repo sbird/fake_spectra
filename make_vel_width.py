@@ -135,7 +135,7 @@ def test_spec_resolution():
     save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
     plt.clf()
 
-colors=["red", "blue", "orange", "black"]
+colors=["blue", "purple", "orange", "red"]
 
 plot_spectrum(0,60, 102)
 plt.xlim(1100, 1600)
@@ -146,7 +146,7 @@ plt.clf()
 plot_vel_width_sim(0, 60, "blue", HI_cut = 10**20.3)
 vel_data.plot_prochaska_2008_data()
 plt.ylim(1e-5, 2e-2)
-plt.xlim(5, 1000)
+plt.xlim(10, 1000)
 save_figure(path.join(outdir,"cosmo_vel_width_z3"))
 plt.clf()
 
@@ -154,9 +154,11 @@ test_spec_resolution()
 
 #The vel widths for different simulations
 for ss in (3,0):
-    plot_vel_width_sim(ss, 60, colors[ss])
+    plot_vel_width_sim(ss, 60, colors[ss], HI_cut = 10**20.3)
 
 vel_data.plot_prochaska_2008_data()
+plt.ylim(1e-5, 2e-2)
+plt.xlim(10, 1000)
 save_figure(path.join(outdir,"cosmo_feedback_z3"))
 plt.clf()
 
