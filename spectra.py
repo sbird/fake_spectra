@@ -406,18 +406,50 @@ class Spectra:
                 continue
             ind_m = np.where(tau_l == max_t)[0][0]
             tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-            cum_tau = np.cumsum(tau_l)
-            #Use spline interpolation to find the edge of the bins.
-            tdiff = cum_tau - 0.95*tot_tau[ll]
-            x = np.arange(0,np.size(cum_tau))
-            spl = UnivariateSpline(x, tdiff, s=0)
-            high = spl.roots()
-            tdiff = cum_tau - 0.05*tot_tau[ll]
-            spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
-            low = spl.roots()
+            (low, high) = self._vel_width_bound(tau_l, tot_tau[ll])
             vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
+
+    def den_width(self, den):
+        """Find the density width of a spectrum
+           defined as the width of 90% of the integrated column density.
+           This is a little complicated by periodic boxes,
+           so we internally cycle the line until the deepest absorption
+           is in the middle"""
+        #  Size of a single velocity bin
+        tot_den = np.sum(den,axis = 1)
+        den_width = np.zeros(np.shape(tot_den))
+        for ll in np.arange(0, np.shape(den)[0]):
+            #Deal with periodicity by making sure the deepest point is in the middle
+            den_l = den[ll,:]
+            max_t = np.max(den_l)
+            if max_t == 0:
+                den_width[ll] = 0
+                continue
+            ind_m = np.where(den_l == max_t)[0][0]
+            den_l = np.roll(den_l, np.size(den_l)/2- ind_m)
+            (low, high) = self._vel_width_bound(den_l, tot_den[ll])
+            if np.size(low) > 1:
+                low = low[0]
+            if np.size(high) > 1:
+                high = high[0]
+            den_width[ll] = self.dvbin*(high-low)
+        #Return the width
+        return den_width
+
+    def _vel_width_bound(self, tau, tot_tau):
+        """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
+        cum_tau = np.cumsum(tau)
+        #Use spline interpolation to find the edge of the bins.
+        tdiff = cum_tau - 0.95*tot_tau
+        x = np.arange(0,np.size(cum_tau))
+        spl = UnivariateSpline(x, tdiff, s=0)
+        high = spl.roots()
+        tdiff = cum_tau - 0.05*tot_tau
+        spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
+        low = spl.roots()
+        return (low, high)
 
     def NHI(self):
         """Get the neutral hydrogen column densities for each line"""
@@ -512,3 +544,7 @@ class Spectra:
     def get_tau(self, elem, ion):
         """Get the optical depth for a given species, assuming already calculated"""
         return self.metals[(elem, ion)][3]
+
+    def get_vel(self, elem, ion):
+        """Get the velocity for a given species, assuming already calculated"""
+        return self.metals[(elem, ion)][1]

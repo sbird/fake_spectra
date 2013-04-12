@@ -40,16 +40,41 @@ class PlottingSpectra(spectra.Spectra):
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
-        cum_tau = np.cumsum(tau_l)
-        ind_low = np.where(cum_tau > 0.05 * tot_tau)
-        low = ind_low[0][0]*self.dvbin
-        ind_high = np.where(cum_tau > 0.95 * tot_tau)
-        high = ind_high[0][0]*self.dvbin
+        (low, high) = self._vel_width_bound(tau_l, tot_tau)
         if high - low > 0:
             plt.plot([low,low],[0,1])
             plt.plot([high,high],[0,1])
         plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
+
+    def plot_spectrum_density_velocity(self, elem, ion, i):
+        """Plot the spectrum of a line, centered on the deepest point,
+           and marking the 90% velocity width."""
+        #  Size of a single velocity bin
+        tau = self.get_tau(elem, ion)
+        col_den = self.get_col_density(elem, ion)[i,:]
+        #  Size of a single velocity bin
+        tot_tau = np.sum(tau[i,:])
+        #Deal with periodicity by making sure the deepest point is in the middle
+        tau_l = tau[i,:]
+        tmax = np.max(tau_l)
+        ind_m = np.where(tau_l == tmax)[0][0]
+        tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+        col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
+        plt.subplot(311)
+        self.plot_spectrum(tau, i)
+        plt.subplot(312)
+        ind = np.where(col_den > 1)
+        plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
+        plt.yticks(np.array((1e5, 1e10, 1e20)))
+
+        plt.subplot(313)
+        vel = self.get_vel(elem, ion)[i,:]
+        vel = np.roll(vel, np.size(tau_l)/2- ind_m)
+        ind = np.where(np.abs(vel) > 1)
+        plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,np.abs(vel[ind]))
         plt.xlim(0,np.size(tau_l)*self.dvbin)
 
     def plot_col_density(self, elem, ion):
