@@ -83,6 +83,15 @@ class PlottingSpectra(spectra.Spectra):
         vels = self.vel_width(self.metals[(elem, ion)][3])
         plt.loglog(np.max(col_dens,axis=1),vels)
 
+    def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue"):
+        """Plots the column density distribution function. """
+        (NHI,f_N)=self.column_density_function(elem, ion, dlogN,minN-1,maxN+1)
+        plt.loglog(NHI,f_N,color=color, lw = 3)
+        ax=plt.gca()
+        ax.set_xlabel(r"$N_\mathrm{HI} (\mathrm{cm}^{-2})$")
+        ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
+        plt.xlim(10**minN, 10**maxN)
+        plt.ylim(1e-26,1e-18)
 
 class PlotIonDensity:
     """Class to plot the ionisation fraction of elements as a function of density"""

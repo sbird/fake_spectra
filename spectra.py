@@ -573,8 +573,8 @@ class Spectra:
         #Total Number of pixels
         rho = self.get_col_density(elem, ion)
         tot_cells = np.size(rho)
-        tot_f_N = np.histogram(rho,np.log10(NHI_table))
-        tot_f_N=(tot_f_N)/(width*dX*tot_cells)
+        (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
+        tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
 
     def absorption_distance(self):
