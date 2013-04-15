@@ -29,6 +29,7 @@ import hdfsim
 from scipy.interpolate import UnivariateSpline
 import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
+import autocorr_spectra
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -615,3 +616,21 @@ class Spectra:
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
         omega_DLA=HIden/length/self.rho_crit()
         return omega_DLA
+
+    def autocorr(self, thresh=20.3, elem = "H", ion = 1):
+        """Compute the autocorrelation function of the DLAs along these spectra."""
+        col_den = self.get_col_density(elem, ion)
+        dla_den = np.zeros(np.shape(col_den))
+        dla_den[np.where( col_den > 10**thresh )] = 1
+        dla_den -= np.mean(dla_den)
+        if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
+            raise ValueError("Not all spectra are along the same axis")
+        axis = self.axis[0]
+        if axis == 1:
+            spos = self.cofm[:,1:]
+        if axis == 2:
+            spos = np.vstack([self.cofm[:,0],self.cofm[:,2]]).T
+        if axis == 3:
+            spos = self.cofm[:,:2]
+        auto = autocorr_spectra.autocorr_spectra(dla_den, spos, self.box/self.nbins)
+        return auto
