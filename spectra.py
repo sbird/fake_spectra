@@ -571,8 +571,9 @@ class Spectra:
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
         dX=self.absorption_distance()
         #Total Number of pixels
-        tot_cells = self.nbins * np.size(self.axis)
-        tot_f_N = np.histogram(self.get_col_density(elem, ion),np.log10(NHI_table))
+        rho = self.get_col_density(elem, ion)
+        tot_cells = np.size(rho)
+        tot_f_N = np.histogram(rho,np.log10(NHI_table))
         tot_f_N=(tot_f_N)/(width*dX*tot_cells)
         return (center, tot_f_N)
 
