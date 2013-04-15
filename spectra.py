@@ -540,3 +540,77 @@ class Spectra:
     def get_vel(self, elem, ion):
         """Get the velocity for a given species, assuming already calculated"""
         return self.metals[(elem, ion)][1]
+
+    def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
+        """
+        This computes the DLA column density function, which is the number
+        of absorbers per sight line with HI column densities in the interval
+        [NHI, NHI+dNHI] at the absorption distance X.
+        Absorption distance is simply a single simulation box.
+        A sightline is assumed to be equivalent to one grid cell.
+        That is, there is presumed to be only one halo in along the sightline
+        encountering a given halo.
+
+        So we have f(N) = d n_DLA/ dN dX
+        and n_DLA(N) = number of absorbers per sightline in this column density bin.
+                     1 sightline is defined to be one grid cell.
+                     So this is (cells in this bins) / (no. of cells)
+        ie, f(N) = n_DLA / ΔN / ΔX
+        Note f(N) has dimensions of cm^2, because N has units of cm^-2 and X is dimensionless.
+
+        Parameters:
+            dlogN - bin spacing
+            minN - minimum log N
+            maxN - maximum log N
+
+        Returns:
+            (NHI, f_N_table) - N_HI (binned in log) and corresponding f(N)
+        """
+        NHI_table = 10**np.arange(minN, maxN, dlogN)
+        center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
+        width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
+        dX=self.absorption_distance()
+        #Total Number of pixels
+        tot_cells = self.nbins * np.size(self.axis)
+        tot_f_N = np.histogram(self.get_col_density(elem, ion),np.log10(NHI_table))
+        tot_f_N=(tot_f_N)/(width*dX*tot_cells)
+        return (center, tot_f_N)
+
+    def absorption_distance(self):
+        """Compute X(z), the absorption distance per sightline (eq. 9 of Nagamine et al 2003)
+        in dimensionless units."""
+        #h * 100 km/s/Mpc in h/s
+        h100=3.2407789e-18
+        # in cm/s
+        light=2.9979e10
+        #Units: h/s   s/cm                        kpc/h      cm/kpc
+        return h100/light*(1+self.red)**2*self.box*self.KPC
+
+    def rho_crit(self):
+        """Get the critical density at z=0 in units of g cm^-3"""
+        #H in units of 1/s
+        h100=3.2407789e-18*self.hubble
+        #G in cm^3 g^-1 s^-2
+        grav=6.672e-8
+        rho_crit=3*h100**2/(8*math.pi*grav)
+        return rho_crit
+
+    def omega_DLA(self, thresh=20.3, elem = "H", ion = 1):
+        """Compute Omega_DLA, the sum of the mass in DLAs, divided by the volume of the spectra, divided by the critical density.
+            Ω_DLA = m_p * avg. column density / (1+z)^2 / length of column / rho_c
+            Note: If we want the neutral gas density rather than the neutral hydrogen density, divide by 0.76,
+            the hydrogen mass fraction.
+        """
+        #Column density of HI in atoms cm^-2 (physical)
+        col_den = self.get_col_density(elem, ion)
+        if thresh > 0:
+            HIden = np.mean(col_den[np.where(col_den > 10**thresh)])
+        else:
+            HIden = np.mean(col_den)
+        #Avg. Column density of HI in g cm^-2 (comoving)
+        HIden = self.PROTONMASS * HIden/(1+self.red)**2
+        #Length of column in comoving cm
+        length = (self.box*self.KPC/self.hubble)
+        #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
+        omega_DLA=HIden/length/self.rho_crit()
+        return omega_DLA
