@@ -373,20 +373,23 @@ class Spectra:
 
         return tau
 
-    def get_tau(self, elem, ion, ll):
+    def get_tau(self, elem, ion, ll=0):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number
         """
-        #generate metal and hydrogen spectral densities
-        #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-        [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
+        try:
+            return self.metals[(elem, ion)][3]
+        except KeyError:
+            #generate metal and hydrogen spectral densities
+            #Indexing is: rho_metals [ NSPECTRA, NBIN ]
+            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
 
-        #Compute tau for this metal ion
-        (nlos, nbins) = np.shape(rho)
-        tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
-        self.metals[(elem, ion)] = [rho, vel, temp, tau]
-        return tau
+            #Compute tau for this metal ion
+            (nlos, nbins) = np.shape(rho)
+            tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+            self.metals[(elem, ion)] = [rho, vel, temp, tau]
+            return tau
 
     def vel_width(self, tau):
         """Find the velocity width of a line
@@ -450,17 +453,6 @@ class Spectra:
         spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
         low = spl.roots()
         return (low, high)
-
-    def NHI(self):
-        """Get the neutral hydrogen column densities for each line"""
-        [rho, vel, temp] = self.SPH_Interpolate_metals('H', 1)
-        #Column density in kg / m^3 (* box [comoving kpc/h in physical m])
-        col_rho = np.sum(rho, axis=1)*self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
-        #In atoms / m^2
-        col_rho /= self.PROTONMASS
-        #In atoms / cm^2
-        col_rho /= 100**2
-        return col_rho
 
     def delta(self, rho):
         """Get a density in units of delta = ρ/bar{ρ} -1.
@@ -533,17 +525,17 @@ class Spectra:
         return (vbin, vels)
 
     def get_col_density(self, elem, ion):
-        """Get the column density in each pixel for a given species, assuming rho was already calculated"""
-        rho = self.metals[(elem, ion)][0]
+        """Get the column density in each pixel for a given species"""
+        try:
+            rho = self.metals[(elem, ion)][0]
+        except KeyError:
+            [rho, vel, temp] = self.SPH_Interpolate_metals('H', 1)
+
         #Size of a bin in physical m
         binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
         #Convert from physical kg/m^2 to atoms/cm^2
         convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
         return rho*binsz*convert
-
-    def get_tau(self, elem, ion):
-        """Get the optical depth for a given species, assuming already calculated"""
-        return self.metals[(elem, ion)][3]
 
     def get_vel(self, elem, ion):
         """Get the velocity for a given species, assuming already calculated"""
