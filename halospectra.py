@@ -18,6 +18,7 @@ class HaloSpectra(spectra.Spectra):
         min_mass = self.min_halo_mass(minpart)
         f.close()
         (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
+        self.sub_cofm = cofm
         self.NumLos = np.size(self.sub_mass)
         #All through y axis
         axis = np.ones(self.NumLos)
@@ -26,9 +27,12 @@ class HaloSpectra(spectra.Spectra):
         cofm = np.repeat(cofm,repeat,axis=0)
         axis = np.repeat(axis,repeat)
         self.NumLos*=repeat
+        self.repeat = repeat
         #Perturb the sightlines within a sphere of half the virial radius.
         #We want a representative sample of DLAs.
         maxr = self.sub_radii/2.
+        #Re-seed for repeatability
+        np.random.seed(23)
         #Generate random sphericals
         theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
         phi = 2*math.pi*np.random.random_sample(self.NumLos)
@@ -37,8 +41,6 @@ class HaloSpectra(spectra.Spectra):
         cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
         cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
         cofm[:,2]+=rr*np.cos(theta)
-        #Re-seed for repeatability
-        np.random.seed(23)
 
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, cloudy_dir,savefile=savefile)
 
@@ -50,3 +52,9 @@ class HaloSpectra(spectra.Spectra):
         target_mass = self.box**3 * rhom / self.npart[0]
         min_mass = target_mass * minpart
         return min_mass
+
+    def find_associated_halo(self, num):
+        """Find the halo sightline num is associated with"""
+        nhalo = self.NumLos/self.repeat
+        nh = num % nhalo
+        return (nh, self.sub_mass[nh], self.sub_cofm[nh], self.sub_radii[nh])
