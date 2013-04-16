@@ -185,7 +185,7 @@ def test_spec_resolution():
     plt.clf()
 
 colors=["blue", "purple", "orange", "red"]
-
+reds = {54:4, 60:3, 68:2}
 #plot_spectrum(0,60, 102)
 #plt.xlim(1100, 1600)
 #save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
@@ -207,15 +207,16 @@ for ss in (0,1,2,3):
 
 #test_spec_resolution()
 
-#The vel widths for different simulations
-for ss in (3,2,1,0):
-    plot_vel_width_sim(ss, 60, colors[ss], HI_cut = 10**20.3)
+for snap in (54,60,68):
+    #The vel widths for different simulations
+    for ss in (3,2,1,0):
+        plot_vel_width_sim(ss, snap, colors[ss], HI_cut = 10**20.3)
 
-vel_data.plot_prochaska_2008_data()
-plt.ylim(1e-5, 2e-2)
-plt.xlim(10, 1000)
-save_figure(path.join(outdir,"cosmo_feedback_z3"))
-plt.clf()
+    vel_data.plot_prochaska_2008_data()
+    plt.ylim(1e-5, 2e-2)
+    plt.xlim(10, 1000)
+    save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[snap])))
+    plt.clf()
 
 ##A plot of the redshift evolution
 #zz = [54,60,68]
