@@ -44,6 +44,36 @@ class HaloSpectra(spectra.Spectra):
 
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, cloudy_dir,savefile=savefile)
 
+    def save_file(self):
+        """
+        Saves spectra to a file, because they are slow to generate.
+        File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
+        """
+        try:
+            f=h5py.File(self.savefile,'r+')
+        except IOError:
+            print "Could not open ",self.savefile," for writing"
+        f.close()
+        grp = f.create_group("halos")
+        grp["radii"] = self.sub_radii
+        grp["cofm"] = self.sub_cofm
+        grp["mass"] = self.sub_mass
+        grp.attrs["repeat"] = self.repeat
+        grp.attrs["NumLos"] = self.NumLos
+        spectra.Spectra.save_file(self)
+
+    def load_savefile(self,savefile=None):
+        """Load data from a file"""
+        #Name of savefile
+        f=h5py.File(savefile,'r')
+        grp = f["halos"]
+        self.sub_radii = grp["radii"]
+        self.sub_cofm = grp["cofm"]
+        self.sub_mass = grp["mass"]
+        self.repeat = grp.attrs["repeat"]
+        self.NumLos = grp.attrs["NumLos"]
+        spectra.Spectra.load_savefile(self, savefile)
+
     def min_halo_mass(self, minpart = 400):
         """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""
         #This is rho_c in units of h^-1 1e10 M_sun (kpc/h)^-3

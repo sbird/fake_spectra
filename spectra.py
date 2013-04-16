@@ -111,7 +111,7 @@ class Spectra:
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
         try:
-            f=h5py.File(self.savefile,'w')
+            f=h5py.File(self.savefile,'r+')
         except IOError:
             print "Could not open ",self.savefile," for writing"
         grp = f.create_group("Header")
@@ -122,7 +122,7 @@ class Spectra:
         grp.attrs["omegam"]=self.OmegaM
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
-        grp = f.create_group("halos")
+        grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
         grp_grid = f.create_group("metals")
@@ -154,7 +154,7 @@ class Spectra:
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
-        grp=f["halos"]
+        grp=f["spectra"]
         self.cofm = np.array(grp["cofm"])
         self.axis = np.array(grp["axis"])
         f.close()
