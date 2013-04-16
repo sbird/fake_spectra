@@ -53,13 +53,13 @@ class HaloSpectra(spectra.Spectra):
             f=h5py.File(self.savefile,'r+')
         except IOError:
             print "Could not open ",self.savefile," for writing"
-        f.close()
         grp = f.create_group("halos")
         grp["radii"] = self.sub_radii
         grp["cofm"] = self.sub_cofm
         grp["mass"] = self.sub_mass
         grp.attrs["repeat"] = self.repeat
         grp.attrs["NumLos"] = self.NumLos
+        f.close()
         spectra.Spectra.save_file(self)
 
     def load_savefile(self,savefile=None):
@@ -72,6 +72,7 @@ class HaloSpectra(spectra.Spectra):
         self.sub_mass = grp["mass"]
         self.repeat = grp.attrs["repeat"]
         self.NumLos = grp.attrs["NumLos"]
+        f.close()
         spectra.Spectra.load_savefile(self, savefile)
 
     def min_halo_mass(self, minpart = 400):
