@@ -3,6 +3,7 @@
 
 import numpy as np
 import hdfsim
+import h5py
 import math
 import halocat
 import spectra
@@ -46,8 +47,7 @@ class HaloSpectra(spectra.Spectra):
 
     def save_file(self):
         """
-        Saves spectra to a file, because they are slow to generate.
-        File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
+        Save additional halo data to the savefile
         """
         try:
             f=h5py.File(self.savefile,'r+')

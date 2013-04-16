@@ -207,15 +207,15 @@ for ss in (0,1,2,3):
 
 #test_spec_resolution()
 
-for snap in (54,60,68):
+for sp in (54,60,68):
     #The vel widths for different simulations
     for ss in (3,2,1,0):
-        plot_vel_width_sim(ss, snap, colors[ss], HI_cut = 10**20.3)
+        plot_vel_width_sim(ss, sp, colors[ss], HI_cut = 10**20.3)
 
     vel_data.plot_prochaska_2008_data()
     plt.ylim(1e-5, 2e-2)
     plt.xlim(10, 1000)
-    save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[snap])))
+    save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[sp])))
     plt.clf()
 
 ##A plot of the redshift evolution
