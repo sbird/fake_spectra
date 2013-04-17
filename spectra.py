@@ -111,9 +111,9 @@ class Spectra:
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
         try:
-            f=h5py.File(self.savefile,'r+')
+            f=h5py.File(self.savefile,'a')
         except IOError:
-            print "Could not open ",self.savefile," for writing"
+            raise IOError("Could not open ",self.savefile," for writing")
         grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins
