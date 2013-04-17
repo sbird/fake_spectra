@@ -8,6 +8,7 @@ import scipy.interpolate as intp
 
 #Max number of ion species to count
 nions = 17
+cloudy_dir = "/home/spb/codes/ArepoCoolingTables/tmp_spb/"
 
 def handle_single_line(splitline):
     """Short function to handle a single cloudy line, split by whitespace, and deal with lack of spaces"""
@@ -90,7 +91,7 @@ def read_all_tables(nred, nmet, nrho, directory):
 
 class CloudyTable:
     """Class to interpolate tables from cloudy for a desired density metallicity and redshift"""
-    def __init__(self,directory, redshift):
+    def __init__(self, redshift, directory=cloudy_dir):
         """Read a cloudy table from somewhere"""
         self.savefile = path.join(directory,"cloudy_table.npz")
         self.reds = np.array([1,2,3,4,5,6])

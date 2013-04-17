@@ -36,11 +36,11 @@ class Spectra:
         Arguments:
             num - Snapshot number
             base - Name of base directory for snapshot
-	        cofm - table of los positions, as [n, 3] shape array.
+            cofm - table of los positions, as [n, 3] shape array.
             axis - axis along which to put the sightline
-	        res (optional) - Spectra pixel resolution in km/s.
-            cloudy_dir (optional) - Directory containing cloudy tables for ionisation fraction calculations"""
-    def __init__(self,num, base,cofm, axis, res=1., cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
+            res (optional) - Spectra pixel resolution in km/s
+    """
+    def __init__(self,num, base,cofm, axis, res=1., savefile=None):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -100,7 +100,7 @@ class Spectra:
         #Species we can use
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
         #Generate cloudy tables
-        self.cloudy_table = convert_cloudy.CloudyTable(cloudy_dir, self.red)
+        self.cloudy_table = convert_cloudy.CloudyTable(self.red)
         #Line data
         self.lines = line_data.LineData()
         print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red

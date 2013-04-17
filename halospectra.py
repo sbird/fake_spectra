@@ -10,7 +10,7 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., cloudy_dir="/home/spb/codes/ArepoCoolingTables/tmp_spb/", savefile=None):
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile=None):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.OmegaM = f["Header"].attrs["Omega0"]
@@ -43,7 +43,7 @@ class HaloSpectra(spectra.Spectra):
         cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
         cofm[:,2]+=rr*np.cos(theta)
 
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, cloudy_dir,savefile=savefile)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
 
     def save_file(self):
         """
