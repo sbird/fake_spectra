@@ -50,9 +50,9 @@ class HaloSpectra(spectra.Spectra):
         Save additional halo data to the savefile
         """
         try:
-            f=h5py.File(self.savefile,'r+')
+            f=h5py.File(self.savefile,'w')
         except IOError:
-            print "Could not open ",self.savefile," for writing"
+            raise IOError("Could not open ",self.savefile," for writing")
         grp = f.create_group("halos")
         grp["radii"] = self.sub_radii
         grp["cofm"] = self.sub_cofm
