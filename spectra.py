@@ -532,8 +532,8 @@ class Spectra:
         try:
             rho = self.metals[(elem, ion)][0]
         except KeyError:
-            [rho, vel, temp] = self.SPH_Interpolate_metals('H', 1)
-
+            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
+            self.metals[(elem, ion)] = [rho, vel, temp]
         #Size of a bin in physical m
         binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
         #Convert from physical kg/m^2 to atoms/cm^2
