@@ -281,7 +281,7 @@ class Spectra:
                 raise ValueError
             # Hydrogen mass frac in the data array
             mass_frac *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
-        else:
+        elif ion != -1:
             mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
         ff.close()
         return mass_frac
