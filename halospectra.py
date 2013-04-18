@@ -16,12 +16,9 @@ class HaloSpectra(spectra.Spectra):
             self.savefile=path.join(base,"snapdir_"+str(num).rjust(3,'0'),"spectra.hdf5")
         else:
             self.savefile=savefile
-        #Try to load file
-        self.loaded=0
         try:
             self.load_savefile(self.savefile)
-            self.loaded=1
-            #In this case they will be loaded from the savefile
+            #In this case they will have been loaded from the savefile
             cofm = None
             axis = None
         except (IOError, KeyError):

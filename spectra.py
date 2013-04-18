@@ -29,7 +29,6 @@ import hdfsim
 from scipy.interpolate import UnivariateSpline
 import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
-import autocorr_spectra
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -61,9 +60,10 @@ class Spectra:
             self.savefile=savefile
         #Snapshot data
         try:
-            if self.loaded:
+            try:
+                self.cofm
+            except AttributeError:
                 self.load_savefile(self.savefile)
-            self.loaded = 1
         except (IOError, KeyError):
             print "Reloading from snapshot"
             self.cofm = cofm
