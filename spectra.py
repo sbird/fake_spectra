@@ -61,7 +61,9 @@ class Spectra:
             self.savefile=savefile
         #Snapshot data
         try:
-            self.load_savefile(self.savefile)
+            if self.loaded:
+                self.load_savefile(self.savefile)
+            self.loaded = 1
         except (IOError, KeyError):
             print "Reloading from snapshot"
             self.cofm = cofm
