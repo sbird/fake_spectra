@@ -619,14 +619,17 @@ class Spectra:
         omega_DLA=HIden/length/self.rho_crit()
         return omega_DLA
 
-    def autocorr(self, thresh=20.3, elem = "H", ion = 1):
-        """Compute the autocorrelation function of the DLAs along these spectra."""
+    def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):
+        """
+        Get an array of spectral pixels which is True where there is a DLA, False otherwise
+        """
         col_den = self.get_col_density(elem, ion)
-        dla_den = np.zeros(np.shape(col_den))
-        dla_den[np.where( col_den > 10**thresh )] = 1
-        dla_den -= np.mean(dla_den)
-        if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
-            raise ValueError("Not all spectra are along the same axis")
+        return np.greater(col_den, thresh)
+
+    def get_spectra_proj_pos(self):
+        """Get the position of the spectra projected to their origin"""
+        #if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
+        #    raise ValueError("Not all spectra are along the same axis")
         axis = self.axis[0]
         if axis == 1:
             spos = self.cofm[:,1:]
@@ -634,5 +637,70 @@ class Spectra:
             spos = np.vstack([self.cofm[:,0],self.cofm[:,2]]).T
         if axis == 3:
             spos = self.cofm[:,:2]
-        auto = autocorr_spectra.autocorr_spectra(dla_den, spos, self.box/self.nbins)
-        return auto
+        return spos
+
+    def autocorr(self, thresh=10**20.3, elem = "H", ion = 1, bins=20):
+        """
+        Compute the autocorrelation function of DLAs along these spectra in logarithmic bins
+        Arguments:
+            thresh - DLA threshold column density
+            elem - element to use
+            ion - ionic species to consider
+            bins - Number of bins in resulting autocorrelation
+        """
+        #Autocorrelation bins in log space
+        rbins = np.logspace(0,np.log10(self.box * np.sqrt(3)), num=bins+1)
+        rbins[0] = 0
+        rbins2 = rbins**2
+        rcent = np.array([(rbins[i]+rbins[i+1])/2. for i in xrange(0,bins)])
+        modes = np.zeros(bins)
+        auto = np.zeros(bins)
+        dlas = self.get_overden(thresh, elem, ion)
+        nspectra = np.shape(dlas)[0]
+        #Mean value
+        nbar = np.mean(dlas)
+        dla_ind = np.where(dlas)
+        #Array of spectral distance pairs
+        spos = self.get_spectra_proj_pos()
+        #Squared distance between spectra
+        sdist2 = np.square(np.subtract.outer(spos[:,0], spos[:,0]))+np.square(np.subtract.outer(spos[:,1], spos[:,1]))
+        #Position of pixel along spectra axis
+        pzpos = np.arange(0,self.nbins)*self.box/self.nbins
+        #Squared z-distance between two pixels
+        pdist2 = np.square(np.subtract.outer(pzpos, pzpos))
+        pzpos2 = pzpos**2
+        # For two arrays of length L lying at distance 0 from each other
+        # there will be 2 * 2 * ( L - k )
+        # pairs at a distance k
+        # (except for k = 0, when there will be 2L)
+        lmodes = 4*(self.nbins-np.arange(self.nbins))
+        #Zero mode
+        lmodes[0]/=2
+        for xx in xrange(nspectra):
+            dla_x = np.where(dla_ind[0]==xx)
+            dla_xp = dla_ind[1][dla_x]
+            for yy in xrange(nspectra):
+                # Count pixels:
+                # For two spectra at distance s there will be
+                # 4(L-k) pixels at distance sqrt(s^2 + k^2)
+                #This call to digitize is still the slow part!
+                inbins = np.digitize(sdist2[xx,yy]+pzpos2, rbins2)-1
+                modes[inbins]+=lmodes
+                #Continue if no DLAs here
+                if np.size(dla_xp) == 0:
+                    continue
+                #Pixel pairs where there are DLAs
+                dla_y = np.where(dla_ind[0]==yy)
+                dla_yp = dla_ind[1][dla_y]
+                if np.size(dla_yp) == 0:
+                    continue
+                # Distance between pixels:
+                #the slightly odd indexing is because numpy complains without it
+                dist = np.sqrt(pdist2[dla_xp,:][:, dla_yp]+sdist2[xx,yy])
+                #And the correlation
+                auto += np.histogram(dist, rbins)[0]
+        ind = np.where(modes == 0)
+        modes[ind]=1
+        auto=(auto/modes)/nbar**2 - 1
+        modes[ind]=0
+        return (rbins, modes, auto)
