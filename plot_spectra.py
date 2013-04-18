@@ -3,6 +3,7 @@
 
 import convert_cloudy
 import spectra
+import halospectra
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -54,8 +55,6 @@ class PlottingSpectra(spectra.Spectra):
         #  Size of a single velocity bin
         tau = self.get_tau(elem, ion)
         col_den = self.get_col_density(elem, ion)[i,:]
-        #  Size of a single velocity bin
-        tot_tau = np.sum(tau[i,:])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau_l = tau[i,:]
         tmax = np.max(tau_l)
@@ -92,6 +91,11 @@ class PlottingSpectra(spectra.Spectra):
         ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
         plt.xlim(10**minN, 10**maxN)
         plt.ylim(1e-26,1e-18)
+
+class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
+    """Class to plot things connected with spectra."""
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile=None):
+        halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, res, savefile)
 
 class PlotIonDensity:
     """Class to plot the ionisation fraction of elements as a function of density"""
