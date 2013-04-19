@@ -394,26 +394,19 @@ class Spectra:
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
-    def vel_width_filt(self, elem, line, HI_cut = None, met_cut = 1e13):
-        """Filtered version of vel_width which returns the velocity widths of all
-           spectra with a DLA and metal column density above a certain value
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
         """
-        tau = self.metals[(elem, line)][3]
+        Get an index list of spectra with a DLA in them, and metal column density above a certain value
+        """
         #Remember this is not in log...
-        if HI_cut != None:
-            rho = self.get_col_density("H",1)
-            ind = np.where(np.max(rho,axis=1) > HI_cut)
-            tau = tau[ind]
-            if met_cut != None:
-                rho = self.get_col_density(elem,line)
-                ind = np.where(np.max(rho[ind],axis=1) > met_cut)
-                tau = tau[ind]
-        elif met_cut != None:
-            rho = self.get_col_density(elem,line)
-            ind = np.where(np.max(rho,axis=1) > met_cut)
-            tau = tau[ind]
-        vel_width = self.vel_width(tau)
-        return vel_width
+        if HI_cut == None:
+            HI_cut = 0
+        if met_cut == None:
+            met_cut = 0
+        rho = self.get_col_density(elem,line)
+        rho_H = self.get_col_density("H",1)
+        ind = np.where(np.logical_and(np.max(rho,axis=1) > met_cut, np.max(rho_H,axis=1) > HI_cut))
+        return ind
 
     def vel_width(self, tau):
         """Find the velocity width of a line
@@ -521,7 +514,9 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        vel_width = self.vel_width_filt(elem, line, HI_cut, met_cut)
+        tau = self.metals[(elem, line)][3]
+
+        vel_width = self.vel_width(tau[self.get_filt(elem, line, HI_cut, met_cut)])
         if unres != None:
             ind = np.where(vel_width > unres)
             vel_width = vel_width[ind]
