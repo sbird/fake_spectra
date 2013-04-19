@@ -662,6 +662,7 @@ class Spectra:
         # For two spectra at distance s there will be
         # 4(L-k) pixels at distance sqrt(s^2 + k^2)
         #This call to digitize is still the slow part!
+        #One could write an optimised C version of the next three lines
         lmodes *=2
         for xx in xrange(nspectra):
             for yy in xrange(xx):

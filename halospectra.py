@@ -98,6 +98,12 @@ class HaloSpectra(spectra.Spectra):
 
     def find_associated_halo(self, num):
         """Find the halo sightline num is associated with"""
-        nhalo = self.NumLos/self.repeat
-        nh = num % nhalo
-        return (nh, self.sub_mass[nh], self.sub_cofm[nh], self.sub_radii[nh])
+        nh = num /self.repeat
+        return (nh, self.sub_mass[nh], self.sub_cofm[nh,:], self.sub_radii[nh])
+
+    def line_offsets(self):
+        """Find the distance between each line and its parent halo"""
+        offsets = np.zeros(self.NumLos)
+        for ii in xrange(self.NumLos):
+            offsets[ii] = np.sqrt(np.sum((self.find_associated_halo(ii)[2]-self.cofm[ii])**2))
+        return offsets
