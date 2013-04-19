@@ -394,6 +394,27 @@ class Spectra:
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
+    def vel_width_filt(self, elem, line, HI_cut = None, met_cut = 1e13):
+        """Filtered version of vel_width which returns the velocity widths of all
+           spectra with a DLA and metal column density above a certain value
+        """
+        tau = self.metals[(elem, line)][3]
+        #Remember this is not in log...
+        if HI_cut != None:
+            rho = self.get_col_density("H",1)
+            ind = np.where(np.max(rho,axis=1) > HI_cut)
+            tau = tau[ind]
+            if met_cut != None:
+                rho = self.get_col_density(elem,line)
+                ind = np.where(np.max(rho[ind],axis=1) > met_cut)
+                tau = tau[ind]
+        elif met_cut != None:
+            rho = self.get_col_density(elem,line)
+            ind = np.where(np.max(rho,axis=1) > met_cut)
+            tau = tau[ind]
+        vel_width = self.vel_width(tau)
+        return vel_width
+
     def vel_width(self, tau):
         """Find the velocity width of a line
            defined as the width of 90% of the integrated optical depth.
@@ -500,21 +521,7 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        tau = self.metals[(elem, line)][3]
-        #Remember this is not in log...
-        if HI_cut != None:
-            rho = self.get_col_density("H",1)
-            ind = np.where(np.max(rho,axis=1) > HI_cut)
-            tau = tau[ind]
-            if met_cut != None:
-                rho = self.get_col_density(elem,line)
-                ind = np.where(np.max(rho[ind],axis=1) > met_cut)
-                tau = tau[ind]
-        elif met_cut != None:
-            rho = self.get_col_density(elem,line)
-            ind = np.where(np.max(rho,axis=1) > met_cut)
-            tau = tau[ind]
-        vel_width = self.vel_width(tau)
+        vel_width = self.vel_width_filt(elem, line, HI_cut, met_cut)
         if unres != None:
             ind = np.where(vel_width > unres)
             vel_width = vel_width[ind]
@@ -663,7 +670,7 @@ class Spectra:
         # 4(L-k) pixels at distance sqrt(s^2 + k^2)
         #This call to digitize is still the slow part!
         #One could write an optimised C version of the next three lines
-        lmodes *=2
+        lmodes *= 2
         for xx in xrange(nspectra):
             for yy in xrange(xx):
                 inbins = np.digitize(sdist2[xx,yy]+pzpos2, rbins2)-1
