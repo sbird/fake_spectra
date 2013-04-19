@@ -137,6 +137,20 @@ def plot_vel_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto", vmax = 0.5)
     plt.colorbar()
 
+def plot_sub_mass_vel(sim, snap, ff=False):
+    """Load a simulation and plot the halos mass vs velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlotHaloSpectra(snap, base+halo)
+    ind = hspec.get_filt("Si",2)
+    vel=hspec.vel_width(hspec.get_tau("Si",2))
+    (H, xedges, yedges) = np.histogram2d(np.log10(np.repeat(hspec.sub_mass,3)[ind]), np.log10(vel[ind]), bins=30,normed=True)
+    extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
+    plt.imshow(H, extent=extent, aspect="auto")
+    plt.colorbar()
+
 
 def plot_vel_HI_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
@@ -191,10 +205,10 @@ reds = {54:4, 60:3, 68:2}
 #save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
 #plt.clf()
 
-for ss in (0,1,2,3):
-    plot_spectrum_density_velocity(ss,60, 25)
-    save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
-    plt.clf()
+#for ss in (0,1,2,3):
+    #plot_spectrum_density_velocity(ss,60, 25)
+    #save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
+    #plt.clf()
 
 
 ##Best-fit base model
@@ -207,16 +221,16 @@ for ss in (0,1,2,3):
 
 #test_spec_resolution()
 
-for sp in (54,60,68):
-    #The vel widths for different simulations
-    for ss in (3,2,1,0):
-        plot_vel_width_sim(ss, sp, colors[ss], HI_cut = 10**20.3)
+#for sp in (54,60,68):
+    ##The vel widths for different simulations
+    #for ss in (3,2,1,0):
+        #plot_vel_width_sim(ss, sp, colors[ss], HI_cut = 10**20.3)
 
-    vel_data.plot_prochaska_2008_data()
-    plt.ylim(1e-5, 2e-2)
-    plt.xlim(10, 1000)
-    save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[sp])))
-    plt.clf()
+    #vel_data.plot_prochaska_2008_data()
+    #plt.ylim(1e-5, 2e-2)
+    #plt.xlim(10, 1000)
+    #save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[sp])))
+    #plt.clf()
 
 ##A plot of the redshift evolution
 #zz = [54,60,68]
@@ -253,6 +267,13 @@ for sp in (54,60,68):
     #plot_vel_width_unres(ii,60)
     #save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres"))
     #plt.clf()
+
+for ii in (0,1,2,3):
+    #Plot halo mass vs vw.
+    plot_sub_mass_vel(ii, 60)
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_sub_mass"))
+    plt.clf()
+
 
 for ii in (0,1,2,3):
     #Plot col_density of metals vs HI
