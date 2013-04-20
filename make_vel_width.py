@@ -176,9 +176,9 @@ def test_spec_resolution():
     #Do spectral resolution test
     halo = "Cosmo0_V6"
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(68, base+halo, None, None, savefile=base+halo+"/snapdir_068/spectra.hdf5")
+    hspec = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra.hdf5")
     hspec.plot_vel_width("Si",2, color="red")
-    hspec2 = ps.PlottingSpectra(68, base+halo, None, None, savefile=base+halo+"/snapdir_068/spectra4096.hdf5")
+    hspec2 = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra4096.hdf5")
     hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     plt.xlim(1, 1000)

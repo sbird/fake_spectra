@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm, axis, res=1., savefile=None):
+    def __init__(self,num, base, cofm, axis, res=1., savefile="spectra.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red"):
@@ -94,7 +94,7 @@ class PlottingSpectra(spectra.Spectra):
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile=None):
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="spectra.hdf5"):
         halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, res, savefile)
 
 class PlotIonDensity:

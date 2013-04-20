@@ -39,7 +39,7 @@ class Spectra:
             axis - axis along which to put the sightline
             res (optional) - Spectra pixel resolution in km/s
     """
-    def __init__(self,num, base,cofm, axis, res=1., savefile=None):
+    def __init__(self,num, base,cofm, axis, res=1., savefile="spectra.hdf5"):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -54,10 +54,7 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
-        if savefile == None:
-            self.savefile=path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),"spectra.hdf5")
-        else:
-            self.savefile=savefile
+        self.savefile = path.join(self.base,"snapdir_"+str(self.num).rjust(3,'0'),savefile)
         #Snapshot data
         try:
             try:

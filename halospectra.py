@@ -11,11 +11,8 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile=None):
-        if savefile == None:
-            self.savefile=path.join(base,"snapdir_"+str(num).rjust(3,'0'),"spectra.hdf5")
-        else:
-            self.savefile=savefile
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="spectra.hdf5"):
+        self.savefile = path.join(base,"snapdir_"+str(num).rjust(3,'0'),savefile)
         try:
             self.load_savefile(self.savefile)
             #In this case they will have been loaded from the savefile
