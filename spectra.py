@@ -431,33 +431,6 @@ class Spectra:
         #Return the width
         return vel_width
 
-    def den_width(self, den):
-        """Find the density width of a spectrum
-           defined as the width of 90% of the integrated column density.
-           This is a little complicated by periodic boxes,
-           so we internally cycle the line until the deepest absorption
-           is in the middle"""
-        #  Size of a single velocity bin
-        tot_den = np.sum(den,axis = 1)
-        den_width = np.zeros(np.shape(tot_den))
-        for ll in np.arange(0, np.shape(den)[0]):
-            #Deal with periodicity by making sure the deepest point is in the middle
-            den_l = den[ll,:]
-            max_t = np.max(den_l)
-            if max_t == 0:
-                den_width[ll] = 0
-                continue
-            ind_m = np.where(den_l == max_t)[0][0]
-            den_l = np.roll(den_l, np.size(den_l)/2- ind_m)
-            (low, high) = self._vel_width_bound(den_l, tot_den[ll])
-            if np.size(low) > 1:
-                low = low[0]
-            if np.size(high) > 1:
-                high = high[0]
-            den_width[ll] = self.dvbin*(high-low)
-        #Return the width
-        return den_width
-
     def _vel_width_bound(self, tau, tot_tau):
         """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
         cum_tau = np.cumsum(tau)
@@ -469,6 +442,15 @@ class Spectra:
         tdiff = cum_tau - 0.05*tot_tau
         spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
         low = spl.roots()
+        if np.size(low) == 0:
+            low = 0
+        if np.size(high) == 0:
+            high = np.size(cum_tau)-1
+        if np.size(low) > 1:
+            low = low[0]
+        if np.size(high) > 1:
+            high = high[0]
+
         return (low, high)
 
     def delta(self, rho):
@@ -488,7 +470,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 5):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
