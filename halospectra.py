@@ -11,8 +11,10 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra.hdf5"):
-        self.savefile = path.join(base,"snapdir_"+str(num).rjust(3,'0'),savefile)
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra.hdf5", savedir=None):
+        if savedir == None:
+            savedir=base
+        self.savefile = path.join(savedir,"snapdir_"+str(num).rjust(3,'0'),savefile)
         try:
             self.load_savefile(self.savefile)
             #In this case they will have been loaded from the savefile
@@ -40,7 +42,7 @@ class HaloSpectra(spectra.Spectra):
             np.random.seed(23)
             cofm = self.get_cofm()
 
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir)
 
         self.replace_not_DLA()
 
