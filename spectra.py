@@ -158,7 +158,7 @@ class Spectra:
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False):
+    def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False, ind=None):
         """Interpolate particles to lines of sight, calculating density, temperature and velocity
         of various metal species along the line of sight.
         HI is special-cased.
@@ -175,10 +175,10 @@ class Spectra:
             Units are physical kg/m^3, km/s and K.
         """
         #Get array sizes
-        (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion, get_rho_H)
+        (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion, get_rho_H, ind)
         #Do remaining files
         for fn in self.files[1:]:
-            (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion, get_rho_H)
+            (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion, get_rho_H, ind)
             #Add new file
             if get_rho_H:
                 rho_H += trho_H
@@ -198,7 +198,7 @@ class Spectra:
             return metals
 
 
-    def _interpolate_single_file(self,fn, elem, ion, rho_H):
+    def _interpolate_single_file(self,fn, elem, ion, rho_H, ind=None):
         """Read arrays and perform interpolation for a single file"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -224,7 +224,11 @@ class Spectra:
         #        raise ValueError
         #Get rid of ind so we have some memory for the interpolator
         del ind
-        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm)
+        if ind != None:
+            cofm = self.cofm[ind]
+        else:
+            cofm = self.cofm
+        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm[ind])
         if not rho_H:
             out = (None,)+out
         return out
@@ -391,7 +395,7 @@ class Spectra:
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
+    def get_filt(self, elem, line, HI_cut = 10**17, met_cut = 1e13):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """

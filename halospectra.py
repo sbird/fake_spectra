@@ -11,7 +11,7 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="spectra.hdf5"):
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra.hdf5"):
         self.savefile = path.join(base,"snapdir_"+str(num).rjust(3,'0'),savefile)
         try:
             self.load_savefile(self.savefile)
@@ -31,27 +31,55 @@ class HaloSpectra(spectra.Spectra):
             self.NumLos = np.size(self.sub_mass)
             #All through y axis
             axis = np.ones(self.NumLos)
-            axis[self.NumLos/3:2*self.NumLos/3] = 2
-            axis[2*self.NumLos/3:self.NumLos] = 3
-            cofm = np.repeat(cofm,repeat,axis=0)
+            #axis[self.NumLos/3:2*self.NumLos/3] = 2
+            #axis[2*self.NumLos/3:self.NumLos] = 3
             axis = np.repeat(axis,repeat)
             self.NumLos*=repeat
             self.repeat = repeat
-            #Perturb the sightlines within a sphere of half the virial radius.
-            #We want a representative sample of DLAs.
-            maxr = self.sub_radii/2.
             #Re-seed for repeatability
             np.random.seed(23)
-            #Generate random sphericals
-            theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
-            phi = 2*math.pi*np.random.random_sample(self.NumLos)
-            rr = np.repeat(maxr,repeat)*np.random.random_sample(self.NumLos)
-            #Add them to halo centers
-            cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
-            cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
-            cofm[:,2]+=rr*np.cos(theta)
+            cofm = self.get_cofm()
 
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile)
+
+        self.replace_not_DLA()
+
+    def replace_not_DLA(self):
+        """
+        Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
+        """
+        ind = self.filter_DLA()
+        while np.size(ind) > 0:
+            #Replace spectra that did not result in a DLA
+            cofm_new = self.get_cofm()
+            self.cofm[ind] = cofm_new[ind]
+            [rho, vel, temp] = self.SPH_Interpolate_metals("H", 1, ind = ind)
+            self.metals[("H", 1)][0][ind] = rho
+            self.metals[("H", 1)][1][ind] = vel
+            self.metals[("H", 1)][2][ind] = temp
+            ind = self.filter_DLA()
+
+    def get_cofm(self):
+        """Find a bunch more sightlines"""
+        cofm = np.repeat(self.sub_cofm,self.repeat,axis=0)
+        #Perturb the sightlines within a sphere of the virial radius.
+        #We want a representative sample of DLAs.
+        maxr = self.sub_radii
+        #Generate random sphericals
+        theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
+        phi = 2*math.pi*np.random.random_sample(self.NumLos)
+        rr = np.repeat(maxr,self.repeat)*np.random.random_sample(self.NumLos)
+        #Add them to halo centers
+        cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
+        cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
+        cofm[:,2]+=rr*np.cos(theta)
+        return cofm
+
+    def filter_DLA(self):
+        """Find sightlines without a DLA"""
+        col_den = self.get_col_density("H",1)
+        ind = np.where(np.max(col_den, axis=1) < 10**20.3)
+        return ind
 
     def save_file(self):
         """
