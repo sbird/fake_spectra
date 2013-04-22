@@ -200,7 +200,7 @@ class Spectra:
             return metals
 
 
-    def _interpolate_single_file(self,fn, elem, ion, rho_H, ind=None):
+    def _interpolate_single_file(self,fn, elem, ion, rho_H, h_ind=None):
         """Read arrays and perform interpolation for a single file"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -226,11 +226,13 @@ class Spectra:
         #        raise ValueError
         #Get rid of ind so we have some memory for the interpolator
         del ind
-        if ind != None:
-            cofm = self.cofm[ind]
+        if h_ind != None:
+            cofm = self.cofm[h_ind]
+            axis = self.axis[h_ind]
         else:
             cofm = self.cofm
-        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, self.axis, self.cofm[ind])
+            axis = self.axis
+        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
         if not rho_H:
             out = (None,)+out
         return out
