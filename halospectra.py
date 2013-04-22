@@ -44,7 +44,9 @@ class HaloSpectra(spectra.Spectra):
 
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir)
 
-        self.replace_not_DLA()
+        #If we did not load from a snapshot
+        if cofm != None:
+            self.replace_not_DLA()
 
     def replace_not_DLA(self):
         """
