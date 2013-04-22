@@ -398,6 +398,14 @@ class Spectra:
             tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
+        except IndexError:
+            #This occurs when we have calculated rho, vel and T, but not tau
+            [rho, vel, temp] = self.metals[(elem, ion)]
+            #Compute tau for this metal ion
+            (nlos, nbins) = np.shape(rho)
+            tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+            self.metals[(elem, ion)] = [rho, vel, temp, tau]
+            return tau
 
     def get_filt(self, elem, line, HI_cut = 10**17, met_cut = 1e13):
         """
