@@ -55,8 +55,8 @@ class Spectra:
         self.num = num
         self.base = base
         if savedir == None:
-            savedir=base
-        self.savefile = path.join(savedir,"snapdir_"+str(self.num).rjust(3,'0'),savefile)
+            savedir = path.join(base,"snapdir_"+str(self.num).rjust(3,'0'))
+        self.savefile = path.join(savedir,savefile)
         #Snapshot data
         try:
             try:
