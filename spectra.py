@@ -98,8 +98,8 @@ class Spectra:
             self.dvbin = res # velocity bin size (kms^-1)
             self.dzgrid = self.dvbin * MPC / self.Hz #bin size m
             self.nbins = int(self.box * rscale / self.dzgrid) #Number of bins to achieve the required resolution
-        #Species we can use
-        self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
+        #Species we can use: Z is total metallicity
+        self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Generate cloudy tables
         self.cloudy_table = convert_cloudy.CloudyTable(self.red)
         #Line data
@@ -272,7 +272,12 @@ class Spectra:
             #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
             metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3],dtype=np.float32)
             mass_frac = metal_abund[nelem]*np.ones(np.shape(data["Density"]),dtype=np.float32)
-
+        except IndexError:
+            #Calculate the total metallicity
+            if elem != "Z":
+                raise IndexError("Species not found")
+            mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
+            mass_frac = mass_frac[ind]
         #In kg/m^3
         den = np.array(data["Density"], dtype = np.float32)*self.dscale
         #In (hydrogen) atoms / cm^3
