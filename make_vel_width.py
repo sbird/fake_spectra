@@ -42,7 +42,7 @@ def plot_rel_vel_width_DLA(sim, snap, color="red"):
     halo = "Cosmo"+str(sim)+"_V6"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
-    (vbin, vels1) = hspec.vel_width_hist("Si", 2)
+    (vbin, vels1) = hspec.vel_width_hist("Si", 2, HI_cut = None)
     (vbin, vels_d) = hspec.vel_width_hist("Si", 2, HI_cut = 10**20.3)
     mm = np.min((np.size(vels_d), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels_d[:mm]/vels1[:mm], color=color)
@@ -120,7 +120,7 @@ def plot_vel_col_den(sim, snap, ff=False):
     ind = np.where(metal_col_den > 1e12)
     (H, xedges, yedges) = np.histogram2d(np.log10(metal_col_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
-    plt.imshow(H, extent=extent, aspect="auto", vmax = 0.5)
+    plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
 def plot_vel_den(sim, snap, ff=False):
@@ -131,10 +131,11 @@ def plot_vel_den(sim, snap, ff=False):
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     vel = hspec.vel_width(hspec.get_tau("Si",2))
-    den = hspec.den_width(hspec.get_col_density("Si", 2))
-    (H, xedges, yedges) = np.histogram2d(np.log10(den), np.log10(vel), bins=30,normed=True)
+    den = hspec.vel_width(hspec.get_col_density("Si", 2))
+    ind = hspec.get_filt("Si",2)
+    (H, xedges, yedges) = np.histogram2d(np.log10(den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
-    plt.imshow(H, extent=extent, aspect="auto", vmax = 0.5)
+    plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
 def plot_sub_mass_vel(sim, snap, ff=False):
@@ -146,11 +147,26 @@ def plot_sub_mass_vel(sim, snap, ff=False):
     hspec = ps.PlotHaloSpectra(snap, base+halo)
     ind = hspec.get_filt("Si",2)
     vel=hspec.vel_width(hspec.get_tau("Si",2))
-    (H, xedges, yedges) = np.histogram2d(np.log10(np.repeat(hspec.sub_mass,3)[ind]), np.log10(vel[ind]), bins=30,normed=True)
+    #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
+    (H, xedges, yedges) = np.histogram2d(np.log10(np.repeat(np.sqrt(4.302e-3*hspec.sub_mass/hspec.sub_radii/1000),3)[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
+def plot_sub_mass_vel(sim, snap, ff=False):
+    """Load a simulation and plot the halos mass vs velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlotHaloSpectra(snap, base+halo)
+    ind = hspec.get_filt("Si",2)
+    vel=hspec.vel_width(hspec.get_tau("Si",2))
+    #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
+    virial = np.repeat(np.sqrt(4.302e-3*hspec.sub_mass/hspec.sub_radii/1000),3)
+    (H, xedges) = np.histogram(vel[ind]/virial[ind], bins=20,normed=True)
+    print np.median(vel[ind]/virial[ind])
+    plt.plot(xedges[:-1], H)
 
 def plot_vel_HI_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
