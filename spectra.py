@@ -272,10 +272,10 @@ class Spectra:
             #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
             metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3],dtype=np.float32)
             mass_frac = metal_abund[nelem]*np.ones(np.shape(data["Density"]),dtype=np.float32)
-        except IndexError:
+        except ValueError:
             #Calculate the total metallicity
             if elem != "Z":
-                raise IndexError("Species not found")
+                raise ValueError("Species not found")
             mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
             mass_frac = mass_frac[ind]
         #In kg/m^3
@@ -412,7 +412,7 @@ class Spectra:
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
-    def get_filt(self, elem, line, HI_cut = 10**17, met_cut = 1e13):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
