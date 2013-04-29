@@ -544,7 +544,10 @@ class Spectra:
         #Size of a bin in physical m
         binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
         #Convert from physical kg/m^2 to atoms/cm^2
-        convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
+        if elem == "Z":
+            convert = 1
+        else:
+            convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
         return rho*binsz*convert
 
     def get_vel(self, elem, ion):
