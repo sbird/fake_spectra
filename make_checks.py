@@ -1,0 +1,117 @@
+#!/usr/bin env python
+# -*- coding: utf-8 -*-
+"""Make some plots of the velocity widths from the cosmo runs"""
+
+import matplotlib
+matplotlib.use('PDF')
+
+import matplotlib.pyplot as plt
+
+import plot_spectra as ps
+import vel_data
+import os.path as path
+import numpy as np
+from save_figure import save_figure
+
+base="/home/spb/scratch/Cosmo/"
+outdir = base + "plots/checks/"
+print "Plots at: ",outdir
+
+def plot_vel_width_metcol(sim, snap, ff=False):
+    """Load a simulation and plot its velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec.plot_vel_width("Si", 2, met_cut = None)
+    hspec.plot_vel_width("Si", 2, met_cut = 1e13, color="blue")
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_low_metals_z"+str(snap)))
+    plt.clf()
+    (vbin, vels1) = hspec.vel_width_hist("Si", 2, met_cut = None)
+    (vbin, vels2) = hspec.vel_width_hist("Si", 2, met_cut = 1e13)
+    mm = np.min((np.size(vels2), np.size(vels1)))
+    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_low_metals_rel_z"+str(snap)))
+    plt.clf()
+
+def plot_vel_width_unres(sim, snap, ff=False):
+    """Load a simulation and plot its velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec.plot_vel_width("Si", 2, unres = None)
+    hspec.plot_vel_width("Si", 2, unres=5, color="blue")
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres_z"+str(snap)))
+    plt.clf()
+    (vbin, vels1) = hspec.vel_width_hist("Si", 2, unres = None)
+    (vbin, vels2) = hspec.vel_width_hist("Si", 2, unres=5)
+    mm = np.min((np.size(vels2), np.size(vels1)))
+    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres_rel_z"+str(snap)))
+    plt.clf()
+
+def plot_vel_width_DLA(sim, snap, ff=False):
+    """Plot the effect of the HI cut"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec.plot_vel_width("Si", 2, color="red", HI_cut = None)
+    hspec.plot_vel_width("Si", 2, color="blue", HI_cut = 10**20.3)
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_DLA_z"+str(snap)))
+    plt.clf()
+    (vbin, vels1) = hspec.vel_width_hist("Si", 2, HI_cut = None)
+    (vbin, vels2) = hspec.vel_width_hist("Si", 2, HI_cut = 10**20.3)
+    mm = np.min((np.size(vels2), np.size(vels1)))
+    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_DLA_rel_z"+str(snap)))
+    plt.clf()
+
+def test_spec_resolution():
+    """Plot the velocity widths for different spectral resolutions"""
+    #Do spectral resolution test
+    halo = "Cosmo0_V6"
+    #Higher resolution spectrum
+    hspec = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra.hdf5")
+    hspec.plot_vel_width("Si",2, color="red")
+    hspec2 = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra4096.hdf5")
+    hspec2.plot_vel_width("Si", 2, color="blue")
+    vel_data.plot_prochaska_2008_data()
+    plt.xlim(1, 1000)
+    plt.ylim(1e-5, 2e-2)
+    save_figure(path.join(outdir,"cosmo_vel_width_z3_spectra_pix"))
+    plt.clf()
+
+    metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
+    vel= hspec.vel_width(hspec.metals[("Si",2)][3])
+    plt.loglog(metal_col_den, vel, 'o')
+    save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix_low"))
+    plt.clf()
+
+    metal_col_den = np.max(hspec2.get_col_density("Si", 2),axis=1)
+    vel= hspec.vel_width(hspec2.metals[("Si",2)][3])
+    plt.loglog(metal_col_den, vel, 'o')
+    save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
+    plt.clf()
+
+
+#test_spec_resolution()
+
+for ii in (0,3):
+    #Plot effect of ignoring low column density metals
+    plot_vel_width_metcol(ii, 60)
+
+for ii in (0,3):
+    #Plot effect of HI cut
+    plot_vel_width_DLA(ii,60)
+
+for ii in (0,3):
+    #Plot effect of HI cut
+    plot_vel_width_unres(ii,60)
