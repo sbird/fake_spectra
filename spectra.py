@@ -199,15 +199,21 @@ class Spectra:
         else:
             return metals
 
-
     def _interpolate_single_file(self,fn, elem, ion, rho_H, h_ind=None):
         """Read arrays and perform interpolation for a single file"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
         hh = hsml.get_smooth_length(data)
+        #Filter lines
+        if h_ind != None:
+            cofm = self.cofm[h_ind,:]
+            axis = self.axis[h_ind]
+        else:
+            cofm = self.cofm
+            axis = self.axis
         #Find particles we care about
-        ind = self.particles_near_lines(pos, hh)
+        ind = self.particles_near_lines(pos, hh,axis,cofm)
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
@@ -226,20 +232,18 @@ class Spectra:
         #        raise ValueError
         #Get rid of ind so we have some memory for the interpolator
         del ind
-        if h_ind != None:
-            cofm = self.cofm[h_ind]
-            axis = self.axis[h_ind]
-        else:
-            cofm = self.cofm
-            axis = self.axis
         out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
         if not rho_H:
             out = (None,)+out
         return out
 
-    def particles_near_lines(self, pos, hh):
+    def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
-        ind = _near_lines(self.box, pos, hh, self.axis, self.cofm)
+        if axis == None:
+            axis = self.axis
+        if cofm == None:
+            cofm = self.cofm
+        ind = _near_lines(self.box, pos, hh, axis, cofm)
         return ind
 
     def get_mass_frac(self,fn,elem, ion,ind=None):

@@ -85,9 +85,9 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
     //Number of metal species
 /*     size[2] = nspecies; */
 
-    if(NumLos != PyArray_DIM(axis,0))
+    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
     {
-      PyErr_SetString(PyExc_ValueError, "cofm and axis should have the same length.\n");
+      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
       return NULL;
     }
 
