@@ -488,7 +488,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 5):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 5, tau=None):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -514,7 +514,8 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        tau = self.metals[(elem, line)][3]
+        if tau == None:
+            tau = self.get_tau(elem, line, 2)
 
         vel_width = self.vel_width(tau[self.get_filt(elem, line, HI_cut, met_cut)])
         if unres != None:
