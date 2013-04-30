@@ -131,8 +131,10 @@ class HaloSpectra(spectra.Spectra):
         return (nh, self.sub_mass[nh], self.sub_cofm[nh,:], self.sub_radii[nh])
 
     def line_offsets(self):
-        """Find the distance between each line and its parent halo"""
+        """Find the minimum distance between each line and its parent halo"""
         offsets = np.zeros(self.NumLos)
-        for ii in xrange(self.NumLos):
-            offsets[ii] = np.sqrt(np.sum((self.find_associated_halo(ii)[2]-self.cofm[ii])**2))
+        hcofm = np.array([self.find_associated_halo(ii)[2] for ii in xrange(self.NumLos)])
+        hpos = self.get_spectra_proj_pos(cofm=hcofm)
+        lpos = self.get_spectra_proj_pos()
+        offsets = np.sqrt(np.sum((hpos-lpos)**2,axis=1))
         return offsets

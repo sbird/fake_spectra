@@ -648,17 +648,19 @@ class Spectra:
         col_den = self.get_col_density(elem, ion)
         return np.greater(col_den, thresh)
 
-    def get_spectra_proj_pos(self):
+    def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
-        #if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
-        #    raise ValueError("Not all spectra are along the same axis")
+        if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
+            raise ValueError("Not all spectra are along the same axis")
+        if cofm == None:
+            cofm = self.cofm
         axis = self.axis[0]
         if axis == 1:
-            spos = self.cofm[:,1:]
+            spos = cofm[:,1:]
         if axis == 2:
-            spos = np.vstack([self.cofm[:,0],self.cofm[:,2]]).T
+            spos = np.vstack([cofm[:,0],cofm[:,2]]).T
         if axis == 3:
-            spos = self.cofm[:,:2]
+            spos = cofm[:,:2]
         return spos
 
     def _count_modes(self, rbins2, sdist2, pzpos, nspectra):
