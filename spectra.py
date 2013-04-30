@@ -288,14 +288,15 @@ class Spectra:
         den = den[ind]
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
-        #Special case H1:
-        if elem == 'H':
-            if ion != 1:
-                raise ValueError
-            # Hydrogen mass frac in the data array
-            mass_frac *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
-        elif ion != -1:
-            mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
+        if ion != -1:
+            #Special case H1:
+            if elem == 'H':
+                if ion != 1:
+                    raise ValueError
+                # Hydrogen mass frac in the data array
+                mass_frac *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
+            else:
+                mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
         ff.close()
         return mass_frac
 
@@ -554,6 +555,12 @@ class Spectra:
         if elem != "Z":
             convert /= self.lines.get_mass(elem)
         return rho*binsz*convert
+
+    def get_H_col_density(self):
+        """Compute the density in each pixel for neutral hydrogen and total gas"""
+        [rho_H,rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion, get_rho_H=True)
+        self.metals[("H", 1)] = [rho, vel, temp]
+        self.metals[("H", -1)] = [rho_H,]
 
     def get_vel(self, elem, ion):
         """Get the velocity for a given species, assuming already calculated"""
