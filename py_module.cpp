@@ -166,9 +166,9 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     Npart = PyArray_DIM(pos,0);
     los_table=(los *)malloc(NumLos*sizeof(los));
 
-    if(NumLos != PyArray_DIM(axis,0))
+    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
     {
-      PyErr_SetString(PyExc_ValueError, "cofm and axis should have the same length.\n");
+      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
       return NULL;
     }
 
