@@ -302,8 +302,8 @@ class Spectra:
 
     def get_metallicity(self, solar=0.0133):
         """Return the metallicity, as M/H"""
-        MM = hspec2.get_col_density("Z",-1)
-        HH = hspec2.get_col_density("H",-1)
+        MM = self.get_col_density("Z",-1)
+        HH = self.get_col_density("H",-1)
         #Use only observable metal lines
         ind = np.where(np.logical_and(MM > 1e10 ,HH > 0))
         return (MM[ind]/HH[ind]/solar)
@@ -558,7 +558,7 @@ class Spectra:
 
     def get_H_col_density(self):
         """Compute the density in each pixel for neutral hydrogen and total gas"""
-        [rho_H,rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion, get_rho_H=True)
+        [rho_H,rho, vel, temp] = self.SPH_Interpolate_metals("H", 1, get_rho_H=True)
         self.metals[("H", 1)] = [rho, vel, temp]
         self.metals[("H", -1)] = [rho_H,]
 
