@@ -207,7 +207,7 @@ class Spectra:
         hh = hsml.get_smooth_length(data)
         #Filter lines
         if h_ind != None:
-            cofm = self.cofm[h_ind,:]
+            cofm = self.cofm[h_ind]
             axis = self.axis[h_ind]
         else:
             cofm = self.cofm
@@ -267,10 +267,6 @@ class Spectra:
         #Get metallicity of this metal species
         try:
             mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
-            mass_frac = mass_frac[ind]
-            #Deal with floating point roundoff - mass_frac will sometimes be negative
-            #10^-30 is Cloudy's definition of zero.
-            mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
         except KeyError:
             #If GFM_Metals is not defined, fall back to a guess.
             #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
@@ -279,9 +275,12 @@ class Spectra:
         except ValueError:
             #Calculate the total metallicity
             if elem != "Z":
-                raise ValueError("Species not found")
+                raise ValueError("Species "+elem+" not found")
             mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
-            mass_frac = mass_frac[ind]
+        mass_frac = mass_frac[ind]
+        #Deal with floating point roundoff - mass_frac will sometimes be negative
+        #10^-30 is Cloudy's definition of zero.
+        mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
         #In kg/m^3
         den = np.array(data["Density"], dtype = np.float32)*self.dscale
         #In (hydrogen) atoms / cm^3
@@ -300,6 +299,13 @@ class Spectra:
         ff.close()
         return mass_frac
 
+    def get_metallicity(self, solar=0.0133):
+        """Return the metallicity, as M/H"""
+        MM = hspec2.get_col_density("Z",-1)
+        HH = hspec2.get_col_density("H",-1)
+        #Use only observable metal lines
+        ind = np.where(np.logical_and(MM > 1e10 ,HH > 0))
+        return (MM[ind]/HH[ind]/solar)
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
@@ -544,10 +550,9 @@ class Spectra:
         #Size of a bin in physical m
         binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
         #Convert from physical kg/m^2 to atoms/cm^2
-        if elem == "Z":
-            convert = 1
-        else:
-            convert = 1./self.PROTONMASS/1e4/self.lines.get_mass(elem)
+        convert = 1./self.PROTONMASS/1e4
+        if elem != "Z":
+            convert /= self.lines.get_mass(elem)
         return rho*binsz*convert
 
     def get_vel(self, elem, ion):
