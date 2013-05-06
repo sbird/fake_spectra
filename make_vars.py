@@ -65,13 +65,17 @@ def plot_rel_vel_width_temp(sim1, snap):
 def plot_rel_vel_width_vel(sim1, snap):
     """Load and make a plot of the difference from neglecting velocity broadening"""
     halo1 = "Cosmo"+str(sim1)+"_V6"
-    hspec1 = ps.PlottingSpectra(snap, base+halo1, None, None)
+    hspec1 = ps.PlotHaloSpectra(snap, base+halo1, None, None)
     hspec1.plot_vel_width("Si", 2, color="red")
     [rho, vel, temp] = hspec1.metals[("Si", 2)][:3]
     #Compute tau for this metal ion
     (nlos, nbins) = np.shape(rho)
     print sim1,"vel = ",np.mean(vel),np.median(vel)
-    tau_vv = np.array([hspec1.compute_absorption("Si", 2, 2, rho[n,:], np.zeros_like(vel[n,:]), temp[n,:]) for n in xrange(0, nlos)])
+    #Use virial velocity of halo at this radius
+    virial = np.repeat(np.sqrt(4.302e-3*hspec1.sub_mass/1000),3)
+    pzpos = np.arange(0,hspec1.nbins)*hspec1.box/hspec1.nbins
+    offset = np.sqrt(np.add.outer(hspec1.line_offsets()**2,pzpos**2))
+    tau_vv = np.array([hspec1.compute_absorption("Si", 2, 2, rho[n,:], virial[n]/offset[n,:], temp[n,:]) for n in xrange(0, nlos)])
     (vbin, vels2) = hspec1.vel_width_hist("Si", 2,tau=tau_vv)
     plt.loglog(vbin, vels2, color="blue", lw=3)
     vel_data.plot_prochaska_2008_data()
@@ -84,9 +88,9 @@ def plot_rel_vel_width_vel(sim1, snap):
     plt.clf()
 
 
-for ii in (0,3):
-    #Plot effect of ignoring temperature broadening
-    plot_rel_vel_width_temp(ii, 60)
+#for ii in (0,3):
+    ##Plot effect of ignoring temperature broadening
+    #plot_rel_vel_width_temp(ii, 60)
 
 for ii in (0,3):
     #Plot effect of ignoring temperature broadening
