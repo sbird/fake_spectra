@@ -27,13 +27,13 @@ def plot_vel_width_metcol(sim, snap, ff=False):
     hspec.plot_vel_width("Si", 2, met_cut = None)
     hspec.plot_vel_width("Si", 2, met_cut = 1e13, color="blue")
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_low_metals_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_z"+str(snap)))
     plt.clf()
     (vbin, vels1) = hspec.vel_width_hist("Si", 2, met_cut = None)
     (vbin, vels2) = hspec.vel_width_hist("Si", 2, met_cut = 1e13)
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_low_metals_rel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_rel_z"+str(snap)))
     plt.clf()
 
 def plot_vel_width_unres(sim, snap, ff=False):
@@ -46,13 +46,36 @@ def plot_vel_width_unres(sim, snap, ff=False):
     hspec.plot_vel_width("Si", 2, unres = None)
     hspec.plot_vel_width("Si", 2, unres=5, color="blue")
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_unres_z"+str(snap)))
     plt.clf()
     (vbin, vels1) = hspec.vel_width_hist("Si", 2, unres = None)
     (vbin, vels2) = hspec.vel_width_hist("Si", 2, unres=5)
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_unres_rel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_unres_rel_z"+str(snap)))
+    plt.clf()
+
+def plot_vel_width_SiII(sim, snap, ff=False):
+    """
+       Plot the change in velocity widths between the full calculation and
+       setting n(Si+)/n(Si) = n(HI)/n(H)
+    """
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlotHaloSpectra(snap, base+halo)
+    hspec.plot_vel_width("Si", 2)
+    hspecSi = ps.PlotHaloSpectra(snap, base+halo,savefile="SiHI_spectra.hdf5")
+    hspecSi.plot_vel_width("Si", 2, color="blue")
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_SiHI_z"+str(snap)))
+    plt.clf()
+    (vbin, vels1) = hspec.vel_width_hist("Si", 2)
+    (vbin, vels2) = hspecSi.vel_width_hist("Si", 2)
+    mm = np.min((np.size(vels2), np.size(vels1)))
+    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_SiHI_rel_z"+str(snap)))
     plt.clf()
 
 def plot_vel_width_DLA(sim, snap, ff=False):
@@ -65,13 +88,13 @@ def plot_vel_width_DLA(sim, snap, ff=False):
     hspec.plot_vel_width("Si", 2, color="red", HI_cut = None)
     hspec.plot_vel_width("Si", 2, color="blue", HI_cut = 10**20.3)
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_DLA_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_vel_DLA_z"+str(snap)))
     plt.clf()
     (vbin, vels1) = hspec.vel_width_hist("Si", 2, HI_cut = None)
     (vbin, vels2) = hspec.vel_width_hist("Si", 2, HI_cut = 10**20.3)
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_DLA_rel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_vel_DLA_rel_z"+str(snap)))
     plt.clf()
 
 def test_spec_resolution():
@@ -103,6 +126,8 @@ def test_spec_resolution():
 
 
 #test_spec_resolution()
+
+plot_vel_width_SiII(0, 60)
 
 for ii in (0,3):
     #Plot effect of ignoring low column density metals
