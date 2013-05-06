@@ -48,21 +48,6 @@ class HaloSpectra(spectra.Spectra):
         if cofm != None:
             self.replace_not_DLA()
 
-    def replace_not_DLA(self):
-        """
-        Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
-        """
-        ind = self.filter_DLA()
-        while np.size(ind) > 0:
-            #Replace spectra that did not result in a DLA
-            cofm_new = self.get_cofm()
-            self.cofm[ind] = cofm_new[ind]
-            [rho, vel, temp] = self.SPH_Interpolate_metals("H", 1, ind = ind)
-            self.metals[("H", 1)][0][ind] = rho
-            self.metals[("H", 1)][1][ind] = vel
-            self.metals[("H", 1)][2][ind] = temp
-            ind = self.filter_DLA()
-
     def get_cofm(self):
         """Find a bunch more sightlines"""
         cofm = np.repeat(self.sub_cofm,self.repeat,axis=0)
@@ -78,12 +63,6 @@ class HaloSpectra(spectra.Spectra):
         cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
         cofm[:,2]+=rr*np.cos(theta)
         return cofm
-
-    def filter_DLA(self):
-        """Find sightlines without a DLA"""
-        col_den = self.get_col_density("H",1)
-        ind = np.where(np.max(col_den, axis=1) < 10**20.3)
-        return ind
 
     def save_file(self):
         """

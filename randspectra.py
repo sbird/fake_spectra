@@ -19,6 +19,16 @@ class RandSpectra(spectra.Spectra):
         #Sightlines at random positions
         #Re-seed for repeatability
         np.random.seed(23)
-        cofm = self.box*np.random.random_sample((self.NumLos,3))
+        cofm = self.get_cofm()
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
+
+        self.replace_not_DLA()
+
+
+    def get_cofm(self, num = None):
+        """Find a bunch more sightlines: should be overriden by child classes"""
+        if num == None:
+            num = self.NumLos
+        cofm = self.box*np.random.random_sample((num,3))
+        return cofm
 
