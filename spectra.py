@@ -645,6 +645,16 @@ class Spectra:
         omega_DLA=HIden/length/self.rho_crit()
         return omega_DLA
 
+    def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=15):
+        """Find spectra with more than a single density peak.
+        Threshold is as a percentage of the maximum value.
+        mindist is in km/s
+        """
+        dist = int(mindist/self.dvbin)
+        rho = self.get_col_density(elem, ion)
+        seps = np.array([(np.shape(combine_regions(rho[ii,:] > thresh*np.max(rho[ii,:]), dist))[0] > 1) for ii in xrange(self.NumLos)])
+        return seps
+
     def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):
         """
         Get an array of spectral pixels which is True where there is a DLA, False otherwise
@@ -754,3 +764,46 @@ class Spectra:
         auto=(auto/modes)/nbar**2 - 1
         modes[ind]=0
         return (rcent, modes, auto)
+
+def combine_regions(condition, mindist=0):
+    """Combine contiguous regions that are shorter than mindist"""
+    reg = contiguous_regions(condition)
+    #Find lengths to ignore
+    if mindist > 0 and np.shape(reg)[0] > 1:
+        newreg = np.array(reg[0,:])
+        newreg.shape = (1,2)
+        for ii in xrange(1,np.shape(reg)[0]):
+            if reg[ii,0] - newreg[-1,1] < mindist:
+                #Move the end point of the last segment to that of this one
+                newreg[-1,1] = reg[ii,1]
+            else:
+                #This segment is far from the last one.
+                #Add the new segment to the list
+                newreg = np.vstack([newreg, reg[ii,:]])
+        reg = newreg
+    return reg
+
+def contiguous_regions(condition):
+    """Finds contiguous True regions of the boolean array "condition". Returns
+    a 2D array where the first column is the start index of the region and the
+    second column is the end index.
+    If mindist != 0, ignores changes shorter than mindist
+    """
+    # Find the indicies of changes in "condition"
+    d = np.diff(condition)
+    idx, = d.nonzero()
+    # We need to start things after the change in "condition". Therefore,
+    # we'll shift the index by 1 to the right.
+    idx += 1
+
+    if condition[0]:
+        # If the start of condition is True prepend a 0
+        idx = np.r_[0, idx]
+
+    if condition[-1]:
+        # If the end of condition is True, append the length of the array
+        idx = np.r_[idx, condition.size]
+
+    # Reshape the result into two columns
+    idx.shape = (-1,2)
+    return idx

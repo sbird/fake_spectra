@@ -49,6 +49,7 @@ class PlottingSpectra(spectra.Spectra):
         plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
         plt.xlim(0,np.size(tau_l)*self.dvbin)
+        return (low, high)
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -63,19 +64,22 @@ class PlottingSpectra(spectra.Spectra):
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
         plt.subplot(311)
-        self.plot_spectrum(tau, i)
+        (low,high) = self.plot_spectrum(tau, i)
+        plt.xlim(low-50,high+50)
         plt.subplot(312)
         ind = np.where(col_den > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
-        plt.yticks(np.array((1e5, 1e10, 1e20)))
-
+        #plt.xlim(0,np.size(tau_l)*self.dvbin)
+        plt.xlim(low-50,high+50)
+        plt.ylim(1e5,1e20)
+        plt.yticks(np.array([1e10, 1e15,1e20]))
         plt.subplot(313)
         vel = self.get_vel(elem, ion)[i,:]
         vel = np.roll(vel, np.size(tau_l)/2- ind_m)
         ind = np.where(np.abs(vel) > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,np.abs(vel[ind]))
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
+        #plt.xlim(0,np.size(tau_l)*self.dvbin)
+        plt.xlim(low-50,high+50)
 
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
@@ -92,6 +96,20 @@ class PlottingSpectra(spectra.Spectra):
         ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
         plt.xlim(10**minN, 10**maxN)
         plt.ylim(1e-26,1e-18)
+
+    def plot_sep_frac(self,elem = "Si", ion = 2, thresh = 1e-2, mindist = 15, dv = 0.1):
+        """Plots the fraction of spectra in each velocity width bin which are separated.
+        Threshold is as a percentage of the maximum value.
+        mindist is in km/s
+        """
+        sep = self.get_separated(elem, ion, thresh,mindist)
+        vels = self.vel_width(self.get_tau(elem, ion))
+        v_table = 10**np.arange(0, np.log10(np.max(vels)), dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        hist1 = np.histogram(vels, v_table)
+        hist2 = np.histogram(vels[sep],v_table)
+        hist1[0][np.where(hist1[0] == 0)] = 1
+        plt.semilogx(vbin, hist2[0]/(1.*hist1[0]))
 
     def plot_metallicity(self, nbins=15,color="black"):
         """Plot the distribution of metallicities"""
@@ -119,7 +137,7 @@ class PlottingSpectra(spectra.Spectra):
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="spectra.hdf5"):
+    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra_DLA.hdf5"):
         halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, res, savefile)
 
 class PlotIonDensity:
