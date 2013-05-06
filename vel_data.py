@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-def plot_prochaska_2008_vel_data():
+def plot_prochaska_2008_data():
     """Plot a velocity width histogram from Prochaska 2008"""
     data = np.loadtxt("vel_width_mtlkin_704.dat")
     vel_data = data[:,2]
