@@ -316,7 +316,7 @@ class Spectra:
             self.metals[("H", 1)][2][ind] = temp
             ind = self.filter_DLA()
 
-    def get_cofm(self):
+    def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
         raise NotImplementedError
 
@@ -326,7 +326,7 @@ class Spectra:
         ind = np.where(np.max(col_den, axis=1) < 10**20.3)
         return ind
 
-    def get_metallicity(self, solar=0.0133, thresh = 10**20.3):
+    def get_metallicity(self, solar=0.0133):
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
@@ -678,7 +678,7 @@ class Spectra:
         """
         dist = int(mindist/self.dvbin)
         rho = self.get_col_density(elem, ion)
-        seps = np.array([(np.shape(combine_regions(rho[ii,:] > thresh*np.max(rho[ii,:]), dist))[0] > 1) for ii in xrange(self.NumLos)])
+        seps = np.array([(np.shape(combine_regions(rho[ii,:] > thresh*np.max(rho[ii,:]), dist))[0] > 1) for ii in xrange(np.shape(rho)[0])])
         return seps
 
     def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):

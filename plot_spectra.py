@@ -113,13 +113,13 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_metallicity(self, nbins=15,color="black"):
         """Plot the distribution of metallicities"""
-        bin=np.logspace(-3,0,nbins)
-        mbin = np.array([(bin[i]+bin[i+1])/2. for i in range(0,np.size(bin)-1)])
+        bins=np.logspace(-3,0,nbins)
+        mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
-        hist = np.histogram(met,bin)[0]
+        hist = np.histogram(met,bins)[0]
         #Abs. distance for entire spectrum
-        hist = np.histogram(np.log10(met),np.log10(bin),density=True)[0]
-        plt.semilogx(mbin,hist,color="red")
+        hist = np.histogram(np.log10(met),np.log10(bins),density=True)[0]
+        plt.semilogx(mbin,hist,color=color)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2):
         """Plot the correlation between metallicity and velocity width"""
@@ -131,7 +131,7 @@ class PlottingSpectra(spectra.Spectra):
         ind2 = np.where(vel_width > 15)
         plt.loglog(vel_width[ind2],met[ind2], 'x')
         (slope, intercept, rval, pval, sd) = stats.linregress(np.log10(vel_width[ind2]),np.log10(met[ind2]))
-        print "corr: ",rval
+        print "corr: ",rval, pval, sd
         xx = np.logspace(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)),15)
         plt.loglog(xx,10**intercept*xx**slope)
 

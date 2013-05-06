@@ -48,8 +48,10 @@ class HaloSpectra(spectra.Spectra):
         if cofm != None:
             self.replace_not_DLA()
 
-    def get_cofm(self):
+    def get_cofm(self, num = None):
         """Find a bunch more sightlines"""
+        if num != None:
+            raise NotImplementedError
         cofm = np.repeat(self.sub_cofm,self.repeat,axis=0)
         #Perturb the sightlines within a sphere of the virial radius.
         #We want a representative sample of DLAs.

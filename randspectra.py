@@ -2,13 +2,12 @@
 """Class to gather and analyse various metal line statistics"""
 
 import numpy as np
-import os.path as path
 import hdfsim
 import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, numlos=5000, res = 1., savefile="rand_spectra.hdf5"):
+    def __init__(self,num, base, numlos=5000, res = 1., savefile="rand_spectra.hdf5", savedir=None):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]
@@ -20,7 +19,7 @@ class RandSpectra(spectra.Spectra):
         #Re-seed for repeatability
         np.random.seed(23)
         cofm = self.get_cofm()
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile,savedir=savedir)
 
         self.replace_not_DLA()
 
