@@ -5,6 +5,7 @@ import convert_cloudy
 import spectra
 import halospectra
 import numpy as np
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
@@ -91,6 +92,30 @@ class PlottingSpectra(spectra.Spectra):
         ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
         plt.xlim(10**minN, 10**maxN)
         plt.ylim(1e-26,1e-18)
+
+    def plot_metallicity(self, nbins=15,color="black"):
+        """Plot the distribution of metallicities"""
+        bin=np.logspace(-3,0,nbins)
+        mbin = np.array([(bin[i]+bin[i+1])/2. for i in range(0,np.size(bin)-1)])
+        met = self.get_metallicity()
+        hist = np.histogram(met,bin)[0]
+        #Abs. distance for entire spectrum
+        hist = np.histogram(np.log10(met),np.log10(bin),density=True)[0]
+        plt.semilogx(mbin,hist,color="red")
+
+    def plot_Z_vs_vel_width(self,elem="Si", line=2):
+        """Plot the correlation between metallicity and velocity width"""
+        met = self.get_metallicity()
+        tau = self.get_tau(elem, line, 2)
+        ind = self.get_filt(elem, line, 10**20.3, 10**12)
+        met = met[ind]
+        vel_width = self.vel_width(tau[ind])
+        ind2 = np.where(vel_width > 15)
+        plt.loglog(vel_width[ind2],met[ind2], 'x')
+        (slope, intercept, rval, pval, sd) = stats.linregress(np.log10(vel_width[ind2]),np.log10(met[ind2]))
+        print "corr: ",rval
+        xx = np.logspace(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)),15)
+        plt.loglog(xx,10**intercept*xx**slope)
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""

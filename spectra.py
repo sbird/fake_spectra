@@ -300,13 +300,17 @@ class Spectra:
         ff.close()
         return mass_frac
 
-    def get_metallicity(self, solar=0.0133):
+    def get_metallicity(self, solar=0.0133, thresh = 10**20.3):
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
-        #Use only observable metal lines
-        ind = np.where(np.logical_and(MM > 1e10 ,HH > 0))
-        return (MM[ind]/HH[ind]/solar)
+        mms = np.sum(MM, axis=1)
+        hhs = np.sum(HH, axis=1)
+        return mms/hhs/solar
+        #Use only DLA regions: tricky to preserve shape
+        #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
+        #data = np.array([np.mean(ma_HH, axis=1)])
+        #return data/solar
 
     def rescale_units(self, rho, vel, temp):
         """Rescale the units of the arrays from internal gadget units to
