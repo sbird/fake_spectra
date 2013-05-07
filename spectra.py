@@ -54,6 +54,10 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
+        try:
+            self.files = hdfsim.get_all_files(num, base)
+        except IOError:
+            pass
         if savedir == None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
@@ -67,7 +71,6 @@ class Spectra:
             print "Reloading from snapshot"
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
-            self.files = hdfsim.get_all_files(num, base)
             ff = h5py.File(self.files[0], "r")
             self.box = ff["Header"].attrs["BoxSize"]
             self.red = ff["Header"].attrs["Redshift"]
