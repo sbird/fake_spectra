@@ -2,6 +2,7 @@
 #include "numpy/arrayobject.h"
 #include "types.h"
 #include "index_table.h"
+#include <vector>
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
@@ -137,14 +138,18 @@ extern "C" PyObject * Py_SPH_Interpolation(PyObject *self, PyObject *args)
 
     //Build a tuple from the interp struct
     PyObject * for_return;
-    if(rho_H)
+    if(rho_H){
 	    for_return = Py_BuildValue("OOOO",rho_H_out, rho_out, vel_out, temp_out);
-    else
+        Py_DECREF(rho_H_out);
+    } else
 	    for_return = Py_BuildValue("OOO", rho_out, vel_out, temp_out);
 
     //Free
     free(los_table);
-
+    //Decrement the refcount
+    Py_DECREF(rho_out);
+    Py_DECREF(vel_out);
+    Py_DECREF(temp_out);
     return for_return;
 }
 
@@ -156,8 +161,10 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     long long Npart;
     double box100;
     PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
+    PyObject *out;
     los *los_table=NULL;
-    npy_intp size;
+    //Vector to store a list of particles near the lines
+    std::vector<int> near_lines;
 
     if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
@@ -172,28 +179,33 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
       return NULL;
     }
 
-    //Output array
-    size = Npart;
-    is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_BOOL);
-    PyArray_FILLWBYTE(is_a_line, 0);
     //Setup los_tables
     setup_los_data(los_table, cofm, axis, NumLos);
     IndexTable sort_los_table(los_table, NumLos, box100);
 
     //find lists
-    #pragma omp parallel for
+//     #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
 	float ppos[3];
         ppos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
         ppos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
         ppos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
         double h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
-	std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
+	    std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
         if(nearby.size()>0)
-            *(npy_bool *)PyArray_GETPTR1(is_a_line,i) = NPY_TRUE;
+            near_lines.push_back(i);
     }
     free(los_table);
-    return Py_BuildValue("O", is_a_line);
+    //Copy data into python
+    npy_intp size = near_lines.size();
+    is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_INT);
+    int i=0;
+    for (std::vector<int>::iterator it = near_lines.begin(); it != near_lines.end() && i < size; ++it, ++i){
+            *(npy_int *)PyArray_GETPTR1(is_a_line,i) = (*it);
+    }
+    out = Py_BuildValue("O", is_a_line);
+    Py_DECREF(is_a_line);
+    return out;
 }
 
 extern "C" PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
