@@ -24,8 +24,8 @@ ifeq (icc,$(findstring icc,${CC}))
   CFLAGS +=-O2 -g -w1 -openmp -I${GREAD} -fpic
   LINK +=${CXX} -O2 -openmp
 else
-  CFLAGS +=-O2 -g -Wall -fopenmp -I${GREAD} -fPIC
-  LINK +=${CXX} -O2 -fopenmp $(PRO)
+  CFLAGS +=-O3 -g -Wall -fopenmp -I${GREAD} -fPIC
+  LINK +=${CXX} -O3 -fopenmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
 OPTS =
