@@ -26,6 +26,13 @@ def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None):
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     hspec.plot_vel_width("Si", 2, color=color, HI_cut = HI_cut)
 
+def plot_sep_frac(sim, snap):
+    """Plot fraction of lines from separated halos"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec.plot_sep_frac()
+
 def plot_rel_vel_width(sim1, sim2, snap, color="black"):
     """Load and make a plot of the difference between two simulations"""
     halo1 = "Cosmo"+str(sim1)+"_V6"
@@ -52,6 +59,20 @@ def plot_spectrum_density_velocity(sim, snap, num):
     hspec = ps.PlotHaloSpectra(snap, base+halo)
     hspec.plot_spectrum_density_velocity("Si",2, num)
 
+def plot_metallicity(sim, snap):
+    """Plot a spectrum"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None, savefile="halo_spectra_DLA.hdf5")
+    hspec.plot_metallicity()
+    vel_data.plot_alpha_metal_data(nbins=12)
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_metallicity_z"+str(snap)))
+    plt.clf()
+    hspec.plot_Z_vs_vel_width()
+    vel_data.plot_prochaska_2008_correlation()
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_correlation_z"+str(snap)))
+    plt.clf()
+
 if __name__ == "__main__":
     colors=["blue", "purple", "orange", "red"]
     reds = {54:4, 60:3, 68:2}
@@ -60,10 +81,18 @@ if __name__ == "__main__":
     save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
     plt.clf()
 
+    plot_metallicity(0, 60)
+
     for ss in (0,1,2,3):
         plot_spectrum_density_velocity(ss,60, 25)
         save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
         plt.clf()
+
+    for ss in (0,1,2,3):
+        plot_sep_frac(ss,60)
+    save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
+    plt.clf()
+
 
 
     #Best-fit base model

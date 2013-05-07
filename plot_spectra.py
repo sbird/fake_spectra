@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm, axis, res=1., savefile="spectra.hdf5"):
+    def __init__(self,num, base, cofm, axis, res=1., savefile="rand_spectra_DLA.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red"):
@@ -111,7 +111,7 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]))
 
-    def plot_metallicity(self, nbins=15,color="black"):
+    def plot_metallicity(self, nbins=20,color="blue"):
         """Plot the distribution of metallicities"""
         bins=np.logspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
@@ -134,6 +134,7 @@ class PlottingSpectra(spectra.Spectra):
         print "corr: ",rval, pval, sd
         xx = np.logspace(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)),15)
         plt.loglog(xx,10**intercept*xx**slope)
+        plt.xlim(10,2e3)
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
