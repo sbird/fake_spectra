@@ -184,7 +184,7 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     IndexTable sort_los_table(los_table, NumLos, box100);
 
     //find lists
-//     #pragma omp parallel for
+    #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
 	float ppos[3];
         ppos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
@@ -192,8 +192,12 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
         ppos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
         double h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
 	    std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
-        if(nearby.size()>0)
-            near_lines.push_back(i);
+        if(nearby.size()>0){
+           #pragma omp critical
+           {
+              near_lines.push_back(i);
+           }
+        }
     }
     free(los_table);
     //Copy data into python
