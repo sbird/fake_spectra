@@ -118,7 +118,10 @@ class Spectra:
             f=h5py.File(self.savefile,'a')
         except IOError:
             raise IOError("Could not open ",self.savefile," for writing")
-        grp = f.create_group("Header")
+        try:
+            grp = f["Header"]
+        except KeyError:
+            grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins
         grp.attrs["hubble"]=self.hubble
@@ -126,10 +129,16 @@ class Spectra:
         grp.attrs["omegam"]=self.OmegaM
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
-        grp = f.create_group("spectra")
-        grp["cofm"]=self.cofm
-        grp["axis"]=self.axis
-        grp_grid = f.create_group("metals")
+        try:
+            grp = f["spectra"]
+        except KeyError:
+            grp = f.create_group("spectra")
+            grp["cofm"]=self.cofm
+            grp["axis"]=self.axis
+        try:
+            grp_grid = f["metals"]
+        except KeyError:
+            grp_grid = f.create_group("metals")
         for (key, value) in self.metals.iteritems():
             try:
                 #Select by the element
@@ -137,7 +146,11 @@ class Spectra:
             except KeyError:
                 grp_grid.create_group(key[0])
                 gg = grp_grid[key[0]]
-            gg.create_dataset(str(key[1]),data=value)
+            try:
+                gg.create_dataset(str(key[1]),data=value)
+            except RuntimeError:
+                #If it is already there, don't add to it.
+                pass
         f.close()
 
     def load_savefile(self,savefile=None):
