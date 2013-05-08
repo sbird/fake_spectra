@@ -5,12 +5,12 @@ import convert_cloudy
 import spectra
 import halospectra
 import numpy as np
-import scipy.stats as stats
+import leastsq as ls
 import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm, axis, res=1., savefile="rand_spectra_DLA.hdf5"):
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="rand_spectra_DLA.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red"):
@@ -121,19 +121,23 @@ class PlottingSpectra(spectra.Spectra):
         hist = np.histogram(np.log10(met),np.log10(bins),density=True)[0]
         plt.semilogx(mbin,hist,color=color)
 
-    def plot_Z_vs_vel_width(self,elem="Si", line=2):
+    def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
         met = self.get_metallicity()
         tau = self.get_tau(elem, line, 2)
         ind = self.get_filt(elem, line, 10**20.3, 10**12)
         met = met[ind]
-        vel_width = self.vel_width(tau[ind])
-        ind2 = np.where(vel_width > 15)
-        plt.loglog(vel_width[ind2],met[ind2], 'x')
-        (slope, intercept, rval, pval, sd) = stats.linregress(np.log10(vel_width[ind2]),np.log10(met[ind2]))
-        print "corr: ",rval, pval, sd
-        xx = np.logspace(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)),15)
-        plt.loglog(xx,10**intercept*xx**slope)
+        vel = self.vel_width(tau[ind])
+        #Ignore objects too faint to be seen or unresolved
+        ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
+        plt.loglog(vel[ind2],met[ind2], 'x',color=color)
+        met = np.log10(met[ind2])
+        vel = np.log10(vel[ind2])
+        (intercept, slope, var) = ls.leastsq(met,vel)
+        print "sim corr: ",intercept, slope, np.sqrt(var)
+        print "sim correlation: ",ls.pearson(met, vel,intercept, slope)
+        xx = np.logspace(np.min(met), np.max(met),15)
+        plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
