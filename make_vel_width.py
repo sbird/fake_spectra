@@ -37,9 +37,9 @@ def plot_rel_vel_width(sim1, sim2, snap, color="black"):
     """Load and make a plot of the difference between two simulations"""
     halo1 = "Cosmo"+str(sim1)+"_V6"
     halo2 = "Cosmo"+str(sim2)+"_V6"
-    hspec1 = ps.PlotHaloSpectra(snap, base+halo1)
+    hspec1 = ps.PlottingSpectra(snap, base+halo1)
     (vbin, vels1) = hspec1.vel_width_hist("Si", 2)
-    hspec1 = ps.PlotHaloSpectra(snap, base+halo2)
+    hspec1 = ps.PlottingSpectra(snap, base+halo2)
     (vbin, vels2) = hspec1.vel_width_hist("Si", 2)
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color=color)
@@ -56,16 +56,22 @@ def plot_spectrum_density_velocity(sim, snap, num):
     """Plot a spectrum"""
     halo = "Cosmo"+str(sim)+"_V6"
     #Load from a save file only
-    hspec = ps.PlotHaloSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, base+halo)
     hspec.plot_spectrum_density_velocity("Si",2, num)
 
 def plot_metallicity(sim, snap):
     """Plot a spectrum"""
     halo = "Cosmo"+str(sim)+"_V6"
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None, savefile="halo_spectra_DLA.hdf5")
+    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     hspec.plot_metallicity()
-    vel_data.plot_alpha_metal_data(nbins=12)
+    if snap < 60:
+        zz = (7,3.5)
+    if snap > 60:
+        zz = (2.5,0)
+    else:
+        zz = None
+    vel_data.plot_alpha_metal_data(redshift = zz,nbins=12)
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_metallicity_z"+str(snap)))
     plt.clf()
     hspec.plot_Z_vs_vel_width()
@@ -80,8 +86,10 @@ if __name__ == "__main__":
     plt.xlim(1100, 1600)
     save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
     plt.clf()
-
-    plot_metallicity(0, 60)
+    for ss in (0,1,2,3):
+        print "Metallicity Simulation",ss
+        for zz in (54,60,68):
+            plot_metallicity(ss, zz)
 
     for ss in (0,1,2,3):
         plot_spectrum_density_velocity(ss,60, 25)
@@ -103,9 +111,9 @@ if __name__ == "__main__":
     save_figure(path.join(outdir,"cosmo_vel_width_z3"))
     plt.clf()
 
-    for sp in (60,68):
+    for sp in (54,60,68):
         #The vel widths for different simulations
-        for ss in (3,0):
+        for ss in (3,2,0):
             plot_vel_width_sim(ss, sp, colors[ss], HI_cut = 10**17)
 
         vel_data.plot_prochaska_2008_data()
