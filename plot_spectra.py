@@ -13,7 +13,7 @@ class PlottingSpectra(spectra.Spectra):
     def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="rand_spectra_DLA.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
 
-    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red"):
+    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
@@ -29,7 +29,7 @@ class PlottingSpectra(spectra.Spectra):
 
         """
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
-        plt.loglog(vbin, vels, color=color, lw=3)
+        plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
 
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,
