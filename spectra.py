@@ -26,6 +26,7 @@ import convert_cloudy
 import line_data
 import h5py
 import hdfsim
+import halocat
 from scipy.interpolate import UnivariateSpline
 import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
@@ -108,6 +109,8 @@ class Spectra:
         #Line data
         self.lines = line_data.LineData()
         print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red
+        #Try to load a halo catalogue
+        self.load_halo()
 
     def save_file(self):
         """
@@ -545,7 +548,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 5, tau=None):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, unres = 5, tau=None):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -582,9 +585,7 @@ class Spectra:
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        nn = np.histogram(vel_width,v_table)[0] / (1.*nlos)
-        width = np.array([v_table[i+1]-v_table[i] for i in range(0,np.size(v_table)-1)])
-        vels=nn/width
+        vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
 
     def get_col_density(self, elem, ion):
@@ -718,6 +719,30 @@ class Spectra:
         if axis == 3:
             spos = cofm[:,:2]
         return spos
+
+    def find_nearest_halo(self):
+        """Find the nearest halo to the sightlines"""
+        dists = np.empty(np.size(self.axis))
+        halos = np.empty(np.size(self.axis),dtype=np.int)
+        #X axis first
+        axes = [0,1,2]
+        for ax in [1,2,3]:
+            ind = np.where(self.axis == ax)
+            sax = list(axes)
+            sax.remove(ax-1)
+            for ii in np.ravel(ind):
+                proj_pos = self.cofm[ii,sax]
+                dd = np.sqrt(np.sum((self.sub_cofm[:,sax] - proj_pos)**2,axis=1))
+                dists[ii] = np.min(dd)
+                halos[ii] = int(np.where(dists[ii] == dd)[0][0])
+        return (halos, dists)
+
+    def load_halo(self):
+        """Load a halo catalogue"""
+        try:
+            (ind, self.sub_mass, self.sub_cofm, self.sub_radii) = halocat.find_all_halos(self.num, self.base, 0)
+        except IOError:
+            pass
 
     def _count_modes(self, rbins2, sdist2, pzpos, nspectra):
         """

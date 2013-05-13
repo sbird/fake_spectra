@@ -120,3 +120,7 @@ class HaloSpectra(spectra.Spectra):
         lpos = self.get_spectra_proj_pos()
         offsets = np.sqrt(np.sum((hpos-lpos)**2,axis=1))/hrad
         return offsets
+
+    def load_halo(self):
+        """Do nothing - halos already loaded"""
+        return

@@ -116,7 +116,6 @@ class PlottingSpectra(spectra.Spectra):
         bins=np.logspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
-        hist = np.histogram(met,bins)[0]
         #Abs. distance for entire spectrum
         hist = np.histogram(np.log10(met),np.log10(bins),density=True)[0]
         plt.semilogx(mbin,hist,color=color)
@@ -125,7 +124,7 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the correlation between metallicity and velocity width"""
         met = self.get_metallicity()
         tau = self.get_tau(elem, line, 2)
-        ind = self.get_filt(elem, line, 10**20.3, 10**12)
+        ind = self.get_filt(elem, line)
         met = met[ind]
         vel = self.vel_width(tau[ind])
         #Ignore objects too faint to be seen or unresolved
@@ -139,6 +138,69 @@ class PlottingSpectra(spectra.Spectra):
         xx = np.logspace(np.min(met), np.max(met),15)
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
+
+    def plot_halo_mass_vs_vel_width(self, elem="Si", line=2, color="blue"):
+        """Plot the velocity width vs the halo mass of the hosting halo"""
+        ind = self.get_filt(elem,line)
+        tau = self.get_tau(elem, line, 2)
+        vel = self.vel_width(tau[ind])
+        (halos, dists) = self.find_nearest_halo()
+        mass = self.sub_mass[halos][ind]
+        ind2 = np.where(vel > 15)
+        vel = vel[ind2]
+        mass = mass[ind2]
+        plt.loglog(mass, vel,'x',color=color)
+        #(intercept, slope, var) = ls.leastsq(np.log10(mass),np.log10(vel))
+        #print "sim corr: ",intercept, slope, np.sqrt(var)
+        #print "sim correlation: ",ls.pearson(np.log10(mass), np.log10(vel),intercept, slope)
+        #xx = np.logspace(np.min(np.log10(mass)), np.max(np.log10(mass)),15)
+        #plt.loglog( xx,10**intercept*xx**slope, color=color)
+
+    def plot_radius_vs_vel_width(self, elem="Si", line=2, color="blue"):
+        """Plot the velocity width vs the virial velocity of the hosting halo"""
+        ind = self.get_filt(elem,line)
+        tau = self.get_tau(elem, line, 2)
+        vel = self.vel_width(tau[ind])
+
+        (halos, dists) = self.find_nearest_halo()
+        radius = self.sub_radii[halos][ind]
+        mass = self.sub_mass[halos][ind]
+        ind2 = np.where(vel > 15)
+        vel = vel[ind2]
+        fromc = (dists[ind][ind2]/2.0/radius[ind2])**2
+        fromc[np.where(fromc >= 0.95)] = 0.95
+        virial = np.sqrt(4.302e-3*mass[ind2]/radius[ind2]/1000)
+        plt.plot(virial, vel,'x',color=color)
+        (intercept, slope, var) = ls.leastsq(np.log10(virial),np.log10(vel))
+        print "sim corr: ",intercept, slope, np.sqrt(var)
+        print "sim correlation: ",ls.pearson(np.log10(virial), np.log10(vel),intercept, slope)
+        xx = np.logspace(np.min(np.log10(virial)), np.max(np.log10(virial)),15)
+        plt.loglog( xx,10**intercept*xx**slope, color=color)
+
+        #(intercept, slope, var) = ls.leastsq(virial,vel)
+        #print "sim corr: ",intercept, slope, np.sqrt(var)
+        #print "sim correlation: ",ls.pearson(virial, vel,intercept, slope)
+        #xx = np.linspace(np.min(virial), np.max(virial),15)
+        #plt.loglog( xx,intercept+xx*slope, color=color)
+
+    def plot_virial_vel_vs_vel_width(self,elem="Si", line=2):
+        """Plot a histogram of the velocity widths vs the halo virial velocity"""
+        ind = self.get_filt(elem,line)
+        tau = self.get_tau(elem, line, 2)
+        vel = self.vel_width(tau[ind])
+        ind2 = np.where(vel > 15)
+        vel = vel[ind2]
+        (halos, dists) = self.find_nearest_halo()
+        #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
+        virial = np.sqrt(4.302e-3*self.sub_mass[halos][ind][ind2]/self.sub_radii[halos][ind][ind2]/1000)
+        ind2 = np.where(vel < 300)
+        (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
+        print "median v/vir: ",np.median(vel/virial)
+        plt.semilogx(10**xedges[:-1], H, color="red")
+        ind2 = np.where(vel > 300)
+        (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
+        plt.semilogx(10**xedges[:-1], H, color="blue")
+
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
