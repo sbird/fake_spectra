@@ -16,6 +16,7 @@ from save_figure import save_figure
 base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/"
 print "Plots at: ",outdir
+zrange = {54:(7,3.5), 60:None, 68:(2.5,0)}
 
 def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None):
     """Load a simulation and plot its velocity width"""
@@ -59,29 +60,88 @@ def plot_spectrum_density_velocity(sim, snap, num):
     hspec = ps.PlottingSpectra(snap, base+halo)
     hspec.plot_spectrum_density_velocity("Si",2, num)
 
-def plot_metallicity(sim, snap):
+def plot_metallicity(sim, snap, ff=False):
     """Plot a spectrum"""
     halo = "Cosmo"+str(sim)+"_V6"
+    out = "cosmo"+str(sim)+"_metallicity_z"+str(snap)
+    if ff:
+        halo+="_512"
+        out+="_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     hspec.plot_metallicity()
-    if snap < 60:
-        zz = (7,3.5)
-    if snap > 60:
-        zz = (2.5,0)
-    else:
-        zz = None
-    vel_data.plot_alpha_metal_data(redshift = zz,nbins=12)
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_metallicity_z"+str(snap)))
+    vel_data.plot_alpha_metal_data(zrange[snap])
+    save_figure(path.join(outdir,out))
     plt.clf()
-    hspec.plot_Z_vs_vel_width()
-    vel_data.plot_prochaska_2008_correlation()
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_correlation_z"+str(snap)))
+    #hspec.plot_Z_vs_vel_width()
+    #vel_data.plot_prochaska_2008_correlation()
+    #save_figure(path.join(outdir,"cosmo"+str(sim)+"_correlation_z"+str(snap)))
+    #plt.clf()
+
+def plot_vel_widths_sims(snap):
+    """Plot some velocity width data at a particular redshift"""
+    #Load sims
+    hspec0 = ps.PlottingSpectra(snap, base+"Cosmo0_V6")
+    hspec2 = ps.PlottingSpectra(snap, base+"Cosmo2_V6")
+    hspec3 = ps.PlottingSpectra(snap, base+"Cosmo3_V6")
+    #Make abs. plot
+    hspec0.plot_vel_width("Si", 2, color="blue", ls="-")
+    hspec2.plot_vel_width("Si", 2, color="orange", ls="--")
+    hspec3.plot_vel_width("Si", 2, color="red", ls="-.")
+    vel_data.plot_prochaska_2008_data(zrange[snap])
+    save_figure(path.join(outdir,"cosmo_feedback_z"+str(snap)))
+    plt.clf()
+    #Make rel plot
+    (vbin, vels0) = hspec0.vel_width_hist("Si", 2)
+    (vbin, vels2) = hspec2.vel_width_hist("Si", 2)
+    (vbin, vels3) = hspec3.vel_width_hist("Si", 2)
+    mm = np.min((np.size(vels3), np.size(vels2),np.size(vels0)))
+    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
+    plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color="red",ls="--")
+    plt.xlim(10, 1000)
+    save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
+    plt.clf()
+
+def plot_vel_widths_res(snap):
+    """Plot some velocity width data at a particular redshift"""
+    #Load sims
+    hspec0 = ps.PlottingSpectra(snap, base+"Cosmo0_V6")
+    hspec512 = ps.PlottingSpectra(snap, base+"Cosmo0_V6_512")
+    #Make abs. plot
+    hspec0.plot_vel_width("Si", 2, color="blue", ls="--")
+    hspec512.plot_vel_width("Si", 2, color="red", ls="-")
+    vel_data.plot_prochaska_2008_data(zrange[snap])
+    save_figure(path.join(outdir,"cosmo_feedback_res_z"+str(snap)))
+    plt.clf()
+    #Make rel plot
+    (vbin, vels0) = hspec0.vel_width_hist("Si", 2)
+    (vbin, vels2) = hspec512.vel_width_hist("Si", 2)
+    mm = np.min((np.size(vels2),np.size(vels0)))
+    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
+    plt.xlim(10, 1000)
+    save_figure(path.join(outdir,"cosmo_rel_vel_res_z"+str(snap)))
+    plt.clf()
+
+def plot_vel_redshift_evo(sim):
+    """Plot the evolution with redshift of a simulation"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    hspec0 = ps.PlottingSpectra(54, base+halo)
+    (vbin, vels4) = hspec0.vel_width_hist("Si", 2)
+    hspec0 = ps.PlottingSpectra(60, base+halo)
+    (vbin, vels3) = hspec0.vel_width_hist("Si", 2)
+    hspec0 = ps.PlottingSpectra(68, base+halo)
+    (vbin, vels2) = hspec0.vel_width_hist("Si", 2)
+    mm = np.min((np.size(vels2), np.size(vels3),np.size(vels4)))
+    #Normalised by z=3
+    plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color="black",ls="--")
+    plt.semilogx(vbin[:mm], vels4[:mm]/vels2[:mm], color="grey",ls="-")
+    plt.xlim(10, 1000)
+    plt.ylim(0,2)
+    save_figure(path.join(outdir,"cosmo_"+str(sim)+"_zz_evol"))
     plt.clf()
 
 if __name__ == "__main__":
     colors=["blue", "purple", "orange", "red"]
-    reds = {54:4, 60:3, 68:2}
     plot_spectrum(0,60, 102)
     plt.xlim(1100, 1600)
     save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
@@ -91,51 +151,23 @@ if __name__ == "__main__":
         for zz in (54,60,68):
             plot_metallicity(ss, zz)
 
-    for ss in (0,1,2,3):
-        plot_spectrum_density_velocity(ss,60, 25)
-        save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
-        plt.clf()
+    for zz in (54,60,68):
+        plot_metallicity(0, zz,True)
 
-    for ss in (0,1,2,3):
-        plot_sep_frac(ss,60)
-    save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
-    plt.clf()
+    #for ss in (0,2,3):
+        #plot_spectrum_density_velocity(ss,60, 25)
+        #save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
+        #plt.clf()
+
+    #for ss in (0,2,3):
+        #plot_sep_frac(ss,60)
+    #save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
+    #plt.clf()
+
+    for zz in (54, 60, 68):
+        plot_vel_widths_sims(zz)
+        plot_vel_widths_res(zz)
 
 
-
-    #Best-fit base model
-    plot_vel_width_sim(0, 60, "blue", HI_cut = 10**20.3)
-    vel_data.plot_prochaska_2008_data()
-    plt.ylim(1e-5, 2e-2)
-    plt.xlim(10, 1000)
-    save_figure(path.join(outdir,"cosmo_vel_width_z3"))
-    plt.clf()
-
-    for sp in (54,60,68):
-        #The vel widths for different simulations
-        for ss in (3,2,0):
-            plot_vel_width_sim(ss, sp, colors[ss], HI_cut = 10**17)
-
-        vel_data.plot_prochaska_2008_data()
-        plt.ylim(1e-5, 2e-2)
-        plt.xlim(10, 1000)
-        save_figure(path.join(outdir,"cosmo_feedback_z"+str(reds[sp])))
-        plt.clf()
-
-    #A plot of the redshift evolution
-    zz = [54,60,68]
-    for ii in (0,1,2):
-        plot_vel_width_sim(0, zz[ii], color=colors[ii])
-
-    vel_data.plot_prochaska_2008_data()
-    plt.title("Velocity Widths at z=4-2")
-    save_figure(path.join(outdir,"cosmo_vel_width_zz"))
-    plt.clf()
-
-    plot_rel_vel_width(1,0,60)
-    plot_rel_vel_width(2,0,60, color="grey")
-    #Something odd about this one...
-    plot_rel_vel_width(3,0,60, color="red")
-
-    save_figure(path.join(outdir,"cosmo_rel_vel_width_z3"))
-    plt.clf()
+    for ss in (0,2,3):
+        plot_vel_redshift_evo(ss)

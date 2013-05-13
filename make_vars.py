@@ -24,20 +24,7 @@ def plot_virial_vel(sim, snap, ff=False):
         halo+="_512"
     #Load from a save file only
     hspec = ps.PlotHaloSpectra(snap, base+halo)
-    ind = hspec.get_filt("Si",2)
-    vel=hspec.vel_width(hspec.get_tau("Si",2))
-    #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
-    virial = np.repeat(np.sqrt(4.302e-3*hspec.sub_mass/hspec.sub_radii/1000),3)
-    ind2 = np.where(vel[ind] < 200)
-    (H, xedges) = np.histogram(vel[ind][ind2]/virial[ind][ind2], bins=20,normed=True)
-    print np.median(vel[ind]/virial[ind])
-    plt.plot(xedges[:-1], H, color="red")
-    ind2 = np.where(np.logical_and(vel[ind] > 200, vel[ind] < 500))
-    (H, xedges) = np.histogram(vel[ind][ind2]/virial[ind][ind2], bins=20,normed=True)
-    plt.plot(xedges[:-1], H, color="blue")
-    ind2 = np.where(vel[ind] > 500)
-    (H, xedges) = np.histogram(vel[ind][ind2]/virial[ind][ind2], bins=20,normed=True)
-    plt.plot(xedges[:-1], H, color="green")
+    plot_virial_vel_vs_vel_width(self,elem="Si", line=2):
     plt.ylim(0,0.7)
 
 def plot_rel_vel_width_temp(sim1, snap):
@@ -92,9 +79,9 @@ def plot_rel_vel_width_vel(sim1, snap):
     ##Plot effect of ignoring temperature broadening
     #plot_rel_vel_width_temp(ii, 60)
 
-for ii in (0,3):
-    #Plot effect of ignoring temperature broadening
-    plot_rel_vel_width_vel(ii, 60)
+#for ii in (0,3):
+    ##Plot effect of ignoring temperature broadening
+    #plot_rel_vel_width_vel(ii, 60)
 
 for ii in (0,1,2,3):
     #Plot halo mass vs vw.
