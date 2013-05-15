@@ -472,7 +472,7 @@ class Spectra:
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, mass_cut = 1e10):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
@@ -483,7 +483,9 @@ class Spectra:
             met_cut = 0
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
-        ind = np.where(np.logical_and(np.max(rho,axis=1) > met_cut, np.max(rho_H,axis=1) > HI_cut))
+        (halos, dists) = self.find_nearest_halo()
+        mass = self.sub_mass[halos]
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(mass > mass_cut))
         return ind
 
     def vel_width(self, tau):
