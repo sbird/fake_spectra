@@ -45,14 +45,14 @@ def pdf_with_error(vel_data, nv_table):
     plt.semilogx(center, vels,'o')
     return (center, vels,verr)
 
-def plot_prochaska_2008_data(zrange = None, nv_table=11):
+def plot_prochaska_2008_data(zrange = None, nv_table=7):
     """Plot a velocity width histogram from Prochaska 2008/2013"""
     (redshift, met, vel_data) = load_data(zrange)
     (center, vels, verr) = pdf_with_error(vel_data, nv_table)
     plt.xlim(10, 1000)
     return (center, vels,verr)
 
-def plot_alpha_metal_data(zrange=None,nv_table=11):
+def plot_alpha_metal_data(zrange=None,nv_table=7):
     """
        Plot the metallicities from alpha peak mainly (Si and S) elements
        from Prochaska 2007 (astro-ph/0702325) and 2013
