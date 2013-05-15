@@ -28,6 +28,7 @@ import h5py
 import hdfsim
 import halocat
 from scipy.interpolate import UnivariateSpline
+from scipy.integrate import cumtrapz
 import os.path as path
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
 
@@ -589,6 +590,22 @@ class Spectra:
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
+
+    def equivalent_width(self, elem, ion, line):
+        """Calculate the equivalent width of a line in Angstroms"""
+        tau = self.get_tau(elem, ion, line)
+        ind = self.get_filt(elem, line)
+        #1 bin in wavelength: δλ =  λ . v / c
+        #λ here is the rest wavelength of the line.
+        #in m /s
+        light=2.9979e8
+        #Line data
+        line = self.lines[(elem,ion)][line]
+        #lambda in Angstroms, dvbin in km/s,
+        dl = 1000*self.dvbin/light * line.lambda_X
+        eq_width = cumtrapz(1-np.exp(-tau[ind]),dx=dl, axis=1)[:,-1]
+        #Don't need to divide by 1+z as lambda_X is already rest wavelength
+        return eq_width
 
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species"""

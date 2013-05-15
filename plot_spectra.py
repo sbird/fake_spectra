@@ -31,6 +31,14 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
 
+    def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
+        """Plot the equivalent widths of this snapshot. W_1526 is the default and the most useful here."""
+        ww = self.equivalent_width(elem, ion, line)
+        w_table = 10**np.arange(np.log10(np.min(ww)), np.log10(np.max(ww)), dv)
+        wbin = np.array([(w_table[i]+w_table[i+1])/2. for i in range(0,np.size(w_table)-1)])
+        whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
+        plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
+
     def plot_spectrum(self, tau, i):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
