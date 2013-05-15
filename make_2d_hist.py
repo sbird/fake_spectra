@@ -77,9 +77,72 @@ def plot_vel_HI_col_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
+def plot_vel_mass(sim, snap, ff=False):
+    """Load a simulation and plot the halo mass vs the velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo)
+    vel= hspec.vel_width(hspec.get_tau("Si",2))
+    (halos, dists) = hspec.find_nearest_halo()
+    mass = hspec.sub_mass[halos]
+    (H, xedges, yedges) = np.histogram2d(np.log10(mass), np.log10(vel), bins=30,normed=True)
+    extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
+    plt.imshow(H, extent=extent, aspect="auto")
+    plt.colorbar()
 
-colors=["blue", "purple", "orange", "red"]
+def plot_vel_metals(sim, snap, ff=False):
+    """Plot the correlation between metallicity and velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo)
+    met = hspec.get_metallicity()
+    tau = hspec.get_tau("Si", 2, 2)
+    vel = hspec.vel_width(tau)
+    #Ignore objects too faint to be seen or unresolved
+    ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
+    (H, xedges, yedges) = np.histogram2d(np.log10(met[ind2]), np.log10(vel[ind2]), bins=30,normed=True)
+    extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
+    plt.imshow(H, extent=extent, aspect="auto")
+    plt.colorbar()
+
+def plot_Si_metals(sim, snap, ff=False):
+    """Plot the correlation between metallicity and velocity width"""
+    halo = "Cosmo"+str(sim)+"_V6"
+    if ff:
+        halo+="_512"
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, base+halo)
+    met = hspec.get_metallicity()
+    MM = hspec.get_col_density("Si",2)
+    HH = hspec.get_col_density("H",-1)
+    mms = np.sum(MM, axis=1)
+    hhs = np.sum(HH, axis=1)
+    Simet = mms/hhs/0.0133
+    #Ignore objects too faint to be seen or unresolved
+    ind2 = np.where(met > 1e-3)
+    (H, xedges, yedges) = np.histogram2d(np.log10(met[ind2]), np.log10(Simet[ind2]), bins=30,normed=True)
+    extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
+    plt.imshow(H, extent=extent, aspect="auto")
+    plt.colorbar()
+
 reds = {54:4, 60:3, 68:2}
+
+plot_vel_metals(0, 60,True)
+save_figure(path.join(outdir,"cosmo0_512_z3_metals"))
+plt.clf()
+
+plot_Si_metals(0, 60,True)
+save_figure(path.join(outdir,"cosmo0_512_z3_Si_metals"))
+plt.clf()
+
+plot_vel_mass(0, 60,True)
+save_figure(path.join(outdir,"cosmo0_512_z3_mass"))
+plt.clf()
+
 
 for ii in (0,1,2,3):
     #Plot col_density of metals vs HI
