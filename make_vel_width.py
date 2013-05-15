@@ -73,10 +73,13 @@ def plot_metallicity(sim, snap, ff=False):
     vel_data.plot_alpha_metal_data(zrange[snap])
     save_figure(path.join(outdir,out))
     plt.clf()
-    #hspec.plot_Z_vs_vel_width()
-    #vel_data.plot_prochaska_2008_correlation()
-    #save_figure(path.join(outdir,"cosmo"+str(sim)+"_correlation_z"+str(snap)))
-    #plt.clf()
+    out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
+    if ff:
+        out+="_512"
+    hspec.plot_Z_vs_vel_width()
+    vel_data.plot_prochaska_2008_correlation()
+    save_figure(path.join(outdir,out))
+    plt.clf()
 
 def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
