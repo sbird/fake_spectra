@@ -319,12 +319,12 @@ class Spectra:
         ff.close()
         return mass_frac
 
-    def replace_not_DLA(self):
+    def replace_not_DLA(self, thresh=10**20.3):
         """
         Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
         Must implement get_cofm for this to work
         """
-        ind = self.filter_DLA()
+        ind = self.filter_DLA(thresh)
         while np.size(ind) > 0:
             #Replace spectra that did not result in a DLA
             cofm_new = self.get_cofm()
@@ -339,10 +339,10 @@ class Spectra:
         """Find a bunch more sightlines: should be overriden by child classes"""
         raise NotImplementedError
 
-    def filter_DLA(self):
+    def filter_DLA(self, thresh=10**20.3):
         """Find sightlines without a DLA"""
         col_den = self.get_col_density("H",1)
-        ind = np.where(np.max(col_den, axis=1) < 10**20.3)
+        ind = np.where(np.max(col_den, axis=1) < thresh)
         return ind
 
     def get_metallicity(self, solar=0.0133):
