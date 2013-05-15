@@ -5,7 +5,7 @@ import convert_cloudy
 import spectra
 import halospectra
 import numpy as np
-import leastsq as ls
+import leastsq as lsq
 import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
@@ -124,9 +124,8 @@ class PlottingSpectra(spectra.Spectra):
         bins=np.logspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
-        ind = self.get_filt("Si", 2)
         #Abs. distance for entire spectrum
-        hist = np.histogram(np.log10(met[ind]),np.log10(bins),density=True)[0]
+        hist = np.histogram(np.log10(met),np.log10(bins),density=True)[0]
         plt.semilogx(mbin,hist,color=color)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
@@ -141,9 +140,9 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(vel[ind2],met[ind2], 'x',color=color)
         met = np.log10(met[ind2])
         vel = np.log10(vel[ind2])
-        (intercept, slope, var) = ls.leastsq(met,vel)
+        (intercept, slope, var) = lsq.leastsq(met,vel)
         print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",ls.pearson(met, vel,intercept, slope)
+        print "sim correlation: ",lsq.pearson(met, vel,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
@@ -159,9 +158,9 @@ class PlottingSpectra(spectra.Spectra):
         vel = vel[ind2]
         mass = mass[ind2]
         plt.loglog(mass, vel,'x',color=color)
-        #(intercept, slope, var) = ls.leastsq(np.log10(mass),np.log10(vel))
+        #(intercept, slope, var) = lsq.leastsq(np.log10(mass),np.log10(vel))
         #print "sim corr: ",intercept, slope, np.sqrt(var)
-        #print "sim correlation: ",ls.pearson(np.log10(mass), np.log10(vel),intercept, slope)
+        #print "sim correlation: ",lsq.pearson(np.log10(mass), np.log10(vel),intercept, slope)
         #xx = np.logspace(np.min(np.log10(mass)), np.max(np.log10(mass)),15)
         #plt.loglog( xx,10**intercept*xx**slope, color=color)
 
@@ -180,15 +179,15 @@ class PlottingSpectra(spectra.Spectra):
         fromc[np.where(fromc >= 0.95)] = 0.95
         virial = np.sqrt(4.302e-3*mass[ind2]/radius[ind2]/1000)
         plt.plot(virial, vel,'x',color=color)
-        (intercept, slope, var) = ls.leastsq(np.log10(virial),np.log10(vel))
+        (intercept, slope, var) = lsq.leastsq(np.log10(virial),np.log10(vel))
         print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",ls.pearson(np.log10(virial), np.log10(vel),intercept, slope)
+        print "sim correlation: ",lsq.pearson(np.log10(virial), np.log10(vel),intercept, slope)
         xx = np.logspace(np.min(np.log10(virial)), np.max(np.log10(virial)),15)
         plt.loglog( xx,10**intercept*xx**slope, color=color)
 
-        #(intercept, slope, var) = ls.leastsq(virial,vel)
+        #(intercept, slope, var) = lsq.leastsq(virial,vel)
         #print "sim corr: ",intercept, slope, np.sqrt(var)
-        #print "sim correlation: ",ls.pearson(virial, vel,intercept, slope)
+        #print "sim correlation: ",lsq.pearson(virial, vel,intercept, slope)
         #xx = np.linspace(np.min(virial), np.max(virial),15)
         #plt.loglog( xx,intercept+xx*slope, color=color)
 
