@@ -456,25 +456,43 @@ class Spectra:
            and some ion number
         """
         try:
-            return self.metals[(elem, ion)][3]
+            [rho, vel, temp] = self.metals[(elem, ion)][:3]
         except KeyError:
             #generate metal and hydrogen spectral densities
             #Indexing is: rho_metals [ NSPECTRA, NBIN ]
             [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
+            self.metals[(elem, ion)] = [rho, vel, temp]
+        #Compute tau for this metal ion
+        tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
+        return tau
 
-            #Compute tau for this metal ion
-            (nlos, nbins) = np.shape(rho)
-            tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
-            self.metals[(elem, ion)] = [rho, vel, temp, tau]
-            return tau
-        except IndexError:
-            #This occurs when we have calculated rho, vel and T, but not tau
-            [rho, vel, temp] = self.metals[(elem, ion)][:3]
-            #Compute tau for this metal ion
-            (nlos, nbins) = np.shape(rho)
-            tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
-            self.metals[(elem, ion)] = [rho, vel, temp, tau]
-            return tau
+    def get_observer_tau(self, elem, ion, number=-1):
+        """Get the optical depth for a particular element out of:
+           (He, C, N, O, Ne, Mg, Si, Fe)
+           and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
+        """
+        #This occurs when we have calculated rho, vel and T, but not tau
+        [rho, vel, temp] = self.metals[(elem, ion)][:3]
+        if number >= 0:
+            rho = rho[:,number]
+            vel = vel[:,number]
+            temp = temp[:,number]
+        #Compute tau for this metal ion
+        nlines = np.size(self.lines[(elem,ion)])
+        tau = np.array([self.compute_absorption(elem, ion, ll, rho, vel, temp) for ll in xrange(nlines)])
+        #Maximum tau in each spectra with each line
+        maxtaus = np.max(tau, axis=2)
+        #Which line has the maximal tau closest to 1?
+        unity = np.abs(maxtaus-1)
+        #Array for line indices
+        numlos = np.shape(rho)[0]
+        ntau = np.empty(np.shape(rho))
+        for ii in xrange(numlos):
+            line = np.where(unity[:,ii] == np.min(unity[:,ii]))
+            if np.size(line) > 1:
+                line = (line[0][0],)
+            ntau[ii,:] = tau[line,ii,:]
+        return ntau
 
     def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, mass_cut = 1e10):
         """
@@ -581,13 +599,13 @@ class Spectra:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
         if tau == None:
-            tau = self.get_tau(elem, line, 2)
+            tau = self.get_observer_tau(elem, line)
 
         vel_width = self.vel_width(tau[self.get_filt(elem, line, HI_cut, met_cut)])
         if unres != None:
             ind = np.where(vel_width > unres)
             vel_width = vel_width[ind]
-        nlos = np.shape(vel_width)[0]
+        #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])

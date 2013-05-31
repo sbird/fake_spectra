@@ -24,7 +24,7 @@ def plot_virial_vel(sim, snap, ff=False):
         halo+="_512"
     #Load from a save file only
     hspec = ps.PlotHaloSpectra(snap, base+halo)
-    plot_virial_vel_vs_vel_width(self,elem="Si", line=2):
+    plot_virial_vel_vs_vel_width(self,elem="Si", line=2)
     plt.ylim(0,0.7)
 
 def plot_rel_vel_width_temp(sim1, snap):

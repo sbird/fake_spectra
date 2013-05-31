@@ -50,8 +50,8 @@ def plot_spectrum(sim, snap, num):
     halo = "Cosmo"+str(sim)+"_V6"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
-    tau = hspec.get_tau("Si", 2)
-    hspec.plot_spectrum(tau, num)
+    tau = hspec.get_observer_tau("Si", 2, num)
+    hspec.plot_spectrum(tau)
 
 def plot_spectrum_density_velocity(sim, snap, num):
     """Plot a spectrum"""
@@ -157,15 +157,15 @@ if __name__ == "__main__":
     for zz in (54,60,68):
         plot_metallicity(0, zz,True)
 
-    #for ss in (0,2,3):
-        #plot_spectrum_density_velocity(ss,60, 25)
-        #save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
-        #plt.clf()
+    for ss in (0,2,3):
+        plot_spectrum_density_velocity(ss,60, 25)
+        save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
+        plt.clf()
 
-    #for ss in (0,2,3):
-        #plot_sep_frac(ss,60)
-    #save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
-    #plt.clf()
+    for ss in (0,2,3):
+        plot_sep_frac(ss,60)
+    save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
+    plt.clf()
 
     for zz in (54, 60, 68):
         plot_vel_widths_sims(zz)

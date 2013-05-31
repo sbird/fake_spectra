@@ -39,13 +39,13 @@ class PlottingSpectra(spectra.Spectra):
         whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
         plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
 
-    def plot_spectrum(self, tau, i):
+    def plot_spectrum(self, tau):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
         #  Size of a single velocity bin
-        tot_tau = np.sum(tau[i,:])
+        tot_tau = np.sum(tau)
         #Deal with periodicity by making sure the deepest point is in the middle
-        tau_l = tau[i,:]
+        tau_l = tau
         tmax = np.max(tau_l)
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
@@ -63,16 +63,16 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
         #  Size of a single velocity bin
-        tau = self.get_tau(elem, ion)
+        tau = self.get_observer_tau(elem, ion,i)
         col_den = self.get_col_density(elem, ion)[i,:]
         #Deal with periodicity by making sure the deepest point is in the middle
-        tau_l = tau[i,:]
+        tau_l = tau
         tmax = np.max(tau_l)
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
         plt.subplot(311)
-        (low,high) = self.plot_spectrum(tau, i)
+        (low,high) = self.plot_spectrum(tau)
         plt.xlim(low-50,high+50)
         plt.subplot(312)
         ind = np.where(col_den > 1)
@@ -111,7 +111,7 @@ class PlottingSpectra(spectra.Spectra):
         mindist is in km/s
         """
         sep = self.get_separated(elem, ion, thresh,mindist)
-        vels = self.vel_width(self.get_tau(elem, ion))
+        vels = self.vel_width(self.get_observer_tau(elem, ion))
         v_table = 10**np.arange(0, np.log10(np.max(vels)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         hist1 = np.histogram(vels, v_table)
@@ -131,7 +131,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
         met = self.get_metallicity()
-        tau = self.get_tau(elem, line, 2)
+        tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
         met = met[ind]
         vel = self.vel_width(tau[ind])
@@ -150,7 +150,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_halo_mass_vs_vel_width(self, elem="Si", line=2, color="blue"):
         """Plot the velocity width vs the halo mass of the hosting halo"""
         ind = self.get_filt(elem,line)
-        tau = self.get_tau(elem, line, 2)
+        tau = self.get_observer_tau(elem, line)
         vel = self.vel_width(tau[ind])
         (halos, dists) = self.find_nearest_halo()
         mass = self.sub_mass[halos][ind]
@@ -167,7 +167,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_radius_vs_vel_width(self, elem="Si", line=2, color="blue"):
         """Plot the velocity width vs the virial velocity of the hosting halo"""
         ind = self.get_filt(elem,line)
-        tau = self.get_tau(elem, line, 2)
+        tau = self.get_observer_tau(elem, line)
         vel = self.vel_width(tau[ind])
 
         (halos, dists) = self.find_nearest_halo()
@@ -194,7 +194,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_virial_vel_vs_vel_width(self,elem="Si", line=2):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
         ind = self.get_filt(elem,line)
-        tau = self.get_tau(elem, line, 2)
+        tau = self.get_observer_tau(elem, line)
         vel = self.vel_width(tau[ind])
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
