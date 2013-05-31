@@ -56,6 +56,9 @@ class Spectra:
         #Spectral data
         self.num = num
         self.base = base
+        #Empty dictionary to add results to
+        self.metals = {}
+        self.tau_obs = {}
         try:
             self.files = hdfsim.get_all_files(num, base)
         except IOError:
@@ -85,8 +88,6 @@ class Spectra:
             mass_bar = np.sum(ff["PartType0"]["Masses"])
             self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
             ff.close()
-            #Empty dictionary to add results to
-            self.metals = {}
 
         # Conversion factors from internal units
         rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
@@ -119,13 +120,10 @@ class Spectra:
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
         try:
-            f=h5py.File(self.savefile,'a')
+            f=h5py.File(self.savefile,'w')
         except IOError:
             raise IOError("Could not open ",self.savefile," for writing")
-        try:
-            grp = f["Header"]
-        except KeyError:
-            grp = f.create_group("Header")
+        grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins
         grp.attrs["hubble"]=self.hubble
@@ -133,28 +131,19 @@ class Spectra:
         grp.attrs["omegam"]=self.OmegaM
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
-        try:
-            grp = f["spectra"]
-        except KeyError:
-            grp = f.create_group("spectra")
-            grp["cofm"]=self.cofm
-            grp["axis"]=self.axis
-        try:
-            grp_grid = f["metals"]
-        except KeyError:
-            grp_grid = f.create_group("metals")
+        grp = f.create_group("spectra")
+        grp["cofm"]=self.cofm
+        grp["axis"]=self.axis
+        grp_grid = f.create_group("metals")
         for (key, value) in self.metals.iteritems():
-            try:
-                #Select by the element
-                gg = grp_grid[key[0]]
-            except KeyError:
-                grp_grid.create_group(key[0])
-                gg = grp_grid[key[0]]
-            try:
-                gg.create_dataset(str(key[1]),data=value)
-            except RuntimeError:
-                #If it is already there, don't add to it.
-                pass
+            grp_grid.create_group(key[0])
+            gg = grp_grid[key[0]]
+            gg.create_dataset(str(key[1]),data=value)
+        grp_grid = f.create_group("tau_obs")
+        for (key, value) in self.tau_obs.iteritems():
+            grp_grid.create_group(key[0])
+            gg = grp_grid[key[0]]
+            gg.create_dataset(str(key[1]),data=value)
         f.close()
 
     def load_savefile(self,savefile=None):
@@ -170,11 +159,17 @@ class Spectra:
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
         self.box=grid_file.attrs["box"]
-        self.metals = {}
         grp = f["metals"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
+        try:
+            grp = f["tau_obs"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
+        except IOError:
+            pass
         grp=f["spectra"]
         self.cofm = np.array(grp["cofm"])
         self.axis = np.array(grp["axis"])
@@ -471,6 +466,10 @@ class Spectra:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
+        try:
+            return self.tau_obs[(elem, ion)]
+        except KeyError:
+            pass
         #This occurs when we have calculated rho, vel and T, but not tau
         [rho, vel, temp] = self.metals[(elem, ion)][:3]
         if number >= 0:
@@ -492,6 +491,7 @@ class Spectra:
             if np.size(line) > 1:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
+        self.tau_obs[(elem, ion)] = ntau
         return ntau
 
     def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, mass_cut = 1e10):
