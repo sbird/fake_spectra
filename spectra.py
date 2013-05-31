@@ -136,12 +136,20 @@ class Spectra:
         grp["axis"]=self.axis
         grp_grid = f.create_group("metals")
         for (key, value) in self.metals.iteritems():
-            grp_grid.create_group(key[0])
+            try:
+                gg = grp_grid[key[0]]
+            except KeyError:
+                grp_grid.create_group(key[0])
+                gg = grp_grid[key[0]]
             gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
         grp_grid = f.create_group("tau_obs")
         for (key, value) in self.tau_obs.iteritems():
-            grp_grid.create_group(key[0])
+            try:
+                gg = grp_grid[key[0]]
+            except KeyError:
+                grp_grid.create_group(key[0])
+                gg = grp_grid[key[0]]
             gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
         f.close()
@@ -168,7 +176,7 @@ class Spectra:
             for elem in grp.keys():
                 for ion in grp[elem].keys():
                     self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
-        except IOError:
+        except KeyError:
             pass
         grp=f["spectra"]
         self.cofm = np.array(grp["cofm"])
@@ -480,12 +488,19 @@ class Spectra:
         nlines = np.size(self.lines[(elem,ion)])
         tau = np.array([self.compute_absorption(elem, ion, ll, rho, vel, temp) for ll in xrange(nlines)])
         #Maximum tau in each spectra with each line
-        maxtaus = np.max(tau, axis=2)
+        maxtaus = np.max(tau, axis=-1)
         #Which line has the maximal tau closest to 1?
         unity = np.abs(maxtaus-1)
         #Array for line indices
         numlos = np.shape(rho)[0]
         ntau = np.empty(np.shape(rho))
+        #When we have only a single line, the indexing is different
+        if number >=0:
+            line = np.where(unity == np.min(unity))
+            if np.size(line) > 1:
+                line = (line[0][0],)
+            return tau[line,:][0][0]
+
         for ii in xrange(numlos):
             line = np.where(unity[:,ii] == np.min(unity[:,ii]))
             if np.size(line) > 1:
