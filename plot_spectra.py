@@ -66,7 +66,7 @@ class PlottingSpectra(spectra.Spectra):
         tau = self.get_observer_tau(elem, ion,i)
         col_den = self.get_col_density(elem, ion)[i,:]
         #Deal with periodicity by making sure the deepest point is in the middle
-        tau_l = tau
+        tau_l = np.ravel(tau)
         tmax = np.max(tau_l)
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)

@@ -141,7 +141,6 @@ class Spectra:
             except KeyError:
                 grp_grid.create_group(key[0])
                 gg = grp_grid[key[0]]
-            gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
         grp_grid = f.create_group("tau_obs")
         for (key, value) in self.tau_obs.iteritems():
@@ -150,7 +149,6 @@ class Spectra:
             except KeyError:
                 grp_grid.create_group(key[0])
                 gg = grp_grid[key[0]]
-            gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
         f.close()
 
@@ -475,7 +473,10 @@ class Spectra:
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
         try:
-            return self.tau_obs[(elem, ion)]
+            if number >=0:
+                return self.tau_obs[(elem, ion)][number,:]
+            else:
+                return self.tau_obs[(elem, ion)]
         except KeyError:
             pass
         #This occurs when we have calculated rho, vel and T, but not tau
