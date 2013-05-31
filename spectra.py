@@ -30,7 +30,7 @@ import halocat
 from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
 import os.path as path
-from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption
+from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption,_Compute_Absorption_multiple
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -393,7 +393,10 @@ class Spectra:
         line = self.lines[(elem,ion)][ll]
         mass = self.lines.get_mass(elem)
         #Don't forget to convert line width from A to m!
-        tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
+        if np.size(np.shape(rho)) > 1:
+            tau = _Compute_Absorption_multiple(rho, vel, temp, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
+        else:
+            tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
         return tau
 
     def find_max_tau(self, elem, ion, rho, vel, temp):
@@ -461,15 +464,15 @@ class Spectra:
 
             #Compute tau for this metal ion
             (nlos, nbins) = np.shape(rho)
-            tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+            tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
         except IndexError:
             #This occurs when we have calculated rho, vel and T, but not tau
-            [rho, vel, temp] = self.metals[(elem, ion)]
+            [rho, vel, temp] = self.metals[(elem, ion)][:3]
             #Compute tau for this metal ion
             (nlos, nbins) = np.shape(rho)
-            tau = np.array([self.compute_absorption(elem, ion, ll, rho[n,:], vel[n,:], temp[n,:]) for n in xrange(0, nlos)])
+            tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
             self.metals[(elem, ion)] = [rho, vel, temp, tau]
             return tau
 
@@ -484,9 +487,9 @@ class Spectra:
             met_cut = 0
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
-        (halos, dists) = self.find_nearest_halo()
-        mass = self.sub_mass[halos]
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(mass > mass_cut))
+        #(halos, dists) = self.find_nearest_halo()
+        #mass = self.sub_mass[halos]
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)) #*(mass > mass_cut))
         return ind
 
     def vel_width(self, tau):
@@ -614,13 +617,11 @@ class Spectra:
         except KeyError:
             [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
             self.metals[(elem, ion)] = [rho, vel, temp]
-        #Size of a bin in physical m
-        binsz = self.box/(1.*self.nbins)*self.KPC*(1+self.red)/self.hubble
         #Convert from physical kg/m^2 to atoms/cm^2
         convert = 1./self.PROTONMASS/1e4
         if elem != "Z":
             convert /= self.lines.get_mass(elem)
-        return rho*binsz*convert
+        return rho*self.dzgrid*convert
 
     def get_H_col_density(self):
         """Compute the density in each pixel for neutral hydrogen and total gas"""
@@ -660,9 +661,9 @@ class Spectra:
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        dX=self.absorption_distance()
-        #Total Number of pixels
-        rho = self.get_col_density(elem, ion)
+        dX=self.absorption_distance()/self.nbins
+        #Col density of each sightline
+        rho = np.ravel(self.get_col_density(elem, ion))
         tot_cells = np.size(rho)
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         tot_f_N=tot_f_N/(width*dX*tot_cells)
@@ -675,8 +676,8 @@ class Spectra:
         h100=3.2407789e-18
         # in cm/s
         light=2.9979e10
-        #Units: h/s   s/cm                        kpc/h      cm/kpc
-        return h100/light*(1+self.red)**2*self.box*self.KPC
+        #Units: h/s   s/cm                 kpc/h      cm/kpc
+        return h100/light*(1+self.red)**2*self.box*(100*self.KPC)
 
     def rho_crit(self):
         """Get the critical density at z=0 in units of g cm^-3"""
@@ -696,13 +697,13 @@ class Spectra:
         #Column density of HI in atoms cm^-2 (physical)
         col_den = self.get_col_density(elem, ion)
         if thresh > 0:
-            HIden = np.mean(col_den[np.where(col_den > 10**thresh)])
+            HIden = np.sum(col_den[np.where(col_den > 10**thresh)])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
-        #Avg. Column density of HI in g cm^-2 (comoving)
-        HIden = self.PROTONMASS * HIden/(1+self.red)**2
-        #Length of column in comoving cm
-        length = (self.box*self.KPC/self.hubble)
+        #Avg. Column density of HI in kg cm^-2 (comoving)
+        HIden = self.PROTONMASS * 1000 * HIden/(1+self.red)**2
+        #Length of column (each cell) in comoving cm
+        length = (self.box*self.KPC*100/self.hubble)/self.nbins/(1+self.red)
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
         omega_DLA=HIden/length/self.rho_crit()
         return omega_DLA

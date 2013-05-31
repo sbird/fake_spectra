@@ -230,7 +230,35 @@ extern "C" PyObject * Py_Compute_Absorption(PyObject *self, PyObject *args)
     veloc_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(veloc));
     temp_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(temp));
     Compute_Absorption(tau_C, rho_C, veloc_C, temp_C, nbins, Hz, h100, box100, atime, lambda_lya, gamma_lya, fosc_lya, mass);
-    return Py_BuildValue("O",tau);
+    PyObject * out = Py_BuildValue("O",tau);
+    Py_DECREF(tau);
+    return out;
+}
+
+extern "C" PyObject * Py_Compute_Absorption_multiple(PyObject *self, PyObject *args)
+{
+    PyArrayObject * tau, *rho, *veloc, *temp;
+    double *tau_C, *rho_C, *veloc_C, *temp_C;
+    double Hz, h100, box100, atime, lambda_lya, gamma_lya, fosc_lya, mass;
+    if(!PyArg_ParseTuple(args, "O!O!O!dddddddd",&PyArray_Type, &rho, &PyArray_Type, &veloc, &PyArray_Type, &temp, &Hz, &h100, &box100, &atime, &lambda_lya, &gamma_lya,&fosc_lya,&mass) )
+        return NULL;
+    npy_intp dims[2] = {PyArray_DIM(rho,0), PyArray_DIM(rho,1)};
+    const int nbins = dims[1];
+
+    tau = (PyArrayObject *) PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    PyArray_FILLWBYTE(tau, 0);
+    tau_C = (double *) PyArray_DATA(tau);
+    rho_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(rho));
+    veloc_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(veloc));
+    temp_C =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(temp));
+    #pragma omp parallel for
+    for(int i=0; i< dims[0]; i++){
+        const int off = i*nbins;
+        Compute_Absorption(tau_C+off, rho_C+off, veloc_C+off, temp_C+off, nbins, Hz, h100, box100, atime, lambda_lya, gamma_lya, fosc_lya, mass);
+    }
+    PyObject * out = Py_BuildValue("O",tau);
+    Py_DECREF(tau);
+    return out;
 }
 
 static PyMethodDef spectrae[] = {
@@ -246,6 +274,10 @@ static PyMethodDef spectrae[] = {
   {"_Compute_Absorption", Py_Compute_Absorption, METH_VARARGS,
    "Compute tau along a sightline. "
    "    Arguments: rho, veloc, temp, nbins, Hz, h100, box100, atime, lambda, gamma, fosc, mass"
+   "    "},
+  {"_Compute_Absorption_multiple", Py_Compute_Absorption_multiple, METH_VARARGS,
+   "Compute tau along multiple sightlines. "
+   "    Arguments: rho, veloc, temp, Hz, h100, box100, atime, lambda, gamma, fosc, mass"
    "    "},
   {NULL, NULL, 0, NULL},
 };
