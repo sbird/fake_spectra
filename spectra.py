@@ -535,19 +535,27 @@ class Spectra:
         #  Size of a single velocity bin
         tot_tau = np.sum(tau,axis = 1)
         vel_width = np.zeros(np.shape(tot_tau))
+        tau = self._get_rolled_spectra(tau)
+        for ll in np.arange(0, np.shape(tau)[0]):
+            #Deal with periodicity by making sure the deepest point is in the middle
+            (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
+            vel_width[ll] = self.dvbin*(high-low)
+        #Return the width
+        return vel_width
+
+    def _get_rolled_spectra(self,tau):
+        """Cycle the spectrum so that the deepest absorption is at the middle"""
+        tau_out = np.zeros(np.shape(tau))
         for ll in np.arange(0, np.shape(tau)[0]):
             #Deal with periodicity by making sure the deepest point is in the middle
             tau_l = tau[ll,:]
             max_t = np.max(tau_l)
             if max_t == 0:
-                vel_width[ll] = 0
                 continue
             ind_m = np.where(tau_l == max_t)[0][0]
-            tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-            (low, high) = self._vel_width_bound(tau_l, tot_tau[ll])
-            vel_width[ll] = self.dvbin*(high-low)
-        #Return the width
-        return vel_width
+            tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+        return tau_out
+
 
     def _vel_width_bound(self, tau, tot_tau):
         """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
@@ -558,7 +566,7 @@ class Spectra:
         spl = UnivariateSpline(x, tdiff, s=0)
         high = spl.roots()
         tdiff = cum_tau - 0.05*tot_tau
-        spl = UnivariateSpline(np.arange(0,np.size(cum_tau)), tdiff, s=0)
+        spl = UnivariateSpline(x, tdiff, s=0)
         low = spl.roots()
         if np.size(low) == 0:
             low = 0
@@ -570,6 +578,102 @@ class Spectra:
             high = high[0]
 
         return (low, high)
+
+    def _vel_median(self, tau, tot_tau):
+        """Find the median point of the integrated optical depth"""
+        cum_tau = np.cumsum(tau)
+        #Use spline interpolation to find the edge of the bins.
+        tdiff = cum_tau - 0.5*tot_tau
+        x = np.arange(0,np.size(cum_tau))
+        spl = UnivariateSpline(x, tdiff, s=0)
+        high = spl.roots()
+        return high
+
+    def vel_mean_median(self, tau):
+        """Find the difference between the mean velocity and the median velocity.
+           The mean velocity is the point halfway across the extent of the velocity width.
+           The median velocity is v(tau = tot_tau /2)
+           """
+        #  Size of a single velocity bin
+        tot_tau = np.sum(tau,axis = 1)
+        mean_median = np.zeros(np.shape(tot_tau))
+        tau = self._get_rolled_spectra(tau)
+        for ll in np.arange(0, np.shape(tau)[0]):
+            (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
+            vmean = low+(high-low)/2.
+            vel_median = self._vel_median(tau[ll,:],tot_tau[ll])
+            mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
+        #Return the width
+        return mean_median
+
+    def vel_peak(self, tau):
+        """Find the difference between the peak optical depth and the median velocity, divided by the velocity width.
+           The median velocity is v(tau = tot_tau /2)
+        """
+        #  Size of a single velocity bin
+        tot_tau = np.sum(tau,axis = 1)
+        mean_median = np.zeros(np.shape(tot_tau))
+        tau = self._get_rolled_spectra(tau)
+        for ll in np.arange(0, np.shape(tau)[0]):
+            (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
+            vmean = low+(high-low)/2.
+            #Peak is at 0
+            vmax = np.where(tau[ll,:] == np.max(tau[ll,:]))
+            mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
+        #Return the width
+        return mean_median
+
+    def vel_2nd_peak(self, tau):
+        """
+           Find the difference between the 2nd highest peak optical depth and the mean velocity, divided by the velocity width.
+           To count as a peak, the 2nd peak must be > 1/3 the peak value,
+           and must have a minimum between it and the peak, separated by at least "3-sigma".
+           Since these spectra are noiseless, I interpret this as 5%.
+
+           If there is no 2nd peak, return the mean minus the main peak
+        """
+        #  Size of a single velocity bin
+        tot_tau = np.sum(tau,axis = 1)
+        mean_median = np.zeros(np.shape(tot_tau))
+        tau = self._get_rolled_spectra(tau)
+        for ll in np.arange(0, np.shape(tau)[0]):
+            (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
+            vmean = low+(high-low)/2.
+            #Find second peak
+            tt = tau[ll,:][low:high]
+            #derivative
+            ttd = np.diff(tt)
+            x = np.arange(np.size(tt))
+            splp = UnivariateSpline(x, ttd, s=0)
+            turn = splp.roots()
+            spl = UnivariateSpline(x, tt, s=0)
+            vals = spl(turn)
+            #The peak
+            maxpeak = np.where(vals == np.max(vals))
+            #The second-highest turning point
+            secpeak = np.where(vals == np.max(vals[np.where(vals < vals[maxpeak])]))
+            #Is this peak > 1/3 the peak value
+            if vals[secpeak] < vals[maxpeak]/3.:
+                mean_median[ll] = np.abs(maxpeak+low - vmean)/((high-low)*0.5)
+                continue
+            #Compute the sign
+            sign = -1
+            if secpeak < maxpeak and vmean < secpeak:
+                sign = 1
+            if secpeak > maxpeak and vmean > secpeak:
+                sign = 1
+            #Find a minimum
+            if secpeak < maxpeak:
+                minn = np.where((turn < maxpeak)*(turn > secpeak))
+            else:
+                minn = np.where((turn > maxpeak)*(turn < secpeak))
+            #Is the minimum sufficiently deep (and a minimum)
+            if np.size(minn == 0) or np.min(vals[minn]) > vals[secpeak]*0.95:
+                mean_median[ll] = np.abs(maxpeak+low - vmean)/((high-low)*0.5)
+                continue
+            mean_median[ll] = sign*np.abs(secpeak+low - vmean)/((high-low)*0.5)
+        #Return the width
+        return mean_median
 
     def delta(self, rho):
         """Get a density in units of delta = ρ/bar{ρ} -1.
