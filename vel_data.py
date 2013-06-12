@@ -69,5 +69,6 @@ def plot_prochaska_2008_correlation(color="black"):
     (intercept, slope, var) = ls.leastsq(met,vel)
     print "obs fit: ",intercept, slope, np.sqrt(var)
     print "obs correlation: ",ls.pearson(met, vel,intercept, slope)
+    print "obs kstest: ",ls.kstest(met, vel,intercept, slope)
     xx = np.logspace(np.min(met), np.max(met),15)
     plt.loglog(10**intercept*xx**slope, xx, color=color)

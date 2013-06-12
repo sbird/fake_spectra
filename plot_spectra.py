@@ -6,7 +6,9 @@ import spectra
 import halospectra
 import numpy as np
 import leastsq as lsq
+import kstest as ks
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
@@ -143,9 +145,21 @@ class PlottingSpectra(spectra.Spectra):
         (intercept, slope, var) = lsq.leastsq(met,vel)
         print "sim corr: ",intercept, slope, np.sqrt(var)
         print "sim correlation: ",lsq.pearson(met, vel,intercept, slope)
+        print "sim kstest: ",lsq.kstest(met, vel,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
+
+    def kstest(self, Zdata, veldata, elem="Si", line=2):
+        """Find the 2D KS test value of the Vel width and metallicity with respect to an external dataset, veldata and Z data"""
+        met = self.get_metallicity()
+        tau = self.get_observer_tau(elem, line)
+        ind = self.get_filt(elem, line)
+        met = met[ind]
+        vel = self.vel_width(tau[ind])
+        data2 = np.array([met,vel]).T
+        data = np.array([Zdata, veldata]).T
+        return ks.ks_2d_2samp(data,data2)
 
     def plot_halo_mass_vs_vel_width(self, elem="Si", line=2, color="blue"):
         """Plot the velocity width vs the halo mass of the hosting halo"""
@@ -157,7 +171,18 @@ class PlottingSpectra(spectra.Spectra):
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
         mass = mass[ind2]
-        plt.loglog(mass, vel,'x',color=color)
+        dists = dists[ind][ind2]
+        nbins = 10
+        mbins = np.logspace(9,np.log10(np.max(mass)),nbins)
+        dbins = np.logspace(0,np.log10(np.max(dists)),nbins)
+        vbins = np.logspace(np.log10(15),np.log10(np.max(vel)),nbins)
+        (hist, edges) = np.histogramdd(np.vstack((mass, dists, vel)).T, bins=[mbins,dbins,vbins], normed=False)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        cset = ax.contour3D(np.log10(mass), np.log10(dists), np.log10(vel))
+        return (hist, edges)
+        #plt.loglog(mass, vel,'x',color=color)
         #(intercept, slope, var) = lsq.leastsq(np.log10(mass),np.log10(vel))
         #print "sim corr: ",intercept, slope, np.sqrt(var)
         #print "sim correlation: ",lsq.pearson(np.log10(mass), np.log10(vel),intercept, slope)
@@ -182,6 +207,7 @@ class PlottingSpectra(spectra.Spectra):
         (intercept, slope, var) = lsq.leastsq(np.log10(virial),np.log10(vel))
         print "sim corr: ",intercept, slope, np.sqrt(var)
         print "sim correlation: ",lsq.pearson(np.log10(virial), np.log10(vel),intercept, slope)
+        print "sim kstest: ",lsq.kstest(np.log10(virial), np.log10(vel),intercept, slope)
         xx = np.logspace(np.min(np.log10(virial)), np.max(np.log10(virial)),15)
         plt.loglog( xx,10**intercept*xx**slope, color=color)
 

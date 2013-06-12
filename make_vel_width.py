@@ -80,6 +80,8 @@ def plot_metallicity(sim, snap, ff=False):
     vel_data.plot_prochaska_2008_correlation()
     save_figure(path.join(outdir,out))
     plt.clf()
+    (redshift, met, vels) = vel_data.load_data()
+    print "KS test is : ",hspec.kstest(10**met, vels)
 
 def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
