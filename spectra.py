@@ -51,6 +51,7 @@ class Spectra:
         MPC = self.KPC * 1000
         self.SIGMA_T = 6.652458558e-29
         self.PROTONMASS = 1.66053886e-27 # 1 a.m.u in kg
+        #1 M_sun in kg
         self.SOLAR_MASS = 1.98892e30
         self.GAMMA = 5.0/3.0
         #Spectral data
@@ -826,25 +827,53 @@ class Spectra:
         rho_crit=3*h100**2/(8*math.pi*grav)
         return rho_crit
 
-    def omega_DLA(self, thresh=20.3, elem = "H", ion = 1):
-        """Compute Omega_DLA, the sum of the mass in DLAs, divided by the volume of the spectra, divided by the critical density.
-            Ω_DLA = m_p * avg. column density / (1+z)^2 / length of column / rho_c
+    def _rho_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
+        """Compute rho_DLA, the sum of the mass in DLAs, divided by the volume of the spectra in g/cm^3 (comoving).
+            ρ_DLA = m_p * avg. column density / (1+z)^2 / length of column
             Note: If we want the neutral gas density rather than the neutral hydrogen density, divide by 0.76,
             the hydrogen mass fraction.
         """
         #Column density of HI in atoms cm^-2 (physical)
         col_den = self.get_col_density(elem, ion)
         if thresh > 0:
-            HIden = np.sum(col_den[np.where(col_den > 10**thresh)])/np.size(col_den)
+            HIden = np.sum(col_den[np.where(col_den > thresh)])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
         #Avg. Column density of HI in kg cm^-2 (comoving)
         HIden = self.PROTONMASS * 1000 * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
         length = (self.box*self.KPC*100/self.hubble)/self.nbins/(1+self.red)
+        #Avg density in g/cm^3 (comoving)
+        return HIden/length
+
+    def rho_DLA(self, thresh=10**20.3):
+        """Compute rho_DLA, the average density in DLAs. This is almost the same as the average density in HI.
+           Units are 10^8 M_sun / Mpc^3 (comoving), like 0811.2003
+        """
+        #Avg density in g/cm^3 (comoving)
+        rho_DLA = self._rho_DLA(thresh)
+        # 1 g/cm^3 (physical) in 1e8 M_sun/Mpc^3
+        conv = 1e8 * 1e3*self.SOLAR_MASS / (1e5 * self.KPC)**3
+        return rho_DLA / conv
+
+    def omega_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
+        """Compute Omega_DLA, the sum of the mass in DLAs, divided by the volume of the spectra, divided by the critical density.
+            Ω_DLA = m_p * avg. column density / (1+z)^2 / length of column / rho_c
+            Note: If we want the neutral gas density rather than the neutral hydrogen density, divide by 0.76,
+            the hydrogen mass fraction.
+        """
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
-        omega_DLA=HIden/length/self.rho_crit()
+        omega_DLA=self._rho_DLA()/self.rho_crit()
         return omega_DLA
+
+    def line_density(self, thresh=10**20.3, elem = "H", ion = 1):
+        """Compute the line density, the total no. of DLA sightlines divided by the total number of sightlines, multiplied by d L / dX. This is dN/dX = l_DLA(z)
+        """
+        col_den = self.get_col_density(elem, ion)
+        #Average fraction of pixels containing a DLA
+        frac = 1.*np.size(col_den[np.where(col_den > thresh)])/np.size(col_den)
+        #Divide by abs. distance per sightline
+        return frac/(self.absorption_distance()/self.nbins)
 
     def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=15):
         """Find spectra with more than a single density peak.
