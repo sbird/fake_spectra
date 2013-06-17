@@ -474,7 +474,7 @@ class Spectra:
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
         try:
-            if number >=0:
+            if number >= 0:
                 return self.tau_obs[(elem, ion)][number,:]
             else:
                 return self.tau_obs[(elem, ion)]
@@ -497,7 +497,7 @@ class Spectra:
         numlos = np.shape(rho)[0]
         ntau = np.empty(np.shape(rho))
         #When we have only a single line, the indexing is different
-        if number >=0:
+        if number >= 0:
             line = np.where(unity == np.min(unity))
             if np.size(line) > 1:
                 line = (line[0][0],)
@@ -511,7 +511,7 @@ class Spectra:
         self.tau_obs[(elem, ion)] = ntau
         return ntau
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, mass_cut = 1e10):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
@@ -733,6 +733,26 @@ class Spectra:
         vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
 
+    def mass_hist(self, min_mass=1e9,dm=0.2):
+        """
+        Compute a histogram of the host halo mass of each DLA spectrum.
+
+        Parameters:
+            dm - bin spacing
+            min_mass - Minimum halo mass to assign spectrum to
+
+        Returns:
+            (mbins, pdf) - Mass (binned in log) and corresponding PDF.
+        """
+        (halos, dists) = self.find_nearest_halo(min_mass)
+        ind = self.get_filt("Si",2)
+        #nlos = np.shape(vel_width)[0]
+        #print 'nlos = ',nlos
+        m_table = 10**np.arange(np.log10(min_mass), np.log10(np.max(self.sub_mass)), dm)
+        mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
+        pdf = np.histogram(np.log10(self.sub_mass[halos][ind]),np.log10(m_table), density=True)[0]
+        return (mbin, pdf)
+
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
         tau = self.get_tau(elem, ion, line)
@@ -863,7 +883,7 @@ class Spectra:
             the hydrogen mass fraction.
         """
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
-        omega_DLA=self._rho_DLA()/self.rho_crit()
+        omega_DLA=self._rho_DLA(thresh, elem, ion)/self.rho_crit()
         return omega_DLA
 
     def line_density(self, thresh=10**20.3, elem = "H", ion = 1):
@@ -907,10 +927,14 @@ class Spectra:
             spos = cofm[:,:2]
         return spos
 
-    def find_nearest_halo(self):
-        """Find the nearest halo to the sightlines"""
+    def find_nearest_halo(self, min_mass = 1e9):
+        """
+        Find the nearest halo to the sightlines, with a halo mass greater
+        than min_mass (to avoid unresolved halos)
+        """
         dists = np.empty(np.size(self.axis))
         halos = np.empty(np.size(self.axis),dtype=np.int)
+        m_ind = np.where(self.sub_mass > min_mass)
         #X axis first
         axes = [0,1,2]
         for ax in [1,2,3]:
@@ -920,7 +944,7 @@ class Spectra:
             for ii in np.ravel(ind):
                 proj_pos = self.cofm[ii,sax]
                 dd = np.sqrt(np.sum((self.sub_cofm[:,sax] - proj_pos)**2,axis=1))
-                dists[ii] = np.min(dd)
+                dists[ii] = np.min(dd[m_ind])
                 halos[ii] = int(np.where(dists[ii] == dd)[0][0])
         return (halos, dists)
 

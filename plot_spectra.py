@@ -75,21 +75,18 @@ class PlottingSpectra(spectra.Spectra):
         col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
         plt.subplot(311)
         (low,high) = self.plot_spectrum(tau)
-        plt.xlim(low-50,high+50)
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
         plt.subplot(312)
         ind = np.where(col_den > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
-        #plt.xlim(0,np.size(tau_l)*self.dvbin)
-        plt.xlim(low-50,high+50)
-        plt.ylim(1e5,1e20)
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
         plt.yticks(np.array([1e10, 1e15,1e20]))
         plt.subplot(313)
         vel = self.get_vel(elem, ion)[i,:]
         vel = np.roll(vel, np.size(tau_l)/2- ind_m)
         ind = np.where(np.abs(vel) > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,np.abs(vel[ind]))
-        #plt.xlim(0,np.size(tau_l)*self.dvbin)
-        plt.xlim(low-50,high+50)
+        plt.xlim(0,np.size(tau_l)*self.dvbin)
 
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
@@ -150,6 +147,38 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
 
+    def plot_Z_vs_mass(self,min_mass=1e9, color="blue"):
+        """Plot the correlation between mass and metallicity, with a fit"""
+        met = self.get_metallicity()
+        (halo, dists) = self.find_nearest_halo(min_mass)
+        mass = self.sub_mass[halo]
+        plt.loglog(mass,met, 'x',color=color)
+        met = np.log10(met)
+        mass = np.log10(mass)
+        (intercept, slope, var) = lsq.leastsq(met,mass)
+        print "sim corr: ",intercept, slope, np.sqrt(var)
+        print "sim correlation: ",lsq.pearson(met, mass,intercept, slope)
+        print "sim kstest: ",lsq.kstest(met, mass,intercept, slope)
+        xx = np.logspace(np.min(met), np.max(met),15)
+        plt.loglog(10**intercept*xx**slope, xx, color=color)
+
+    def plot_vel_vs_mass(self,elem, line, min_mass=1e9, color="blue"):
+        """Plot the correlation between mass and metallicity, with a fit"""
+        (halo, dists) = self.find_nearest_halo(min_mass)
+        tau = self.get_observer_tau(elem, line)
+        ind = self.get_filt(elem, line)
+        vel = self.vel_width(tau[ind])
+        mass = self.sub_mass[halo][ind]
+        vel = np.log10(vel)
+        mass = np.log10(mass)
+        plt.loglog(mass,vel, 'x',color=color)
+        (intercept, slope, var) = lsq.leastsq(np.log10(vel),np.log10(mass))
+        print "sim corr: ",intercept, slope, np.sqrt(var)
+        print "sim correlation: ",lsq.pearson(vel, mass,intercept, slope)
+        print "sim kstest: ",lsq.kstest(vel, mass,intercept, slope)
+        xx = np.logspace(np.min(vel), np.max(vel),15)
+        plt.loglog(10**intercept*xx**slope, xx, color=color)
+
     def kstest(self, Zdata, veldata, elem="Si", line=2):
         """Find the 2D KS test value of the Vel width and metallicity with respect to an external dataset, veldata and Z data"""
         met = self.get_metallicity()
@@ -160,34 +189,6 @@ class PlottingSpectra(spectra.Spectra):
         data2 = np.array([met,vel]).T
         data = np.array([Zdata, veldata]).T
         return ks.ks_2d_2samp(data,data2)
-
-    def plot_halo_mass_vs_vel_width(self, elem="Si", line=2, color="blue"):
-        """Plot the velocity width vs the halo mass of the hosting halo"""
-        ind = self.get_filt(elem,line)
-        tau = self.get_observer_tau(elem, line)
-        vel = self.vel_width(tau[ind])
-        (halos, dists) = self.find_nearest_halo()
-        mass = self.sub_mass[halos][ind]
-        ind2 = np.where(vel > 15)
-        vel = vel[ind2]
-        mass = mass[ind2]
-        dists = dists[ind][ind2]
-        nbins = 10
-        mbins = np.logspace(9,np.log10(np.max(mass)),nbins)
-        dbins = np.logspace(0,np.log10(np.max(dists)),nbins)
-        vbins = np.logspace(np.log10(15),np.log10(np.max(vel)),nbins)
-        (hist, edges) = np.histogramdd(np.vstack((mass, dists, vel)).T, bins=[mbins,dbins,vbins], normed=False)
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        cset = ax.contour3D(np.log10(mass), np.log10(dists), np.log10(vel))
-        return (hist, edges)
-        #plt.loglog(mass, vel,'x',color=color)
-        #(intercept, slope, var) = lsq.leastsq(np.log10(mass),np.log10(vel))
-        #print "sim corr: ",intercept, slope, np.sqrt(var)
-        #print "sim correlation: ",lsq.pearson(np.log10(mass), np.log10(vel),intercept, slope)
-        #xx = np.logspace(np.min(np.log10(mass)), np.max(np.log10(mass)),15)
-        #plt.loglog( xx,10**intercept*xx**slope, color=color)
 
     def plot_radius_vs_vel_width(self, elem="Si", line=2, color="blue"):
         """Plot the velocity width vs the virial velocity of the hosting halo"""
