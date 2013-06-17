@@ -8,7 +8,6 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
 import plot_spectra as ps
-import numpy as np
 import dla_data
 import os.path as path
 from save_figure import save_figure
@@ -20,7 +19,6 @@ print "Plots at: ",outdir
 def plot_cddf_a_halo(sim, snap, color="red", ff=False):
     """Load a simulation and plot its cddf"""
     halo = "Cosmo"+str(sim)+"_V6"
-    savefile = None
     if ff:
         halo+="_512"
     hspec = ps.PlottingSpectra(snap, base+halo, savefile="rand_spectra.hdf5")
@@ -47,32 +45,32 @@ def plot_rho_HI(sim, color="red", ff=False):
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
         halo+="_512"
-    ss = {4:54, 3:60, 2:68}
+    zzz = {4:54, 3:60, 2:68}
     rho_HI = {}
     for zz in (4,3,2):
         try:
-          hspec = ps.PlottingSpectra(ss[zz], base+halo, savefile="rand_spectra.hdf5")
-          rho_HI[zz]=hspec.rho_DLA()
-          del hspec
+            hspec = ps.PlottingSpectra(zzz[zz], base+halo, savefile="rand_spectra.hdf5")
+            rho_HI[zz]=hspec.rho_DLA()
+            del hspec
         except TypeError:
-          pass
-    plt.plot(rho_HI.keys(),rho_HI.values())
+            pass
+    plt.plot(rho_HI.keys(),rho_HI.values(), color=color)
 
 def plot_dndx(sim, color="red", ff=False):
     """Plot dndx (cross-section) across redshift"""
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
         halo+="_512"
-    ss = {4:54, 3:60, 2:68}
+    zzz = {4:54, 3:60, 2:68}
     dndx={}
     for zz in (4,3,2):
         try:
-          hspec = ps.PlottingSpectra(ss[zz], base+halo, savefile="rand_spectra.hdf5")
-          dndx[zz]=hspec.line_density()
-          del hspec
+            hspec = ps.PlottingSpectra(zzz[zz], base+halo, savefile="rand_spectra.hdf5")
+            dndx[zz]=hspec.line_density()
+            del hspec
         except TypeError:
-          pass
-    plt.plot(dndx.keys(),dndx.values())
+            pass
+    plt.plot(dndx.keys(),dndx.values(), color=color)
 
 colors=["red", "blue", "orange", "purple"]
 

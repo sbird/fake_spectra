@@ -17,16 +17,6 @@ base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/vars/"
 print "Plots at: ",outdir
 
-def plot_virial_vel(sim, snap, ff=False):
-    """Histograms of the velocity width / virial velocity for three different regimes"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
-    #Load from a save file only
-    hspec = ps.PlotHaloSpectra(snap, base+halo)
-    plot_virial_vel_vs_vel_width(self,elem="Si", line=2)
-    plt.ylim(0,0.7)
-
 def plot_rel_vel_width_temp(sim1, snap):
     """Load and make a plot of the difference from neglecting temperature broadening"""
     halo1 = "Cosmo"+str(sim1)+"_V6"
@@ -41,11 +31,11 @@ def plot_rel_vel_width_temp(sim1, snap):
     plt.loglog(vbin, vels2, color="blue", lw=3)
     plt.loglog(vbin, vels1, color="red", lw=3)
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_no_temp_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim1)+"_no_temp_z"+str(snap)))
     plt.clf()
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_no_temp_rel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim1)+"_no_temp_rel_z"+str(snap)))
     plt.clf()
 
 
@@ -66,25 +56,20 @@ def plot_rel_vel_width_vel(sim1, snap):
     (vbin, vels2) = hspec1.vel_width_hist("Si", 2,tau=tau_vv)
     plt.loglog(vbin, vels2, color="blue", lw=3)
     vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_no_vel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim1)+"_no_vel_z"+str(snap)))
     plt.clf()
     (vbin, vels1) = hspec1.vel_width_hist("Si", 2)
     mm = np.min((np.size(vels2), np.size(vels1)))
     plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_no_vel_rel_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo"+str(sim1)+"_no_vel_rel_z"+str(snap)))
     plt.clf()
 
 
-#for ii in (0,3):
-    ##Plot effect of ignoring temperature broadening
-    #plot_rel_vel_width_temp(ii, 60)
+for ii in (0,3):
+    #Plot effect of ignoring temperature broadening
+    plot_rel_vel_width_temp(ii, 60)
 
-#for ii in (0,3):
-    ##Plot effect of ignoring temperature broadening
-    #plot_rel_vel_width_vel(ii, 60)
+for ii in (0,3):
+    #Plot effect of ignoring temperature broadening
+    plot_rel_vel_width_vel(ii, 60)
 
-for ii in (0,1,2,3):
-    #Plot halo mass vs vw.
-    plot_virial_vel(ii, 60)
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_sub_mass"))
-    plt.clf()
