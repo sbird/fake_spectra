@@ -152,15 +152,16 @@ class PlottingSpectra(spectra.Spectra):
         met = self.get_metallicity()
         (halo, dists) = self.find_nearest_halo(min_mass)
         mass = self.sub_mass[halo]
-        plt.loglog(mass,met, 'x',color=color)
-        met = np.log10(met)
-        mass = np.log10(mass)
+        ind2 = np.where(met > 1e-3)
+        plt.loglog(mass[ind2],met[ind2], 'x',color=color)
+        met = np.log10(met[ind2])
+        mass = np.log10(mass[ind2])
         (intercept, slope, var) = lsq.leastsq(met,mass)
-        print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",lsq.pearson(met, mass,intercept, slope)
-        print "sim kstest: ",lsq.kstest(met, mass,intercept, slope)
+        print "Z mass corr: ",intercept, slope, np.sqrt(var)
+        print "Z mass correlation: ",lsq.pearson(met, mass,intercept, slope)
+        print "Z mass kstest: ",lsq.kstest(met, mass,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
-        plt.loglog(10**intercept*xx**slope, xx, color=color)
+        plt.loglog(10**intercept*xx**slope, xx, color="black")
 
     def plot_vel_vs_mass(self,elem, line, min_mass=1e9, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
@@ -169,15 +170,16 @@ class PlottingSpectra(spectra.Spectra):
         ind = self.get_filt(elem, line)
         vel = self.vel_width(tau[ind])
         mass = self.sub_mass[halo][ind]
-        vel = np.log10(vel)
-        mass = np.log10(mass)
         plt.loglog(mass,vel, 'x',color=color)
-        (intercept, slope, var) = lsq.leastsq(np.log10(vel),np.log10(mass))
-        print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",lsq.pearson(vel, mass,intercept, slope)
-        print "sim kstest: ",lsq.kstest(vel, mass,intercept, slope)
+        ind2 = np.where(np.logical_and(vel > 15, vel < 100))
+        vel = np.log10(vel[ind2])
+        mass = np.log10(mass[ind2])
+        (intercept, slope, var) = lsq.leastsq(vel,mass)
+        print "Z vel corr: ",intercept, slope, np.sqrt(var)
+        print "Z vel correlation: ",lsq.pearson(vel, mass,intercept, slope)
+        print "Z vel kstest: ",lsq.kstest(vel, mass,intercept, slope)
         xx = np.logspace(np.min(vel), np.max(vel),15)
-        plt.loglog(10**intercept*xx**slope, xx, color=color)
+        plt.loglog(10**intercept*xx**slope, xx, color="black")
 
     def kstest(self, Zdata, veldata, elem="Si", line=2):
         """Find the 2D KS test value of the Vel width and metallicity with respect to an external dataset, veldata and Z data"""
