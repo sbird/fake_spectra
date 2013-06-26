@@ -86,9 +86,9 @@ def plot_metallicity(sim, snap, ff=False):
 def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
     #Load sims
-    hspec0 = ps.PlottingSpectra(snap, base+"Cosmo0_V6")
-    hspec2 = ps.PlottingSpectra(snap, base+"Cosmo2_V6")
-    hspec3 = ps.PlottingSpectra(snap, base+"Cosmo3_V6")
+    hspec0 = ps.PlottingSpectra(snap, base+"Cosmo0_V6_512")
+    hspec2 = ps.PlottingSpectra(snap, base+"Cosmo2_V6_512")
+    hspec3 = ps.PlottingSpectra(snap, base+"Cosmo3_V6_512")
     #Make abs. plot
     hspec0.plot_vel_width("Si", 2, color="blue", ls="-")
     hspec2.plot_vel_width("Si", 2, color="orange", ls="--")
@@ -151,13 +151,11 @@ if __name__ == "__main__":
     plt.xlim(1100, 1600)
     save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
     plt.clf()
-    for ss in (0,1,2,3):
+
+    for ss in (0,2,3):
         print "Metallicity Simulation",ss
         for zz in (54,60,68):
-            plot_metallicity(ss, zz)
-
-    for zz in (54,60,68):
-        plot_metallicity(0, zz,True)
+            plot_metallicity(ss, zz,True)
 
     for ss in (0,2,3):
         plot_spectrum_density_velocity(ss,60, 25)
