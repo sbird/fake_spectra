@@ -319,7 +319,7 @@ class Spectra:
             if elem == 'H':
                 if ion != 1:
                     raise ValueError
-                star=cold_gas.RahmatiRT(self.redshift, self.hubble)
+                star=cold_gas.RahmatiRT(self.red, self.hubble)
                 # Neutral hydrogen mass frac
                 mass_frac *= star.get_reproc_HI(data)
             else:
