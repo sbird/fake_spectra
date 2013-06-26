@@ -23,6 +23,7 @@ import numpy as np
 import hsml
 import math
 import convert_cloudy
+import cold_gas
 import line_data
 import h5py
 import hdfsim
@@ -60,6 +61,7 @@ class Spectra:
         #Empty dictionary to add results to
         self.metals = {}
         self.tau_obs = {}
+        self.discarded=0
         try:
             self.files = hdfsim.get_all_files(num, base)
         except IOError:
@@ -132,6 +134,7 @@ class Spectra:
         grp.attrs["omegam"]=self.OmegaM
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
+        grp.attrs["discarded"]=self.discarded
         grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
@@ -166,6 +169,7 @@ class Spectra:
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
         self.box=grid_file.attrs["box"]
+        self.discarded=grp.attrs["discarded"]
         grp = f["metals"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
@@ -315,8 +319,9 @@ class Spectra:
             if elem == 'H':
                 if ion != 1:
                     raise ValueError
-                # Hydrogen mass frac in the data array
-                mass_frac *= np.array(data["NeutralHydrogenAbundance"],dtype=np.float32)[ind]
+                star=cold_gas.RahmatiRT(self.redshift, self.hubble)
+                # Neutral hydrogen mass frac
+                mass_frac *= star.get_reproc_HI(data)
             else:
                 mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
         ff.close()
@@ -328,6 +333,7 @@ class Spectra:
         Must implement get_cofm for this to work
         """
         ind = self.filter_DLA(thresh)
+        self.discarded = np.size(ind)
         while np.size(ind) > 0:
             #Replace spectra that did not result in a DLA
             cofm_new = self.get_cofm()
@@ -337,6 +343,7 @@ class Spectra:
             self.metals[("H", 1)][1][ind] = vel
             self.metals[("H", 1)][2][ind] = temp
             ind = self.filter_DLA()
+            self.discarded += np.size(ind)
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
@@ -519,12 +526,12 @@ class Spectra:
         if HI_cut == None:
             HI_cut = 0
         if met_cut == None:
-            met_cut = 0
+            rho_H = self.get_col_density("H",1)
+            ind = np.where(np.max(rho_H,axis=1) > HI_cut)
+            return ind
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
-        #(halos, dists) = self.find_nearest_halo()
-        #mass = self.sub_mass[halos]
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)) #*(mass > mass_cut))
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut))
         return ind
 
     def vel_width(self, tau):
@@ -929,23 +936,29 @@ class Spectra:
 
     def find_nearest_halo(self, min_mass = 1e9):
         """
-        Find the nearest halo to the sightlines, with a halo mass greater
-        than min_mass (to avoid unresolved halos)
+        Find the nearest halo to the highest density peak of the sightline,
+        with a halo mass greater than min_mass (to avoid unresolved halos)
         """
         dists = np.empty(np.size(self.axis))
         halos = np.empty(np.size(self.axis),dtype=np.int)
         m_ind = np.where(self.sub_mass > min_mass)
         #X axis first
+        col_den = self.get_col_density("H",1)
         axes = [0,1,2]
-        for ax in [1,2,3]:
-            ind = np.where(self.axis == ax)
+        for ii in xrange(np.size(self.axis)):
+            proj_pos = np.zeros(3)
+            #Get two coordinates given by axis label
             sax = list(axes)
-            sax.remove(ax-1)
-            for ii in np.ravel(ind):
-                proj_pos = self.cofm[ii,sax]
-                dd = np.sqrt(np.sum((self.sub_cofm[:,sax] - proj_pos)**2,axis=1))
-                dists[ii] = np.min(dd[m_ind])
-                halos[ii] = int(np.where(dists[ii] == dd)[0][0])
+            ax = self.axis[ii]-1
+            sax.remove(ax)
+            proj_pos[sax] = self.cofm[ii,sax]
+            #Third coordinate given by spectrum HI density peak
+            maxHI = np.where(col_den[ii,:] == np.max(col_den[ii,:]))[0][0]
+            proj_pos[ax] = maxHI*1.*self.box/self.nbins
+            #Find halo that minimises distance from this peak
+            dd = np.sqrt(np.sum((self.sub_cofm - proj_pos)**2,axis=1))
+            dists[ii] = np.min(dd[m_ind])
+            halos[ii] = int(np.where(dists[ii] == dd)[0][0])
         return (halos, dists)
 
     def load_halo(self):
