@@ -118,13 +118,14 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]))
 
-    def plot_metallicity(self, nbins=20,color="blue"):
+    def plot_metallicity(self, HI_cut=10**20.3, nbins=20,color="blue"):
         """Plot the distribution of metallicities"""
         bins=np.logspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
+        ind = self.get_filt("Z", "-1", HI_cut, None)
         #Abs. distance for entire spectrum
-        hist = np.histogram(np.log10(met),np.log10(bins),density=True)[0]
+        hist = np.histogram(np.log10(met[ind]),np.log10(bins),density=True)[0]
         plt.semilogx(mbin,hist,color=color)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
