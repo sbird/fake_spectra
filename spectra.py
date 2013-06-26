@@ -321,7 +321,7 @@ class Spectra:
                     raise ValueError
                 star=cold_gas.RahmatiRT(self.red, self.hubble)
                 # Neutral hydrogen mass frac
-                mass_frac *= star.get_reproc_HI(data)
+                mass_frac *= star.get_reproc_HI(data)[ind]
             else:
                 mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
         ff.close()
