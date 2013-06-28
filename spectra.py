@@ -488,7 +488,11 @@ class Spectra:
         except KeyError:
             pass
         #This occurs when we have calculated rho, vel and T, but not tau
-        [rho, vel, temp] = self.metals[(elem, ion)][:3]
+        try:
+            [rho, vel, temp] = self.metals[(elem, ion)][:3]
+        except KeyError:
+            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
+            self.metals[(elem, ion)] = [rho, vel, temp]
         if number >= 0:
             rho = rho[:,number]
             vel = vel[:,number]
