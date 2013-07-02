@@ -169,7 +169,7 @@ class Spectra:
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
         self.box=grid_file.attrs["box"]
-        self.discarded=grp.attrs["discarded"]
+        self.discarded=grid_file.attrs["discarded"]
         grp = f["metals"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
@@ -332,18 +332,41 @@ class Spectra:
         Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
         Must implement get_cofm for this to work
         """
+        #Declare variables
+        found = 0
+        wanted = np.size(self.axis)
+        cofm_DLA = np.empty_like(self.cofm)
+        #Filter
         ind = self.filter_DLA(thresh)
-        self.discarded = np.size(ind)
-        while np.size(ind) > 0:
-            #Replace spectra that did not result in a DLA
-            cofm_new = self.get_cofm()
-            self.cofm[ind] = cofm_new[ind]
-            [rho, vel, temp] = self.SPH_Interpolate_metals("H", 1, ind = ind)
-            self.metals[("H", 1)][0][ind] = rho
-            self.metals[("H", 1)][1][ind] = vel
-            self.metals[("H", 1)][2][ind] = temp
-            ind = self.filter_DLA()
-            self.discarded += np.size(ind)
+        #This key only exists after filter_DLA is called
+        H1_DLA = [np.empty_like(self.metals[("H",1)][0]),np.empty_like(self.metals[("H",1)][0]),np.empty_like(self.metals[("H",1)][0])]
+        #Update saves
+        top = np.min([wanted, found+np.size(ind)])
+        cofm_DLA[found:top] = self.cofm[ind][:top,:]
+        H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top,:]
+        H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top,:]
+        H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top,:]
+        found +=np.size(ind)
+        self.discarded = wanted-np.size(ind)
+        while found < wanted:
+            #Get a bunch of new spectra
+            self.cofm = self.get_cofm()
+            self.metals[("H",1)] = self.SPH_Interpolate_metals("H", 1)
+            ind = self.filter_DLA(thresh)
+            newfound = found+np.size(ind)
+            #Update saves
+            top = np.min([wanted, found+np.size(ind)])
+            cofm_DLA[found:top] = self.cofm[ind][:top,:]
+            H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top,:]
+            H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top,:]
+            H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top,:]
+            found += np.size(ind)
+            self.discarded += wanted-np.size(ind)
+            print "Discarded: ",self.discarded
+
+        #Copy back
+        self.cofm=cofm_DLA
+        self.metals[("H",1)]=H1_DLA
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
@@ -352,7 +375,7 @@ class Spectra:
     def filter_DLA(self, thresh=10**20.3):
         """Find sightlines without a DLA"""
         col_den = self.get_col_density("H",1)
-        ind = np.where(np.max(col_den, axis=1) < thresh)
+        ind = np.where(np.max(col_den, axis=1) > thresh)
         return ind
 
     def get_metallicity(self, solar=0.0133):
