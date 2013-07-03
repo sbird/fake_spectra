@@ -96,6 +96,14 @@ class Spectra:
         rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
         mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
         self.dscale = mscale / rscale **3 # Convert density to kg / m^3
+        escale = 1.0e6           # convert energy/unit mass to J kg^-1
+        #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+        #T = U (γ-1) μ m_P / k_B
+        #where k_B is the Boltzmann constant
+        #γ is 5/3, the perfect gas constant
+        #m_P is the proton mass
+        #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+        self.tscale = ((5./3.-1.0) * self.PROTONMASS * escale ) / self.BOLTZMANN
         #  Calculate the length scales to be used in the box
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         self.vmax = self.box * self.Hz * rscale/ MPC # box size (kms^-1)
@@ -307,11 +315,6 @@ class Spectra:
         #Deal with floating point roundoff - mass_frac will sometimes be negative
         #10^-30 is Cloudy's definition of zero.
         mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
-        #In kg/m^3
-        den = np.array(data["Density"], dtype = np.float32)*self.dscale
-        #In (hydrogen) atoms / cm^3
-        den /= (self.PROTONMASS*100**3)
-        den = den[ind]
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
         if ion != -1:
@@ -323,7 +326,22 @@ class Spectra:
                 # Neutral hydrogen mass frac
                 mass_frac *= star.get_reproc_HI(data)[ind]
             else:
-                mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den)
+                #In kg/m^3
+                den = np.array(data["Density"], dtype = np.float32)*self.dscale
+                #In (hydrogen) atoms / cm^3
+                den /= (self.PROTONMASS*100**3)
+                den = den[ind]
+                #Mean molecular weight:
+                # \mu = 1 / molecules per unit atomic weight
+                #     = 1 / (X + Y /4 + E)
+                #     where E = Ne * X, and Y = (1-X).
+                #     Can neglect metals as they are heavy.
+                #     Leading contribution is from electrons, which is already included
+                #     [+ Z / (12->16)] from metal species
+                #     [+ Z/16*4 ] for OIV from electrons.
+                mu = 1.0/(0.76*(0.75+np.array(data["ElectronAbundance"], dtype=np.float32)) + 0.25)
+                temp = np.array(data["InternalEnergy"], dtype=np.float32)*self.tscale*mu
+                mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den, temp)
         ff.close()
         return mass_frac
 
