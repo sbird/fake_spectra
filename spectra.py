@@ -346,20 +346,19 @@ class Spectra:
         H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top,:]
         H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top,:]
         H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top,:]
-        found +=np.size(ind)
+        found += np.size(ind)
         self.discarded = wanted-np.size(ind)
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             self.metals[("H",1)] = self.SPH_Interpolate_metals("H", 1)
             ind = self.filter_DLA(thresh)
-            newfound = found+np.size(ind)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
-            cofm_DLA[found:top] = self.cofm[ind][:top,:]
-            H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top,:]
-            H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top,:]
-            H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top,:]
+            cofm_DLA[found:top] = self.cofm[ind][:top-found,:]
+            H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top-found,:]
+            H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top-found,:]
+            H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top-found,:]
             found += np.size(ind)
             self.discarded += wanted-np.size(ind)
             print "Discarded: ",self.discarded
