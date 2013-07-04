@@ -31,6 +31,7 @@ import halocat
 from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
 import os.path as path
+import shutil
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption,_Compute_Absorption_multiple
 
 class Spectra:
@@ -133,7 +134,12 @@ class Spectra:
         try:
             f=h5py.File(self.savefile,'w')
         except IOError:
-            raise IOError("Could not open ",self.savefile," for writing")
+            try:
+                if path.exists(self.savefile):
+                    shutil.move(self.savefile,self.savefile+".backup")
+                f=h5py.File(self.savefile,'w')
+            except IOError:
+                raise IOError("Could not open ",self.savefile," for writing")
         grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins

@@ -9,6 +9,7 @@ sim=sys.argv[2]
 #savedir="/n/home11/spb/scratch/Cosmo/Cosmo"+str(sim)+"_V6_512/snapdir_"+str(snapnum).rjust(3,'0')
 base=path.expanduser("~/data/Cosmo/Cosmo"+str(sim)+"_V6/L25n512")
 halo = rs.RandSpectra(snapnum, base)
+halo.save_file()
 halo.get_observer_tau("Si",2)
 halo.get_col_density("H",1)
 #halo.get_tau("H",1,1)
