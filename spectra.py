@@ -522,20 +522,23 @@ class Spectra:
         tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
         return tau
 
-    def get_observer_tau(self, elem, ion, number=-1):
+    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
-        try:
-            if number >= 0:
-                return self.tau_obs[(elem, ion)][number,:]
-            else:
-                return self.tau_obs[(elem, ion)]
-        except KeyError:
-            pass
+        if not force_recompute:
+            try:
+                if number >= 0:
+                    return self.tau_obs[(elem, ion)][number,:]
+                else:
+                    return self.tau_obs[(elem, ion)]
+            except KeyError:
+                pass
         #This occurs when we have calculated rho, vel and T, but not tau
         try:
+            if force_recompute:
+                raise KeyError
             [rho, vel, temp] = self.metals[(elem, ion)][:3]
         except KeyError:
             [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
