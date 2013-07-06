@@ -347,6 +347,7 @@ class Spectra:
                 #     [+ Z/16*4 ] for OIV from electrons.
                 mu = 1.0/(0.76*(0.75+np.array(data["ElectronAbundance"], dtype=np.float32)) + 0.25)
                 temp = np.array(data["InternalEnergy"], dtype=np.float32)*self.tscale*mu
+                temp = temp[ind]
                 mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den, temp)
         ff.close()
         return mass_frac
