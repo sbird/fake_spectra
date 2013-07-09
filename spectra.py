@@ -323,30 +323,19 @@ class Spectra:
         mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
         #Get density of this ion - we need to weight T and v by ion abundance
         #Cloudy density in physical H atoms / cm^3
+        star=cold_gas.RahmatiRT(self.red, self.hubble)
         if ion != -1:
             #Special case H1:
             if elem == 'H':
                 if ion != 1:
                     raise ValueError
-                star=cold_gas.RahmatiRT(self.red, self.hubble)
                 # Neutral hydrogen mass frac
                 mass_frac *= star.get_reproc_HI(data)[ind]
             else:
-                #In kg/m^3
-                den = np.array(data["Density"], dtype = np.float32)*self.dscale
                 #In (hydrogen) atoms / cm^3
-                den /= (self.PROTONMASS*100**3)
+                den=star.get_code_rhoH(data)
                 den = den[ind]
-                #Mean molecular weight:
-                # \mu = 1 / molecules per unit atomic weight
-                #     = 1 / (X + Y /4 + E)
-                #     where E = Ne * X, and Y = (1-X).
-                #     Can neglect metals as they are heavy.
-                #     Leading contribution is from electrons, which is already included
-                #     [+ Z / (12->16)] from metal species
-                #     [+ Z/16*4 ] for OIV from electrons.
-                mu = 1.0/(0.76*(0.75+np.array(data["ElectronAbundance"], dtype=np.float32)) + 0.25)
-                temp = np.array(data["InternalEnergy"], dtype=np.float32)*self.tscale*mu
+                temp = star.get_temp(den, data)
                 temp = temp[ind]
                 mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den, temp)
         ff.close()
@@ -544,9 +533,9 @@ class Spectra:
             [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
             self.metals[(elem, ion)] = [rho, vel, temp]
         if number >= 0:
-            rho = rho[:,number]
-            vel = vel[:,number]
-            temp = temp[:,number]
+            rho = rho[number,:]
+            vel = vel[number,:]
+            temp = temp[number,:]
         #Compute tau for this metal ion
         nlines = np.size(self.lines[(elem,ion)])
         tau = np.array([self.compute_absorption(elem, ion, ll, rho, vel, temp) for ll in xrange(nlines)])
