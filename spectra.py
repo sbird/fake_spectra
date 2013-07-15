@@ -803,8 +803,7 @@ class Spectra:
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-#         vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
-        vels = np.histogram(vel_width,v_table, density=True)[0]
+        vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
 
     def mass_hist(self, min_mass=1e9,dm=0.2):
