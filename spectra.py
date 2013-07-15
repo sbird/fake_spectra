@@ -337,7 +337,7 @@ class Spectra:
                 den = den[ind]
                 temp = star.get_temp(den, data)
                 temp = temp[ind]
-                mass_frac *= self.cloudy_table.ion(elem, ion, mass_frac, den, temp)
+                mass_frac *= self.cloudy_table.ion(elem, ion, den, temp)
         ff.close()
         return mass_frac
 
