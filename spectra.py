@@ -30,6 +30,7 @@ import hdfsim
 import halocat
 from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
+from scipy.ndimage.filters import gaussian_filter
 import os.path as path
 import shutil
 from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption,_Compute_Absorption_multiple
@@ -558,8 +559,30 @@ class Spectra:
             if np.size(line) > 1:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
-        self.tau_obs[(elem, ion)] = ntau
+        self.tau_obs[(elem, ion)] = self.res_corr(ntau)
         return ntau
+
+    def res_corr(self, tau, fwhm=6):
+        """
+           Real spectrographs have finite spectral resolution.
+           Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.
+           The input spectrum is assumed to have infinite resolution, since we have used a spline
+           to interpolate it first and/or we are converged.
+           Strictly speaking we should rebin the spectrum after to have the same resolution
+           as the observed pixel, but as long as the pixels are smaller than the FWHM of the
+           spectrograph (which is the case as long as the observer is smart) we will be fine.
+           args:
+               fwhm - FWHM of the spectrograph in km/s
+        """
+        # Convert FWHM input to internal units
+        res = fwhm/self.dvbin
+        #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
+        sigma = res/(2*np.sqrt(2*np.log(2)))
+        otau = np.empty_like(tau)
+        for xx in xrange(np.shape(tau)[0]):
+            otau[xx,:] = gaussian_filter(tau[xx,:], sigma)
+        return otau
+
 
     def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
         """
