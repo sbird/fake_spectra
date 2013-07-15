@@ -17,8 +17,10 @@ base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/"
 print "Plots at: ",outdir
 zrange = {54:(7,3.5), 60:None, 68:(2.5,0)}
+colors = {0:"red", 2:"blue", 3:"green"}
+lss = {0:"--",2:"-",3:"-."}
 
-def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None):
+def plot_vel_width_sim(sim, snap, color="red", ff=True, HI_cut = None):
     """Load a simulation and plot its velocity width"""
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
@@ -29,7 +31,7 @@ def plot_vel_width_sim(sim, snap, color="red", ff=False, HI_cut = None):
 
 def plot_sep_frac(sim, snap):
     """Plot fraction of lines from separated halos"""
-    halo = "Cosmo"+str(sim)+"_V6"
+    halo = "Cosmo"+str(sim)+"_V6_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     hspec.plot_sep_frac()
@@ -47,20 +49,33 @@ def plot_rel_vel_width(sim1, sim2, snap, color="black"):
 
 def plot_spectrum(sim, snap, num):
     """Plot a spectrum"""
-    halo = "Cosmo"+str(sim)+"_V6"
+    halo = "Cosmo"+str(sim)+"_V6_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo, None, None)
     tau = hspec.get_observer_tau("Si", 2, num)
     hspec.plot_spectrum(tau)
+    plt.xlim(1000,1500)
+
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_Si_spectrum"))
+    plt.clf()
+    vels = hspec.vel_width(hspec.get_observer_tau("Si",2))
+    ind = np.where(vels == np.max(vels[hspec.get_filt("Si",2)]))[0][0]
+    tau2 = hspec.get_observer_tau("Si",2,ind)
+    hspec.plot_spectrum(tau2)
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_maxv_Si_spectrum"))
+    plt.clf()
+
 
 def plot_spectrum_density_velocity(sim, snap, num):
     """Plot a spectrum"""
-    halo = "Cosmo"+str(sim)+"_V6"
+    halo = "Cosmo"+str(sim)+"_V6_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo)
     hspec.plot_spectrum_density_velocity("Si",2, num)
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_tdv_Si_spectrum"))
+    plt.clf()
 
-def plot_metallicity(sim, snap, ff=False):
+def plot_metallicity(sim, snap, ff=True):
     """Plot a spectrum"""
     halo = "Cosmo"+str(sim)+"_V6"
     out = "cosmo"+str(sim)+"_metallicity_z"+str(snap)
@@ -90,10 +105,13 @@ def plot_vel_widths_sims(snap):
     hspec2 = ps.PlottingSpectra(snap, base+"Cosmo2_V6_512")
     hspec3 = ps.PlottingSpectra(snap, base+"Cosmo3_V6_512")
     #Make abs. plot
-    hspec0.plot_vel_width("Si", 2, color="blue", ls="-")
-    hspec2.plot_vel_width("Si", 2, color="orange", ls="--")
-    hspec3.plot_vel_width("Si", 2, color="red", ls="-.")
-    vel_data.plot_prochaska_2008_data(zrange[snap])
+    hspec0.plot_vel_width("Si", 2, color=colors[0], ls=lss[0])
+    hspec2.plot_vel_width("Si", 2, color=colors[2], ls=lss[2])
+    hspec3.plot_vel_width("Si", 2, color=colors[3], ls=lss[3])
+    if snap == 60:
+        vel_data.plot_prochaska_2008_data(zrange[snap], 9)
+    else:
+        vel_data.plot_prochaska_2008_data(zrange[snap])
     save_figure(path.join(outdir,"cosmo_feedback_z"+str(snap)))
     plt.clf()
     #Make rel plot
@@ -101,8 +119,8 @@ def plot_vel_widths_sims(snap):
     (vbin, vels2) = hspec2.vel_width_hist("Si", 2)
     (vbin, vels3) = hspec3.vel_width_hist("Si", 2)
     mm = np.min((np.size(vels3), np.size(vels2),np.size(vels0)))
-    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
-    plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color="red",ls="--")
+    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color=colors[0],ls=lss[0])
+    plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color=colors[3],ls=lss[3])
     plt.xlim(10, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
@@ -129,7 +147,7 @@ def plot_vel_widths_res(snap):
 
 def plot_vel_redshift_evo(sim):
     """Plot the evolution with redshift of a simulation"""
-    halo = "Cosmo"+str(sim)+"_V6"
+    halo = "Cosmo"+str(sim)+"_V6_512"
     hspec0 = ps.PlottingSpectra(54, base+halo)
     (vbin, vels4) = hspec0.vel_width_hist("Si", 2)
     hspec0 = ps.PlottingSpectra(60, base+halo)
@@ -146,31 +164,27 @@ def plot_vel_redshift_evo(sim):
     plt.clf()
 
 if __name__ == "__main__":
-    colors=["blue", "purple", "orange", "red"]
-    plot_spectrum(0,60, 102)
-    plt.xlim(1100, 1600)
-    save_figure(path.join(outdir,"cosmo0_Si_spectrum"))
-    plt.clf()
+#     colors=["blue", "purple", "orange", "red"]
 
-    for ss in (0,2,3):
-        print "Metallicity Simulation",ss
-        for zz in (54,60,68):
-            plot_metallicity(ss, zz,True)
-
-    for ss in (0,2,3):
-        plot_spectrum_density_velocity(ss,60, 25)
-        save_figure(path.join(outdir,"cosmo"+str(ss)+"_Si_spectrum"))
-        plt.clf()
+#     for ss in (0,2,3):
+#         print "Metallicity Simulation",ss
+#         for zz in (54,60,68):
+#             plot_metallicity(ss, zz,True)
+#
+#     for ss in (0,2,3):
+#         plot_spectrum_density_velocity(ss,60, 15)
+#         plot_spectrum(ss,60, 457)
+#       plot_spectrum(2,60, 272)
 
     for ss in (0,2,3):
         plot_sep_frac(ss,60)
     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
     plt.clf()
 
-    for zz in (54, 60, 68):
-        plot_vel_widths_sims(zz)
-        plot_vel_widths_res(zz)
+#     for zz in (54, 60, 68):
+#         plot_vel_widths_sims(zz)
+#         plot_vel_widths_res(zz)
 
 
-    for ss in (0,2,3):
-        plot_vel_redshift_evo(ss)
+#     for ss in (0,2,3):
+#         plot_vel_redshift_evo(ss)
