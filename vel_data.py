@@ -26,7 +26,8 @@ def pdf_with_error(vel_data, nv_table):
     nn = np.histogram(vel_data,v_table)[0]
     #Normalise so that integral in log space is unity.
     #This emulates np.histogram(np.log10(met), np.log10(bin),density=True)
-    width = np.array([(-np.log10(v_table[i])+np.log10(v_table[i+1])) for i in range(0,np.size(v_table)-1)])
+#     width = np.array([(-np.log10(v_table[i])+np.log10(v_table[i+1])) for i in range(0,np.size(v_table)-1)])
+    width = np.array([(-(v_table[i])+(v_table[i+1])) for i in range(0,np.size(v_table)-1)])
 
     #This is the avg. fraction of DLAs per unit absorption distance.
     #It is needed to match the normalisation of Pontzen 2008.
@@ -42,7 +43,8 @@ def pdf_with_error(vel_data, nv_table):
     verr[ind] *= (0.98)
     plt.errorbar(center,vels,xerr=[center-v_table[:-1],v_table[1:]-center],yerr=verr,fmt='.', color="black")
 
-    plt.semilogx(center, vels,'o')
+#     plt.semilogx(center, vels,'o')
+    plt.loglog(center, vels,'o')
     return (center, vels,verr)
 
 def plot_prochaska_2008_data(zrange = None, nv_table=7):

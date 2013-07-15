@@ -31,7 +31,7 @@ class PlottingSpectra(spectra.Spectra):
 
         """
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
-        plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
+        plt.loglog(vbin, vels, color=color, lw=3, ls=ls)
 
     def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
         """Plot the equivalent widths of this snapshot. W_1526 is the default and the most useful here."""
@@ -54,9 +54,12 @@ class PlottingSpectra(spectra.Spectra):
         plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
         (low, high) = self._vel_width_bound(tau_l, tot_tau)
         if high - low > 0:
-            plt.plot([low,low],[0,1])
-            plt.plot([high,high],[0,1])
-        plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
+            plt.plot([low,low],[0.4,0.6])
+            plt.plot([high,high],[0.4,0.6])
+        if high+self.dvbin*30 < self.dvbin*self.nbins:
+            plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
+        else:
+            plt.text(low+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
         plt.xlim(0,np.size(tau_l)*self.dvbin)
         return (low, high)
