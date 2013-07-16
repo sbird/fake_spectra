@@ -766,7 +766,7 @@ class Spectra:
         # H density normalised by mean
         return rho/critH
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, unres = 5, tau=None):
+    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, tau=None):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -786,8 +786,6 @@ class Spectra:
                      If the spectra are taken within the halo virial radius, this does not make much of a difference.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
-            unres - Remove systems with velocity widths below this value, where they are affected
-                    by the pixel size of the spectra.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
@@ -796,9 +794,6 @@ class Spectra:
             tau = self.get_observer_tau(elem, line)
 
         vel_width = self.vel_width(tau[self.get_filt(elem, line, HI_cut, met_cut)])
-        if unres != None:
-            ind = np.where(vel_width > unres)
-            vel_width = vel_width[ind]
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)

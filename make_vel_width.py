@@ -121,7 +121,7 @@ def plot_vel_widths_sims(snap):
     mm = np.min((np.size(vels3), np.size(vels2),np.size(vels0)))
     plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color=colors[0],ls=lss[0])
     plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color=colors[3],ls=lss[3])
-    plt.xlim(10, 1000)
+    plt.xlim(1, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
 
@@ -141,7 +141,7 @@ def plot_vel_widths_res(snap):
     (vbin, vels2) = hspec512.vel_width_hist("Si", 2)
     mm = np.min((np.size(vels2),np.size(vels0)))
     plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
-    plt.xlim(10, 1000)
+    plt.xlim(1, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_res_z"+str(snap)))
     plt.clf()
 
@@ -158,7 +158,7 @@ def plot_vel_redshift_evo(sim):
     #Normalised by z=3
     plt.semilogx(vbin[:mm], vels3[:mm]/vels2[:mm], color="black",ls="--")
     plt.semilogx(vbin[:mm], vels4[:mm]/vels2[:mm], color="grey",ls="-")
-    plt.xlim(10, 1000)
+    plt.xlim(1, 1000)
     plt.ylim(0,2)
     save_figure(path.join(outdir,"cosmo_"+str(sim)+"_zz_evol"))
     plt.clf()

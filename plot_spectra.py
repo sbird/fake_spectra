@@ -15,7 +15,7 @@ class PlottingSpectra(spectra.Spectra):
     def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="rand_spectra_DLA.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
 
-    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, unres = 10, color="red", ls="-"):
+    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
@@ -26,11 +26,9 @@ class PlottingSpectra(spectra.Spectra):
                      If the spectra are taken within the halo virial radius, this does not make much of a difference.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
-            unres - Remove systems with velocity widths below this value, where they are affected
-                    by the pixel size of the spectra.
 
         """
-        (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut, unres)
+        (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
 
     def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
