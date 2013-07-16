@@ -7,12 +7,12 @@ import leastsq as ls
 
 def load_data(zrange=None):
     """Load the data tables and concatenate them"""
-    data = np.loadtxt("vel_width_mtlkin_704_diff.dat")
+    #data = np.loadtxt("vel_width_mtlkin_704_diff.dat")
     #vel_data = data[:,2]
     data2 = np.loadtxt("apj469315t2_mrt_mod.txt")
-    redshift = np.concatenate([data[:,0], data2[:,0]])
-    met = np.concatenate([data[:,1],data2[:,3]])
-    vel_data = np.concatenate([data[:,2], data2[:,5]])
+    redshift = data2[:,0] #np.concatenate([data[:,0], data2[:,0]])
+    met = data2[:,3] #np.concatenate([data[:,1],data2[:,3]])
+    vel_data = data2[:,5] #np.concatenate([data[:,2], data2[:,5]])
     if zrange != None:
         ind = np.where((redshift < zrange[0])*(redshift > zrange[1]))
         return (redshift[ind], met[ind], vel_data[ind])
