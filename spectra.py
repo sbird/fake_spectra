@@ -48,7 +48,7 @@ class Spectra:
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
-        #Boltzmann constant
+        #Boltzmann constant in m^2 kg s^-2 K^-1
         self.BOLTZMANN = 1.3806504e-23
         self.KPC = 3.08568025e19
         MPC = self.KPC * 1000
@@ -482,10 +482,11 @@ class Spectra:
             vdiff  = np.abs(self.dvbin*i*1.0e3 - uu)  # ms^-1
             ind = np.where(vdiff > self.vmax *1.e3 /2.)
             vdiff[ind] = self.vmax*1.e3 - vdiff[ind]
-            #Impact parameter
+            #Impact parameter in m/s
             bb = np.sqrt(2.0*self.BOLTZMANN*temp/(mass*self.PROTONMASS))
             T0 = (vdiff/bb)**2
             T1 = np.exp(-T0)
+            #gamma_X in Hz = 1/s
             aa_H1 = line.gamma_X*line.lambda_X/(4.0*math.pi*bb)
             T2 = 1.5/T0
             ind = np.where(T0 > 1.e-6)
