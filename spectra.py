@@ -44,7 +44,7 @@ class Spectra:
             axis - axis along which to put the sightline
             res (optional) - Spectra pixel resolution in km/s
     """
-    def __init__(self,num, base,cofm, axis, res=1., savefile="spectra.hdf5", savedir=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir="ion_out", savefile="spectra.hdf5", savedir=None):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -120,7 +120,7 @@ class Spectra:
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Generate cloudy tables
-        self.cloudy_table = convert_cloudy.CloudyTable(self.red)
+        self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
         #Line data
         self.lines = line_data.LineData()
         print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red
@@ -564,7 +564,7 @@ class Spectra:
         self.tau_obs[(elem, ion)] = -np.log(self.res_corr(np.exp(-ntau)))
         return ntau
 
-    def res_corr(self, flux, fwhm=8):
+    def res_corr(self, flux, fwhm=12):
         """
            Real spectrographs have finite spectral resolution.
            Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.
