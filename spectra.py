@@ -560,10 +560,11 @@ class Spectra:
             if np.size(line) > 1:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
-        self.tau_obs[(elem, ion)] = self.res_corr(ntau)
+        #Convolve the flux with a Gaussian
+        self.tau_obs[(elem, ion)] = -np.log(self.res_corr(np.exp(-ntau)))
         return ntau
 
-    def res_corr(self, tau, fwhm=6):
+    def res_corr(self, flux, fwhm=8):
         """
            Real spectrographs have finite spectral resolution.
            Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.
@@ -579,10 +580,10 @@ class Spectra:
         res = fwhm/self.dvbin
         #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
         sigma = res/(2*np.sqrt(2*np.log(2)))
-        otau = np.empty_like(tau)
-        for xx in xrange(np.shape(tau)[0]):
-            otau[xx,:] = gaussian_filter(tau[xx,:], sigma)
-        return otau
+        oflux = np.empty_like(flux)
+        for xx in xrange(np.shape(flux)[0]):
+            oflux[xx,:] = gaussian_filter(flux[xx,:], sigma)
+        return oflux
 
 
     def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
