@@ -1,4 +1,3 @@
-#!/usr/bin env python
 # -*- coding: utf-8 -*-
 """Make some HI related plots from the cosmo runs"""
 
@@ -10,30 +9,26 @@ import matplotlib.pyplot as plt
 import plot_spectra as ps
 import dla_data
 import os.path as path
+import myname
 from save_figure import save_figure
 
-base="/home/spb/scratch/Cosmo/"
-outdir = base + "plots/spectra_HI"
+outdir = path.join(myname.base,"plots/spectra_HI")
 print "Plots at: ",outdir
 
 def plot_cddf_a_halo(sim, snap, color="red", ff=False):
     """Load a simulation and plot its cddf"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
-    hspec = ps.PlottingSpectra(snap, base+halo, savefile="rand_spectra.hdf5")
+    halo = myname.get_name(sim, ff)
+    hspec = ps.PlottingSpectra(snap, halo, savefile="rand_spectra.hdf5")
     hspec.plot_cddf(color=color)
     del hspec
 
 
 def plot_Omega_DLA(sim, color="red", ff=False):
     """Plot Omega_DLA over a range of redshifts"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     om = {}
     for snap in (1,3,5):
-        hspec = ps.PlottingSpectra(snap, base+halo, savefile="rand_spectra.hdf5")
+        hspec = ps.PlottingSpectra(snap, halo, savefile="rand_spectra.hdf5")
         om[hspec.red] = hspec.omega_DLA()
     plt.semilogy(om.keys(), om.values(), 'o-', color=color)
     plt.xlabel("z")
@@ -42,14 +37,12 @@ def plot_Omega_DLA(sim, color="red", ff=False):
 
 def plot_rho_HI(sim, color="red", ff=False):
     """Plot rho_HI across redshift"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     zzz = {4:1, 3:3, 2:5}
     rho_HI = {}
     for zz in (4,3,2):
         try:
-            hspec = ps.PlottingSpectra(zzz[zz], base+halo, savefile="rand_spectra.hdf5")
+            hspec = ps.PlottingSpectra(zzz[zz], halo, savefile="rand_spectra.hdf5")
             rho_HI[zz]=hspec.omega_DLA()
             del hspec
         except TypeError:
@@ -58,14 +51,12 @@ def plot_rho_HI(sim, color="red", ff=False):
 
 def plot_dndx(sim, color="red", ff=False):
     """Plot dndx (cross-section) across redshift"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     zzz = {4:1, 3:3, 2:5}
     dndx={}
     for zz in (4,3,2):
         try:
-            hspec = ps.PlottingSpectra(zzz[zz], base+halo, savefile="rand_spectra.hdf5")
+            hspec = ps.PlottingSpectra(zzz[zz], halo, savefile="rand_spectra.hdf5")
             dndx[zz]=hspec.line_density()
             del hspec
         except TypeError:

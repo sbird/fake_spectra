@@ -11,16 +11,16 @@ import plot_spectra as ps
 import vel_data
 import os.path as path
 import numpy as np
+import myname
 from save_figure import save_figure
 
-base="/home/spb/scratch/Cosmo/"
-outdir = base + "plots/vars/"
+outdir = path.join(myname.base, "plots/vars/")
 print "Plots at: ",outdir
 
 def plot_rel_vel_width_temp(sim1, snap):
     """Load and make a plot of the difference from neglecting temperature broadening"""
-    halo1 = "Cosmo"+str(sim1)+"_V6"
-    hspec1 = ps.PlottingSpectra(snap, base+halo1, None, None)
+    halo1 = myname.get_name(sim1, True)
+    hspec1 = ps.PlottingSpectra(snap, halo1, None, None)
     (vbin, vels1) = hspec1.vel_width_hist("Si", 2)
     [rho, vel, temp] = hspec1.metals[("Si", 2)][:3]
     #Compute tau for this metal ion
@@ -41,8 +41,8 @@ def plot_rel_vel_width_temp(sim1, snap):
 
 def plot_rel_vel_width_vel(sim1, snap):
     """Load and make a plot of the difference from neglecting velocity broadening"""
-    halo1 = "Cosmo"+str(sim1)+"_V6"
-    hspec1 = ps.PlotHaloSpectra(snap, base+halo1, None, None)
+    halo1 = myname.get_name(sim1, True)
+    hspec1 = ps.PlotHaloSpectra(snap, halo1, None, None)
     hspec1.plot_vel_width("Si", 2, color="red")
     [rho, vel, temp] = hspec1.metals[("Si", 2)][:3]
     #Compute tau for this metal ion

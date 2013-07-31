@@ -11,18 +11,16 @@ import plot_spectra as ps
 import os.path as path
 import numpy as np
 from save_figure import save_figure
+import myname
 
-base="/home/spb/scratch/Cosmo/"
-outdir = base + "plots/2d_hist/"
+outdir = path.join(myname.base, "plots/2d_hist/")
 print "Plots at: ",outdir
 
 def plot_max_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim,ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
     ind = np.where(metal_col_den > 1e12)
@@ -33,11 +31,9 @@ def plot_max_col_den(sim, snap, ff=False):
 
 def plot_vel_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     vel= hspec.vel_width(hspec.get_observer_tau("Si",2))
     ind = np.where(metal_col_den > 1e12)
@@ -48,11 +44,9 @@ def plot_vel_col_den(sim, snap, ff=False):
 
 def plot_vel_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     vel = hspec.vel_width(hspec.get_observer_tau("Si",2))
     den = hspec.vel_width(hspec.get_col_density("Si", 2))
     ind = hspec.get_filt("Si",2)
@@ -63,11 +57,9 @@ def plot_vel_den(sim, snap, ff=False):
 
 def plot_vel_HI_col_den(sim, snap, ff=False):
     """Load a simulation and plot the metal column density vs the HI column density"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
     vel= hspec.vel_width(hspec.get_observer_tau("Si",2))
@@ -79,11 +71,9 @@ def plot_vel_HI_col_den(sim, snap, ff=False):
 
 def plot_vel_mass(sim, snap, ff=False):
     """Load a simulation and plot the halo mass vs the velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     vel= hspec.vel_width(hspec.get_observer_tau("Si",2))[ind]
     (halos, dists) = hspec.find_nearest_halo()
@@ -96,11 +86,9 @@ def plot_vel_mass(sim, snap, ff=False):
 
 def plot_met_mass(sim, snap, ff=False):
     """Load a simulation and plot the halo mass vs the velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     met = hspec.get_metallicity()[ind]
     (halos, dists) = hspec.find_nearest_halo()
@@ -112,11 +100,9 @@ def plot_met_mass(sim, snap, ff=False):
 
 def plot_vel_metals(sim, snap, ff=False):
     """Plot the correlation between metallicity and velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     met = hspec.get_metallicity()
     tau = hspec.get_observer_tau("Si", 2)
     vel = hspec.vel_width(tau)
@@ -129,11 +115,9 @@ def plot_vel_metals(sim, snap, ff=False):
 
 def plot_Si_metals(sim, snap, ff=False):
     """Plot the correlation between metallicity and velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     met = hspec.get_metallicity()
     MM = hspec.get_col_density("Si",2)
     HH = hspec.get_col_density("H",-1)

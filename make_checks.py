@@ -11,19 +11,17 @@ import plot_spectra as ps
 import vel_data
 import os.path as path
 import numpy as np
+import myname
 from save_figure import save_figure
 
-base="/home/spb/scratch/Cosmo/"
-outdir = base + "plots/checks/"
+outdir = path.join(myname.base, "plots/checks/")
 print "Plots at: ",outdir
 
 def plot_vel_width_metcol(sim, snap, ff=False):
     """Load a simulation and plot its velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     hspec.plot_vel_width("Si", 2, met_cut = None)
     hspec.plot_vel_width("Si", 2, met_cut = 1e13, color="blue")
     vel_data.plot_prochaska_2008_data()
@@ -41,13 +39,11 @@ def plot_vel_width_SiII(sim, snap, ff=False):
        Plot the change in velocity widths between the full calculation and
        setting n(Si+)/n(Si) = n(HI)/n(H)
     """
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlotHaloSpectra(snap, base+halo)
+    hspec = ps.PlotHaloSpectra(snap, halo)
     hspec.plot_vel_width("Si", 2)
-    hspecSi = ps.PlotHaloSpectra(snap, base+halo,savefile="SiHI_spectra.hdf5")
+    hspecSi = ps.PlotHaloSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
     hspecSi.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_SiHI_z"+str(snap)))
@@ -61,11 +57,9 @@ def plot_vel_width_SiII(sim, snap, ff=False):
 
 def plot_vel_width_DLA(sim, snap, ff=False):
     """Plot the effect of the HI cut"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.PlottingSpectra(snap, halo, None, None)
     hspec.plot_vel_width("Si", 2, color="red", HI_cut = None)
     hspec.plot_vel_width("Si", 2, color="blue", HI_cut = 10**20.3)
     vel_data.plot_prochaska_2008_data()
@@ -81,11 +75,11 @@ def plot_vel_width_DLA(sim, snap, ff=False):
 def test_spec_resolution():
     """Plot the velocity widths for different spectral resolutions"""
     #Do spectral resolution test
-    halo = "Cosmo0_V6"
+    halo = myname.get_name(0, False)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(5, base+halo, None, None, savefile="spectra.hdf5")
+    hspec = ps.PlottingSpectra(5, halo, None, None, savefile="spectra.hdf5")
     hspec.plot_vel_width("Si",2, color="red")
-    hspec2 = ps.PlottingSpectra(5, base+halo, None, None, savefile="spectra4096.hdf5")
+    hspec2 = ps.PlottingSpectra(5, halo, None, None, savefile="spectra4096.hdf5")
     hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     plt.xlim(1, 1000)

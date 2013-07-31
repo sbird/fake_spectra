@@ -8,32 +8,29 @@ import matplotlib.pyplot as plt
 
 import plot_spectra as ps
 import os.path as path
+import myname
 from save_figure import save_figure
 
-base="/home/spb/scratch/Cosmo/"
-outdir = base + "plots/mass/"
+outdir = path.join(myname.base, "plots/mass/")
 print "Plots at: ",outdir
 
 
 def plot_mass_hists(sim, snap, ff=False,color="red"):
     """Plot mass histogram"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
+    halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     (mbins, pdf) = hspec.mass_hist()
     plt.semilogx(mbins,pdf,color=color)
 
 def plot_mass_vs(sim, snap, ff=False):
     """Plot mass vs metallicity and vel width"""
-    halo = "Cosmo"+str(sim)+"_V6"
+    halo = myname.get_name(sim, ff)
     out = "cosmo"+str(sim)+"_met_mass_z"+str(snap)
     if ff:
-        halo+="_512"
         out+="_512"
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo)
+    hspec = ps.PlottingSpectra(snap, halo)
     hspec.plot_Z_vs_mass()
     save_figure(path.join(outdir,out))
     plt.clf()
