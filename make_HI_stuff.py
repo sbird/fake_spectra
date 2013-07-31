@@ -50,7 +50,7 @@ def plot_rho_HI(sim, color="red", ff=False):
     for zz in (4,3,2):
         try:
             hspec = ps.PlottingSpectra(zzz[zz], base+halo, savefile="rand_spectra.hdf5")
-            rho_HI[zz]=hspec.rho_DLA()
+            rho_HI[zz]=hspec.omega_DLA()
             del hspec
         except TypeError:
             pass
@@ -77,14 +77,14 @@ colors=["red", "blue", "orange", "purple"]
 for i in (0,2,3):
     plot_dndx(i,colors[i])
 plot_dndx(0,colors[1], True)
-dla_data.dndx()
+dla_data.dndx_not()
 save_figure(path.join(outdir,"cosmo_dndx"))
 plt.clf()
 
 for i in (0,2,3):
     plot_rho_HI(i,colors[i])
 plot_rho_HI(0,colors[1], True)
-dla_data.rhohi()
+dla_data.omegahi_not()
 save_figure(path.join(outdir,"cosmo_rhohi"))
 plt.clf()
 

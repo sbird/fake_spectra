@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 
 import plot_spectra as ps
 import os.path as path
-import numpy as np
 from save_figure import save_figure
 
 base="/home/spb/scratch/Cosmo/"
@@ -19,10 +18,8 @@ print "Plots at: ",outdir
 def plot_mass_hists(sim, snap, ff=False,color="red"):
     """Plot mass histogram"""
     halo = "Cosmo"+str(sim)+"_V6"
-    out = "cosmo"+str(sim)+"_mass_z"+str(snap)
     if ff:
         halo+="_512"
-        out+="_512"
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, base+halo)
     (mbins, pdf) = hspec.mass_hist()
@@ -49,9 +46,9 @@ def plot_mass_vs(sim, snap, ff=False):
 
 if __name__ == "__main__":
     colors=["blue", "purple", "orange", "red"]
-    for sim in (0,2,3):
+    for ss in (0,2,3):
         for zz in (1,3,5):
-            plot_mass_vs(sim, zz, True)
+            plot_mass_vs(ss, zz, True)
 
     for ss in (0,2,3):
         plot_mass_hists(ss, 3, ff=True,color=colors[ss])

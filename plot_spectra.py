@@ -8,7 +8,6 @@ import numpy as np
 import leastsq as lsq
 import kstest as ks
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import axes3d
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
