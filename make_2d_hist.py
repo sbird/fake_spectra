@@ -16,7 +16,7 @@ import myname
 outdir = path.join(myname.base, "plots/2d_hist/")
 print "Plots at: ",outdir
 
-def plot_max_col_den(sim, snap, ff=False):
+def plot_max_col_den(sim, snap, ff=True):
     """Load a simulation and plot the metal column density vs the HI column density"""
     halo = myname.get_name(sim,ff)
     #Load from a save file only
@@ -29,7 +29,7 @@ def plot_max_col_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto", vmax = 0.15)
     plt.colorbar()
 
-def plot_vel_col_den(sim, snap, ff=False):
+def plot_vel_col_den(sim, snap, ff=True):
     """Load a simulation and plot the metal column density vs the HI column density"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -42,7 +42,7 @@ def plot_vel_col_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_vel_den(sim, snap, ff=False):
+def plot_vel_den(sim, snap, ff=True):
     """Load a simulation and plot the metal column density vs the HI column density"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -55,7 +55,7 @@ def plot_vel_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_vel_HI_col_den(sim, snap, ff=False):
+def plot_vel_HI_col_den(sim, snap, ff=True):
     """Load a simulation and plot the metal column density vs the HI column density"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -69,7 +69,7 @@ def plot_vel_HI_col_den(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_vel_mass(sim, snap, ff=False):
+def plot_vel_mass(sim, snap, ff=True):
     """Load a simulation and plot the halo mass vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -84,7 +84,7 @@ def plot_vel_mass(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_met_mass(sim, snap, ff=False):
+def plot_met_mass(sim, snap, ff=True):
     """Load a simulation and plot the halo mass vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -98,7 +98,7 @@ def plot_met_mass(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_vel_metals(sim, snap, ff=False):
+def plot_vel_metals(sim, snap, ff=True):
     """Plot the correlation between metallicity and velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -113,7 +113,7 @@ def plot_vel_metals(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-def plot_Si_metals(sim, snap, ff=False):
+def plot_Si_metals(sim, snap, ff=True):
     """Plot the correlation between metallicity and velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
@@ -133,24 +133,22 @@ def plot_Si_metals(sim, snap, ff=False):
 
 reds = {1:4, 3:3, 5:2}
 
-plot_vel_mass(0, 3,True)
-save_figure(path.join(outdir,"cosmo0_512_z3_vel_mass"))
-plt.clf()
+for ii in (0,1,2,3):
+    #Plot col_density of metals vs HI
+    plot_vel_mass(ii, 3)
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_vel_mass"))
+    plt.clf()
 
-plot_met_mass(0, 3,True)
-save_figure(path.join(outdir,"cosmo0_512_z3_met_mass"))
-plt.clf()
+for ii in (0,1,2,3):
+    #Plot col_density of metals vs HI
+    plot_met_mass(ii, 3)
+    save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_met_mass"))
+    plt.clf()
 
-import sys
-sys.exit()
-plot_vel_metals(0, 3,True)
-save_figure(path.join(outdir,"cosmo0_512_z3_metals"))
-plt.clf()
-
-plot_Si_metals(0, 3,True)
-save_figure(path.join(outdir,"cosmo0_512_z3_Si_metals"))
-plt.clf()
-
+# plot_Si_metals(0, 3)
+# save_figure(path.join(outdir,"cosmo0_512_z3_Si_metals"))
+# plt.clf()
+#
 
 for ii in (0,1,2,3):
     #Plot col_density of metals vs HI
