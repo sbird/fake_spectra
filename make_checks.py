@@ -36,25 +36,6 @@ def plot_vel_width_metcol(sim, snap, ff=False):
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_rel_z"+str(snap)))
     plt.clf()
 
-def plot_vel_width_unres(sim, snap, ff=False):
-    """Load a simulation and plot its velocity width"""
-    halo = "Cosmo"+str(sim)+"_V6"
-    if ff:
-        halo+="_512"
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
-    hspec.plot_vel_width("Si", 2, unres = None)
-    hspec.plot_vel_width("Si", 2, unres=5, color="blue")
-    vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_unres_z"+str(snap)))
-    plt.clf()
-    (vbin, vels1) = hspec.vel_width_hist("Si", 2, unres = None)
-    (vbin, vels2) = hspec.vel_width_hist("Si", 2, unres=5)
-    mm = np.min((np.size(vels2), np.size(vels1)))
-    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_unres_rel_z"+str(snap)))
-    plt.clf()
-
 def plot_vel_width_SiII(sim, snap, ff=False):
     """
        Plot the change in velocity widths between the full calculation and
@@ -102,9 +83,9 @@ def test_spec_resolution():
     #Do spectral resolution test
     halo = "Cosmo0_V6"
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra.hdf5")
+    hspec = ps.PlottingSpectra(5, base+halo, None, None, savefile="spectra.hdf5")
     hspec.plot_vel_width("Si",2, color="red")
-    hspec2 = ps.PlottingSpectra(68, base+halo, None, None, savefile="spectra4096.hdf5")
+    hspec2 = ps.PlottingSpectra(5, base+halo, None, None, savefile="spectra4096.hdf5")
     hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     plt.xlim(1, 1000)
@@ -127,16 +108,12 @@ def test_spec_resolution():
 
 #test_spec_resolution()
 
-plot_vel_width_SiII(0, 60)
+plot_vel_width_SiII(0, 3)
 
 for ii in (0,3):
     #Plot effect of ignoring low column density metals
-    plot_vel_width_metcol(ii, 60)
+    plot_vel_width_metcol(ii, 3)
 
 for ii in (0,3):
     #Plot effect of HI cut
-    plot_vel_width_DLA(ii,60)
-
-for ii in (0,3):
-    #Plot effect of HI cut
-    plot_vel_width_unres(ii,60)
+    plot_vel_width_DLA(ii,3)

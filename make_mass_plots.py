@@ -49,18 +49,12 @@ def plot_mass_vs(sim, snap, ff=False):
 
 if __name__ == "__main__":
     colors=["blue", "purple", "orange", "red"]
-    for zz in (54,60,68):
-        plot_mass_vs(0, zz, True)
+    for sim in (0,2,3):
+        for zz in (1,3,5):
+            plot_mass_vs(sim, zz, True)
 
-    for zz in (1,3,5):
-        plot_mass_vs(2, zz, True)
-
-    for zz in (1,2,3):
-        plot_mass_vs(3, zz, True)
-
-    zz={0:60,2:3,3:2}
     for ss in (0,2,3):
-        plot_mass_hists(ss, zz[ss], ff=True,color=colors[ss])
+        plot_mass_hists(ss, 3, ff=True,color=colors[ss])
     save_figure(path.join(outdir,"cosmo_halos_feedback_z3"))
     plt.clf()
 

@@ -16,9 +16,9 @@ from save_figure import save_figure
 base="/home/spb/scratch/Cosmo/"
 outdir = base + "plots/"
 print "Plots at: ",outdir
-zrange = {54:(7,3.5), 60:None, 68:(2.5,0)}
-colors = {0:"red", 2:"blue", 3:"green"}
-lss = {0:"--",2:"-",3:"-."}
+zrange = {1:(7,3.5), 3:None, 5:(2.5,0)}
+colors = {0:"red", 1:"purple", 2:"blue", 3:"green", 4:"orange"}
+lss = {0:"--",1:":", 2:"-",3:"-.", 4:"-"}
 
 def plot_vel_width_sim(sim, snap, color="red", ff=True, HI_cut = None):
     """Load a simulation and plot its velocity width"""
@@ -108,8 +108,8 @@ def plot_vel_widths_sims(snap):
     hspec0.plot_vel_width("Si", 2, color=colors[0], ls=lss[0])
     hspec2.plot_vel_width("Si", 2, color=colors[2], ls=lss[2])
     hspec3.plot_vel_width("Si", 2, color=colors[3], ls=lss[3])
-    if snap == 60:
-        vel_data.plot_prochaska_2008_data(zrange[snap], 9)
+    if snap == 3:
+        vel_data.plot_prochaska_2008_data(zrange[snap], 11)
     else:
         vel_data.plot_prochaska_2008_data(zrange[snap])
     save_figure(path.join(outdir,"cosmo_feedback_z"+str(snap)))
@@ -148,11 +148,11 @@ def plot_vel_widths_res(snap):
 def plot_vel_redshift_evo(sim):
     """Plot the evolution with redshift of a simulation"""
     halo = "Cosmo"+str(sim)+"_V6_512"
-    hspec0 = ps.PlottingSpectra(54, base+halo)
+    hspec0 = ps.PlottingSpectra(1, base+halo)
     (vbin, vels4) = hspec0.vel_width_hist("Si", 2)
-    hspec0 = ps.PlottingSpectra(60, base+halo)
+    hspec0 = ps.PlottingSpectra(3, base+halo)
     (vbin, vels3) = hspec0.vel_width_hist("Si", 2)
-    hspec0 = ps.PlottingSpectra(68, base+halo)
+    hspec0 = ps.PlottingSpectra(5, base+halo)
     (vbin, vels2) = hspec0.vel_width_hist("Si", 2)
     mm = np.min((np.size(vels2), np.size(vels3),np.size(vels4)))
     #Normalised by z=3
@@ -166,25 +166,25 @@ def plot_vel_redshift_evo(sim):
 if __name__ == "__main__":
 #     colors=["blue", "purple", "orange", "red"]
 
-#     for ss in (0,2,3):
-#         print "Metallicity Simulation",ss
-#         for zz in (54,60,68):
-#             plot_metallicity(ss, zz,True)
-#
-#     for ss in (0,2,3):
-#         plot_spectrum_density_velocity(ss,60, 15)
-#         plot_spectrum(ss,60, 457)
-#       plot_spectrum(2,60, 272)
+    for ss in (0,1,2,3,4):
+        print "Metallicity Simulation",ss
+        for zz in (1,3,5):
+            plot_metallicity(ss, zz,True)
 
-    for ss in (0,2,3):
-        plot_sep_frac(ss,60)
+    for ss in (0,1,2,3,4):
+        plot_spectrum_density_velocity(ss,3, 15)
+        plot_spectrum(ss,3, 457)
+    plot_spectrum(2,3, 272)
+
+    for ss in (0,1,2,3,4):
+        plot_sep_frac(ss,3)
     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
     plt.clf()
 
-#     for zz in (54, 60, 68):
-#         plot_vel_widths_sims(zz)
+    for zz in (1, 3, 5):
+        plot_vel_widths_sims(zz)
 #         plot_vel_widths_res(zz)
+#
 
-
-#     for ss in (0,2,3):
-#         plot_vel_redshift_evo(ss)
+    for ss in (0,1,2,3,4):
+        plot_vel_redshift_evo(ss)

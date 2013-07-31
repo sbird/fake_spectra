@@ -147,48 +147,48 @@ def plot_Si_metals(sim, snap, ff=False):
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
 
-reds = {54:4, 60:3, 68:2}
+reds = {1:4, 3:3, 5:2}
 
-plot_vel_mass(0, 60,True)
+plot_vel_mass(0, 3,True)
 save_figure(path.join(outdir,"cosmo0_512_z3_vel_mass"))
 plt.clf()
 
-plot_met_mass(0, 60,True)
+plot_met_mass(0, 3,True)
 save_figure(path.join(outdir,"cosmo0_512_z3_met_mass"))
 plt.clf()
 
 import sys
 sys.exit()
-plot_vel_metals(0, 60,True)
+plot_vel_metals(0, 3,True)
 save_figure(path.join(outdir,"cosmo0_512_z3_metals"))
 plt.clf()
 
-plot_Si_metals(0, 60,True)
+plot_Si_metals(0, 3,True)
 save_figure(path.join(outdir,"cosmo0_512_z3_Si_metals"))
 plt.clf()
 
 
 for ii in (0,1,2,3):
     #Plot col_density of metals vs HI
-    plot_max_col_den(ii, 60)
+    plot_max_col_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_coldens"))
     plt.clf()
 
 for ii in (0,1,2,3):
     #Plot metal col. den vs vel width
-    plot_vel_den(ii, 60)
+    plot_vel_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_den_z3"))
     plt.clf()
 
 
 for ii in (0,1,2,3):
     #Plot metal col. den vs vel width
-    plot_vel_col_den(ii, 60)
+    plot_vel_col_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_col_z3"))
     plt.clf()
 
 for ii in (0,1,2,3):
     #Plot metal col. den vs vel width
-    plot_vel_HI_col_den(ii, 60)
+    plot_vel_HI_col_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_HI_col_z3"))
     plt.clf()

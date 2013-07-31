@@ -32,7 +32,7 @@ def plot_Omega_DLA(sim, color="red", ff=False):
     if ff:
         halo+="_512"
     om = {}
-    for snap in (54, 60, 68):
+    for snap in (1,3,5):
         hspec = ps.PlottingSpectra(snap, base+halo, savefile="rand_spectra.hdf5")
         om[hspec.red] = hspec.omega_DLA()
     plt.semilogy(om.keys(), om.values(), 'o-', color=color)
@@ -45,7 +45,7 @@ def plot_rho_HI(sim, color="red", ff=False):
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
         halo+="_512"
-    zzz = {4:54, 3:60, 2:68}
+    zzz = {4:1, 3:3, 2:5}
     rho_HI = {}
     for zz in (4,3,2):
         try:
@@ -61,7 +61,7 @@ def plot_dndx(sim, color="red", ff=False):
     halo = "Cosmo"+str(sim)+"_V6"
     if ff:
         halo+="_512"
-    zzz = {4:54, 3:60, 2:68}
+    zzz = {4:1, 3:3, 2:5}
     dndx={}
     for zz in (4,3,2):
         try:
@@ -90,8 +90,8 @@ plt.clf()
 
 #Make a plot of the column density functions.
 for ss in (3,2,0):
-    plot_cddf_a_halo(ss, 60, color=colors[ss])
-plot_cddf_a_halo(0, 60, colors[1],True)
+    plot_cddf_a_halo(ss, 3, color=colors[ss])
+plot_cddf_a_halo(0, 3, colors[1],True)
 
 dla_data.column_density_data()
 

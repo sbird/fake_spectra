@@ -67,9 +67,9 @@ def plot_rel_vel_width_vel(sim1, snap):
 
 for ii in (0,3):
     #Plot effect of ignoring temperature broadening
-    plot_rel_vel_width_temp(ii, 60)
+    plot_rel_vel_width_temp(ii, 3)
 
 for ii in (0,3):
     #Plot effect of ignoring temperature broadening
-    plot_rel_vel_width_vel(ii, 60)
+    plot_rel_vel_width_vel(ii, 3)
 
