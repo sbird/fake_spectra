@@ -13,7 +13,7 @@ from mpl_toolkits.mplot3d import axes3d
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
     def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="rand_spectra_DLA.hdf5"):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
         """Plot the velocity widths of this snapshot

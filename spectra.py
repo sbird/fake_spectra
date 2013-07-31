@@ -44,7 +44,7 @@ class Spectra:
             axis - axis along which to put the sightline
             res (optional) - Spectra pixel resolution in km/s
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir="ion_out", savefile="spectra.hdf5", savedir=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None):
         #Various physical constants
         #Speed of light
         self.light = 2.99e8
@@ -78,7 +78,7 @@ class Spectra:
             except AttributeError:
                 self.load_savefile(self.savefile)
         except (IOError, KeyError):
-            print "Reloading from snapshot"
+            print "Reloading from snapshot (savefile: ",self.savefile," )"
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
             ff = h5py.File(self.files[0], "r")
@@ -120,7 +120,10 @@ class Spectra:
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Generate cloudy tables
-        self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
+        if cdir != None:
+            self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
+        else:
+            self.cloudy_table = convert_cloudy.CloudyTable(self.red)
         #Line data
         self.lines = line_data.LineData()
         print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red
