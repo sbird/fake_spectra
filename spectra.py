@@ -567,7 +567,7 @@ class Spectra:
         self.tau_obs[(elem, ion)] = -np.log(self.res_corr(np.exp(-ntau)))
         return ntau
 
-    def res_corr(self, flux, fwhm=12):
+    def res_corr(self, flux, fwhm=8):
         """
            Real spectrographs have finite spectral resolution.
            Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.

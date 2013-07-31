@@ -99,7 +99,7 @@ def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
     #Load sims
     hspec={}
-    for sss in (0,2,3):
+    for sss in (0,1, 2, 3,4):
         hspec[sss] = ps.PlottingSpectra(snap, myname.get_name(sss,True))
         #Make abs. plot
         hspec[sss].plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
@@ -107,6 +107,7 @@ def plot_vel_widths_sims(snap):
         vel_data.plot_prochaska_2008_data(zrange[snap], 11)
     else:
         vel_data.plot_prochaska_2008_data(zrange[snap])
+    plt.ylim(0,1.6)
     save_figure(path.join(outdir,"cosmo_feedback_z"+str(snap)))
     plt.clf()
     vels={}

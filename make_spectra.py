@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Generate some velocity widths through DLAs"""
 import randspectra as rs
 import sys
 import os.path as path

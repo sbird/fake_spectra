@@ -18,7 +18,7 @@ print "Plots at: ",outdir
 def plot_cddf_a_halo(sim, snap, color="red", ff=True):
     """Load a simulation and plot its cddf"""
     halo = myname.get_name(sim, ff)
-    hspec = ps.PlottingSpectra(snap, halo, savefile="rand_spectra.hdf5")
+    hspec = ps.PlottingSpectra(snap, halo)
     hspec.plot_cddf(color=color)
     del hspec
 
@@ -81,7 +81,7 @@ plt.clf()
 for ss in (4,3,2,1,0):
     plot_cddf_a_halo(ss, 3, color=colors[ss])
 
-dla_data.column_density_data()
+dla_data.column_density_data(moment=True)
 
 save_figure(path.join(outdir,"cosmo_cddf_z3"))
 plt.clf()
