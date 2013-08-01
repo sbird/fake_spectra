@@ -233,7 +233,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	     /* Loop over contributing vertices */
 	     for(int iiz = iz-ioff; iiz < iz+ioff+1; iiz++)
 	     {
-                 double deltaz,dz,dist2,q,kernel,velker,temker;
+             double deltaz,dz,dist2,velker,temker, kernel;
 	         int j = ((iiz+10*nbins) % nbins);
 	         
 	         zgrid = (double)(j) * dzgrid;
@@ -257,16 +257,18 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
 	        dist2 = dr2 + (dz*dz);
 	        if (dist2 > h4)
 	  	        continue;
-            else{
-	            q = sqrt(dist2 * hinv2);
-	            if (q <= 1.)
-                        kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
-	            else
-	                kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
-            }
 
+#ifdef SPH_KERNEL
+	        const double q = sqrt(dist2 * hinv2);
+	        if (q <= 1.)
+                    kernel = (1.+ (q*q) * (-1.5 + 0.75 * q) )/M_PI;
+	        else
+	            kernel = 0.25*(2.0-q)*(2.0-q)*(2.0-q)/M_PI;
 	        kernel *= hinv3; 
-
+#else
+            //Top-hat kernel for Arepo
+            kernel = hinv3 / M_PI /4. *3.;
+#endif
 	        kernel *= (*P).Mass[i]; /* kg (kpc)^-3 */
 	        velker = vr * kernel; /* kg (kpc)^-3 * km s^-1 */
 	        temker = p_temp * kernel; /* kg (kpc)^-3 * K */
