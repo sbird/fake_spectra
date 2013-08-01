@@ -141,6 +141,26 @@ def plot_vel_widths_res(snap):
     save_figure(path.join(outdir,"cosmo_rel_vel_res_z"+str(snap)))
     plt.clf()
 
+def plot_vel_widths_cloudy():
+    """Plot some velocity width data for different cloudy models"""
+    #Load sims
+    hspec0 = ps.PlottingSpectra(3, myname.get_name(0, True))
+    hspec1 = ps.PlottingSpectra(3, myname.get_name(0,True), savefile="rand_spectra_DLA_fancy_atten.hdf5")
+    #Make abs. plot
+    hspec0.plot_vel_width("Si", 2, color="blue", ls="--")
+    hspec1.plot_vel_width("Si", 2, color="red", ls="-")
+    vel_data.plot_prochaska_2008_data()
+    save_figure(path.join(outdir,"cosmo_feedback_cloudy_z3"))
+    plt.clf()
+    #Make rel plot
+    (vbin, vels0) = hspec0.vel_width_hist("Si", 2)
+    (vbin, vels2) = hspec1.vel_width_hist("Si", 2)
+    mm = np.min((np.size(vels2),np.size(vels0)))
+    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
+    plt.xlim(1, 1000)
+    save_figure(path.join(outdir,"cosmo_rel_vel_cloudy_z3"))
+    plt.clf()
+
 def plot_vel_redshift_evo(sim):
     """Plot the evolution with redshift of a simulation"""
     halo = myname.get_name(sim, True)
@@ -159,6 +179,8 @@ def plot_vel_redshift_evo(sim):
 
 if __name__ == "__main__":
 #     colors=["blue", "purple", "orange", "red"]
+
+    plot_vel_widths_cloudy()
 
     for ss in (0,1,2,3,4):
         print "Metallicity Simulation",ss
