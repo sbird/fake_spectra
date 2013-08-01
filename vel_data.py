@@ -59,7 +59,7 @@ def plot_alpha_metal_data(zrange=None,nv_table=7):
        redshift  = (4,3) will show only quasars between z=4 and z=3
     """
     (zz, met, vel) = load_data(zrange)
-    (center, vels, verr) = pdf_with_error(10**met, nv_table)
+    return pdf_with_error(10**met, nv_table)
 
 def plot_prochaska_2008_correlation(color="black"):
     """Plot the observed correlation between velocity widths and metallicity from Prochaska 2008"""
@@ -72,3 +72,28 @@ def plot_prochaska_2008_correlation(color="black"):
     print "obs kstest: ",ls.kstest(met, vel,intercept, slope)
     xx = np.logspace(np.min(met), np.max(met),15)
     plt.loglog(10**intercept*xx**slope, xx, color=color)
+
+def plot_extra_stat_hist(stat=False,zrange=None, nv_table=7):
+    """Plot a histogram of the mean-median statistic"""
+    data2 = np.loadtxt("apj469315t2_mrt_mod.txt")
+    redshift = data2[:,0] #np.concatenate([data[:,0], data2[:,0]])
+    fmm = data2[:,6+int(stat)] #np.concatenate([data[:,1],data2[:,3]])
+    if zrange != None:
+        ind = np.where((redshift < zrange[0])*(redshift > zrange[1]))
+        fmm = fmm[ind]
+
+    v_table=np.linspace(0,1,nv_table)
+    center = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+
+    nn = np.histogram(fmm,v_table)[0]
+    #Normalise so that integral in log space is unity.
+    #This emulates np.histogram(np.log10(met), np.log10(bin),density=True)
+    width = np.array([(-v_table[i]+v_table[i+1]) for i in range(0,np.size(v_table)-1)])
+
+    norm = width*np.size(fmm)
+
+    vels = nn / norm
+    #Use poisson errors
+    verr = (np.sqrt(nn))/norm
+    plt.errorbar(center,vels,xerr=[center-v_table[:-1],v_table[1:]-center],yerr=verr,fmt='.', color="black")
+    plt.plot(center, vels, 'o')
