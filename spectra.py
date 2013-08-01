@@ -546,25 +546,33 @@ class Spectra:
         tau = np.array([self.compute_absorption(elem, ion, ll, rho, vel, temp) for ll in xrange(nlines)])
         #Maximum tau in each spectra with each line
         maxtaus = np.max(tau, axis=-1)
-        #Which line has the maximal tau closest to 1?
-        unity = np.abs(maxtaus-1)
         #Array for line indices
         numlos = np.shape(rho)[0]
         ntau = np.empty(np.shape(rho))
         #When we have only a single line, the indexing is different
         if number >= 0:
-            line = np.where(unity == np.min(unity))
+            ind = np.where(np.exp(-maxtaus) > 0.1)
+            if np.size(ind) == 0:
+                line = np.where(maxtaus == np.min(maxtaus))
+            else:
+                line = np.where(maxtaus == np.max(maxtaus[ind]))
             if np.size(line) > 1:
                 line = (line[0][0],)
             return tau[line,:][0][0]
 
+        #Use the maximum unsaturated optical depth
         for ii in xrange(numlos):
-            line = np.where(unity[:,ii] == np.min(unity[:,ii]))
+            # we want unsaturated lines, defined as those with F > 0.1
+            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.1)
+            if np.size(ind) == 0:
+                line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
+            else:
+                line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
             if np.size(line) > 1:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
-        #Convolve the flux with a Gaussian
-        self.tau_obs[(elem, ion)] = -np.log(self.res_corr(np.exp(-ntau)))
+        #Convolve the profile with a Gaussian
+        self.tau_obs[(elem, ion)] = self.res_corr(ntau)
         return ntau
 
     def res_corr(self, flux, fwhm=8):
@@ -686,8 +694,7 @@ class Spectra:
         return mean_median
 
     def vel_peak(self, tau):
-        """Find the difference between the peak optical depth and the median velocity, divided by the velocity width.
-           The median velocity is v(tau = tot_tau /2)
+        """Find the difference between the peak optical depth and the mean velocity, divided by the velocity width.
         """
         #  Size of a single velocity bin
         tot_tau = np.sum(tau,axis = 1)
