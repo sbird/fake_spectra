@@ -7,7 +7,7 @@ import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, numlos=5000, res = 1., cdir = "ion_out", thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", savedir=None):
+    def __init__(self,num, base, numlos=5000, res = 1., cdir = None, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", savedir=None):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]

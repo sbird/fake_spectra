@@ -88,7 +88,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
         col_dens = self.get_col_density(elem, ion)
-        vels = self.vel_width(self.metals[(elem, ion)][3])
+        vels = self.vel_width(self.get_observer_tau(elem, ion))
         plt.loglog(np.max(col_dens,axis=1),vels)
 
     def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue"):
