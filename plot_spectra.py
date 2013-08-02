@@ -30,6 +30,22 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
 
+    def plot_extra_stat(self, elem, line, stat=False, dv=0.03, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
+        """Plot the Prochaska extra statistics
+        Parameters:
+            elem - element to use
+            line - line to use (the components of this line must be pre-computed and stored in self.metals)
+            stat - Statistic to use. If true, f_edge. If False, f_median
+            dv - bin spacing
+            HI_cut - Prochaska used a subsample of spectra containing a DLA.
+                     If this value is not None, consider only HI column densities above this threshold.
+                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
+            met_cut - Discard spectra whose maximal metal column density is below this level.
+                      Removes unobservable systems.
+        """
+        (vbin, vels) = self.extra_stat_hist(elem, line, stat, dv, HI_cut, met_cut)
+        plt.plot(vbin, vels, color=color, lw=3, ls=ls)
+
     def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
         """Plot the equivalent widths of this snapshot. W_1526 is the default and the most useful here."""
         ww = self.equivalent_width(elem, ion, line)

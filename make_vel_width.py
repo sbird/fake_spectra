@@ -99,7 +99,7 @@ def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
     #Load sims
     hspec={}
-    for sss in (0,1, 2, 3,4):
+    for sss in xrange(5):
         hspec[sss] = ps.PlottingSpectra(snap, myname.get_name(sss,True))
         #Make abs. plot
         hspec[sss].plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
@@ -119,6 +119,19 @@ def plot_vel_widths_sims(snap):
     plt.semilogx(vbin[:mm], vels[3][:mm]/vels[2][:mm], color=colors[3],ls=lss[3])
     plt.xlim(1, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
+    plt.clf()
+    #Plot extra statistics
+    for sss in xrange(5):
+        hspec[sss].plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
+    vel_data.plot_extra_stat_hist(False,zrange[snap])
+    plt.ylim(0,4)
+    save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
+    plt.clf()
+    for sss in xrange(5):
+        hspec[sss].plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
+    vel_data.plot_extra_stat_hist(True,zrange[snap])
+    plt.ylim(0,3)
+    save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
     plt.clf()
 
 def plot_vel_widths_res(snap):

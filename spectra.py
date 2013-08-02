@@ -693,6 +693,38 @@ class Spectra:
         #Return the width
         return mean_median
 
+    def extra_stat_hist(self, elem, line, stat=False, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, tau=None):
+        """
+        Compute a histogram of the mean median statistic of our spectra, with the purpose of
+        comparing to the data of Neeleman 2013
+
+        Parameters:
+            elem - element to use
+            line - line to use (the components of this line must be pre-computed and stored in self.metals)
+            stat - Statistic to use. If true, f_edge. If False, f_median
+            dv - bin spacing
+            HI_cut - Prochaska used a subsample of spectra containing a DLA.
+                     If this value is not None, consider only HI column densities above this threshold.
+            met_cut - Discard spectra whose maximal metal column density is below this level.
+                      Removes unobservable systems.
+
+        Returns:
+            (v, f_table) - v (binned in log) and corresponding f(N)
+        """
+        if tau == None:
+            tau = self.get_observer_tau(elem, line)
+
+        if stat:
+            vel_width = self.vel_peak(tau[self.get_filt(elem, line, HI_cut, met_cut)])
+        else:
+            vel_width = self.vel_mean_median(tau[self.get_filt(elem, line, HI_cut, met_cut)])
+        #nlos = np.shape(vel_width)[0]
+        #print 'nlos = ',nlos
+        v_table = np.arange(0, 1, dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        vels = np.histogram(vel_width,v_table, density=True)[0]
+        return (vbin, vels)
+
     def vel_peak(self, tau):
         """Find the difference between the peak optical depth and the mean velocity, divided by the velocity width.
         """
@@ -939,6 +971,7 @@ class Spectra:
             HIden = np.sum(col_den[np.where(col_den > thresh)])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
+        HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
         #Avg. Column density of HI in kg cm^-2 (comoving)
         HIden = self.PROTONMASS * 1000 * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
@@ -973,6 +1006,7 @@ class Spectra:
         #Average fraction of pixels containing a DLA
         frac = 1.*np.size(col_den[np.where(col_den > thresh)])/np.size(col_den)
         #Divide by abs. distance per sightline
+        frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
         return frac/(self.absorption_distance()/self.nbins)
 
     def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=15):
