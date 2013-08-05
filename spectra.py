@@ -188,7 +188,11 @@ class Spectra:
         self.omegab=grid_file.attrs["omegab"]
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
-        self.npart = np.array(grid_file.attrs["npart"])
+        try:
+            self.npart = np.array(grid_file.attrs["npart"])
+        except KeyError:
+            #Back-compat hack
+            pass
         self.box=grid_file.attrs["box"]
         self.discarded=grid_file.attrs["discarded"]
         grp = f["metals"]
@@ -865,7 +869,7 @@ class Spectra:
         Returns:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
         """
-        min_mass = self.min_halo_mass()
+        min_mass = self.min_halo_mass()*1e10
         (halos, dists) = self.find_nearest_halo(min_mass)
         ind = self.get_filt("Si",2)
         #nlos = np.shape(vel_width)[0]
@@ -1070,7 +1074,7 @@ class Spectra:
         with a halo mass greater than min_mass (to avoid unresolved halos)
         """
         if min_mass == None:
-            min_mass = self.min_halo_mass()
+            min_mass = self.min_halo_mass()*1e10
         dists = np.empty(np.size(self.axis))
         halos = np.empty(np.size(self.axis),dtype=np.int)
         m_ind = np.where(self.sub_mass > min_mass)
