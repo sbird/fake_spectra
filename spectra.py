@@ -571,8 +571,12 @@ class Spectra:
             if np.size(line) > 1:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
-        #Convolve the profile with a Gaussian
-        self.tau_obs[(elem, ion)] = self.res_corr(ntau)
+        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
+        # BUT only do this for lines that are resolved in the simulations.
+        vels = self.vel_width(ntau)
+        ind = np.where(vels > 2.*self.dvbin)
+        ntau = self.res_corr(ntau[ind])
+        self.tau_obs[(elem, ion)] = ntau
         return ntau
 
     def res_corr(self, flux, fwhm=8):
@@ -610,7 +614,8 @@ class Spectra:
             return ind
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut))
+        vels = self.vel_width(self.get_observer_tau(elem, line))
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin))
         return ind
 
     def vel_width(self, tau):
@@ -836,8 +841,9 @@ class Spectra:
         """
         if tau == None:
             tau = self.get_observer_tau(elem, line)
-
-        vel_width = self.vel_width(tau[self.get_filt(elem, line, HI_cut, met_cut)])
+        #Filter small number of spectra without metals
+        ind = self.get_filt(elem, line, HI_cut, met_cut)
+        vel_width = self.vel_width(tau[ind])
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
