@@ -88,6 +88,7 @@ class Spectra:
             self.hubble = ff["Header"].attrs["HubbleParam"]
             self.OmegaM = ff["Header"].attrs["Omega0"]
             self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
+            self.npart=ff["Header"].attrs["NumPart_Total"]+2**32*ff["Header"].attrs["NumPart_Total_HighWord"]
             #Calculate omega_baryon (approximately)
             mass_dm = ff["Header"].attrs["MassTable"][1]*ff["Header"].attrs["NumPart_ThisFile"][1]
             mass_bar = np.sum(ff["PartType0"]["Masses"])
@@ -153,6 +154,7 @@ class Spectra:
         grp.attrs["omegab"]=self.omegab
         grp.attrs["omegal"]=self.OmegaLambda
         grp.attrs["discarded"]=self.discarded
+        grp.attrs["npart"]=self.npart
         grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
@@ -186,6 +188,7 @@ class Spectra:
         self.omegab=grid_file.attrs["omegab"]
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
+        self.npart = np.array(grid_file.attrs["npart"])
         self.box=grid_file.attrs["box"]
         self.discarded=grid_file.attrs["discarded"]
         grp = f["metals"]
@@ -851,7 +854,7 @@ class Spectra:
         vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
 
-    def mass_hist(self, min_mass=1e9,dm=0.2):
+    def mass_hist(self, dm=0.1):
         """
         Compute a histogram of the host halo mass of each DLA spectrum.
 
@@ -862,6 +865,7 @@ class Spectra:
         Returns:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
         """
+        min_mass = self.min_halo_mass()
         (halos, dists) = self.find_nearest_halo(min_mass)
         ind = self.get_filt("Si",2)
         #nlos = np.shape(vel_width)[0]
@@ -1047,11 +1051,26 @@ class Spectra:
             spos = cofm[:,:2]
         return spos
 
-    def find_nearest_halo(self, min_mass = 1e9):
+    def min_halo_mass(self, minpart = 400):
+        """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""
+        #This is rho_c in units of h^-1 1e10 M_sun (kpc/h)^-3
+        rhom = 2.78e+11* self.OmegaM / 1e10 / (1e3**3)
+        #Mass of an SPH particle, in units of 1e10 M_sun, x omega_m/ omega_b.
+        try:
+            target_mass = self.box**3 * rhom / self.npart[0]
+        except AttributeError:
+            #Back-compat hack
+            target_mass = self.box**3 * rhom / 512.**3
+        min_mass = target_mass * minpart
+        return min_mass
+
+    def find_nearest_halo(self, min_mass = None):
         """
         Find the nearest halo to the highest density peak of the sightline,
         with a halo mass greater than min_mass (to avoid unresolved halos)
         """
+        if min_mass == None:
+            min_mass = self.min_halo_mass()
         dists = np.empty(np.size(self.axis))
         halos = np.empty(np.size(self.axis),dtype=np.int)
         m_ind = np.where(self.sub_mass > min_mass)

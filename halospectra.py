@@ -97,15 +97,6 @@ class HaloSpectra(spectra.Spectra):
         spectra.Spectra.load_savefile(self, savefile)
 
 
-    def min_halo_mass(self, minpart = 400):
-        """Min resolved halo mass in internal Gadget units (1e10 M_sun)"""
-        #This is rho_c in units of h^-1 1e10 M_sun (kpc/h)^-3
-        rhom = 2.78e+11* self.OmegaM / 1e10 / (1e3**3)
-        #Mass of an SPH particle, in units of 1e10 M_sun, x omega_m/ omega_b.
-        target_mass = self.box**3 * rhom / self.npart[0]
-        min_mass = target_mass * minpart
-        return min_mass
-
     def find_associated_halo(self, num):
         """Find the halo sightline num is associated with"""
         nh = num /self.repeat
