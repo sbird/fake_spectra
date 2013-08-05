@@ -55,15 +55,15 @@ def plot_prochaska_2008_data(zrange = None, nv_table=7):
 def plot_alpha_metal_data(zrange=None,nv_table=7):
     """
        Plot the metallicities from alpha peak mainly (Si and S) elements
-       from Prochaska 2007 (astro-ph/0702325) and 2013
+       from Neeleman 2013
        redshift  = (4,3) will show only quasars between z=4 and z=3
     """
     (zz, met, vel) = load_data(zrange)
     return pdf_with_error(10**met, nv_table)
 
-def plot_prochaska_2008_correlation(color="black"):
+def plot_prochaska_2008_correlation(zrange = None, color="black"):
     """Plot the observed correlation between velocity widths and metallicity from Prochaska 2008"""
-    (redshift, met, vel_data) = load_data()
+    (redshift, met, vel_data) = load_data(zrange)
     plt.loglog(vel_data, 10**met,'o',color=color)
     vel = np.log10(vel_data)
     (intercept, slope, var) = ls.leastsq(met,vel)
@@ -73,7 +73,7 @@ def plot_prochaska_2008_correlation(color="black"):
     xx = np.logspace(np.min(met), np.max(met),15)
     plt.loglog(10**intercept*xx**slope, xx, color=color)
 
-def plot_extra_stat_hist(stat=False,zrange=None, nv_table=7):
+def plot_extra_stat_hist(stat=False,zrange=None, nv_table=11):
     """Plot a histogram of the mean-median statistic"""
     data2 = np.loadtxt("apj469315t2_mrt_mod.txt")
     redshift = data2[:,0] #np.concatenate([data[:,0], data2[:,0]])
