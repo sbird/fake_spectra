@@ -73,27 +73,26 @@ def plot_spectrum_density_velocity(sim, snap, num):
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_tdv_Si_spectrum"))
     plt.clf()
 
-def plot_metallicity(sim, snap, ff=True):
+def plot_metallicity(sims, snap, ff=True):
     """Plot a spectrum"""
-    halo = myname.get_name(sim, ff)
-    out = "cosmo"+str(sim)+"_metallicity_z"+str(snap)
-    if ff:
-        out+="_512"
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
-    hspec.plot_metallicity()
+    hspec={}
+    out = "cosmo_metallicity_z"+str(snap)
+    for sim in sims:
+        halo = myname.get_name(sim, ff)
+        hspec[sim] = ps.PlottingSpectra(snap, halo)
+        hspec[sim].plot_metallicity(color=colors[sim])
     vel_data.plot_alpha_metal_data(zrange[snap])
     save_figure(path.join(outdir,out))
     plt.clf()
-    out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
-    if ff:
-        out+="_512"
-    hspec.plot_Z_vs_vel_width()
-    vel_data.plot_prochaska_2008_correlation()
-    save_figure(path.join(outdir,out))
-    plt.clf()
-    (redshift, met, vels) = vel_data.load_data()
-    print "KS test is : ",hspec.kstest(10**met, vels)
+    for sim in sims:
+        print "Met vel corr. Simulation ",sim
+        out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
+        hspec[sim].plot_Z_vs_vel_width(color=colors[sim])
+        vel_data.plot_prochaska_2008_correlation(zrange[snap])
+        save_figure(path.join(outdir,out))
+        plt.clf()
+        (redshift, met, vels) = vel_data.load_data()
+        print "KS test is : ",hspec[sim].kstest(10**met, vels)
 
 def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""

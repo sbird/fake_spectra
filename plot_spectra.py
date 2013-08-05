@@ -196,14 +196,14 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(10**intercept*xx**slope, xx, color="black")
 
     def kstest(self, Zdata, veldata, elem="Si", line=2):
-        """Find the 2D KS test value of the Vel width and metallicity with respect to an external dataset, veldata and Z data"""
+        """Find the 2D KS test value of the Vel width and log metallicity with respect to an external dataset, veldata and Z data"""
         met = self.get_metallicity()
         tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
-        met = met[ind]
-        vel = self.vel_width(tau[ind])
+        met = np.log10(met[ind])
+        vel = np.log10(self.vel_width(tau[ind]))
         data2 = np.array([met,vel]).T
-        data = np.array([Zdata, veldata]).T
+        data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
 
     def plot_radius_vs_vel_width(self, elem="Si", line=2, color="blue"):
