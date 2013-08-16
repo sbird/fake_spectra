@@ -12,16 +12,16 @@ public:
   std::map<int,double> get_near_lines(const float pos[], const double hh);
 private:
   //Get a list of lines nearby a particle from a particular index table
-  void get_nearby(float first, std::multimap<double, int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh);
+  void get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh);
   //Get a list of lines nearby a particle from an iterator range
-  void get_nearby_from_range(std::multimap<double, int>::iterator low, std::multimap<double, int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh);
+  void get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh);
 
   // The key is the position of the primary axis, which is xx for index_table and yy for index_table_xx.
   // The value is the index of this entry in los_table.
   //index_table stores lines where axis = 2 or 3.
-  std::multimap<double, int> index_table;
+  std::multimap<const double, const int> index_table;
   //index_table_xx stores lines where axis = 1.
-  std::multimap<double, int> index_table_xx;
+  std::multimap<const double, const int> index_table_xx;
   //Pointers to the original los table
   const los *los_table;
   const int NumLos;

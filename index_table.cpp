@@ -10,9 +10,9 @@ IndexTable::IndexTable(const los * los_table_i, const int NumLos_i, const double
 {
         for(int i=0;i<NumLos;i++){
             if(los_table[i].axis==1)
-                index_table_xx.insert(std::pair<double, int>(los_table[i].yy, i));
+                index_table_xx.insert(std::pair<const double, const int>(los_table[i].yy, i));
             else
-                index_table.insert(std::pair<double, int>(los_table[i].xx, i));
+                index_table.insert(std::pair<const double, const int>(los_table[i].xx, i));
         }
         if(index_table_xx.size() + index_table.size() != (unsigned int) NumLos){
             std::cerr << "Did not add all elements. xx index: "<<index_table_xx.size()<<" other index: "<<index_table.size()<<std::endl;
@@ -22,9 +22,9 @@ IndexTable::IndexTable(const los * los_table_i, const int NumLos_i, const double
 
 /*Returns a std::map of lines close to the coordinates xx, yy, zz.
  * the key is the line index, and the value is the distance from the two axes not projected along*/
-void IndexTable::get_nearby_from_range(std::multimap<double, int>::iterator low, std::multimap<double, int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh)
+void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh)
 {
-      for(std::multimap<double, int>::iterator it = low; it != high;++it)
+      for(std::multimap<const double, const int>::iterator it = low; it != high;++it)
       {
           double dr,dr2;
           const int iproc=it->second;
@@ -64,7 +64,7 @@ void IndexTable::get_nearby_from_range(std::multimap<double, int>::iterator low,
       }
 }
 
-void IndexTable::get_nearby(float first, std::multimap<double, int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh)
+void IndexTable::get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh)
 {
       /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/
       /* First find highest index where xx + 2 hh > priax */
@@ -75,7 +75,7 @@ void IndexTable::get_nearby(float first, std::multimap<double, int>& sort_los, s
       double ffm=first-2*hh;
       if(ffm < 0)
          ffm+=boxsize;
-      std::multimap<double, int>::iterator low,high;
+      std::multimap<const double, const int>::iterator low,high;
       //An iterator to the first element not less than ffm
       low=sort_los.lower_bound(ffm);
       //An iterator to the first element greater than ffp
