@@ -352,6 +352,57 @@ class Spectra:
         ff.close()
         return mass_frac
 
+    def get_particle_number(self, elem, ion, res=8, minmass=1e-2):
+        """
+        Get the number of particles that contributed significantly
+        to the highest column density region (of width proportional
+        to the desired spectral resolution).
+
+        This is defined as the number of particles overlapping
+        the region with a mass in the ion at least minmass of the
+        most massive such particle.
+
+        If the parameter returned is too low, the species is likely unresolved.
+
+        Parameters:
+            elem, ion - species to check
+            res - spectral resolution, width of region
+            minmass - Minimum mass cutoff of particles considered.
+        """
+        num_important = np.zeros_like(self.axis)
+        col_den = self.get_col_density(elem, ion)
+        for fn in self.files:
+            ff = h5py.File(fn, "r")
+            data = ff["PartType0"]
+            pos = np.array(data["Coordinates"],dtype=np.float32)
+            hh = hsml.get_smooth_length(data)
+            ff.close()
+            #Find particles we care about
+            ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
+            pos = pos[ind,:]
+            hh = hh[ind]
+            metal_mass = self.get_mass_frac(fn, elem, ion, ind)
+            del ind
+            #For each spectrum find only those particles near the most massive region
+            for spec in xrange(np.size(self.axis)):
+                #Particles near this spectrum
+                ind = self.particles_near_lines(pos, hh, np.array([self.axis[spec],]), np.array([self.cofm[spec,:],]))
+                #Largest col. den region
+                if np.size(ind) == 0:
+                    continue
+                maxx = np.where(np.max(col_den[spec,:])==col_den[spec,:])[0][0]
+                #Region resolution wide around this zone
+                region = self.box/self.nbins*np.array(( maxx-res/(2.*self.dvbin), maxx+res/(2.*self.dvbin) ))
+                #Need pos. along axis in this region
+                axpos = pos[ind,self.axis[spec]-1]
+                ind2 = np.where(np.logical_and(axpos - hh[ind] < region[1] , axpos + hh[ind] > region[0]))
+                if np.size(ind2) == 0:
+                    continue
+#                 num_important[spec]+=np.size(ind2) #np.sum(metal_mass[ind][ind2] > minmass*np.max(metal_mass[ind][ind2]))
+                num_important[spec]+=np.sum(metal_mass[ind][ind2] > minmass*np.max(metal_mass[ind][ind2]))
+        return num_important
+
+
     def replace_not_DLA(self, thresh=10**20.3):
         """
         Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
