@@ -5,9 +5,6 @@
 /* Spectrum data set size     */ 
 #define NBINS 1024 /* number of pixels */
 
-/*Number of lines at a time to allocate to each thread*/
-#define THREAD_ALLOC 10
-
 /* Model parameters outwith header */
 #define XH 0.76  /* hydrogen fraction by mass */
 /*The value from 0711.1862 is (0.0023±0.0007) (1+z)^(3.65±0.21)*/
@@ -18,12 +15,7 @@
 
 /* Physical constants, SI units */
 #define  GRAVITY     6.67428e-11
-#define  BOLTZMANN   1.3806504e-23
-#define  C           2.99792458e8
-#define  PROTONMASS  1.66053886e-27 /* 1 a.m.u */
-#define  MPC 3.08568025e22
 #define  KPC 3.08568025e19
-#define  SIGMA_T 6.652458558e-29
 #define  SOLAR_MASS 1.98892e30
 
 /* Atomic data (from VPFIT) */
