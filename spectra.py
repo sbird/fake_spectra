@@ -63,6 +63,7 @@ class Spectra:
         #Empty dictionary to add results to
         self.metals = {}
         self.tau_obs = {}
+        self.num_important = {}
         self.discarded=0
         try:
             self.files = hdfsim.get_all_files(num, base)
@@ -174,6 +175,14 @@ class Spectra:
                 grp_grid.create_group(key[0])
                 gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
+        grp_grid = f.create_group("num_important")
+        for (key, value) in self.num_important.iteritems():
+            try:
+                gg = grp_grid[key[0]]
+            except KeyError:
+                grp_grid.create_group(key[0])
+                gg = grp_grid[key[0]]
+            gg.create_dataset(str(key[1]),data=value)
         f.close()
 
     def load_savefile(self,savefile=None):
@@ -204,6 +213,13 @@ class Spectra:
             for elem in grp.keys():
                 for ion in grp[elem].keys():
                     self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
+        except KeyError:
+            pass
+        try:
+            grp = f["num_important"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
         except KeyError:
             pass
         grp=f["spectra"]
@@ -635,6 +651,7 @@ class Spectra:
         ind = np.where(vels > 2.*self.dvbin)
         ntau = self.res_corr(ntau[ind])
         self.tau_obs[(elem, ion)] = ntau
+        self.num_important[(elem, ion)] = self.get_particle_number(elem, ion)
         return ntau
 
     def res_corr(self, flux, fwhm=8):
@@ -659,7 +676,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, num_cut=5):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
@@ -673,7 +690,7 @@ class Spectra:
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
         vels = self.vel_width(self.get_observer_tau(elem, line))
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin))
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin)*(self.num_important[(elem, ion)] > num_cut))
         return ind
 
     def vel_width(self, tau):
