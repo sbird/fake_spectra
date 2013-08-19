@@ -17,8 +17,8 @@ from save_figure import save_figure
 outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
 zrange = {1:(7,3.5), 3:None, 5:(2.5,0)}
-colors = {0:"red", 1:"purple", 2:"blue", 3:"green", 4:"orange"}
-lss = {0:"--",1:":", 2:"-",3:"-.", 4:"-"}
+colors = {0:"red", 1:"purple", 2:"blue", 3:"green", 4:"orange", 5:"cyan"}
+lss = {0:"--",1:":", 2:"-",3:"-.", 4:"-",5:"--"}
 
 def plot_vel_width_sim(sim, snap, color="red", ff=True, HI_cut = None):
     """Load a simulation and plot its velocity width"""
@@ -98,7 +98,7 @@ def plot_vel_widths_sims(snap):
     """Plot some velocity width data at a particular redshift"""
     #Load sims
     hspec={}
-    for sss in xrange(5):
+    for sss in xrange(6):
         hspec[sss] = ps.PlottingSpectra(snap, myname.get_name(sss,True))
         #Make abs. plot
         hspec[sss].plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
@@ -120,13 +120,13 @@ def plot_vel_widths_sims(snap):
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
     #Plot extra statistics
-    for sss in xrange(5):
+    for sss in xrange(6):
         hspec[sss].plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(False,zrange[snap])
     plt.ylim(0,4)
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
-    for sss in xrange(5):
+    for sss in xrange(6):
         hspec[sss].plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
@@ -194,10 +194,8 @@ if __name__ == "__main__":
 
     plot_vel_widths_cloudy()
 
-    for ss in (0,1,2,3,4):
-        print "Metallicity Simulation",ss
-        for zz in (1,3,5):
-            plot_metallicity(ss, zz,True)
+    for zz in (1,3,5):
+        plot_metallicity(range(6), zz)
 
     for ss in (0,1,2,3,4):
         plot_spectrum_density_velocity(ss,3, 15)
