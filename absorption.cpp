@@ -111,3 +111,124 @@ void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * 
   return;
 }
 
+#define NGRID 8
+
+inline double sph_kernel(const double q)
+{
+    if(q<0.5)
+        return 1-6*q*q+6*q*q*q;
+    else
+        return 2*pow(1.- q,3);
+}
+
+/* Find the fraction of the total particle density in this pixel by integrating an SPH kernel
+ * over the z direction. All distances in units of smoothing length.
+ * Arguments:
+ * zlow - Lower z limit for the integral (as z distance from particle center).
+ * zhigh - Upper z limit for the integral (again as distance from particle center)
+ * bb2 - transverse distance from particle to pixel, squared.
+ * */
+double sph_kern_frac(double zlow, double zhigh, double bb2)
+{
+    double total = sph_kernel(sqrt(bb2+zlow*zlow))/2.;
+    const double deltaz=(zhigh-zlow)/NGRID;
+    for(int i=1; i<NGRID; ++i)
+    {
+        const double zz = i*deltaz+zlow;
+        const double q = sqrt(bb2+zz*zz);
+        if(q > 1)
+            break;
+        total+=sph_kernel(q);
+    }
+    double qhigh = sqrt(bb2+zhigh*zhigh);
+    if (qhigh < 1)
+        total += sph_kernel(qhigh)/2.;
+    return 8*deltaz*total/M_PI;
+}
+
+
+/* Conversion factors from internal units */
+//const double rscale = (KPC*atime)/h100;   /* convert length to m */
+//
+class ComputeLineAbsorption: public LineAbsorption
+{
+    public:
+        /*Dimensions:
+         * velocities in km/s (physical).
+         * distances in kpc/h (comoving)
+         * velfac: factor to convert from distance to velocity units.
+         * Should be h100 * atime * Hz/1e3 (Hz in km/s/Mpc)
+         * */
+        //This makes dvbin be in km/s: the 1e3 converts Hz from km/s/Mpc to km/s/kpc
+        // kpc /h       h                    km/s/kpc
+        //vbox = ( box100 * h100 * atime * Hz/1e3 ) /* box size (kms^-1) */
+        ComputeLineAbsorption(const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass, const double velfac_i, const double boxsize):
+        LineAbsorption(lambda_lya, gamma_lya, fosc_lya, mass),
+        amumass(mass), velfac(velfac_i), vbox(boxsize*velfac_i)
+        {
+        }
+
+        /* Add the absorption from a particle to the spectrum in the array
+         * tau, and the density from the particle to the array colden
+         * The slightly C-style interface is so we can easily use the data in python.
+         *
+         * Output:
+         * tau: array specifying the optical depth of the spectrum.
+         * If this is NULL, just compute the column density.
+         * colden: array specifying the column density of the spectrum. (atoms/ (comoving kpc/h)^2)
+         * nbins: Size of above arrays
+         *
+         * Input:
+         * dr2: transverse distance to spectra from particle (comoving kpc/h)
+         * mass: mass of particle in absorping species (kg)
+         * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
+         * pvel: particle velocity parallel to spectrum (physical km/s)
+         * temp: particle temperature (K)
+         * smooth: particle smoothing length (comoving kpc/h)
+         */
+        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const double mass, const double ppos, const double pvel, const double temp, const double smooth)
+        {
+          /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density.*/
+          const double avgdens = mass/(amumass*PROTONMASS*pow(smooth,3));
+          /*Impact parameter in units of the smoothing length */
+          const double bb2 = dr2/smooth/smooth;
+          /* Velocity of particle parallel to los: pos in */
+          double vel = (velfac * ppos + pvel );
+          if (vel > vbox ){
+              vel -= vbox*floor(vel/vbox);
+          }
+          const double vsmooth = velfac * smooth;
+          const double zrange = sqrt(smooth*smooth - dr2);
+          const int zlow = floor((nbins/vbox) * velfac * (ppos - zrange));
+          const int zhigh = ceil((nbins/vbox) * velfac * (ppos + zrange));
+          /* Compute the HI Lya spectra */
+          for(int z=zlow; z<zhigh; z++)
+          {
+              const int j = (z+nbins ) % nbins;
+              /*Difference between velocity of bin edges and particle*/
+              const double vlow = (vel - vbox*j/nbins)/vsmooth;
+              const double vhigh= (vel - vbox*(j+1)/nbins)/vsmooth;
+
+              const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
+              colden[j] += colden_this;
+              /* Loop again, because the column density that contributes to this
+               * bin may be broadened thermal or doppler broadened*/
+              //Add natural broadening someday
+              // 
+              if (tau) {
+                for(int i=0;j<nbins;i++)
+                {
+                    double vdiff = fabs(vbox*(i-j)/nbins);
+                    if (vdiff > (vbox/2.0))
+                      vdiff = vbox - vdiff;
+                    tau[i] += tau_single(colden_this, vdiff, temp);
+                }
+              }
+          }
+
+          return;
+        }
+
+        const double amumass, velfac, vbox;
+};
+
