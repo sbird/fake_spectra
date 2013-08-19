@@ -69,7 +69,7 @@ calc_power.o: calc_power.c smooth.o powerspectrum.o
 py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
-_spectra_priv.so: py_module.o extract_spectra.o absorption.o init.o index_table.o part_int.o absorption.o
+_spectra_priv.so: py_module.o absorption.o index_table.o part_int.o absorption.o
 	$(LINK) $(LFLAGS) -shared $^ -o $@
 
 clean:

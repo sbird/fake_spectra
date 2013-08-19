@@ -33,7 +33,7 @@ from scipy.integrate import cumtrapz
 from scipy.ndimage.filters import gaussian_filter
 import os.path as path
 import shutil
-from _spectra_priv import _SPH_Interpolate, _near_lines,_Compute_Absorption,_Compute_Absorption_multiple
+from _spectra_priv import _Particle_Interpolate, _near_lines
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -61,10 +61,11 @@ class Spectra:
         self.num = num
         self.base = base
         #Empty dictionary to add results to
-        self.metals = {}
         self.tau_obs = {}
+        self.colden = {}
         self.num_important = {}
         self.discarded=0
+        self.npart = 512**3
         try:
             self.files = hdfsim.get_all_files(num, base)
         except IOError:
@@ -97,9 +98,8 @@ class Spectra:
             ff.close()
 
         # Conversion factors from internal units
-        rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
-        mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
-        self.dscale = mscale / rscale **3 # Convert density to kg / m^3
+        self.rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
+        self.mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
         escale = 1.0e6           # convert energy/unit mass to J kg^-1
         #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
         #T = U (γ-1) μ m_P / k_B
@@ -110,15 +110,15 @@ class Spectra:
         self.tscale = ((5./3.-1.0) * self.PROTONMASS * escale ) / self.BOLTZMANN
         #  Calculate the length scales to be used in the box
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
-        self.vmax = self.box * self.Hz * rscale/ MPC # box size (kms^-1)
+        self.vmax = self.box * self.Hz * self.rscale/ MPC # box size (kms^-1)
         try:
-            self.dzgrid   = self.box * rscale / (1.*self.nbins) # bin size m
+            self.dzgrid   = self.box * self.rscale / (1.*self.nbins) # bin size m
             self.dvbin = self.dzgrid * self.Hz / MPC # velocity bin size (kms^-1)
         except AttributeError:
             #This will occur if we are not reloading from a snapshot
             self.dvbin = res # velocity bin size (kms^-1)
             self.dzgrid = self.dvbin * MPC / self.Hz #bin size m
-            self.nbins = int(self.box * rscale / self.dzgrid) #Number of bins to achieve the required resolution
+            self.nbins = int(self.box * self.rscale / self.dzgrid) #Number of bins to achieve the required resolution
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Generate cloudy tables
@@ -159,15 +159,15 @@ class Spectra:
         grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
-        grp_grid = f.create_group("metals")
-        for (key, value) in self.metals.iteritems():
+        grp_grid = f.create_group("tau_obs")
+        for (key, value) in self.tau_obs.iteritems():
             try:
                 gg = grp_grid[key[0]]
             except KeyError:
                 grp_grid.create_group(key[0])
                 gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
-        grp_grid = f.create_group("tau_obs")
+        grp_grid = f.create_group("colden")
         for (key, value) in self.tau_obs.iteritems():
             try:
                 gg = grp_grid[key[0]]
@@ -204,69 +204,24 @@ class Spectra:
             pass
         self.box=grid_file.attrs["box"]
         self.discarded=grid_file.attrs["discarded"]
-        grp = f["metals"]
+        grp = f["colden"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
-                self.metals[(elem, int(ion))] = np.array(grp[elem][ion])
-        try:
-            grp = f["tau_obs"]
-            for elem in grp.keys():
-                for ion in grp[elem].keys():
-                    self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
-        except KeyError:
-            pass
-        try:
-            grp = f["num_important"]
-            for elem in grp.keys():
-                for ion in grp[elem].keys():
-                    self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
-        except KeyError:
-            pass
+                self.colden[(elem, int(ion))] = np.array(grp[elem][ion])
+        grp = f["tau_obs"]
+        for elem in grp.keys():
+            for ion in grp[elem].keys():
+                self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
+        grp = f["num_important"]
+        for elem in grp.keys():
+            for ion in grp[elem].keys():
+                self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
         grp=f["spectra"]
         self.cofm = np.array(grp["cofm"])
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def SPH_Interpolate_metals(self, elem, ion, get_rho_H=False, ind=None):
-        """Interpolate particles to lines of sight, calculating density, temperature and velocity
-        of various metal species along the line of sight.
-        HI is special-cased.
-        Note: the ionisation fraction is just cloudy. Some self-shielding might be useful.
-        This is a wrapper which calls the C function.
-        Arguments:
-            elem - Element(s) to compute spectra of
-            ion - Ion density to compute. Only one ion allowed right now
-            get_rho_H - If this is true, compute the bare hydrogen density
-
-        Returns:
-            rho_H - hydrogen density along the line of sight if get_rho_H = True
-            dictionary with a list of [density, velocity, temperature] for each species along the line of sight.
-            Units are physical kg/m^3, km/s and K.
-        """
-        #Get array sizes
-        (rho_H, rho_metal, vel_metal, temp_metal) =  self._interpolate_single_file(self.files[0], elem, ion, get_rho_H, ind)
-        #Do remaining files
-        for fn in self.files[1:]:
-            (trho_H, trho_metal, tvel_metal, ttemp_metal) =  self._interpolate_single_file(fn, elem, ion, get_rho_H, ind)
-            #Add new file
-            if get_rho_H:
-                rho_H += trho_H
-            rho_metal += trho_metal
-            vel_metal += tvel_metal
-            temp_metal += ttemp_metal
-            del trho_H
-            del trho_metal
-            del tvel_metal
-            del ttemp_metal
-        #Rescale units
-        metals = self.rescale_units(rho_metal, vel_metal, temp_metal)
-        if get_rho_H:
-            rho_H *= self.dscale
-            return [rho_H,]+ metals
-        else:
-            return metals
-
-    def _interpolate_single_file(self,fn, elem, ion, rho_H, h_ind=None):
+    def _interpolate_single_file(self,fn, elem, ion, ll, get_tau, h_ind=None):
         """Read arrays and perform interpolation for a single file"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -292,17 +247,47 @@ class Spectra:
         u = u[ind]
         ne = np.array(data["ElectronAbundance"],dtype=np.float32)
         ne = ne[ind]
+        xh = np.array(data["GFM_Metals"][:,0],dtype=np.float32)
+        xh = xh[ind]
         ff.close()
+        temp = self.compute_temp(u, ne, xh)
+        del u
+        del ne
+        del xh
         metal_in = self.get_mass_frac(fn, elem, ion, ind)
-        #for xx in [pos, vel, mass, u, ne, hh]:
-        #    if np.size(np.where(np.isnan(xx))[0]) > 0:
-        #        raise ValueError
         #Get rid of ind so we have some memory for the interpolator
         del ind
-        out =  _SPH_Interpolate(rho_H*1,self.nbins, self.box, pos, vel, mass, u, ne, metal_in, hh, axis, cofm)
-        if not rho_H:
-            out = (None,)+out
-        return out
+        #Get line data
+        specmass = self.mscale*mass*metal_in
+        velfac = self.Hz/1e3 * self.atime * self.hubble
+        line = self.lines[(elem,ion)][ll]
+        amumass = self.lines.get_mass(elem)
+        #Do interpolation.
+        #Don't forget to convert line width (lambda_X) from Angstrom to m!
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, specmass, temp, hh, axis, cofm)
+
+    def compute_temp(self, uu, ne, xh):
+        """Compute temperature (in K) from internal energy.
+           uu: internal energy in Gadget units
+           ne: electron abundance
+           xh: hydrogen mass fraction (0.76)
+           Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+           T = U (γ-1) μ m_P / k_B
+           where k_B is the Boltzmann constant
+           γ is 5/3, the perfect gas constant
+           m_P is the proton mass
+
+           μ = 1 / (mean no. molecules per unit atomic weight)
+             = 1 / (X + Y /4 + E)
+             where E = Ne * X, and Y = (1-X).
+             Can neglect metals as they are heavy.
+             Leading contribution is from electrons, which is already included
+             [+ Z / (12->16)] from metal species
+             [+ Z/16*4 ] for OIV from electrons.
+        """
+        mu = 1.0/(xh*(0.75+ne) + 0.25)
+        # T in K
+        return uu * mu * self.tscale
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -429,43 +414,38 @@ class Spectra:
         wanted = np.size(self.axis)
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        ind = self.filter_DLA(thresh)
-        #This key only exists after filter_DLA is called
-        H1_DLA = [np.empty_like(self.metals[("H",1)][0]),np.empty_like(self.metals[("H",1)][0]),np.empty_like(self.metals[("H",1)][0])]
+        (faketau, col_den) = self.compute_spectra("H",1,1,False)
+        ind = self.filter_DLA(col_den, thresh)
+        H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
         cofm_DLA[found:top] = self.cofm[ind][:top,:]
-        H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top,:]
-        H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top,:]
-        H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top,:]
+        H1_DLA[found:top] = col_den[ind][:top,:]
         found += np.size(ind)
         self.discarded = wanted-np.size(ind)
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            self.metals[("H",1)] = self.SPH_Interpolate_metals("H", 1)
-            ind = self.filter_DLA(thresh)
+            (faketau, col_den) = self.compute_spectra("H",1,1,False)
+            ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found,:]
-            H1_DLA[0][found:top] = self.metals[("H",1)][0][ind][:top-found,:]
-            H1_DLA[1][found:top] = self.metals[("H",1)][1][ind][:top-found,:]
-            H1_DLA[2][found:top] = self.metals[("H",1)][2][ind][:top-found,:]
+            H1_DLA[found:top] = col_den[ind][:top-found,:]
             found += np.size(ind)
             self.discarded += wanted-np.size(ind)
             print "Discarded: ",self.discarded
 
         #Copy back
         self.cofm=cofm_DLA
-        self.metals[("H",1)]=H1_DLA
+        self.colden[("H",1)]=H1_DLA
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
         raise NotImplementedError
 
-    def filter_DLA(self, thresh=10**20.3):
+    def filter_DLA(self, col_den, thresh=10**20.3):
         """Find sightlines without a DLA"""
-        col_den = self.get_col_density("H",1)
         ind = np.where(np.max(col_den, axis=1) > thresh)
         return ind
 
@@ -481,29 +461,9 @@ class Spectra:
         #data = np.array([np.mean(ma_HH, axis=1)])
         #return data/solar
 
-    def rescale_units(self, rho, vel, temp):
-        """Rescale the units of the arrays from internal gadget units to
-        physical kg/m^3, km/s and K.
-            Only do this ONCE."""
-        # Conversion factors from internal units
-        vscale = np.sqrt(self.atime)        #convert velocity to kms^-1
-        # Rescale density and vel. temp is already in K
-        # vel and temp are calculated weighted by density. Undo this.
-        ind = np.where(rho > 0)
-        vel[ind] *= vscale/rho[ind]
-        temp[ind] /= rho[ind]
-        rho[ind] *= self.dscale
-        #If there are no particles in this bin, rho will be zero.
-        #In this case, we set temp and veloc arbitrarily to one,
-        #to avoid nans propagating. Zero rho will imply zero absorption
-        #anyway.
-        ind = np.where(rho == 0)
-        vel[ind]=1
-        temp[ind]=1
-        return [rho, vel, temp]
-
-    def compute_absorption(self,elem, ion, ll, rho, vel, temp):
-        """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
+    def compute_spectra(self,elem, ion, ll, get_tau):
+        """
+        Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
         densities, velocities and temperatures.
 
         Optical depth is given by:
@@ -512,83 +472,20 @@ class Spectra:
         and v_pec is the peculiar velocity.
         sigma_X is the cross-section for this transition.
         """
-        #Get line data
-        line = self.lines[(elem,ion)][ll]
-        mass = self.lines.get_mass(elem)
-        #Don't forget to convert line width from A to m!
-        if np.size(np.shape(rho)) > 1:
-            tau = _Compute_Absorption_multiple(rho, vel, temp, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
-        else:
-            tau = _Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,line.lambda_X*1e-10, line.gamma_X, line.fosc_X,mass)
-        return tau
+        #Get array sizes
+        (tau, colden) =  self._interpolate_single_file(self.files[0], elem, ion, ll, get_tau)
+        #Do remaining files
+        for fn in self.files[1:]:
+            (ttau, tcolden) =  self._interpolate_single_file(fn, elem, ion, ll, get_tau)
+            #Add new file
+            tau += ttau
+            colden += tcolden
+            del ttau
+            del tcolden
+        #Rescale the units on column density from atoms/(kpc/h)^2 to atoms/cm^2
+        colden /= self.rscale**2
 
-    def find_max_tau(self, elem, ion, rho, vel, temp):
-        """Find which of the transitions gives the largest maximal optical depth."""
-        line = self.lines[(elem,ion)]
-        mass = self.lines.get_mass(elem)
-        maxes = [np.max(_Compute_Absorption(rho, vel, temp, self.nbins, self.Hz, self.hubble, self.box, self.atime,ll.lambda_X*1e-10, ll.gamma_X, ll.fosc_X,mass)) for ll in line]
-        return np.where(maxes == np.max(maxes))
-
-    def compute_absorption_python(self,elem, ion, ll, rho, vel, temp):
-        """Computes the absorption spectrum (tau (u) ) from a binned set of interpolated
-        densities, velocities and temperatures.
-
-        Optical depth is given by:
-        tau (u) = sigma_X c / H(z) int_infty^infty n_x(x) V( u - x - v_pec, b(x) ) dx
-        where V is the Voigt profile, b(x)^2 = 2k_B T /m_x c^2 is the velocity dispersion.
-        and v_pec is the peculiar velocity.
-        sigma_X is the cross-section for this transition.
-        """
-        #Get line data
-        line = self.lines[(elem,ion)][ll]
-        line.lambda_X*=1e-10
-        mass = self.lines.get_mass(elem)
-        tau = np.zeros(self.nbins)
-
-        #Absorption cross-sections m^2
-        sigma_X  = np.sqrt(3.0*math.pi*self.SIGMA_T/8.0) * line.lambda_X  * line.fosc_X
-        # Prefactor for optical depth
-        A_H1 = sigma_X*self.light*self.dzgrid/np.sqrt(math.pi)
-        #Compute the spectra optical depth
-        for i in xrange(0, self.nbins):
-            uu = self.dvbin*1.e3*np.arange(0,self.nbins)
-            uu += vel*1.e3
-            # Note this is indexed with i, above with j!
-            # This is the difference in velocities between two clouds
-            # on the same sightline
-            vdiff  = np.abs(self.dvbin*i*1.0e3 - uu)  # ms^-1
-            ind = np.where(vdiff > self.vmax *1.e3 /2.)
-            vdiff[ind] = self.vmax*1.e3 - vdiff[ind]
-            #Impact parameter in m/s
-            bb = np.sqrt(2.0*self.BOLTZMANN*temp/(mass*self.PROTONMASS))
-            T0 = (vdiff/bb)**2
-            T1 = np.exp(-T0)
-            #gamma_X in Hz = 1/s
-            aa_H1 = line.gamma_X*line.lambda_X/(4.0*math.pi*bb)
-            T2 = 1.5/T0
-            ind = np.where(T0 > 1.e-6)
-            profile = np.array(T1)
-            # Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-            profile[ind] = T1[ind] - aa_H1[ind]/np.sqrt(math.pi)/T0[ind]*(T1[ind]**2*(4.0*T0[ind]**2 + 7.0*T0[ind] + 4.0 + T2[ind]) - T2[ind] -1.0)
-            tau[i] = np.sum(A_H1  * rho  * profile /(mass*self.PROTONMASS*bb))
-
-        return tau
-
-    def get_tau(self, elem, ion, ll=0):
-        """Get the optical depth for a particular element out of:
-           (He, C, N, O, Ne, Mg, Si, Fe)
-           and some ion number
-        """
-        try:
-            [rho, vel, temp] = self.metals[(elem, ion)][:3]
-        except KeyError:
-            #generate metal and hydrogen spectral densities
-            #Indexing is: rho_metals [ NSPECTRA, NBIN ]
-            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
-            self.metals[(elem, ion)] = [rho, vel, temp]
-        #Compute tau for this metal ion
-        tau = self.compute_absorption(elem, ion, ll, rho, vel, temp)
-        return tau
+        return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
         """Get the optical depth for a particular element out of:
@@ -603,37 +500,14 @@ class Spectra:
                     return self.tau_obs[(elem, ion)]
             except KeyError:
                 pass
-        #This occurs when we have calculated rho, vel and T, but not tau
-        try:
-            if force_recompute:
-                raise KeyError
-            [rho, vel, temp] = self.metals[(elem, ion)][:3]
-        except KeyError:
-            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
-            self.metals[(elem, ion)] = [rho, vel, temp]
-        if number >= 0:
-            rho = rho[number,:]
-            vel = vel[number,:]
-            temp = temp[number,:]
-        #Compute tau for this metal ion
+        #Compute tau for each line
         nlines = np.size(self.lines[(elem,ion)])
-        tau = np.array([self.compute_absorption(elem, ion, ll, rho, vel, temp) for ll in xrange(nlines)])
+        tau = np.array([self.compute_spectra(elem, ion, ll, True)[0] for ll in xrange(nlines)])
         #Maximum tau in each spectra with each line
         maxtaus = np.max(tau, axis=-1)
         #Array for line indices
-        numlos = np.shape(rho)[0]
-        ntau = np.empty(np.shape(rho))
-        #When we have only a single line, the indexing is different
-        if number >= 0:
-            ind = np.where(np.exp(-maxtaus) > 0.1)
-            if np.size(ind) == 0:
-                line = np.where(maxtaus == np.min(maxtaus))
-            else:
-                line = np.where(maxtaus == np.max(maxtaus[ind]))
-            if np.size(line) > 1:
-                line = (line[0][0],)
-            return tau[line,:][0][0]
-
+        numlos = np.shape(tau)[0]
+        ntau = np.empty_like(tau[0])
         #Use the maximum unsaturated optical depth
         for ii in xrange(numlos):
             # we want unsaturated lines, defined as those with F > 0.1
@@ -646,13 +520,12 @@ class Spectra:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
         # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
-        # BUT only do this for lines that are resolved in the simulations.
-        vels = self.vel_width(ntau)
-        ind = np.where(vels > 2.*self.dvbin)
-        ntau = self.res_corr(ntau[ind])
+        ntau = self.res_corr(ntau)
         self.tau_obs[(elem, ion)] = ntau
-        self.num_important[(elem, ion)] = self.get_particle_number(elem, ion)
-        return ntau
+        if number >= 0:
+            return ntau[number,:]
+        else:
+            return ntau
 
     def res_corr(self, flux, fwhm=8):
         """
@@ -676,7 +549,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, num_cut=5):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, num_cut=15):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
@@ -690,7 +563,7 @@ class Spectra:
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
         vels = self.vel_width(self.get_observer_tau(elem, line))
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin)*(self.num_important[(elem, ion)] > num_cut))
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin)*(self.num_important[(elem, line)] > num_cut))
         return ind
 
     def vel_width(self, tau):
@@ -949,7 +822,7 @@ class Spectra:
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
-        tau = self.get_tau(elem, ion, line)
+        (tau, dummy) = self.compute_spectra(elem, ion, line,True)
         ind = self.get_filt(elem, line)
         #1 bin in wavelength: δλ =  λ . v / c
         #λ here is the rest wavelength of the line.
@@ -966,25 +839,11 @@ class Spectra:
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species"""
         try:
-            rho = self.metals[(elem, ion)][0]
+            return self.colden[(elem, ion)]
         except KeyError:
-            [rho, vel, temp] = self.SPH_Interpolate_metals(elem, ion)
-            self.metals[(elem, ion)] = [rho, vel, temp]
-        #Convert from physical kg/m^2 to atoms/cm^2
-        convert = 1./self.PROTONMASS/1e4
-        if elem != "Z":
-            convert /= self.lines.get_mass(elem)
-        return rho*self.dzgrid*convert
-
-    def get_H_col_density(self):
-        """Compute the density in each pixel for neutral hydrogen and total gas"""
-        [rho_H,rho, vel, temp] = self.SPH_Interpolate_metals("H", 1, get_rho_H=True)
-        self.metals[("H", 1)] = [rho, vel, temp]
-        self.metals[("H", -1)] = [rho_H,]
-
-    def get_vel(self, elem, ion):
-        """Get the velocity for a given species, assuming already calculated"""
-        return self.metals[(elem, ion)][1]
+            (dummy, colden) = self.compute_spectra(elem, ion, 0,False)
+            self.colden[(elem, ion)] = colden
+            return colden
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """

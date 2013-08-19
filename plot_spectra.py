@@ -86,20 +86,14 @@ class PlottingSpectra(spectra.Spectra):
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
-        plt.subplot(311)
-        (low,high) = self.plot_spectrum(tau)
+        plt.subplot(211)
+        self.plot_spectrum(tau)
         plt.xlim(0,np.size(tau_l)*self.dvbin)
-        plt.subplot(312)
+        plt.subplot(212)
         ind = np.where(col_den > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
         plt.xlim(0,np.size(tau_l)*self.dvbin)
         plt.yticks(np.array([1e10, 1e15,1e20]))
-        plt.subplot(313)
-        vel = self.get_vel(elem, ion)[i,:]
-        vel = np.roll(vel, np.size(tau_l)/2- ind_m)
-        ind = np.where(np.abs(vel) > 1)
-        plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,np.abs(vel[ind]))
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
 
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""

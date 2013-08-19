@@ -88,13 +88,13 @@ def test_spec_resolution():
     plt.clf()
 
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
-    vel= hspec.vel_width(hspec.metals[("Si",2)][3])
+    vel= hspec.vel_width(hspec.get_observer_tau("Si",2))
     plt.loglog(metal_col_den, vel, 'o')
     save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix_low"))
     plt.clf()
 
     metal_col_den = np.max(hspec2.get_col_density("Si", 2),axis=1)
-    vel= hspec.vel_width(hspec2.metals[("Si",2)][3])
+    vel= hspec.vel_width(hspec2.get_observer_tau("Si",2))
     plt.loglog(metal_col_den, vel, 'o')
     save_figure(path.join(outdir,"cosmo0_vel_col_spectra_pix"))
     plt.clf()
