@@ -6,7 +6,9 @@ struct particle_data
   float *Pos;
   float *Vel;
   float *Mass;
-  float *U, *Ne, *h;
+  float *U, *Ne;
+  float *temp;
+  float *h;
   float *fraction;
 };
 typedef struct particle_data pdata;

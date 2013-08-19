@@ -23,7 +23,8 @@
 #include <string.h>
 #include "global_vars.h"
 #include "parameters.h"
-#include "index_table.h"
+#include "absorption.h"
+#include "part_int.h"
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -90,10 +91,7 @@ int main(int argc, char **argv)
 #endif
   double  atime, redshift, Hz, box100, h100, omegab;
   struct particle_data P;
-  double * rhoker_H=NULL;
-  double * tau_H1=NULL;
-  interp H1;
-  const int nspecies = 1;
+  double * tau_H1=NULL, * colden_H1=NULL;
   /*Make sure stdout is line buffered even when not 
    * printing to a terminal but, eg, perl*/
   setlinebuf(stdout);
@@ -135,10 +133,11 @@ int main(int argc, char **argv)
           std::cerr<<"Error allocating memory for sightline table"<<std::endl;
           exit(2);
   }
-  if(InitLOSMemory(&H1, NumLos, nspecies*NBINS) || 
-      !(rhoker_H = (double *) calloc((NumLos * NBINS) , sizeof(double)))){
-                  std::cerr<<"Error allocating LOS memory\n"<<std::endl;
-                  exit(2);
+  if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double))) ||
+      !(colden_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
+     ){
+        fprintf(stderr, "Error allocating memory for tau\n");
+        exit(2);
   }
   #ifdef HDF5
     /*ffname is a copy of input filename for extension*/
@@ -163,6 +162,9 @@ int main(int argc, char **argv)
     }
     /*Setup the los tables*/
     populate_los_table(los_table,NumLos, ext_table, box100);
+    /*Setup the interpolator*/
+    const double velfac = h100*atime*Hz/1e3;
+    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, los_table,NumLos);
     IndexTable sort_los_table(los_table, NumLos, box100);
   if(!(output=fopen(outname.c_str(),"w")))
   {
@@ -184,11 +186,13 @@ int main(int argc, char **argv)
 #endif
               Npart=load_snapshot(indir.c_str(), StartPart,MaxRead,&P, &omegab);
           if(Npart > 0){
-             /*Rescale neutral fraction to take account of hydrogen fraction*/
-              for(int ii = 0; ii< Npart; ii++)
-                P.fraction[ii]*=XH;
+             /*Find mass fraction of neutral hydrogen*/
+              for(int ii = 0; ii< Npart; ii++){
+                P.Mass[ii] *= P.fraction[ii]*XH;
+                P.temp[ii] = compute_temp(P.U[i], P.Ne[i], XH);
+              }
              /*Do the hard SPH interpolation*/
-             SPH_Interpolation(rhoker_H,&H1, 1, NBINS, Npart, NumLos,box100, los_table,sort_los_table, &P);
+             pint.do_work(P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
           }
           /*Free the particle list once we don't need it*/
           if(Npart >= 0)
@@ -215,23 +219,9 @@ int main(int argc, char **argv)
           if(Npart != MaxRead)
                   break;
   }
+  convert_colden_units(colden_H1, NBINS*NumLos, h100, atime);
   free(los_table);
-  if(!(tau_H1 = (double *) calloc((NumLos * NBINS) , sizeof(double)))
-                  ){
-                  fprintf(stderr, "Error allocating memory for tau\n");
-                  exit(2);
-  }
   printf("Done interpolating, now calculating absorption\n");
-#pragma omp parallel
-  {
-     #pragma omp for
-     for(i=0; i<NumLos; i++){
-       /*Make a bunch of pointers to the quantities for THIS LOS*/
-       Rescale_Units(H1.rho+i*NBINS, H1.veloc+i*NBINS, H1.temp+i*NBINS, NBINS, h100, atime);
-       Compute_Absorption(tau_H1+(i*NBINS), H1.rho+i*NBINS, H1.veloc+i*NBINS, H1.temp+i*NBINS,NBINS, Hz,h100, box100,atime, LAMBDA_LYA_H1, GAMMA_LYA_H1,FOSC_LYA,HMASS);
-       Convert_Density(rhoker_H+(i*NBINS), H1.rho+i*NBINS, h100, atime, omegab);
-     }
-  }
   fwrite(&redshift,sizeof(double),1,output);
 #ifndef NO_HEADER
   /*Write a bit of a header. */
@@ -243,15 +233,12 @@ int main(int argc, char **argv)
    * 128 bytes, with 24 full.*/
   fwrite(&pad,sizeof(int),32-6,output);
 #endif
-  fwrite(rhoker_H,sizeof(double),NBINS*NumLos,output);     /* gas overdensity */
-  if(WriteLOSData(&H1, tau_H1,NumLos, output)){ 
-     fprintf(stderr, "Error writing spectra to disk!\n");
-  }
+  fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
+  fwrite(colden_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
   fclose(output);
   /*Free other memory*/
   free(tau_H1);
-  free(rhoker_H);
-  FreeLOSMemory(&H1);
+  free(colden_H1);
   return 0;
 }
 /**********************************************************************/
@@ -261,17 +248,5 @@ void help()
            fprintf(stderr, "Usage: ./extract -n NUMLOS -i filename (ie, without the .0) -o output_file (_flux_power.txt or _spectra.dat will be appended)\n"
                   "-t table_file will read line of sight coordinates from a table.\n");
            return;
-}
-
-int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output)
-{
-  int items=0;
-  items+=fwrite((*species).rho,sizeof(double),NBINS*NumLos,output);      /* n_HI/n_H */
-  items+=fwrite((*species).temp,sizeof(double),NBINS*NumLos,output);   /* T [K], HI weighted */
-  items+=fwrite((*species).veloc,sizeof(double),NBINS*NumLos,output);  /* v_pec [km s^-1], HI weighted */
-  items+=fwrite(tau,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
-  if(items !=4*NBINS*NumLos)
-          return 1;
-  return 0;
 }
 

@@ -44,7 +44,7 @@ OPTS += -DGADGET3 #-DJAMIE
 # Enable helium absorption
 CFLAGS += $(OPTS)
 CXXFLAGS += $(CFLAGS) -I${GREAD}
-COM_INC = parameters.h types.h global_vars.h index_table.h
+COM_INC = parameters.h types.h global_vars.h index_table.h absorption.h part_int.h
 #LINK=$(CC)
 LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
@@ -52,7 +52,7 @@ LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 all: extract statistic rescale	_spectra_priv.so
 
-extract: main.o read_snapshot.o read_hdf_snapshot.o extract_spectra.o absorption.o init.o index_table.o
+extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_table.o part_int.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
@@ -69,7 +69,7 @@ calc_power.o: calc_power.c smooth.o powerspectrum.o
 py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
-_spectra_priv.so: py_module.o extract_spectra.o absorption.o init.o index_table.o
+_spectra_priv.so: py_module.o extract_spectra.o absorption.o init.o index_table.o part_int.o absorption.o
 	$(LINK) $(LFLAGS) -shared $^ -o $@
 
 clean:

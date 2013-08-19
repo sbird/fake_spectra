@@ -81,6 +81,7 @@ int alloc_parts(pdata* P, int np)
      ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
     ((*P).U=(float *)malloc(np*sizeof(float))) &&
     ((*P).fraction=(float *)malloc(np*sizeof(float))) &&
+    ((*P).temp=(float *)malloc(np*sizeof(float))) &&
     ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
     ((*P).h=(float *)malloc(np*sizeof(float)));
 }
@@ -92,6 +93,7 @@ void free_parts(pdata* P)
     free((*P).Mass);
     free((*P).U);
     free((*P).fraction);
+    free((*P).temp);
     free((*P).Ne);
     free((*P).h);
     return;
