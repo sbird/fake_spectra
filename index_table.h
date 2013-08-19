@@ -15,6 +15,8 @@ private:
   void get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh);
   //Get a list of lines nearby a particle from an iterator range
   void get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh);
+  //Get the transverse distance from sightline iproc to position pos
+  double calc_dr2(const int iproc, const float pos[]);
 
   // The key is the position of the primary axis, which is xx for index_table and yy for index_table_xx.
   // The value is the index of this entry in los_table.
@@ -27,11 +29,5 @@ private:
   const int NumLos;
   const double boxsize;
 };
-
-void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * temp, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass);
-
-void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, const int nbins, const int Particles, const int NumLos,const double boxsize, const los *los_table, IndexTable& sort_los_table, const pdata *P);
-void Rescale_Units(double * rho, double * veloc, double * temp, const int nbins, const double h100, const double atime);
-void Convert_Density(double * rhoker_H, double * rho, const double h100, const double atime, const double omegab);
 
 #endif

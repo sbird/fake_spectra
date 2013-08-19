@@ -26,42 +26,48 @@ void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::i
 {
       for(std::multimap<const double, const int>::iterator it = low; it != high;++it)
       {
-          double dr,dr2;
           const int iproc=it->second;
-          /*Load a sightline from the table.*/
-          const int iaxis = los_table[iproc].axis;
-          double xproj,yproj,zproj;
-
-          xproj = los_table[iproc].xx;
-          yproj = los_table[iproc].yy;
-          zproj = los_table[iproc].zz;
-
-          /*    Distance to projection axis */
-          if (iaxis == 1)
-            dr = fabs(pos[1]-yproj);
-          else
-            dr = fabs(pos[0]-xproj);
-
-          if(dr > 0.5*boxsize)
-                  dr = boxsize - dr; /* Keep dr between 0 and box/2 */
-
-          dr2 = dr*dr;
-
-          if (iaxis == 3)
-            dr = fabs(pos[1] - yproj);
-          else
-            dr = fabs(pos[2] - zproj);
-
-          if (dr > 0.5*boxsize)
-            dr = boxsize - dr; /* between 0 and box/2 */
-
-          dr2 = dr2 + (dr*dr);
-
           /*If close in the second coord, save line*/
+
+          double dr2 = calc_dr2(iproc, pos);
           if (dr2 <= 4*hh*hh){
                   nearby[iproc]=dr2;
           }
       }
+}
+
+double IndexTable::calc_dr2(const int iproc, const float pos[])
+{
+    double dr, dr2;
+    /*Load a sightline from the table.*/
+    const int iaxis = los_table[iproc].axis;
+    double xproj,yproj,zproj;
+
+    xproj = los_table[iproc].xx;
+    yproj = los_table[iproc].yy;
+    zproj = los_table[iproc].zz;
+
+    /*    Distance to projection axis */
+    if (iaxis == 1)
+      dr = fabs(pos[1]-yproj);
+    else
+      dr = fabs(pos[0]-xproj);
+
+    if(dr > 0.5*boxsize)
+            dr = boxsize - dr; /* Keep dr between 0 and box/2 */
+
+    dr2 = dr*dr;
+
+    if (iaxis == 3)
+      dr = fabs(pos[1] - yproj);
+    else
+      dr = fabs(pos[2] - zproj);
+
+    if (dr > 0.5*boxsize)
+      dr = boxsize - dr; /* between 0 and box/2 */
+
+    dr2 = dr2 + (dr*dr);
+    return dr2;
 }
 
 void IndexTable::get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh)
