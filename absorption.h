@@ -87,7 +87,7 @@ class ComputeLineAbsorption: public LineAbsorption
          * temp: particle temperature (K)
          * smooth: particle smoothing length (comoving kpc/h)
          */
-        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const double mass, const double ppos, const double pvel, const double temp, const double smooth);
+        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth);
 
         const double amumass, velfac, vbox;
 };

@@ -102,7 +102,7 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const double mass, const double ppos, const double pvel, const double temp, const double smooth)
+void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density.*/
   const double avgdens = mass/(amumass*PROTONMASS*pow(smooth,3));
