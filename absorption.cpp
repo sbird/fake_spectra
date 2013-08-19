@@ -12,56 +12,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <cmath>
-
-#define  BOLTZMANN   1.3806504e-23  /* m2 kg s-2 K-1 */
-#define  LIGHT           2.99792458e8 /*in km/s*/
-#define  PROTONMASS  1.66053886e-27 /* 1 a.m.u */
-#define  KPC 3.08568025e19 /*in m*/
-#define  SIGMA_T 6.652458558e-29 /* Thompson cross-section in m^2*/
-
-class LineAbsorption
-{
-    public:
-      LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass):
-      sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
-      bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS)) ),
-      voigt_fac( gamma*lambda/(4.*M_PI) )
-      {    }
-  
-      /* Compute the absorption in a single bin, using 
-       * either straight Gaussian or a Voigt profile.
-       * Arguments: 
-       * colden: column density of absorber in amu per m^2.
-       * vdiff: the relative velocities between absorper and bin.
-       * temp: temperature of absorber in K
-       */
-      inline double tau_single(const double colden, const double vdiff, const double temp)
-      {
-          /* b has the units of velocity: km/s*/
-          const double b_H1   = bfac*sqrt(temp);
-          const double T0 = pow(vdiff/b_H1,2);
-          const double T1 = exp(-T0);
-          /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-           * includes thermal and doppler broadening. */
-        #ifdef VOIGT
-          const double aa_H1 = voigt_fac/b_H1;
-          const double T2 = 1.5/T0;
-          const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa_H1/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
-        #else
-          const double profile_H1 = T1;
-        #endif
-          return sigma_a / sqrt(M_PI) * (LIGHT/b_H1) * colden * profile_H1;
-      }
-  
-      /* Absorption cross-sections m^2 */
-      const double sigma_a;
-      /* Constant factor to turn sqrt(temperature) into velocity*/
-      const double bfac;
-      /* Factor to turn b into a dimensionless Voigt profile broadening factor, 
-       * giving the balance between doppler and thermal broadening. */
-      const double voigt_fac;
-};
+#include "absorption.h"
 
 /*****************************************************************************/
 /* This function calculates absorption from a given integrated temperature, density
@@ -147,88 +98,52 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
 }
 
 
-/* Conversion factors from internal units */
-//const double rscale = (KPC*atime)/h100;   /* convert length to m */
-//
-class ComputeLineAbsorption: public LineAbsorption
+/* Add the absorption from a particle to the spectrum in the array
+ * tau, and the density from the particle to the array colden
+ * The slightly C-style interface is so we can easily use the data in python
+ */
+void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const double mass, const double ppos, const double pvel, const double temp, const double smooth)
 {
-    public:
-        /*Dimensions:
-         * velocities in km/s (physical).
-         * distances in kpc/h (comoving)
-         * velfac: factor to convert from distance to velocity units.
-         * Should be h100 * atime * Hz/1e3 (Hz in km/s/Mpc)
-         * */
-        //This makes dvbin be in km/s: the 1e3 converts Hz from km/s/Mpc to km/s/kpc
-        // kpc /h       h                    km/s/kpc
-        //vbox = ( box100 * h100 * atime * Hz/1e3 ) /* box size (kms^-1) */
-        ComputeLineAbsorption(const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass, const double velfac_i, const double boxsize):
-        LineAbsorption(lambda_lya, gamma_lya, fosc_lya, mass),
-        amumass(mass), velfac(velfac_i), vbox(boxsize*velfac_i)
+  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density.*/
+  const double avgdens = mass/(amumass*PROTONMASS*pow(smooth,3));
+  /*Impact parameter in units of the smoothing length */
+  const double bb2 = dr2/smooth/smooth;
+  /* Velocity of particle parallel to los: pos in */
+  double vel = (velfac * ppos + pvel );
+  if (vel > vbox ){
+      vel -= vbox*floor(vel/vbox);
+  }
+  const double vsmooth = velfac * smooth;
+  const double zrange = sqrt(smooth*smooth - dr2);
+  const int zlow = floor((nbins/vbox) * velfac * (ppos - zrange));
+  const int zhigh = ceil((nbins/vbox) * velfac * (ppos + zrange));
+  /* Compute the HI Lya spectra */
+  for(int z=zlow; z<zhigh; z++)
+  {
+      const int j = (z+nbins ) % nbins;
+      /*Difference between velocity of bin edges and particle*/
+      const double vlow = (vel - vbox*j/nbins)/vsmooth;
+      const double vhigh= (vel - vbox*(j+1)/nbins)/vsmooth;
+
+	  if ( bb2 + vlow*vlow > 1)
+	      continue;
+
+      const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
+      colden[j] += colden_this;
+      /* Loop again, because the column density that contributes to this
+       * bin may be broadened thermal or doppler broadened*/
+      //Add natural broadening someday
+      // 
+      if (tau) {
+        for(int i=0;j<nbins;i++)
         {
+            double vdiff = fabs(vbox*(i-j)/nbins);
+            if (vdiff > (vbox/2.0))
+              vdiff = vbox - vdiff;
+            tau[i] += tau_single(colden_this, vdiff, temp);
         }
+      }
+  }
 
-        /* Add the absorption from a particle to the spectrum in the array
-         * tau, and the density from the particle to the array colden
-         * The slightly C-style interface is so we can easily use the data in python.
-         *
-         * Output:
-         * tau: array specifying the optical depth of the spectrum.
-         * If this is NULL, just compute the column density.
-         * colden: array specifying the column density of the spectrum. (atoms/ (comoving kpc/h)^2)
-         * nbins: Size of above arrays
-         *
-         * Input:
-         * dr2: transverse distance to spectra from particle (comoving kpc/h)
-         * mass: mass of particle in absorping species (kg)
-         * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
-         * pvel: particle velocity parallel to spectrum (physical km/s)
-         * temp: particle temperature (K)
-         * smooth: particle smoothing length (comoving kpc/h)
-         */
-        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const double mass, const double ppos, const double pvel, const double temp, const double smooth)
-        {
-          /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density.*/
-          const double avgdens = mass/(amumass*PROTONMASS*pow(smooth,3));
-          /*Impact parameter in units of the smoothing length */
-          const double bb2 = dr2/smooth/smooth;
-          /* Velocity of particle parallel to los: pos in */
-          double vel = (velfac * ppos + pvel );
-          if (vel > vbox ){
-              vel -= vbox*floor(vel/vbox);
-          }
-          const double vsmooth = velfac * smooth;
-          const double zrange = sqrt(smooth*smooth - dr2);
-          const int zlow = floor((nbins/vbox) * velfac * (ppos - zrange));
-          const int zhigh = ceil((nbins/vbox) * velfac * (ppos + zrange));
-          /* Compute the HI Lya spectra */
-          for(int z=zlow; z<zhigh; z++)
-          {
-              const int j = (z+nbins ) % nbins;
-              /*Difference between velocity of bin edges and particle*/
-              const double vlow = (vel - vbox*j/nbins)/vsmooth;
-              const double vhigh= (vel - vbox*(j+1)/nbins)/vsmooth;
-
-              const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
-              colden[j] += colden_this;
-              /* Loop again, because the column density that contributes to this
-               * bin may be broadened thermal or doppler broadened*/
-              //Add natural broadening someday
-              // 
-              if (tau) {
-                for(int i=0;j<nbins;i++)
-                {
-                    double vdiff = fabs(vbox*(i-j)/nbins);
-                    if (vdiff > (vbox/2.0))
-                      vdiff = vbox - vdiff;
-                    tau[i] += tau_single(colden_this, vdiff, temp);
-                }
-              }
-          }
-
-          return;
-        }
-
-        const double amumass, velfac, vbox;
-};
-
+  return;
+}

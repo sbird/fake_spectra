@@ -1,3 +1,6 @@
+#ifndef PARAMETERS_H
+#define PARAMETERS_H
+
 /* Snapshot information */
 #define PARTTYPE 0/* Particle type required */
 #define FILENUMBER 1 /* Number of sub-files */
@@ -19,6 +22,8 @@
 #define  BOLTZMANN   1.3806504e-23  /* m2 kg s-2 K-1 */
 #define  PROTONMASS  1.66053886e-27 /* 1 a.m.u */
 #define  SOLAR_MASS 1.98892e30
+#define  LIGHT           2.99792458e8 /*in km/s*/
+#define  SIGMA_T 6.652458558e-29 /* Thompson cross-section in m^2*/
 
 /* Atomic data (from VPFIT) */
 #define  LAMBDA_LYA_H1 1215.6701e-10
@@ -28,3 +33,5 @@
 #define  HEMASS 4.002602 /* Helium-4 mass in a.m.u. */
 #define  GAMMA_LYA_H1 6.265e8
 #define  GAMMA_LYA_HE2 6.27e8
+
+#endif
