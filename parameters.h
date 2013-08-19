@@ -34,4 +34,7 @@
 #define  GAMMA_LYA_H1 6.265e8
 #define  GAMMA_LYA_HE2 6.27e8
 
+// convert energy/unit mass to J kg^-1
+#define  ESCALE (1.0e6)
+
 #endif

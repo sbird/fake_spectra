@@ -19,6 +19,8 @@
 #include <string.h>
 #include "index_table.h"
 #include "parameters.h"
+#include "absorption.h"
+
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
 void Rescale_Units(double * rho, double * veloc, double * temp, const int nbins, const double h100, const double atime)
@@ -90,16 +92,6 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
     const double dzgrid   = boxsize / (double)nbins; /* bin size (kpc) */
     const double dzinv    = 1. / dzgrid;
     const double box2     = 0.5 * boxsize;
-    //Do the T conversion here for convenience - internal energy is messy
-    const double escale = 1.0e6;           // convert energy/unit mass to J kg^-1
-    /* convert U (J/kg) to T (K) : U = N k T / (γ - 1)
-     * T = U (γ-1) μ m_P / k_B
-     * where k_B is the Boltzmann constant
-     * γ is 5/3, the perfect gas constant
-     * m_P is the proton mass
-     * μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
-     */
-    const double tscale = ((GAMMA-1.0) * PROTONMASS * escale ) / BOLTZMANN;
 
   #pragma omp parallel
   {
@@ -138,16 +130,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
           const double hinv3 = hinv2 / hh; /* 1/h^3 */
           
           const double vr = (*P).Vel[3*i+iaxis-1]; /* peculiar velocity in GII units */
-          /*Mean molecular weight:
-           * \mu = 1 / molecules per unit atomic weight
-           *     = 1 / (X + Y /4 + E)
-           *     where E = Ne * X, and Y = (1-X).
-           *     Can neglect metals as they are heavy.
-           *     Leading contribution is from electrons, which is already included
-           *     [+ Z / (12->16)] from metal species
-           *     [+ Z/16*4 ] for OIV from electrons. */
-          const double mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-          const double p_temp = (*P).U[i]*mu * tscale; /* T in K */
+          const double p_temp = compute_temp((*P).U[i], (*P).Ne[i], XH);
           double dzmax,zgrid;
 	     
 	     /* Central vertex to contribute to */

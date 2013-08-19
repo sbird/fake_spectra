@@ -92,4 +92,31 @@ class ComputeLineAbsorption: public LineAbsorption
         const double amumass, velfac, vbox;
 };
 
+/* Compute temperature (in K) from internal energy.
+ * uu: internal energy in Gadget units
+ * ne: electron abundance
+ * xh: hydrogen mass fraction (0.76)
+ * Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+ * T = U (γ-1) μ m_P / k_B
+ * where k_B is the Boltzmann constant
+ * γ is 5/3, the perfect gas constant
+ * m_P is the proton mass
+ * μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+ */
+inline double compute_temp(const double uu, const double ne, const double xh)
+{
+    const double tscale = ( (GAMMA-1.0) * PROTONMASS * ESCALE ) / BOLTZMANN;
+    /*Mean molecular weight:
+     * \mu = 1 / molecules per unit atomic weight
+     *     = 1 / (X + Y /4 + E)
+     *     where E = Ne * X, and Y = (1-X).
+     *     Can neglect metals as they are heavy.
+     *     Leading contribution is from electrons, which is already included
+     *     [+ Z / (12->16)] from metal species
+     *     [+ Z/16*4 ] for OIV from electrons. */
+    const double mu = 1.0/(xh*(0.75+ne) + 0.25);
+    return uu*mu * tscale; /* T in K */
+
+}
+
 #endif
