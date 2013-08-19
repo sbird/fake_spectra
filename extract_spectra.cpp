@@ -56,7 +56,7 @@ void Convert_Density(double * rhoker_H, double * rho, const double h100, const d
   const double rscale = (KPC*atime)/h100;   /* convert length to m */
   const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
   /*Cosmological factors*/
-  const double H0 = 1.0e5/MPC; /* 100kms^-1Mpc^-1 in SI */ 
+  const double H0 = 1.0e5/(1e3*KPC); /* 100kms^-1Mpc^-1 in SI */ 
   /* Critical matter/energy density at z = 0.0 */
   const double rhoc = 3.0 * (H0*h100)*(H0*h100) / (8.0 * M_PI * GRAVITY); /* kgm^-3 */
   /* Mean hydrogen mass density of the Universe */

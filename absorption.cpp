@@ -90,8 +90,7 @@ void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * 
   for(int i=0;i<nbins;i++){
       for(int j=0;j<nbins;j++)
         {
-          double T0,T1,T2,tau_H1j,aa_H1,u_H1,b_H1,profile_H1;
-          double vdiff_H1;
+          double u_H1, vdiff_H1;
 
           u_H1  = dvbin*j*1.0e3;
       #ifdef PECVEL

@@ -16,6 +16,8 @@
 /* Physical constants, SI units */
 #define  GRAVITY     6.67428e-11
 #define  KPC 3.08568025e19
+#define  BOLTZMANN   1.3806504e-23  /* m2 kg s-2 K-1 */
+#define  PROTONMASS  1.66053886e-27 /* 1 a.m.u */
 #define  SOLAR_MASS 1.98892e30
 
 /* Atomic data (from VPFIT) */
