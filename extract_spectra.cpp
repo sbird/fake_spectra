@@ -118,7 +118,7 @@ void SPH_Interpolation(double * rhoker_H, interp * species, const int nspecies, 
       const double h4 = 4.*h2;           /* 2 smoothing lengths squared */
 /*       if((Particles <20) ||  ((i % (Particles/20)) ==0)) */
 /*              printf("Interpolating particle %d.\n",i); */
-      std::map<int, double> nearby=sort_los_table.get_near_lines((*P).Pos+3*i,hh);
+      std::map<int, double> nearby=sort_los_table.get_near_lines((*P).Pos+3*i,(*P).h[i]);
       for(std::map<int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
       {
           int iproc=it->first;

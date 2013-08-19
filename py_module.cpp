@@ -68,7 +68,7 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
         ppos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
         ppos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
         ppos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
-        double h = *(float *) PyArray_GETPTR1(hh,i)*0.5;
+        double h = *(float *) PyArray_GETPTR1(hh,i);
 	    std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
         if(nearby.size()>0){
            #pragma omp critical

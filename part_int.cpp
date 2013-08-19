@@ -21,7 +21,7 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
 {
     for(int i=0;i<npart;i++)
     {
-      std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]*0.5);
+      std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]);
       for(std::map<int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
       {
           const int iproc=it->first;

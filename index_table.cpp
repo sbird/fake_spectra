@@ -30,7 +30,7 @@ void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::i
           /*If close in the second coord, save line*/
 
           double dr2 = calc_dr2(iproc, pos);
-          if (dr2 <= 4*hh*hh){
+          if (dr2 <= hh*hh){
                   nearby[iproc]=dr2;
           }
       }
@@ -74,11 +74,11 @@ void IndexTable::get_nearby(float first, std::multimap<const double, const int>&
 {
       /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/
       /* First find highest index where xx + 2 hh > priax */
-      double ffp=first+2*hh;
+      double ffp=first+hh;
       if(ffp > boxsize)
          ffp-=boxsize;
       /* Now find lowest index in what remains where xx - 2 hh < priax */
-      double ffm=first-2*hh;
+      double ffm=first-hh;
       if(ffm < 0)
          ffm+=boxsize;
       std::multimap<const double, const int>::iterator low,high;
