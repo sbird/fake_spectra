@@ -1,7 +1,6 @@
 #include "global_vars.h"
 #include "index_table.h"
-#include <map>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 
 // Construct the index tables as maps, which are automatically sorted.
@@ -108,4 +107,20 @@ std::map<int,double> IndexTable::get_near_lines(const float pos[],const double h
         get_nearby(pos[1],index_table_xx, nearby, pos, hh);
       }
       return nearby;
+}
+
+//Find a list of particles near each line
+std::valarray< std::vector<std::pair<int, double> > > IndexTable::get_near_particles(const float pos[], const float hh[], const long long npart)
+{
+    //List of lines. Each element contains a list of particles and their distances to the line.
+    std::valarray< std::vector<std::pair<int, double> > > line_near_parts(NumLos);
+    //find lists
+    for(long long i=0; i < npart; i++){
+        //Get list of lines near this particle
+	    std::map<int, double> nearby=get_near_lines(&(pos[3*i]),hh[i]);
+        //Insert the particles into the list of particle lists
+        for(std::map <int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
+               line_near_parts[it->first].push_back(std::pair<int, double>(i, it->second));
+    }
+    return line_near_parts;
 }

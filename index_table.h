@@ -2,14 +2,31 @@
 #define INDEX_TABLE_H
 
 #include <map>
+#include <vector>
+#include <valarray>
 #include "types.h"
 
 class IndexTable
 {
 public:
   IndexTable(const los *los_table_i, const int NumLos_i, const double box);
+
   //Get a list of lines nearby a particle with coordinates xx, yy, zz and smoothing length hh.
   std::map<int,double> get_near_lines(const float pos[], const double hh);
+
+  //Find a list of particles near each line.
+  //Output:
+  //valarray, NumLos long.
+  //Each element is a list of particles near that line,
+  //and each list element is (particle index, distance from line).
+  std::valarray< std::vector<std::pair <int, double> > > get_near_particles(const float pos[], const float hh[], const long long npart);
+
+  //Get the axis of a line
+  inline int get_axis(const int iproc)
+  {
+      return los_table[iproc].axis;
+  }
+
 private:
   //Get a list of lines nearby a particle from a particular index table
   void get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh);

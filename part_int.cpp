@@ -16,25 +16,28 @@
 //For NULL
 #include <cstddef>
 
-
 void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const int npart)
 {
-    for(int i=0;i<npart;i++)
+    const std::valarray< std::vector<std::pair<int, double> > > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
+    //Use a plain int as not sure openmp can handle iterators efficiently.
+    for(unsigned int i = 0; i < nearby_array.size(); ++i)
     {
-      std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]);
-      for(std::map<int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
-      {
-          const int iproc=it->first;
-          const double dr2=it->second;
-          /*Load a sightline from the table.*/
-          const int iaxis = los_table[iproc].axis;
+        const int axis = sort_los_table.get_axis(i);
+        double * tau_loc = (tau ? &tau[i*nbins] : NULL);
+        double * colden_loc = &colden[i*nbins];
+        //List of particles near this los
+        std::vector<std::pair<int, double> > nearby_this = nearby_array[i];
+        //Loop over them
+        for(std::vector<std::pair<int, double> >::iterator it = nearby_this.begin(); it != nearby_this.end(); ++it)
+        {
+          const int ipart = it->first;
+          const double dr2 = it->second;
           //Particle position parallel to axis
-          const float ppos = Pos[3*i+iaxis-1];
-          const float pvel = Vel[3*i+iaxis-1];
-          double * tau_loc = (tau ? &tau[iproc*nbins] : NULL);
-          add_particle(tau_loc, &colden[iproc*nbins], nbins, dr2, Mass[i], ppos, pvel, temp[i], h[i]);
-	  }  /*Loop over LOS*/
-    } /* Loop over particles*/
+          const float ppos = Pos[3*i+axis-1];
+          const float pvel = Vel[3*i+axis-1];
+          add_particle(tau_loc, colden_loc, nbins, dr2, Mass[ipart], ppos, pvel, temp[ipart], h[ipart]);
+	    }  /*Loop over list of particles near LOS*/
+    } /* Loop over LOS*/
     return;
 }
 
