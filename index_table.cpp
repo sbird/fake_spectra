@@ -21,61 +21,82 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
 
 /*Returns a std::map of lines close to the coordinates xx, yy, zz.
  * the key is the line index, and the value is the distance from the two axes not projected along*/
-void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const double hh)
+void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const float hh, const float first)
 {
       for(std::multimap<const double, const int>::iterator it = low; it != high;++it)
       {
           const int iproc=it->second;
           /*If close in the second coord, save line*/
+          /*Load a sightline from the table.*/
+          const int iaxis = axis[iproc];
 
-          double dr2 = calc_dr2(iproc, pos);
-          if (dr2 <= hh*hh){
-                  nearby[iproc]=dr2;
+          float second;
+          double lproj2;
+          if (iaxis == 3){
+            second = pos[1];
+            lproj2 = cofm[3*iproc+1];
+          }
+          else{
+            second = pos[2];
+            lproj2 = cofm[3*iproc+2];
+          }
+          const double lproj = it->first;
+
+          if(second_close(second, lproj, hh)){
+              double dr2 = calc_dr2(first-lproj, second-lproj2);
+              if (dr2 <= hh*hh){
+                      nearby[iproc]=dr2;
+              }
           }
       }
 }
 
-double IndexTable::calc_dr2(const int iproc, const float pos[])
+inline bool IndexTable::second_close(const float second, const double lproj, const float hh)
+{
+    /* Now check that xx-hh < proj < xx +  hh */
+    float ffp=second+hh;
+    //Periodic wrap
+    if(ffp > boxsize)
+        if(lproj < ffp - boxsize)
+            return true;
+    float ffm=second-hh;
+    if(ffm < 0)
+        if(lproj > ffm + boxsize)
+            return true;
+    if (lproj > ffm && lproj < ffp)
+        return true;
+    else
+        return false;
+}
+
+inline double IndexTable::calc_dr2(const double d1, const double d2)
 {
     double dr, dr2;
-    /*Load a sightline from the table.*/
-    const int iaxis = axis[iproc];
-    const double xproj = cofm[3*iproc];
-    const double yproj = cofm[3*iproc+1];
-    const double zproj = cofm[3*iproc+2];
-
     /*    Distance to projection axis */
-    if (iaxis == 1)
-      dr = fabs(pos[1]-yproj);
-    else
-      dr = fabs(pos[0]-xproj);
+    dr = fabs(d1);
 
     if(dr > 0.5*boxsize)
             dr = boxsize - dr; /* Keep dr between 0 and box/2 */
 
     dr2 = dr*dr;
 
-    if (iaxis == 3)
-      dr = fabs(pos[1] - yproj);
-    else
-      dr = fabs(pos[2] - zproj);
-
+    dr = fabs(d2);
     if (dr > 0.5*boxsize)
       dr = boxsize - dr; /* between 0 and box/2 */
 
-    dr2 = dr2 + (dr*dr);
+    dr2 += (dr*dr);
     return dr2;
 }
 
-void IndexTable::get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const double hh)
+void IndexTable::get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const float hh)
 {
       /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/
       /* First find highest index where xx + 2 hh > priax */
-      double ffp=first+hh;
+      float ffp=first+hh;
       if(ffp > boxsize)
          ffp-=boxsize;
       /* Now find lowest index in what remains where xx - 2 hh < priax */
-      double ffm=first-hh;
+      float ffm=first-hh;
       if(ffm < 0)
          ffm+=boxsize;
       std::multimap<const double, const int>::iterator low,high;
@@ -85,17 +106,17 @@ void IndexTable::get_nearby(float first, std::multimap<const double, const int>&
       high=sort_los.lower_bound(ffp);
       //If periodic wrapping occurred, we want to go through zero
       if(ffm <= ffp) {
-        get_nearby_from_range(low, high, nearby, pos, hh);
+        get_nearby_from_range(low, high, nearby, pos, hh, first);
       }
       else {
-        get_nearby_from_range(sort_los.begin(), high, nearby, pos, hh);
-        get_nearby_from_range(low, sort_los.end(), nearby, pos, hh);
+        get_nearby_from_range(sort_los.begin(), high, nearby, pos, hh, first);
+        get_nearby_from_range(low, sort_los.end(), nearby, pos, hh, first);
       }
 }
 
 /*This function takes a particle position and returns a list of the indices of lines near it in index_nr_lines
  * Near is defined as: dx^2+dy^2 < 4h^2 */
-std::map<int,double> IndexTable::get_near_lines(const float pos[],const double hh)
+std::map<int,double> IndexTable::get_near_lines(const float pos[],const float hh)
 {
       std::map<int, double> nearby;
       if(index_table.size() > 0){
