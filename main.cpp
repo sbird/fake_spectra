@@ -86,7 +86,6 @@ int main(int argc, char **argv)
   std::string outname;
   std::string indir;
   char c;
-  int i;
 #ifndef NO_HEADER
   int pad[32]={0};
 #endif
@@ -130,7 +129,7 @@ int main(int argc, char **argv)
          exit(99);
   }
   axis=(int *) malloc(NumLos*sizeof(int));
-  cofm=(double *) malloc(NumLos*sizeof(double));
+  cofm=(double *) malloc(3*NumLos*sizeof(double));
   if(!axis || !cofm){
           std::cerr<<"Error allocating memory for sightline table"<<std::endl;
           exit(2);
@@ -167,7 +166,6 @@ int main(int argc, char **argv)
     /*Setup the interpolator*/
     const double velfac = h100*atime*Hz/1e3;
     ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, cofm, axis,NumLos);
-    IndexTable sort_los_table(cofm, axis, NumLos, box100);
   if(!(output=fopen(outname.c_str(),"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));
@@ -191,7 +189,7 @@ int main(int argc, char **argv)
              /*Find mass fraction of neutral hydrogen*/
               for(int ii = 0; ii< Npart; ii++){
                 P.Mass[ii] *= P.fraction[ii]*XH;
-                P.temp[ii] = compute_temp(P.U[i], P.Ne[i], XH);
+                P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
               }
              /*Do the hard SPH interpolation*/
              pint.do_work(P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
@@ -228,7 +226,7 @@ int main(int argc, char **argv)
   fwrite(&redshift,sizeof(double),1,output);
 #ifndef NO_HEADER
   /*Write a bit of a header. */
-  i=NBINS;
+  int i=NBINS;
   fwrite(&box100,sizeof(double),1,output);
   fwrite(&i,sizeof(int),1,output);
   fwrite(&NumLos,sizeof(int),1,output);

@@ -135,7 +135,7 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
       //Add natural broadening someday
       // 
       if (tau) {
-        for(int i=0;j<nbins;i++)
+        for(int i=0;i<nbins;i++)
         {
             double vdiff = fabs(vbox*(i-j)/nbins);
             if (vdiff > (vbox/2.0))
