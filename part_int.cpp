@@ -16,7 +16,7 @@
 //For NULL
 #include <cstddef>
 
-void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const int npart)
+void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const long long npart)
 {
     const std::valarray< std::vector<std::pair<int, double> > > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
     //Use a plain int as not sure openmp can handle iterators efficiently.

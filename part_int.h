@@ -27,22 +27,20 @@ class ParticleInterp: public ComputeLineAbsorption
         ParticleInterp(double * tau_i, double * colden_i, const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const los *los_table_i, const int NumLos):
         ComputeLineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize),
         tau(tau_i), colden(colden_i),nbins(nbins_i),nlos(NumLos),
-        sort_los_table(los_table_i, NumLos, boxsize),
-        los_table(los_table_i)
+        sort_los_table(los_table_i, NumLos, boxsize)
         {
         }
 
         /*Interpolate the particles in the given arrays onto
          * the spectra pointed at by tau and colden
          * */
-        void do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const int npart);
+        void do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const long long npart);
 
     private:
         double *tau, *colden;
         const int nbins;
         const int nlos;
         IndexTable sort_los_table;
-        const los *los_table;
 };
 
 /*Convert the units of colden from atoms/(kpc/h)^2 to atoms/cm^2*/
