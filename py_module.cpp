@@ -5,20 +5,6 @@
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
-
-/*Helper function to copy los data into the form expected by the work functions*/
-void setup_los_data(los* los_table, PyArrayObject *cofm, PyArrayObject *axis, const int NumLos)
-{
-    //Initialise los_table from input
-    for(int i=0; i< NumLos; i++){
-        los_table[i].axis = *(npy_int32 *) PyArray_GETPTR1(axis,i);
-        los_table[i].xx = *(double *) PyArray_GETPTR2(cofm,i,0);
-        los_table[i].yy = *(double *) PyArray_GETPTR2(cofm,i,1);
-        los_table[i].zz = *(double *) PyArray_GETPTR2(cofm,i,2);
-    }
-}
-
-
 /*Check whether the passed array has type typename. Returns 1 if it doesn't, 0 if it does.*/
 int check_type(PyArrayObject * arr, int npy_typename)
 {
@@ -40,7 +26,6 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     double box100;
     PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
     PyObject *out;
-    los *los_table=NULL;
     //Vector to store a list of particles near the lines
     std::vector<int> near_lines;
 
@@ -49,7 +34,6 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
 
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
-    los_table=(los *)malloc(NumLos*sizeof(los));
 
     if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
     {
@@ -58,8 +42,9 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     }
 
     //Setup los_tables
-    setup_los_data(los_table, cofm, axis, NumLos);
-    IndexTable sort_los_table(los_table, NumLos, box100);
+    double * Cofm =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(cofm));
+    int * Axis =(int *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
+    IndexTable sort_los_table(Cofm, Axis, NumLos, box100);
 
     //find lists
     #pragma omp parallel for
@@ -77,7 +62,6 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
            }
         }
     }
-    free(los_table);
     //Copy data into python
     npy_intp size = near_lines.size();
     is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_INT);
@@ -103,8 +87,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     PyArrayObject *pos, *vel, *mass, *temp, *h;
     PyArrayObject *cofm, *axis;
 
-    //Temp variables
-    los *los_table=NULL;
     //Get our input
     if(!PyArg_ParseTuple(args, "iiddddddO!O!O!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
     {
@@ -129,7 +111,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     //Malloc stuff
-    los_table=(los *)malloc(NumLos*sizeof(los));
     size[0] = NumLos;
     size[1] = nbins;
 
@@ -176,8 +157,9 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     float * Temp =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(temp));
     float * Hh =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(h));
 
-    setup_los_data(los_table, cofm, axis, NumLos);
-    ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, los_table,NumLos);
+    double * Cofm =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(cofm));
+    int * Axis =(int *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
+    ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, Cofm, Axis ,NumLos);
     //Do the work
     pint.do_work(Pos, Vel, Mass, Temp, Hh, Npart);
 
@@ -185,8 +167,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     PyObject * for_return;
 	for_return = Py_BuildValue("OO", tau_out, colden_out);
 
-    //Free
-    free(los_table);
     //Decrement the refcount
     Py_DECREF(tau_out);
     Py_DECREF(colden_out);

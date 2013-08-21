@@ -4,12 +4,11 @@
 #include <map>
 #include <vector>
 #include <valarray>
-#include "types.h"
 
 class IndexTable
 {
 public:
-  IndexTable(const los *los_table_i, const int NumLos_i, const double box);
+  IndexTable(const double cofm[], const int axis[], const int NumLos_i, const double box);
 
   //Get a list of lines nearby a particle with coordinates xx, yy, zz and smoothing length hh.
   std::map<int,double> get_near_lines(const float pos[], const double hh);
@@ -24,7 +23,7 @@ public:
   //Get the axis of a line
   inline int get_axis(const int iproc)
   {
-      return los_table[iproc].axis;
+      return axis[iproc];
   }
 
 private:
@@ -36,13 +35,14 @@ private:
   double calc_dr2(const int iproc, const float pos[]);
 
   // The key is the position of the primary axis, which is xx for index_table and yy for index_table_xx.
-  // The value is the index of this entry in los_table.
+  // The value is the index of this entry in cofm and axis.
   //index_table stores lines where axis = 2 or 3.
   std::multimap<const double, const int> index_table;
   //index_table_xx stores lines where axis = 1.
   std::multimap<const double, const int> index_table_xx;
   //Pointers to the original los table
-  const los *los_table;
+  const double *cofm;
+  const int *axis;
   const int NumLos;
   const double boxsize;
 };

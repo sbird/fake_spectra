@@ -3,7 +3,7 @@
 #include <string.h>
 
 /* Populate the line of sight table, either by random numbers or with some external input. */
-void populate_los_table(los * los_table, int NumLos, char * ext_table, double box)
+void populate_los_table(double * cofm, int * aaxis, int NumLos, char * ext_table, double box)
 {
         FILE * fh;
         int lines=0;
@@ -31,10 +31,10 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                                 fprintf(stderr, "Line %d of LOS table is: %d %f %f %f, which is silly for boxm %f.\n", lines+1, axis, xx, yy, zz, boxm);
                                 exit(3);
                         }
-                        los_table[lines].axis=axis;
-                        los_table[lines].xx=xx*1000;
-                        los_table[lines].yy=yy*1000;
-                        los_table[lines].zz=zz*1000;
+                        aaxis[lines]=axis;
+                        cofm[3*lines]=xx*1000;
+                        cofm[3*lines+1]=yy*1000;
+                        cofm[3*lines+2]=zz*1000;
                         lines++;
                 }
         }
@@ -45,10 +45,10 @@ void populate_los_table(los * los_table, int NumLos, char * ext_table, double bo
                         do	
                         	axis = (int)(drand48()*4);
                         while (axis == 0 || axis==4); 
-                        los_table[lines].axis=axis;
-                        los_table[lines].xx=drand48()*box;
-                        los_table[lines].yy=drand48()*box;
-                        los_table[lines].zz=drand48()*box;
+                        aaxis[lines]=axis;
+                        cofm[3*lines]=drand48()*box;
+                        cofm[3*lines+1]=drand48()*box;
+                        cofm[3*lines+2]=drand48()*box;
                 }
         }
 }

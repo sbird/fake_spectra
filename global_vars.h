@@ -27,7 +27,7 @@ int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 int load_hdf5_header(const char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno);
 #endif
-void populate_los_table(los * los_table, int NumLos, char * ext_table, double box);
+void populate_los_table(double * cofm, int * axis, int NumLos, char * ext_table, double box);
 #ifdef __cplusplus
 }
 #endif

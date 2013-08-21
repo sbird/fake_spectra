@@ -80,7 +80,8 @@ int main(int argc, char **argv)
   int64_t MaxRead=256*256*256,StartPart=0;
 
   FILE *output;
-  los *los_table=NULL;
+  double *cofm=NULL;
+  int *axis=NULL;
   char *ext_table=NULL;
   std::string outname;
   std::string indir;
@@ -128,8 +129,9 @@ int main(int argc, char **argv)
          help();
          exit(99);
   }
-  los_table=(los *) malloc(NumLos*sizeof(los));
-  if(!los_table){
+  axis=(int *) malloc(NumLos*sizeof(int));
+  cofm=(double *) malloc(NumLos*sizeof(double));
+  if(!axis || !cofm){
           std::cerr<<"Error allocating memory for sightline table"<<std::endl;
           exit(2);
   }
@@ -161,11 +163,11 @@ int main(int argc, char **argv)
                 exit(2);
     }
     /*Setup the los tables*/
-    populate_los_table(los_table,NumLos, ext_table, box100);
+    populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
     const double velfac = h100*atime*Hz/1e3;
-    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, los_table,NumLos);
-    IndexTable sort_los_table(los_table, NumLos, box100);
+    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, cofm, axis,NumLos);
+    IndexTable sort_los_table(cofm, axis, NumLos, box100);
   if(!(output=fopen(outname.c_str(),"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));
@@ -220,7 +222,8 @@ int main(int argc, char **argv)
                   break;
   }
   convert_colden_units(colden_H1, NBINS*NumLos, h100, atime);
-  free(los_table);
+  free(cofm);
+  free(axis);
   printf("Done interpolating, now calculating absorption\n");
   fwrite(&redshift,sizeof(double),1,output);
 #ifndef NO_HEADER

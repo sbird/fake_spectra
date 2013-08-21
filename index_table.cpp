@@ -4,14 +4,14 @@
 #include <iostream>
 
 // Construct the index tables as maps, which are automatically sorted.
-IndexTable::IndexTable(const los * los_table_i, const int NumLos_i, const double box):
-  los_table(los_table_i), NumLos(NumLos_i), boxsize(box)
+IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumLos_i, const double box):
+  cofm(cofm_i), axis(axis_i), NumLos(NumLos_i), boxsize(box)
 {
         for(int i=0;i<NumLos;i++){
-            if(los_table[i].axis==1)
-                index_table_xx.insert(std::pair<const double, const int>(los_table[i].yy, i));
+            if(axis[i] == 1)
+                index_table_xx.insert(std::pair<const double, const int>(cofm[3*i+1], i));
             else
-                index_table.insert(std::pair<const double, const int>(los_table[i].xx, i));
+                index_table.insert(std::pair<const double, const int>(cofm[3*i], i));
         }
         if(index_table_xx.size() + index_table.size() != (unsigned int) NumLos){
             std::cerr << "Did not add all elements. xx index: "<<index_table_xx.size()<<" other index: "<<index_table.size()<<std::endl;
@@ -39,12 +39,10 @@ double IndexTable::calc_dr2(const int iproc, const float pos[])
 {
     double dr, dr2;
     /*Load a sightline from the table.*/
-    const int iaxis = los_table[iproc].axis;
-    double xproj,yproj,zproj;
-
-    xproj = los_table[iproc].xx;
-    yproj = los_table[iproc].yy;
-    zproj = los_table[iproc].zz;
+    const int iaxis = axis[iproc];
+    const double xproj = cofm[3*iproc];
+    const double yproj = cofm[3*iproc+1];
+    const double zproj = cofm[3*iproc+2];
 
     /*    Distance to projection axis */
     if (iaxis == 1)

@@ -24,10 +24,10 @@
 class ParticleInterp: public ComputeLineAbsorption
 {
     public:
-        ParticleInterp(double * tau_i, double * colden_i, const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const los *los_table_i, const int NumLos):
+        ParticleInterp(double * tau_i, double * colden_i, const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const double cofm[], const int axis[], const int NumLos):
         ComputeLineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize),
         tau(tau_i), colden(colden_i),nbins(nbins_i),nlos(NumLos),
-        sort_los_table(los_table_i, NumLos, boxsize)
+        sort_los_table(cofm, axis, NumLos, boxsize)
         {
         }
 
