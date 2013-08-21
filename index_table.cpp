@@ -113,12 +113,18 @@ std::valarray< std::vector<std::pair<int, double> > > IndexTable::get_near_parti
     //List of lines. Each element contains a list of particles and their distances to the line.
     std::valarray< std::vector<std::pair<int, double> > > line_near_parts(NumLos);
     //find lists
+    #pragma omp parallel for
     for(long long i=0; i < npart; i++){
         //Get list of lines near this particle
 	    std::map<int, double> nearby=get_near_lines(&(pos[3*i]),hh[i]);
-        //Insert the particles into the list of particle lists
-        for(std::map <int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
-               line_near_parts[it->first].push_back(std::pair<int, double>(i, it->second));
+        if(nearby.size()){
+            #pragma omp critical
+            {
+                //Insert the particles into the list of particle lists
+                for(std::map <int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
+                       line_near_parts[it->first].push_back(std::pair<int, double>(i, it->second));
+            }
+        }
     }
     return line_near_parts;
 }
