@@ -21,16 +21,16 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
     const std::valarray< std::vector<std::pair<int, double> > > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
     //Use a plain int as not sure openmp can handle iterators efficiently.
     //Parallelizing this bit makes little difference: most of the time is spent in get_near_particles
+    const unsigned int nlines = nearby_array.size();
     #pragma omp parallel for
-    for(unsigned int i = 0; i < nearby_array.size(); ++i)
+    for(unsigned int i = 0; i < nlines; ++i)
     {
         const int axis = sort_los_table.get_axis(i);
         double * tau_loc = (tau ? &tau[i*nbins] : NULL);
         double * colden_loc = &colden[i*nbins];
         //List of particles near this los
-        std::vector<std::pair<int, double> > nearby_this = nearby_array[i];
         //Loop over them
-        for(std::vector<std::pair<int, double> >::iterator it = nearby_this.begin(); it != nearby_this.end(); ++it)
+        for(std::vector<std::pair<int, double> >::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)
         {
           const int ipart = it->first;
           const double dr2 = it->second;
