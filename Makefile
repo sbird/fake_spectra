@@ -21,11 +21,11 @@ endif
 
 #Are we using gcc or icc?
 ifeq (icc,$(findstring icc,${CC}))
-  CFLAGS +=-O2 -g -w1 -openmp -I${GREAD} -fpic
-  LINK +=${CXX} -O2 -openmp
+  CFLAGS +=-O3 -g -w1 -openmp -I${GREAD} -fpic -march=native
+  LINK +=${CXX} -O3 -openmp -march=native
 else
-  CFLAGS +=-O3 -g -Wall -fopenmp -I${GREAD} -fPIC
-  LINK +=${CXX} -O3 -fopenmp $(PRO)
+  CFLAGS +=-O3 -g -Wall -fopenmp -I${GREAD} -fPIC -march=native
+  LINK +=${CXX} -g -O3 -fopenmp $(PRO) -march=native
   LFLAGS += -lm -lgomp
 endif
 OPTS =
