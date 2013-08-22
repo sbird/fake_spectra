@@ -258,7 +258,8 @@ class Spectra:
         #Get rid of ind so we have some memory for the interpolator
         del ind
         #Get line data
-        specmass = self.mscale*mass*metal_in
+        #This can become double because mscale is double.
+        specmass = np.array(self.mscale*mass*metal_in, dtype=np.float32)
         velfac = self.Hz/1e3 * self.atime * self.hubble
         line = self.lines[(elem,ion)][ll]
         amumass = self.lines.get_mass(elem)
