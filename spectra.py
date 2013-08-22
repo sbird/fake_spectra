@@ -261,7 +261,11 @@ class Spectra:
         #This can become double because mscale is double.
         specmass = np.array(self.mscale*mass*metal_in, dtype=np.float32)
         velfac = self.Hz/1e3 * self.atime * self.hubble
-        line = self.lines[(elem,ion)][ll]
+        #Metallicity is not a real line
+        if elem != "Z":
+            line = self.lines[(elem,ion)][ll]
+        else:
+            line = self.lines[("H",1)][0]
         amumass = self.lines.get_mass(elem)
         #Do interpolation.
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
