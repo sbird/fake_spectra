@@ -115,8 +115,11 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
 void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
-   * in (1e10 M_sun /h) / (kpc/h)^2.*/
-  const double avgdens = mass/pow(smooth,2);
+   * in (1e10 M_sun /h) / (kpc/h)^2.
+   * We compute int_z ρ dz, so the correct dimensional factors are:
+   * δz M/h^3: bin width * density */
+  const double binwdth = (vbox/velfac/nbins);
+  const double avgdens = binwdth*mass*pow(smooth,-3);
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
   /* Velocity of particle parallel to los: pos in */
@@ -135,7 +138,9 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
       const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
 
       // The index may be periodic wrapped.
-      const int j = (z+nbins) % nbins;
+      int j = z % nbins;
+      if (j < 0)
+        j+=nbins;
       colden[j] += colden_this;
       /* Loop again, because the column density that contributes to this
        * bin may be broadened thermal or doppler broadened*/
