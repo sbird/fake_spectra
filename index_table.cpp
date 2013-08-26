@@ -42,7 +42,7 @@ void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::i
           }
           const double lproj = it->first;
 
-          if(second_close(second, lproj, hh)){
+          if(second_close(second, lproj2, hh)){
               double dr2 = calc_dr2(first-lproj, second-lproj2);
               if (dr2 <= hh*hh){
                       nearby[iproc]=dr2;
@@ -51,19 +51,19 @@ void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::i
       }
 }
 
-inline bool IndexTable::second_close(const float second, const double lproj, const float hh)
+inline bool IndexTable::second_close(const float second, const double lproj2, const float hh)
 {
     /* Now check that xx-hh < proj < xx +  hh */
     float ffp=second+hh;
     //Periodic wrap
     if(ffp > boxsize)
-        if(lproj < ffp - boxsize)
+        if(lproj2 < ffp - boxsize)
             return true;
     float ffm=second-hh;
     if(ffm < 0)
-        if(lproj > ffm + boxsize)
+        if(lproj2 > ffm + boxsize)
             return true;
-    if (lproj > ffm && lproj < ffp)
+    if (lproj2 > ffm && lproj2 < ffp)
         return true;
     else
         return false;

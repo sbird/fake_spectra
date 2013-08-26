@@ -66,6 +66,8 @@ void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * 
 
 inline double sph_kernel(const double q)
 {
+    if (q > 1)
+        return 0;
     if(q<0.5)
         return 1-6*q*q+6*q*q*q;
     else
@@ -109,26 +111,22 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
   /* Velocity of particle parallel to los: pos in */
-  double vel = (velfac * ppos + pvel );
-  if (vel > vbox ){
-      vel -= vbox*floor(vel/vbox);
-  }
+  const double vel = (velfac * ppos + pvel );
   const double vsmooth = velfac * smooth;
-  const double zrange = sqrt(smooth*smooth - dr2);
-  const int zlow = floor((nbins/vbox) * velfac * (ppos - zrange));
-  const int zhigh = ceil((nbins/vbox) * velfac * (ppos + zrange));
+  const double zrange = velfac * sqrt(smooth*smooth - dr2);
+  const int zlow = floor((nbins/vbox) * (vel - zrange));
+  const int zhigh = ceil((nbins/vbox) * (vel + zrange));
   /* Compute the HI Lya spectra */
-  for(int z=zlow; z<zhigh; z++)
+  for(int z=zlow; z<=zhigh; z++)
   {
-      const int j = (z+nbins ) % nbins;
-      /*Difference between velocity of bin edges and particle*/
-      const double vlow = (vel - vbox*j/nbins)/vsmooth;
-      const double vhigh= (vel - vbox*(j+1)/nbins)/vsmooth;
-
-	  if ( bb2 + vlow*vlow > 1)
-	      continue;
+      /*Difference between velocity of bin this edge and particle*/
+      const double vlow = (vbox*z/nbins - vel)/vsmooth;
+      const double vhigh = (vbox*(z+1)/nbins - vel)/vsmooth;
 
       const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
+
+      // The index may be periodic wrapped.
+      const int j = (z+nbins) % nbins;
       colden[j] += colden_this;
       /* Loop again, because the column density that contributes to this
        * bin may be broadened thermal or doppler broadened*/
