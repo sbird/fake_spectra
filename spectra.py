@@ -258,8 +258,7 @@ class Spectra:
         #Get rid of ind so we have some memory for the interpolator
         del ind
         #Get line data
-        #This can become double because mscale is double.
-        specmass = np.array(self.mscale*mass*metal_in, dtype=np.float32)
+        specmass = mass*metal_in
         velfac = self.Hz/1e3 * self.atime * self.hubble
         #If we don't want tau, any line will do
         if get_tau:
@@ -488,8 +487,8 @@ class Spectra:
             colden += tcolden
             del ttau
             del tcolden
-        #Rescale the units on column density from atoms/(kpc/h)^2 to atoms/cm^2
-        colden /= self.rscale**2
+        #Rescale the units on column density from (internal mass)/(kpc/h)^2 to atoms/cm^2
+        colden *= self.mscale/self.PROTONMASS/(self.rscale**2)
 
         return (tau, colden)
 

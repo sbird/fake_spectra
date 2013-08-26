@@ -43,12 +43,13 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
     return;
 }
 
-/*Convert the units of colden from atoms/(kpc/h)^2 to atoms/cm^2*/
+/*Convert the units of colden from (internal mass)/(kpc/h)^2 to atoms/cm^2*/
 void convert_colden_units(double * colden, const int nbins, const double h100, const double atime)
 {
   /* Conversion factors from internal units */
+  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
   const double rscale = (KPC*atime)/h100;
   for(int i = 0;i<nbins;i++)
-     colden[i]*=pow(rscale,-2);
+     colden[i]*=mscale/PROTONMASS*pow(rscale,-2);
   return;
 }

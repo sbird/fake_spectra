@@ -76,12 +76,12 @@ class ComputeLineAbsorption: public LineAbsorption
          * Output:
          * tau: array specifying the optical depth of the spectrum.
          * If this is NULL, just compute the column density.
-         * colden: array specifying the column density of the spectrum. (atoms/ (comoving kpc/h)^2)
+         * colden: array specifying the column density of the spectrum. (1e10 M_sun/h / (comoving kpc/h)^2)
          * nbins: Size of above arrays
          *
          * Input:
          * dr2: transverse distance to spectra from particle (comoving kpc/h)
-         * mass: mass of particle in absorping species (kg)
+         * mass: mass of particle in absorbing species (1e10 M_sun / h)
          * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
          * pvel: particle velocity parallel to spectrum (physical km/s)
          * temp: particle temperature (K)

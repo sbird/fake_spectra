@@ -106,8 +106,9 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
  */
 void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
 {
-  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density.*/
-  const double avgdens = mass/(amumass*PROTONMASS*pow(smooth,3));
+  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
+   * in (1e10 M_sun /h) / (kpc/h)^2.*/
+  const double avgdens = mass/pow(smooth,2);
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
   /* Velocity of particle parallel to los: pos in */
