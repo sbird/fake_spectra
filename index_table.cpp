@@ -13,7 +13,7 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
             else
                 index_table.insert(std::pair<const double, const int>(cofm[3*i], i));
         }
-        assert(index_table_xx.size() + index_table.size() == NumLos);
+        assert(index_table_xx.size() + index_table.size() == (unsigned int) NumLos);
         return;
 }
 
@@ -136,11 +136,12 @@ std::valarray< std::vector<std::pair<int, double> > > IndexTable::get_near_parti
     for(long long i=0; i < npart; i++){
         //Get list of lines near this particle
 	    std::map<int, double> nearby=get_near_lines(&(pos[3*i]),hh[i]);
+
         if(nearby.size()){
             #pragma omp critical
             {
                 //Insert the particles into the list of particle lists
-                for(std::map <int, double>::iterator it = nearby.begin(); it != nearby.end(); ++it)
+                for(std::map <int, double>::const_iterator it = nearby.begin(); it != nearby.end(); ++it)
                        line_near_parts[it->first].push_back(std::pair<int, double>(i, it->second));
             }
         }
