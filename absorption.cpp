@@ -13,6 +13,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "absorption.h"
+#include <algorithm>
 
 /*****************************************************************************/
 /* This function calculates absorption from a given integrated temperature, density
@@ -80,9 +81,16 @@ inline double sph_kernel(const double q)
  * zlow - Lower z limit for the integral (as z distance from particle center).
  * zhigh - Upper z limit for the integral (again as distance from particle center)
  * bb2 - transverse distance from particle to pixel, squared.
+ *
+ * If K(q) is the SPH kernel normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
+ * and q^2 = b^2 + z^2, then this is:
+ * int_zlow^zhigh K(q) dz
  * */
 double sph_kern_frac(double zlow, double zhigh, double bb2)
 {
+    //Maximal range that will do anything
+    zlow = std::max(zlow, -sqrt(1-bb2));
+    zhigh = std::min(zhigh, sqrt(1-bb2));
     double total = sph_kernel(sqrt(bb2+zlow*zlow))/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
