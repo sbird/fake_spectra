@@ -78,7 +78,7 @@ clean:
 dist: Makefile calc_power.c extract_spectra.cpp absorption.cpp py_module.cpp global_vars.h main.cpp mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c index_table.cpp
 	tar -czf flux_extract.tar.gz $^
 
-btest: test.cpp absorption.o
+btest: test.cpp absorption.o index_table.o
 	${LINK} -I${GREAD} ${LFLAGS} -lboost_unit_test_framework $^ -o $@
 
 test: btest

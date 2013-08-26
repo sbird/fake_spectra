@@ -154,7 +154,133 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
 
 }
 
+#define TLOS 25
+
+//Macro to construct a sightline and store it in the next available place in the array
+#define SIGHTLINE(a, x, y, z) do{ \
+    cofm[3*nextlos]=(x); \
+    cofm[3*nextlos+1]=(y); \
+    cofm[3*nextlos+2]=(z); \
+    axis[nextlos]=(a); \
+    nextlos++;\
+    } while(0)
 
 BOOST_AUTO_TEST_CASE(check_index_table)
 {
+    int nextlos = 0;
+    double cofm[TLOS*3];
+    int axis[TLOS];
+    //Construct a table of sightlines with various interesting and likely to break properties
+    //Two sightlines with the same position.
+    SIGHTLINE(1,4000,4000,4000);
+    SIGHTLINE(1,4000,4000,4000);
+    //Then one a little further away
+    SIGHTLINE(1,4000,4020,4010);
+    //Then one a little further in only one axis
+    SIGHTLINE(1,4000,4000,4010);
+    //One near the edge of the box
+    SIGHTLINE(1,0,0.4,0.1);
+    //Other box edge
+    SIGHTLINE(1,0,10000-0.4,0.3);
+    //One on its own
+    SIGHTLINE(1,0,2000,1000);
+    //Same but on different axes
+    SIGHTLINE(3,1000,2000,500);
+    SIGHTLINE(2,1000,2000,500);
+    SIGHTLINE(1,1000,2000,500);
+    //Fill out the table a bit
+    SIGHTLINE(3,3000,5000,550);
+    SIGHTLINE(3,8000,5500,9000);
+    SIGHTLINE(1,6000,5500,9000);
+
+    assert(nextlos < TLOS);
+    //Construct the table
+    IndexTable tab(cofm, axis, nextlos, 10000);
+
+    //Now start testing.
+    float pos[3] = {500,2000,1000};
+    std::map<int, double> nearby = tab.get_near_lines(pos, 1);
+    BOOST_CHECK_EQUAL(nearby.size(),1);
+    BOOST_CHECK_EQUAL(nearby.begin()->first,6);
+    BOOST_CHECK_EQUAL(nearby.begin()->second,0);
+    //First coordinate not important
+    float poss[3] = {5000,2000,1000};
+    nearby = tab.get_near_lines(poss, 1);
+    BOOST_CHECK_EQUAL(nearby.size(),1);
+    BOOST_CHECK_EQUAL(nearby.begin()->first,6);
+    BOOST_CHECK_EQUAL(nearby.begin()->second,0);
+    //Slight offset, still within h
+    float pos3[3] = {5010,2010,990};
+    nearby = tab.get_near_lines(pos3, 20);
+    BOOST_CHECK_EQUAL(nearby.size(),1);
+    BOOST_CHECK_EQUAL(nearby.begin()->first,6);
+    BOOST_CHECK_EQUAL(nearby.begin()->second,10*10+10*10.);
+    //Slight offset, just outside h
+    nearby = tab.get_near_lines(pos3, 10);
+    BOOST_CHECK_EQUAL(nearby.size(),0);
+
+    //Check duplicates are handled
+    float pos2[3] = {4000,4000,4000};
+    nearby = tab.get_near_lines(pos2, 1);
+    BOOST_CHECK_EQUAL(nearby.size(),2);
+    BOOST_CHECK_EQUAL(nearby.begin()->first,0);
+    BOOST_CHECK_EQUAL(nearby.begin()->second,0);
+    BOOST_CHECK_EQUAL((++nearby.begin())->first,1);
+    BOOST_CHECK_EQUAL((++nearby.begin())->second,0);
+
+    //Check duplicates are handled: wider
+    nearby = tab.get_near_lines(pos2, 25);
+    BOOST_CHECK_EQUAL(nearby.size(),4);
+    BOOST_CHECK_EQUAL(nearby.at(0),0);
+    BOOST_CHECK_EQUAL(nearby.at(1),0);
+    BOOST_CHECK_EQUAL(nearby.at(2),20*20+10*10.);
+    BOOST_CHECK_EQUAL(nearby.at(3),10*10.);
+
+    //Check periodic wrapping is working
+    float pos5[3] = {1000,9999.9,9999.9};
+    nearby = tab.get_near_lines(pos5, 0.6);
+    BOOST_CHECK_EQUAL(nearby.size(),2);
+    FLOATS_APPROX_NEAR_TO(nearby.at(4),0.5*0.5+0.2*0.2);
+    FLOATS_APPROX_NEAR_TO(nearby.at(5),0.3*0.3+0.4*0.4);
+
+    //Check multiple axes
+    float pos4[3] = {1000.5,2000,501};
+    nearby = tab.get_near_lines(pos4, 1.5);
+    BOOST_CHECK_EQUAL(nearby.size(),3);
+    FLOATS_APPROX_NEAR_TO(nearby.at(7),0.25);
+    FLOATS_APPROX_NEAR_TO(nearby.at(8),0.25+1);
+    FLOATS_APPROX_NEAR_TO(nearby.at(9),1);
+
+    //Now test get_near_particles
+    float poses[3*9] = { 500,2000,1000, 5000,2000.0,1000.0, 5010.0,2010,990,
+                        4000,4000,4000, 1000,9999.9,9999.9, 1000.5,2000,501,
+                        7500,7500,7500, 4008,4008.0,4008.0, 2000.0,9999,9999.8};
+    float hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
+    std::valarray< std::vector<std::pair <int, double> > > nearby_array = tab.get_near_particles(poses, hh, 9);
+    BOOST_CHECK_EQUAL(nearby_array.size(), nextlos);
+    //Did we pick up the right number of particles in all cases?
+    BOOST_CHECK_EQUAL(nearby_array[0].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[1].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[2].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[3].size(),2);
+    BOOST_CHECK_EQUAL(nearby_array[4].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[5].size(),2);
+    BOOST_CHECK_EQUAL(nearby_array[6].size(),3);
+    BOOST_CHECK_EQUAL(nearby_array[7].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[8].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[9].size(),1);
+    BOOST_CHECK_EQUAL(nearby_array[10].size(),0);
+    BOOST_CHECK_EQUAL(nearby_array[11].size(),0);
+    BOOST_CHECK_EQUAL(nearby_array[12].size(),0);
+    //Check a few values
+    BOOST_CHECK_EQUAL(nearby_array[0].begin()->first,3);
+    BOOST_CHECK_EQUAL(nearby_array[3][0].first,3);
+    BOOST_CHECK_EQUAL(nearby_array[3][1].first,7);
+    BOOST_CHECK_EQUAL(nearby_array[5][0].first,4);
+    BOOST_CHECK_EQUAL(nearby_array[5][1].first,8);
+    std::vector<std::pair <int, double> >::iterator it = nearby_array[6].begin();
+    BOOST_CHECK_EQUAL(it->first,0);
+    BOOST_CHECK_EQUAL((++it)->first,2);
+    BOOST_CHECK_EQUAL((++it)->first,1);
+    BOOST_CHECK_EQUAL(nearby_array[8][0].first,5);
 }
