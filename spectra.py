@@ -168,7 +168,7 @@ class Spectra:
                 gg = grp_grid[key[0]]
             gg.create_dataset(str(key[1]),data=value)
         grp_grid = f.create_group("colden")
-        for (key, value) in self.tau_obs.iteritems():
+        for (key, value) in self.colden.iteritems():
             try:
                 gg = grp_grid[key[0]]
             except KeyError:
@@ -261,12 +261,13 @@ class Spectra:
         #This can become double because mscale is double.
         specmass = np.array(self.mscale*mass*metal_in, dtype=np.float32)
         velfac = self.Hz/1e3 * self.atime * self.hubble
-        #Metallicity is not a real line
-        if elem != "Z":
+        #If we don't want tau, any line will do
+        if get_tau:
             line = self.lines[(elem,ion)][ll]
+            amumass = self.lines.get_mass(elem)
         else:
             line = self.lines[("H",1)][0]
-        amumass = self.lines.get_mass(elem)
+            amumass = 1
         #Do interpolation.
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
         return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, specmass, temp, hh, axis, cofm)
@@ -568,7 +569,7 @@ class Spectra:
         rho = self.get_col_density(elem,line)
         rho_H = self.get_col_density("H",1)
         vels = self.vel_width(self.get_observer_tau(elem, line))
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin)*(self.num_important[(elem, line)] > num_cut))
+        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut)*(vels > 2.*self.dvbin))
         return ind
 
     def vel_width(self, tau):
