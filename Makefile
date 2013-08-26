@@ -48,7 +48,7 @@ COM_INC = parameters.h types.h global_vars.h index_table.h absorption.h part_int
 #LINK=$(CC)
 LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
-.PHONY: all clean dist
+.PHONY: all clean dist test
 
 all: extract statistic rescale	_spectra_priv.so
 
@@ -77,4 +77,10 @@ clean:
 
 dist: Makefile calc_power.c extract_spectra.cpp absorption.cpp py_module.cpp global_vars.h main.cpp mean_flux.c $(COM_INC) powerspectrum.c read_hdf_snapshot.c read_snapshot.cpp rescale.c smooth.c statistic.c statistic.h init.c index_table.cpp
 	tar -czf flux_extract.tar.gz $^
+
+btest: test.cpp absorption.o
+	${LINK} -I${GREAD} ${LFLAGS} -lboost_unit_test_framework $^ -o $@
+
+test: btest
+	@./btest
 
