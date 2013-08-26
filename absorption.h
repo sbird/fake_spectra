@@ -39,6 +39,7 @@ class LineAbsorption
           return sigma_a / sqrt(M_PI) * (LIGHT/b_H1) * colden * profile_H1;
       }
   
+    private:
       /* Absorption cross-sections m^2 */
       const double sigma_a;
       /* Constant factor to turn sqrt(temperature) into velocity*/
@@ -89,6 +90,7 @@ class ComputeLineAbsorption: public LineAbsorption
          */
         void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth);
 
+    private:
         const double amumass, velfac, vbox;
 };
 
