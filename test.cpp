@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(check_index_table)
                         4000,4000,4000, 1000,9999.9,9999.9, 1000.5,2000,501,
                         7500,7500,7500, 4008,4008.0,4008.0, 2000.0,9999,9999.8};
     float hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
-    std::valarray< std::vector<std::pair <int, double> > > nearby_array = tab.get_near_particles(poses, hh, 9);
+    std::valarray< std::map<int, double> > nearby_array = tab.get_near_particles(poses, hh, 9);
     BOOST_CHECK_EQUAL(nearby_array.size(), nextlos);
     //Did we pick up the right number of particles in all cases?
     BOOST_CHECK_EQUAL(nearby_array[0].size(),1);
@@ -274,13 +274,13 @@ BOOST_AUTO_TEST_CASE(check_index_table)
     BOOST_CHECK_EQUAL(nearby_array[12].size(),0);
     //Check a few values
     BOOST_CHECK_EQUAL(nearby_array[0].begin()->first,3);
-    BOOST_CHECK_EQUAL(nearby_array[3][0].first,3);
-    BOOST_CHECK_EQUAL(nearby_array[3][1].first,7);
-    BOOST_CHECK_EQUAL(nearby_array[5][0].first,4);
-    BOOST_CHECK_EQUAL(nearby_array[5][1].first,8);
-    std::vector<std::pair <int, double> >::iterator it = nearby_array[6].begin();
+    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
+    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
+    BOOST_CHECK(nearby_array[5].find(4) != nearby_array[5].end());
+    BOOST_CHECK(nearby_array[5].find(8) != nearby_array[5].end());
+    std::map<int, double>::iterator it = nearby_array[6].begin();
     BOOST_CHECK_EQUAL(it->first,0);
-    BOOST_CHECK_EQUAL((++it)->first,2);
     BOOST_CHECK_EQUAL((++it)->first,1);
-    BOOST_CHECK_EQUAL(nearby_array[8][0].first,5);
+    BOOST_CHECK_EQUAL((++it)->first,2);
+    BOOST_CHECK_EQUAL(nearby_array[8].begin()->first,5);
 }
