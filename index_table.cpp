@@ -1,7 +1,7 @@
 #include "global_vars.h"
 #include "index_table.h"
 #include <cmath>
-#include <iostream>
+#include <cassert>
 
 // Construct the index tables as maps, which are automatically sorted.
 IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumLos_i, const double box):
@@ -13,9 +13,7 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
             else
                 index_table.insert(std::pair<const double, const int>(cofm[3*i], i));
         }
-        if(index_table_xx.size() + index_table.size() != (unsigned int) NumLos){
-            std::cerr << "Did not add all elements. xx index: "<<index_table_xx.size()<<" other index: "<<index_table.size()<<std::endl;
-        }
+        assert(index_table_xx.size() + index_table.size() == NumLos);
         return;
 }
 
