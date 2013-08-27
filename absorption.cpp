@@ -67,7 +67,7 @@ void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * 
 
 inline double sph_kernel(const double q)
 {
-    if (q > 1)
+    if (q >= 1)
         return 0;
     if(q<0.5)
         return 1-6*q*q+6*q*q*q;
@@ -88,6 +88,10 @@ inline double sph_kernel(const double q)
  * */
 double sph_kern_frac(double zlow, double zhigh, double bb2)
 {
+    //Outside useful range.
+    if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
+        return 0;
+    }
     //Maximal range that will do anything
     zlow = std::max(zlow, -sqrt(1-bb2));
     zhigh = std::min(zhigh, sqrt(1-bb2));
@@ -97,13 +101,10 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     {
         const double zz = i*deltaz+zlow;
         const double q = sqrt(bb2+zz*zz);
-        if(q > 1)
-            break;
         total+=sph_kernel(q);
     }
     double qhigh = sqrt(bb2+zhigh*zhigh);
-    if (qhigh < 1)
-        total += sph_kernel(qhigh)/2.;
+    total += sph_kernel(qhigh)/2.;
     return 8*deltaz*total/M_PI;
 }
 
