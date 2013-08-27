@@ -100,14 +100,6 @@ class Spectra:
         # Conversion factors from internal units
         self.rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
         self.mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
-        escale = 1.0e6           # convert energy/unit mass to J kg^-1
-        #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
-        #T = U (γ-1) μ m_P / k_B
-        #where k_B is the Boltzmann constant
-        #γ is 5/3, the perfect gas constant
-        #m_P is the proton mass
-        #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
-        self.tscale = ((5./3.-1.0) * self.PROTONMASS * escale ) / self.BOLTZMANN
         #  Calculate the length scales to be used in the box
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         self.vmax = self.box * self.Hz * self.rscale/ MPC # box size (kms^-1)
@@ -243,23 +235,26 @@ class Spectra:
         vel = vel[ind,:]
         mass = np.array(data["Masses"],dtype=np.float32)
         mass = mass[ind]
-        u = np.array(data["InternalEnergy"],dtype=np.float32)
-        u = u[ind]
-        ne = np.array(data["ElectronAbundance"],dtype=np.float32)
-        ne = ne[ind]
-        xh = np.array(data["GFM_Metals"][:,0],dtype=np.float32)
-        xh = xh[ind]
+        #Get the mass in this species
+        mass *= self.get_mass_frac(elem, data, ind)
+        #Cloudy density in physical H atoms / cm^3
+        star=cold_gas.RahmatiRT(self.red, self.hubble)
+        #In (hydrogen) atoms / cm^3
+        den=star.get_code_rhoH(data)
+        den = den[ind]
+        temp = star.get_temp(den, data)
+        temp = temp[ind]
+        #Find the mass fraction in this ion
+        #Special case H1:
+        if elem == 'H' and ion == 1:
+            # Neutral hydrogen mass frac
+            mass *= star.get_reproc_HI(data)[ind]
+        elif ion != -1:
+            mass *= self.cloudy_table.ion(elem, ion, den, temp)
         ff.close()
-        temp = self.compute_temp(u, ne, xh)
-        del u
-        del ne
-        del xh
-        metal_in = self.get_mass_frac(fn, elem, ion, ind)
         #Get rid of ind so we have some memory for the interpolator
         del ind
         #Get line data
-        specmass = mass*metal_in
-        velfac = self.vmax/self.box
         #If we don't want tau, any line will do
         if get_tau:
             line = self.lines[(elem,ion)][ll]
@@ -268,31 +263,9 @@ class Spectra:
             line = self.lines[("H",1)][0]
             amumass = 1
         #Do interpolation.
+        velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, specmass, temp, hh, axis, cofm)
-
-    def compute_temp(self, uu, ne, xh):
-        """Compute temperature (in K) from internal energy.
-           uu: internal energy in Gadget units
-           ne: electron abundance
-           xh: hydrogen mass fraction (0.76)
-           Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
-           T = U (γ-1) μ m_P / k_B
-           where k_B is the Boltzmann constant
-           γ is 5/3, the perfect gas constant
-           m_P is the proton mass
-
-           μ = 1 / (mean no. molecules per unit atomic weight)
-             = 1 / (X + Y /4 + E)
-             where E = Ne * X, and Y = (1-X).
-             Can neglect metals as they are heavy.
-             Leading contribution is from electrons, which is already included
-             [+ Z / (12->16)] from metal species
-             [+ Z/16*4 ] for OIV from electrons.
-        """
-        mu = 1.0/(xh*(0.75+ne) + 0.25)
-        # T in K
-        return uu * mu * self.tscale
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, mass, temp, hh, axis, cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -303,62 +276,33 @@ class Spectra:
         ind = _near_lines(self.box, pos, hh, axis, cofm)
         return ind
 
-    def get_mass_frac(self,fn,elem, ion,ind=None):
+    def get_mass_frac(self,elem, data, ind):
         """Get the mass fraction of a given species from a snapshot.
         Arguments:
-            fn = file to read
             elem = name of element
-            ion = ion species
-            ind = optional pre-computed index list of particles we care about
+            data = pointer to hdf5 array containing baryons
+            ind = index of particles we care about
         Returns mass_frac - mass fraction of this ion
         """
-        nelem = self.species.index(elem)
-        ff = h5py.File(fn,"r")
-        data = ff["PartType0"]
-        if ind==None:
-            pos = np.array(data["Coordinates"],dtype=np.float32)
-            hh = np.array(hsml.get_smooth_length(data),dtype=np.float32)
-            #Find particles we care about
-            ind = self.particles_near_lines(pos, hh)
+        if elem == "Z":
+            mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
+            return mass_frac[ind]
 
+        nelem = self.species.index(elem)
         #Get metallicity of this metal species
         try:
             mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
+            mass_frac = mass_frac[ind]
+            #Deal with floating point roundoff - mass_frac will sometimes be negative
+            #10^-30 is Cloudy's definition of zero.
+            mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
         except KeyError:
-            #If GFM_Metals is not defined, fall back to a guess.
-            #Some default abundances. H and He are primordial, the rest are Milky Way as given by wikipedia
-            metal_abund = np.array([0.76, 0.24, 4.6e-3, 9.6e-4, 1.04e-2, 1.34e-3, 5.8e-4, 6.5e-4, 1.09e-3],dtype=np.float32)
-            mass_frac = metal_abund[nelem]*np.ones(np.shape(data["Density"]),dtype=np.float32)
-        except ValueError:
-            #Calculate the total metallicity
-            if elem != "Z":
-                raise ValueError("Species "+elem+" not found")
-            mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
-        mass_frac = mass_frac[ind]
-        #Deal with floating point roundoff - mass_frac will sometimes be negative
-        #10^-30 is Cloudy's definition of zero.
-        mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
-        #Get density of this ion - we need to weight T and v by ion abundance
-        #Cloudy density in physical H atoms / cm^3
-        star=cold_gas.RahmatiRT(self.red, self.hubble)
-        if ion != -1:
-            #Special case H1:
-            if elem == 'H':
-                if ion != 1:
-                    raise ValueError
-                # Neutral hydrogen mass frac
-                mass_frac *= star.get_reproc_HI(data)[ind]
-            else:
-                #In (hydrogen) atoms / cm^3
-                den=star.get_code_rhoH(data)
-                den = den[ind]
-                temp = star.get_temp(den, data)
-                temp = temp[ind]
-                mass_frac *= self.cloudy_table.ion(elem, ion, den, temp)
-        ff.close()
+            #If GFM_Metals is not defined, fall back to primordial abundances
+            metal_abund = np.array([0.76, 0.24],dtype=np.float32)
+            mass_frac = metal_abund[nelem]
         return mass_frac
 
-    def get_particle_number(self, elem, ion, res=8, minmass=1e-2):
+    def get_particle_number(self, elem, ion, res=8):
         """
         Get the number of particles that contributed significantly
         to the highest column density region (of width proportional
@@ -387,7 +331,6 @@ class Spectra:
             ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
             pos = pos[ind,:]
             hh = hh[ind]
-            metal_mass = self.get_mass_frac(fn, elem, ion, ind)
             del ind
             #For each spectrum find only those particles near the most massive region
             for spec in xrange(np.size(self.axis)):
@@ -404,8 +347,7 @@ class Spectra:
                 ind2 = np.where(np.logical_and(axpos - hh[ind] < region[1] , axpos + hh[ind] > region[0]))
                 if np.size(ind2) == 0:
                     continue
-#                 num_important[spec]+=np.size(ind2) #np.sum(metal_mass[ind][ind2] > minmass*np.max(metal_mass[ind][ind2]))
-                num_important[spec]+=np.sum(metal_mass[ind][ind2] > minmass*np.max(metal_mass[ind][ind2]))
+                num_important[spec]+=np.size(ind2)
         return num_important
 
 
@@ -419,7 +361,7 @@ class Spectra:
         wanted = np.size(self.axis)
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        (faketau, col_den) = self.compute_spectra("H",1,1,False)
+        (_, col_den) = self.compute_spectra("H",1,1,False)
         ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
@@ -431,7 +373,7 @@ class Spectra:
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            (faketau, col_den) = self.compute_spectra("H",1,1,False)
+            (_, col_den) = self.compute_spectra("H",1,1,False)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
