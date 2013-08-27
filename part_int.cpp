@@ -20,7 +20,6 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
 {
     const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
     //Use a plain int as not sure openmp can handle iterators efficiently.
-    //Parallelizing this bit makes little difference: most of the time is spent in get_near_particles
     const unsigned int nlines = nearby_array.size();
     #pragma omp parallel for
     for(unsigned int i = 0; i < nlines; ++i)
@@ -35,11 +34,12 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
           const int ipart = it->first;
           const double dr2 = it->second;
           //Particle position parallel to axis
-          const float ppos = Pos[3*i+axis-1];
-          const float pvel = Vel[3*i+axis-1];
+          const float ppos = Pos[3*ipart+axis-1];
+          const float pvel = Vel[3*ipart+axis-1];
           add_particle(tau_loc, colden_loc, nbins, dr2, Mass[ipart], ppos, pvel, temp[ipart], h[ipart]);
 	    }  /*Loop over list of particles near LOS*/
     } /* Loop over LOS*/
+
     return;
 }
 
