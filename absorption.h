@@ -59,7 +59,7 @@ class ComputeLineAbsorption: public LineAbsorption
          * velocities in km/s (physical).
          * distances in kpc/h (comoving)
          * velfac: factor to convert from distance to velocity units.
-         * Should be h100 * atime * Hz/1e3 (Hz in km/s/Mpc)
+         * Should be  atime /h100 * Hz/1e3 (Hz in km/s/Mpc)
          * */
         //This makes dvbin be in km/s: the 1e3 converts Hz from km/s/Mpc to km/s/kpc
         // kpc /h       h                    km/s/kpc

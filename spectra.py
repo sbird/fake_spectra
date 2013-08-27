@@ -259,7 +259,7 @@ class Spectra:
         del ind
         #Get line data
         specmass = mass*metal_in
-        velfac = self.Hz/1e3 * self.atime * self.hubble
+        velfac = self.vmax/self.box
         #If we don't want tau, any line will do
         if get_tau:
             line = self.lines[(elem,ion)][ll]

@@ -55,6 +55,8 @@ BOOST_AUTO_TEST_CASE(check_sph_kern)
     FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,0.9), 9.57342e-5);
     //Test wider range with b!=0
     FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,0.3), 0.0424468);
+    //Check outside of range
+    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,0), 0);
 }
 
 
@@ -62,7 +64,7 @@ BOOST_AUTO_TEST_CASE(check_sph_kern)
 BOOST_AUTO_TEST_CASE(check_compute_colden)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
-    double velfac = 414.50523718485636/1e3 * 0.2 * 0.71;
+    double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
     ComputeLineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000);
 
     double* tau = NULL;
@@ -108,8 +110,8 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(1999);
     nonzero.insert(0);
     //Correct shifting due to peculiar velocity:
-    //velfac is 0.0589, so this is a shift by 50kpc = 10 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1,5000,2.9429871840124799, 10000, 2);
+    //velfac is 0.11, so this is a shift by 50kpc = 10 bins.
+    test.add_particle(tau, colden, TNBINS, 0, 1,5000,5.838101932181076, 10000, 2);
     BOOST_CHECK_EQUAL(colden[1008],0);
     FLOATS_NEAR_TO(colden[1009],10000./TNBINS*6/M_PI/pow(2,3)/2.);
     FLOATS_NEAR_TO(colden[1010],10000./TNBINS*6/M_PI/pow(2,3)/2.);
@@ -117,8 +119,8 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(1009);
     nonzero.insert(1010);
     //Correct shifting due to negative peculiar velocity:
-    //velfac is 0.0589, so this is a shift by -50kpc = -10 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1,5000,-2.9429871840124799, 10000, 2);
+    //velfac is 0.11, so this is a shift by -50kpc = -10 bins.
+    test.add_particle(tau, colden, TNBINS, 0, 1,5000,-5.838101932181076, 10000, 2);
     BOOST_CHECK_EQUAL(colden[988],0);
     FLOATS_NEAR_TO(colden[989],10000./TNBINS*6/M_PI/pow(2,3)/2.);
     FLOATS_NEAR_TO(colden[990],10000./TNBINS*6/M_PI/pow(2,3)/2.);
@@ -127,7 +129,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(990);
     //Correct periodic wrapping due to velocity shifting
     //velfac is 0.0589, so this is a shift by -20Mpc - 100kpc = -20 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1,5000,-1183.0808479730169, 10000, 2);
+    test.add_particle(tau, colden, TNBINS, 0, 1,5000,-2346.9169767367925, 10000, 2);
     BOOST_CHECK_EQUAL(colden[978],0);
     FLOATS_APPROX_NEAR_TO(colden[979],10000./TNBINS*6/M_PI/pow(2,3)/2.);
     FLOATS_APPROX_NEAR_TO(colden[980],10000./TNBINS*6/M_PI/pow(2,3)/2.);
