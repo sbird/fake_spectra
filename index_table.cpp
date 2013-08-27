@@ -19,9 +19,9 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
 
 /*Returns a std::map of lines close to the coordinates xx, yy, zz.
  * the key is the line index, and the value is the distance from the two axes not projected along*/
-void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::iterator low, std::multimap<const double, const int>::iterator high, std::map<int, double>& nearby, const float pos[], const float hh, const float first)
+void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::const_iterator low, std::multimap<const double, const int>::const_iterator high, std::map<int, double>& nearby, const float pos[], const float hh, const float first)
 {
-      for(std::multimap<const double, const int>::iterator it = low; it != high;++it)
+      for(std::multimap<const double, const int>::const_iterator it = low; it != high;++it)
       {
           const int iproc=it->second;
           /*If close in the second coord, save line*/
@@ -97,7 +97,7 @@ void IndexTable::get_nearby(float first, std::multimap<const double, const int>&
       float ffm=first-hh;
       if(ffm < 0)
          ffm+=boxsize;
-      std::multimap<const double, const int>::iterator low,high;
+      std::multimap<const double, const int>::const_iterator low,high;
       //An iterator to the first element not less than ffm
       low=sort_los.lower_bound(ffm);
       //An iterator to the first element greater than ffp
