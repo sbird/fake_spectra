@@ -1,7 +1,7 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include "part_int.h"
-#include <vector>
+#include <set>
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
@@ -26,8 +26,6 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     double box100;
     PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
     PyObject *out;
-    //Vector to store a list of particles near the lines
-    std::vector<int> near_lines;
 
     if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
@@ -35,30 +33,37 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
 
-    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
-    {
+    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1)){
       PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
       return NULL;
+    }
+    if(check_type(cofm, NPY_DOUBLE) || check_type(axis,NPY_INT)){
+      PyErr_SetString(PyExc_ValueError, "cofm must have 64-bit float type and axis must be a 32-bit integer\n");
+      return NULL;
+    }
+    if(check_float(pos) || check_float(hh)){
+       PyErr_SetString(PyExc_TypeError, "pos and h must have 32-bit float type\n");
+       return NULL;
     }
 
     //Setup los_tables
     double * Cofm =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(cofm));
-    int * Axis =(int *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
+    int32_t * Axis =(int32_t *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
     IndexTable sort_los_table(Cofm, Axis, NumLos, box100);
 
+    //Set of particles near a line
+    std::set<int> near_lines;
     //find lists
+    //DANGER: potentially huge allocation
+    const float * Pos =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(pos));
+    const float * h = (float *) PyArray_DATA(PyArray_GETCONTIGUOUS(hh));
     #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
-	float ppos[3];
-        ppos[0] = *(float *) PyArray_GETPTR2(pos,i,0);
-        ppos[1] = *(float *) PyArray_GETPTR2(pos,i,1);
-        ppos[2] = *(float *) PyArray_GETPTR2(pos,i,2);
-        double h = *(float *) PyArray_GETPTR1(hh,i);
-	    std::map<int, double> nearby=sort_los_table.get_near_lines(ppos,h);
+	    std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]);
         if(nearby.size()>0){
            #pragma omp critical
            {
-              near_lines.push_back(i);
+              near_lines.insert(i);
            }
         }
     }
@@ -66,7 +71,7 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     npy_intp size = near_lines.size();
     is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_INT);
     int i=0;
-    for (std::vector<int>::iterator it = near_lines.begin(); it != near_lines.end() && i < size; ++it, ++i){
+    for (std::set<int>::const_iterator it = near_lines.begin(); it != near_lines.end() && i < size; ++it, ++i){
             *(npy_int *)PyArray_GETPTR1(is_a_line,i) = (*it);
     }
     out = Py_BuildValue("O", is_a_line);
