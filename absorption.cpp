@@ -117,10 +117,11 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
    * in (1e10 M_sun /h) / (kpc/h)^2.
-   * We compute int_z ρ dz, so the correct dimensional factors are:
-   * δz M/h^3: bin width * density */
-  const double binwdth = (vbox/velfac/nbins);
-  const double avgdens = binwdth*mass*pow(smooth,-3);
+   * We compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
+   * ρ = M/V  and h^3 = 3 V /(4 π)
+   * so the correct dimensional factors are:
+   *  3/(4π) M/h^2 */
+  const double avgdens = 3/4./M_PI*mass*pow(smooth,-2);
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
   /* Velocity of particle parallel to los: pos in */
