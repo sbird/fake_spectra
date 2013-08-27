@@ -430,7 +430,8 @@ class Spectra:
             del ttau
             del tcolden
         #Rescale the units on column density from (internal mass)/(kpc/h)^2 to atoms/cm^2
-        colden *= self.mscale/self.PROTONMASS/(self.rscale**2)
+        #rscale is 1kpc/h in m, so cm needs an extra factor of 10^4
+        colden *= self.mscale/self.PROTONMASS/(10**4*self.rscale**2)
 
         return (tau, colden)
 
