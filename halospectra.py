@@ -28,7 +28,7 @@ class HaloSpectra(spectra.Spectra):
             self.npart=f["Header"].attrs["NumPart_Total"]+2**32*f["Header"].attrs["NumPart_Total_HighWord"]
             min_mass = self.min_halo_mass(minpart)
             f.close()
-            (ind, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
+            (_, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
             self.sub_cofm = cofm
             self.NumLos = np.size(self.sub_mass)
             #All through y axis

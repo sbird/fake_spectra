@@ -76,7 +76,7 @@ def plot_vel_mass(sim, snap, ff=True):
     hspec = ps.PlottingSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     vel= hspec.vel_width(hspec.get_observer_tau("Si",2))[ind]
-    (halos, dists) = hspec.find_nearest_halo()
+    (halos, _) = hspec.find_nearest_halo()
     mass = hspec.sub_mass[halos][ind]
     ind = np.where(vel > 10)
     (H, xedges, yedges) = np.histogram2d(np.log10(mass[ind]), np.log10(vel[ind]), bins=30,normed=True)
@@ -91,7 +91,7 @@ def plot_met_mass(sim, snap, ff=True):
     hspec = ps.PlottingSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     met = hspec.get_metallicity()[ind]
-    (halos, dists) = hspec.find_nearest_halo()
+    (halos, _) = hspec.find_nearest_halo()
     mass = hspec.sub_mass[halos][ind]
     (H, xedges, yedges) = np.histogram2d(np.log10(mass), np.log10(met), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]

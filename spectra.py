@@ -496,7 +496,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13, num_cut=15):
+    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
         """
         Get an index list of spectra with a DLA in them, and metal column density above a certain value
         """
@@ -758,7 +758,7 @@ class Spectra:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
         """
         min_mass = self.min_halo_mass()*1e10
-        (halos, dists) = self.find_nearest_halo(min_mass)
+        (halos, _) = self.find_nearest_halo(min_mass)
         ind = self.get_filt("Si",2)
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
@@ -974,7 +974,7 @@ class Spectra:
     def load_halo(self):
         """Load a halo catalogue"""
         try:
-            (ind, self.sub_mass, self.sub_cofm, self.sub_radii) = halocat.find_all_halos(self.num, self.base, 0)
+            (_, self.sub_mass, self.sub_cofm, self.sub_radii) = halocat.find_all_halos(self.num, self.base, 0)
         except IOError:
             pass
 

@@ -91,7 +91,7 @@ def plot_metallicity(sims, snap, ff=True):
         vel_data.plot_prochaska_2008_correlation(zrange[snap])
         save_figure(path.join(outdir,out))
         plt.clf()
-        (redshift, met, vels) = vel_data.load_data()
+        (_, met, vels) = vel_data.load_data()
         print "KS test is : ",hspec[sim].kstest(10**met, vels)
 
 def plot_vel_widths_sims(snap):

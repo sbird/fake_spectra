@@ -158,7 +158,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_Z_vs_mass(self,min_mass=1e9, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         met = self.get_metallicity()
-        (halo, dists) = self.find_nearest_halo(min_mass)
+        (halo, _) = self.find_nearest_halo(min_mass)
         mass = self.sub_mass[halo]
         ind2 = np.where(met > 1e-3)
         plt.loglog(mass[ind2],met[ind2], 'x',color=color)
@@ -173,7 +173,7 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_vel_vs_mass(self,elem, line, min_mass=1e9, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
-        (halo, dists) = self.find_nearest_halo(min_mass)
+        (halo, _) = self.find_nearest_halo(min_mass)
         tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
         vel = self.vel_width(tau[ind])
@@ -235,7 +235,7 @@ class PlottingSpectra(spectra.Spectra):
         vel = self.vel_width(tau[ind])
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
-        (halos, dists) = self.find_nearest_halo()
+        (halos, _) = self.find_nearest_halo()
         #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
         virial = np.sqrt(4.302e-3*self.sub_mass[halos][ind][ind2]/self.sub_radii[halos][ind][ind2]/1000)
         ind2 = np.where(vel < 300)

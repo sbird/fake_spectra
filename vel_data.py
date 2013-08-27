@@ -47,7 +47,7 @@ def pdf_with_error(vel_data, nv_table):
 
 def plot_prochaska_2008_data(zrange = None, nv_table=7):
     """Plot a velocity width histogram from Prochaska 2008/2013"""
-    (redshift, met, vel_data) = load_data(zrange)
+    (_, _, vel_data) = load_data(zrange)
     (center, vels, verr) = pdf_with_error(vel_data, nv_table)
     plt.xlim(10, 1000)
     return (center, vels,verr)
@@ -58,12 +58,12 @@ def plot_alpha_metal_data(zrange=None,nv_table=7):
        from Neeleman 2013
        redshift  = (4,3) will show only quasars between z=4 and z=3
     """
-    (zz, met, vel) = load_data(zrange)
+    (_, met, _) = load_data(zrange)
     return pdf_with_error(10**met, nv_table)
 
 def plot_prochaska_2008_correlation(zrange = None, color="black"):
     """Plot the observed correlation between velocity widths and metallicity from Prochaska 2008"""
-    (redshift, met, vel_data) = load_data(zrange)
+    (_, met, vel_data) = load_data(zrange)
     plt.loglog(vel_data, 10**met,'o',color=color)
     vel = np.log10(vel_data)
     (intercept, slope, var) = ls.leastsq(met,vel)
