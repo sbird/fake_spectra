@@ -66,7 +66,7 @@ class ComputeLineAbsorption: public LineAbsorption
         //vbox = ( box100 * h100 * atime * Hz/1e3 ) /* box size (kms^-1) */
         ComputeLineAbsorption(const double lambda, const double gamma, const double fosc, const double mass, const double velfac_i, const double boxsize):
         LineAbsorption(lambda, gamma, fosc, mass),
-        amumass(mass), velfac(velfac_i), vbox(boxsize*velfac_i)
+        velfac(velfac_i), vbox(boxsize*velfac_i)
         {
         }
 
@@ -91,7 +91,7 @@ class ComputeLineAbsorption: public LineAbsorption
         void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth);
 
     private:
-        const double amumass, velfac, vbox;
+        const double velfac, vbox;
 };
 
 /* Compute temperature (in K) from internal energy.
