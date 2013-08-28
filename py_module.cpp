@@ -47,16 +47,22 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     }
 
     //Setup los_tables
-    double * Cofm =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(cofm));
-    int32_t * Axis =(int32_t *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
+    //PyArray_GETCONTIGUOUS increments the reference count of the object,
+    //so to avoid leaking we need to save the PyArrayObject pointer.
+    cofm = PyArray_GETCONTIGUOUS(cofm);
+    axis = PyArray_GETCONTIGUOUS(axis);
+    double * Cofm =(double *) PyArray_DATA(cofm);
+    int32_t * Axis =(int32_t *) PyArray_DATA(axis);
     IndexTable sort_los_table(Cofm, Axis, NumLos, box100);
 
     //Set of particles near a line
     std::set<int> near_lines;
     //find lists
     //DANGER: potentially huge allocation
-    const float * Pos =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(pos));
-    const float * h = (float *) PyArray_DATA(PyArray_GETCONTIGUOUS(hh));
+    pos = PyArray_GETCONTIGUOUS(pos);
+    hh = PyArray_GETCONTIGUOUS(hh);
+    const float * Pos =(float *) PyArray_DATA(pos);
+    const float * h = (float *) PyArray_DATA(hh);
     #pragma omp parallel for
     for(long long i=0; i < Npart; i++){
 	    std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]);
@@ -76,6 +82,12 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     }
     out = Py_BuildValue("O", is_a_line);
     Py_DECREF(is_a_line);
+    //Because PyArray_GETCONTIGUOUS incremented the reference count,
+    //and may have made an allocation, in which case this does not point to what it used to.
+    Py_DECREF(pos);
+    Py_DECREF(hh);
+    Py_DECREF(cofm);
+    Py_DECREF(axis);
     return out;
 }
 
@@ -156,14 +168,27 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 
     //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.
-    float * Pos =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(pos));
-    float * Vel =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(vel));
-    float * Mass =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(mass));
-    float * Temp =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(temp));
-    float * Hh =(float *) PyArray_DATA(PyArray_GETCONTIGUOUS(h));
+    //PyArray_GETCONTIGUOUS increments the reference count of the object,
+    //so to avoid leaking we need to save the PyArrayObject pointer.
+    pos = PyArray_GETCONTIGUOUS(pos);
+    vel = PyArray_GETCONTIGUOUS(vel);
+    mass = PyArray_GETCONTIGUOUS(mass);
+    temp = PyArray_GETCONTIGUOUS(temp);
+    h = PyArray_GETCONTIGUOUS(h);
+    float * Pos =(float *) PyArray_DATA(pos);
+    float * Hh= (float *) PyArray_DATA(h);
+    float * Vel =(float *) PyArray_DATA(vel);
+    float * Mass =(float *) PyArray_DATA(mass);
+    float * Temp =(float *) PyArray_DATA(temp);
 
-    double * Cofm =(double *) PyArray_DATA(PyArray_GETCONTIGUOUS(cofm));
-    int * Axis =(int *) PyArray_DATA(PyArray_GETCONTIGUOUS(axis));
+    cofm = PyArray_GETCONTIGUOUS(cofm);
+    axis = PyArray_GETCONTIGUOUS(axis);
+    double * Cofm =(double *) PyArray_DATA(cofm);
+    int32_t * Axis =(int32_t *) PyArray_DATA(axis);
+    if( !Pos || !Vel || !Mass || !Temp || !Hh || !Cofm || !Axis ){
+        PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
+        return NULL;
+    }
     ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, Cofm, Axis ,NumLos);
     //Do the work
     pint.do_work(Pos, Vel, Mass, Temp, Hh, Npart);
@@ -173,8 +198,20 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 	for_return = Py_BuildValue("OO", tau_out, colden_out);
 
     //Decrement the refcount
-    Py_DECREF(tau_out);
+    if(tau_out){
+        Py_DECREF(tau_out);
+    }
     Py_DECREF(colden_out);
+    //Because PyArray_GETCONTIGUOUS incremented the reference count,
+    //and may have made an allocation, in which case this does not point to what it used to.
+    Py_DECREF(pos);
+    Py_DECREF(vel);
+    Py_DECREF(mass);
+    Py_DECREF(temp);
+    Py_DECREF(h);
+    Py_DECREF(cofm);
+    Py_DECREF(axis);
+
     return for_return;
 }
 
