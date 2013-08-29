@@ -51,7 +51,7 @@ inline double sph_kernel(const double q)
  * and q^2 = b^2 + z^2, then this is:
  * int_zlow^zhigh K(q) dz
  * */
-inline double sph_kern_frac(double zlow, double zhigh, double bb2)
+double sph_kern_frac(double zlow, double zhigh, double bb2)
 {
     //Outside useful range.
     if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){

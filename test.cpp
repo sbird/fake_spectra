@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    ComputeLineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1);
 
     double* tau = NULL;
     double colden[TNBINS] = {0};
