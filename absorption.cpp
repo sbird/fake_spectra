@@ -124,24 +124,31 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
   const double avgdens = 3/4./M_PI*mass*pow(smooth,-2);
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
+  const double vsmooth = velfac * smooth;
   /* Velocity of particle parallel to los: pos in kpc/h comoving
      to vel in km/s physical. Note that gadget velocities come comoving,
-     so we need the sqrt(a) conversion factor*/
-  const double vel = (velfac * ppos + pvel * sqrt(atime));
-  const double vsmooth = velfac * smooth;
-  const double zrange = velfac * sqrt(smooth*smooth - dr2);
-  const int zlow = floor((nbins/vbox) * (vel - zrange));
-  const int zhigh = ceil((nbins/vbox) * (vel + zrange));
+     so we need the sqrt(a) conversion factor.
+     Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
+  const double vel = (velfac * ppos + pvel * sqrt(atime))/vsmooth;
+  //Allowed z range in units of smoothing length
+  const double zrange = sqrt(1. - bb2);
+  //Conversion between units of the smoothing length to units of the box.
+  const double boxtosm = vbox / vsmooth / nbins;
+  // z is position in units of the box
+  const int zlow = floor((vel - zrange) / boxtosm);
+  const int zhigh = ceil((vel + zrange) / boxtosm);
   /* Compute the HI Lya spectra */
   for(int z=zlow; z<=zhigh; z++)
   {
-      /*Difference between velocity of bin this edge and particle*/
-      const double vlow = (vbox*z/nbins - vel)/vsmooth;
-      const double vhigh = (vbox*(z+1)/nbins - vel)/vsmooth;
+      /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
+      const double vlow = (boxtosm*z - vel);
+      const double vhigh = (boxtosm*(z+1) - vel);
 
+      //colden in units of Gadget_mass / Gadget_length^2 * integral in terms of z / h
       const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
 
       // The index may be periodic wrapped.
+      // Index in units of the box
       int j = z % nbins;
       if (j < 0)
         j+=nbins;
