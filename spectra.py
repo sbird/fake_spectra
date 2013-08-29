@@ -46,18 +46,14 @@ class Spectra:
     """
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None):
         #Various physical constants
-        #Speed of light
-        self.light = 2.99e8
-        #Boltzmann constant in m^2 kg s^-2 K^-1
-        self.BOLTZMANN = 1.3806504e-23
-        self.KPC = 3.08568025e19
-        MPC = self.KPC * 1000
-        self.SIGMA_T = 6.652458558e-29
-        self.PROTONMASS = 1.66053886e-27 # 1 a.m.u in kg
-        #1 M_sun in kg
-        self.SOLAR_MASS = 1.98892e30
-        self.GAMMA = 5.0/3.0
-        #Spectral data
+        #Internal gadget mass unit: 1e10 M_sun/h in g/h
+        self.UnitMass_in_g=1.989e43
+        #Internal gadget length unit: 1 kpc/h in cm/h
+        self.UnitLength_in_cm=3.085678e21
+        #Speed of light in cm/s
+        self.light = 2.99e10
+        #proton mass in g
+        self.protonmass=1.66053886e-24
         self.num = num
         self.base = base
         #Empty dictionary to add results to
@@ -98,19 +94,18 @@ class Spectra:
             ff.close()
 
         # Conversion factors from internal units
-        self.rscale = (self.KPC*self.atime)/self.hubble    # convert length to m
-        self.mscale = (1.0e10*self.SOLAR_MASS)/self.hubble   # convert mass to kg
-        #  Calculate the length scales to be used in the box
+        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to m
+        #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
-        self.vmax = self.box * self.Hz * self.rscale/ MPC # box size (kms^-1)
+        self.vmax = self.box * self.Hz /1000. # box size (physical kms^-1)
         try:
-            self.dzgrid   = self.box * self.rscale / (1.*self.nbins) # bin size m
-            self.dvbin = self.dzgrid * self.Hz / MPC # velocity bin size (kms^-1)
+            # velocity bin size (kms^-1)
+            self.dvbin = self.vmax / (1.*self.nbins)
         except AttributeError:
             #This will occur if we are not reloading from a snapshot
             self.dvbin = res # velocity bin size (kms^-1)
-            self.dzgrid = self.dvbin * MPC / self.Hz #bin size m
-            self.nbins = int(self.box * self.rscale / self.dzgrid) #Number of bins to achieve the required resolution
+            #Number of bins to achieve the required resolution
+            self.nbins = int(self.vmax / self.dvbin)
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Generate cloudy tables
@@ -429,10 +424,10 @@ class Spectra:
             colden += tcolden
             del ttau
             del tcolden
-        #Rescale the units on column density from (internal mass)/(kpc/h)^2 to atoms/cm^2
-        #rscale is 1kpc/h in m, so cm needs an extra factor of 10^4
-        colden *= self.mscale/self.PROTONMASS/(10**4*self.rscale**2)
-
+        #Rescale the units on column density from
+        #(gadget mass)/(gadget length)^2 to atoms/cm^2
+        conv = (self.UnitMass_in_g/self.hubble)/self.protonmass/(self.UnitLength_in_cm*self.atime/self.hubble)**2
+        colden *= conv
         return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
@@ -694,23 +689,6 @@ class Spectra:
         #Return the width
         return mean_median
 
-    def delta(self, rho):
-        """Get a density in units of delta = ρ/bar{ρ} -1.
-        Supplied density should be in physical kg/m^3."""
-        #Gravitational constant in SI
-        GRAVITY = 6.67428e-11
-        # 100kms^-1Mpc^-1 in SI
-        H0 = 1.0e5/(self.KPC*1e3)
-        # Critical matter/energy density at z = 0
-        rhoc = 3.0 * (H0*self.hubble)*(H0*self.hubble) / (8.0 * math.pi * GRAVITY)
-        #Primordial hydrogen mass-fraction
-        XH = 0.76
-        #Mean hydrogen mass density of the Universe in kg/m^3
-        critH = (rhoc * self.omegab * XH) / self.atime**3
-
-        # H density normalised by mean
-        return rho/critH
-
     def vel_width_hist(self, elem, line, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, tau=None):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
@@ -774,12 +752,13 @@ class Spectra:
         ind = self.get_filt(elem, line)
         #1 bin in wavelength: δλ =  λ . v / c
         #λ here is the rest wavelength of the line.
-        #in m /s
-        light=2.9979e8
+        #speed of light in km /s
+        light = self.light / 1e5
         #Line data
         line = self.lines[(elem,ion)][line]
         #lambda in Angstroms, dvbin in km/s,
-        dl = 1000*self.dvbin/light * line.lambda_X
+        #so dl is in Angstrom
+        dl = self.dvbin / light * line.lambda_X
         eq_width = cumtrapz(1-np.exp(-tau[ind]),dx=dl, axis=1)[:,-1]
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
@@ -830,14 +809,16 @@ class Spectra:
         return (center, tot_f_N)
 
     def absorption_distance(self):
-        """Compute X(z), the absorption distance per sightline (eq. 9 of Nagamine et al 2003)
-        in dimensionless units."""
+        """
+        Compute X(z), the absorption distance per sightline (dimensionless)
+        X(z) = int (1+z)^2 H_0 / H(z) dz
+        When dz is small, dz ~ H(z)/c dL, so
+        X(z) ~ (1+z)^2 H_0/c dL
+        """
         #h * 100 km/s/Mpc in h/s
         h100=3.2407789e-18
-        # in cm/s
-        light=2.9979e10
         #Units: h/s   s/cm                 kpc/h      cm/kpc
-        return h100/light*(1+self.red)**2*self.box*(100*self.KPC)
+        return h100/self.light*self.box*self.UnitLength_in_cm*(1+self.red)**2
 
     def rho_crit(self):
         """Get the critical density at z=0 in units of g cm^-3"""
@@ -849,10 +830,11 @@ class Spectra:
         return rho_crit
 
     def _rho_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
-        """Compute rho_DLA, the sum of the mass in DLAs, divided by the volume of the spectra in g/cm^3 (comoving).
+        """Compute rho_DLA, the sum of the mass in DLAs,
+           divided by the volume of the spectra in g/cm^3 (comoving).
             ρ_DLA = m_p * avg. column density / (1+z)^2 / length of column
-            Note: If we want the neutral gas density rather than the neutral hydrogen density, divide by 0.76,
-            the hydrogen mass fraction.
+            Note: If we want the neutral gas density rather than the
+            neutral hydrogen density, divide by 0.76, the hydrogen mass fraction.
         """
         #Column density of HI in atoms cm^-2 (physical)
         col_den = self.get_col_density(elem, ion)
@@ -861,10 +843,10 @@ class Spectra:
         else:
             HIden = np.mean(col_den)
         HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
-        #Avg. Column density of HI in kg cm^-2 (comoving)
-        HIden = self.PROTONMASS * 1000 * HIden/(1+self.red)**2
+        #Avg. Column density of HI in g cm^-2 (comoving)
+        HIden = self.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.KPC*100/self.hubble)/self.nbins/(1+self.red)
+        length = (self.box*self.UnitLength_in_cm/self.hubble)/self.nbins/(1+self.red)
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
@@ -874,8 +856,8 @@ class Spectra:
         """
         #Avg density in g/cm^3 (comoving)
         rho_DLA = self._rho_DLA(thresh)
-        # 1 g/cm^3 (physical) in 1e8 M_sun/Mpc^3
-        conv = 1e8 * 1e3*self.SOLAR_MASS / (1e5 * self.KPC)**3
+        # 1e8 M_sun/Mpc^3 in g/cm^3
+        conv = 0.01 * self.UnitMass_in_g / self.UnitLength_in_cm**3
         return rho_DLA / conv
 
     def omega_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
