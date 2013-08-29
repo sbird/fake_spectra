@@ -13,6 +13,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#ifndef NOGREAD
+
 #include <math.h>
 #include "global_vars.h"
 #include "gadgetreader.hpp"
@@ -23,7 +25,7 @@
 
 int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
 {
-#ifdef GADGET3
+#ifndef SPLIT_NE
   GadgetReader::GSnap snap(fname);
 #else
   const std::string blocks[14]={"HEAD","POS ","VEL ","ID  ","MASS","U   ","RHO ","NHP ","NHEP","NHEQ","NH  ","NHE ","HSML","SFR "};
@@ -50,20 +52,16 @@ int load_header(const char *fname,double  *atime, double *redshift, double * Hz,
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata *P, double *omegab)
+int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *omegab)
 {
-#ifdef GADGET3
+#ifndef SPLIT_NE
   GadgetReader::GSnap snap(fname);
 #else
   const std::string blocks[14]={"HEAD","POS ","VEL ","ID  ","MASS","U   ","RHO ","NHP ","NHEP","NHEQ","NH  ","NHE ","HSML","SFR "};
   std::vector<std::string> BlockNames(blocks,blocks+14);
   GadgetReader::GSnap snap(fname, true,&BlockNames);
 #endif
-  int64_t NumPart;
-  if(MaxRead > 0)
-        NumPart = std::min(MaxRead,snap.GetNpart(PARTTYPE)-StartPart);
-  else
-        NumPart = snap.GetNpart(PARTTYPE)-StartPart;
+  const int64_t NumPart = snap.GetNpart(PARTTYPE)-StartPart;
   if(NumPart ==0)
           return 0;
   if(!(alloc_parts(P,NumPart)))
@@ -104,7 +102,7 @@ int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata
            * which I map to NHEQ.*/
           /* Use that the universe is neutral, so 
            * NE = NHP + NHEP +2 NHEPP*/
-      #ifndef GADGET3
+      #ifdef SPLIT_NE
           int k;
           snap.GetBlock("NHP ",(*P).Ne,NumPart,StartPart,0);
           /*Use the space for HSML as temp space*/
@@ -142,3 +140,4 @@ int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata
   return NumPart;
 }
 
+#endif //NOGREAD

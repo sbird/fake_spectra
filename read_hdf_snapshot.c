@@ -1,4 +1,4 @@
-#ifdef HDF5
+#ifndef NOHDF5
 
 #include <hdf5.h>
 #include <hdf5_hl.h>

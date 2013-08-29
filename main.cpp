@@ -20,6 +20,7 @@
 #include <unistd.h>
 //For strerror
 #include <errno.h>
+#include <cassert>
 #include <string.h>
 #include "global_vars.h"
 #include "absorption.h"
@@ -36,13 +37,11 @@
 #define  GAMMA_LYA_H1 6.265e8
 #define  GAMMA_LYA_HE2 6.27e8
 
-#ifdef HDF5
-#include <hdf5.h>
-
 /* Model parameters outwith header */
 #define XH 0.76  /* hydrogen fraction by mass */
-/*The value from 0711.1862 is (0.0023±0.0007) (1+z)^(3.65±0.21)*/
-#define TAU_EFF 0.0023*pow(1.0+redshift,3.65)
+
+#ifndef NOHDF5
+#include <hdf5.h>
 
 std::string find_first_hdf_file(const std::string& infname)
 {
@@ -70,9 +69,6 @@ std::string find_first_hdf_file(const std::string& infname)
   return fname;
 }
 #endif
-#ifdef HELIUM
-  #error "Helium no longer supported like this: Use the python module"
-#endif
 
 /*Open a file for reading to check it exists*/
 int file_readable(const char * filename)
@@ -90,7 +86,6 @@ int main(int argc, char **argv)
 {
   int64_t Npart;
   int NumLos=0;
-  int64_t MaxRead=256*256*256,StartPart=0;
 
   FILE *output;
   double *cofm=NULL;
@@ -99,9 +94,7 @@ int main(int argc, char **argv)
   std::string outname;
   std::string indir;
   char c;
-#ifndef NO_HEADER
   int pad[32]={0};
-#endif
   double  atime, redshift, Hz, box100, h100, omegab;
   struct particle_data P;
   double * tau_H1=NULL, * colden_H1=NULL;
@@ -153,12 +146,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error allocating memory for tau\n");
         exit(2);
   }
-  #ifdef HDF5
+  unsigned i_fileno=0;
+#ifndef NOHDF5
     /*ffname is a copy of input filename for extension*/
     /*First open first file to get header properties*/
     std::string fname = find_first_hdf_file(indir);
     std::string ffname = fname;
-    unsigned i_fileno=0;
     int fileno=0;
     if ( !fname.empty() && load_hdf5_header(fname.c_str(), &atime, &redshift, &Hz, &box100, &h100) == 0 ){
             /*See if we have been handed the first file of a set:
@@ -167,13 +160,17 @@ int main(int argc, char **argv)
              * our files may not all be the same size.*/
 	    i_fileno = fname.find(".0.hdf5")+1;
     }
-    /*If not an HDF5 file, try opening as a gadget file*/
+#ifndef NOGREAD
     else
 #endif
+#endif
+#ifndef NOGREAD
+    /*If not an HDF5 file, try opening as a gadget file*/
      if(load_header(indir.c_str(),&atime, &redshift, &Hz, &box100, &h100) < 0){
                 std::cerr<<"No data loaded\n";
                 exit(2);
     }
+#endif
     /*Setup the los tables*/
     populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
@@ -186,58 +183,48 @@ int main(int argc, char **argv)
   }
         /*Loop over files. Keep going until we run out, skipping over broken files.
          * The call to file_readable is an easy way to shut up HDF5's error message.*/
-    while(1){
           /* P is allocated inside load_snapshot*/
-#ifdef HDF5
+  do{
           if(i_fileno){
+#ifndef NOHDF5
+            fileno++;
+            if(i_fileno != std::string::npos){
+		        std::ostringstream convert;
+		        convert<<fileno;
+                ffname = fname.replace(i_fileno, 1, convert.str());
+		    }
+            else
+             break;
             /*If we ran out of files, we're done*/
             if(!(file_readable(ffname.c_str()) && H5Fis_hdf5(ffname.c_str()) > 0))
                     break;
               Npart=load_hdf5_snapshot(ffname.c_str(), &P,&omegab,fileno);
-          }
-          else
 #endif
-              Npart=load_snapshot(indir.c_str(), StartPart,MaxRead,&P, &omegab);
-          if(Npart > 0){
-             /*Find mass fraction of neutral hydrogen*/
-              for(int ii = 0; ii< Npart; ii++){
-                P.Mass[ii] *= P.fraction[ii]*XH;
-                P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
+          }
+          else{
+#ifndef NOGREAD
+              Npart=load_snapshot(indir.c_str(), 0,&P, &omegab);
+              if (! Npart){
+                  std::cerr<<"Could not read particles from snapshot"<<std::endl;
+                  exit(2);
               }
-             /*Do the hard SPH interpolation*/
-             pint.do_work(P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
-          }
-          /*Free the particle list once we don't need it*/
-          if(Npart >= 0)
-            free_parts(&P);
-#ifdef HDF5
-          if(i_fileno){
-                fileno++;
-                if(i_fileno != std::string::npos){
-		  std::ostringstream convert;
-		  convert<<fileno;
-                  ffname = fname.replace(i_fileno, 1, convert.str());
-		}
-                else
-                 break;
-          }
-          else
 #endif
-                StartPart+=Npart;
-          /*If we haven't been able to read the maximum number of particles, 
-           * signals we have reached the end of the snapshot set*/
-	#ifdef HDF5
-	  if(!i_fileno)
-	#endif
-          if(Npart != MaxRead)
-                  break;
-  }
+          }
+          /*Find mass fraction of neutral hydrogen*/
+           for(int ii = 0; ii< Npart; ii++){
+             P.Mass[ii] *= P.fraction[ii]*XH;
+             P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
+           }
+          /*Do the hard SPH interpolation*/
+          pint.do_work(P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
+          /*Free the particle list once we don't need it*/
+          free_parts(&P);
+  } while(i_fileno > 0);
   convert_colden_units(colden_H1, NBINS*NumLos, h100, atime);
   free(cofm);
   free(axis);
   printf("Done interpolating, now calculating absorption\n");
   fwrite(&redshift,sizeof(double),1,output);
-#ifndef NO_HEADER
   /*Write a bit of a header. */
   int i=NBINS;
   fwrite(&box100,sizeof(double),1,output);
@@ -246,7 +233,6 @@ int main(int argc, char **argv)
   /*Write some space for future header data: total header size is
    * 128 bytes, with 24 full.*/
   fwrite(&pad,sizeof(int),32-6,output);
-#endif
   fwrite(tau_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
   fwrite(colden_H1,sizeof(double),NBINS*NumLos,output);    /* HI optical depth */
   fclose(output);
