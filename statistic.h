@@ -2,6 +2,7 @@
 #define SPB41_STATISTIC_H
 
 #include <fftw3.h>
+#include "global_vars.h"
 /* These functions do the work*/
 int powerspectrum(const int dims, double *field, double *power, fftw_plan* pl);
 double mean_flux(double * tau, int nbins, double obs_flux, double tol);

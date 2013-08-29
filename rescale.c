@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "statistic.h"
-#include "parameters.h"
 #define PTS 30
 #define TAU_MEAN_MIN 0.2
 #define TAU_MEAN_MAX 0.5

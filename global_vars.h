@@ -4,7 +4,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "types.h"
+
+/* Spectrum data set size     */
+#define NBINS 1024 /* number of pixels */
+
+struct particle_data
+{
+  float *Pos;
+  float *Vel;
+  float *Mass;
+  float *U, *Ne;
+  float *temp;
+  float *h;
+  float *fraction;
+};
+typedef struct particle_data pdata;
 
 /*Functions to allocate memory.*/
 void help(void);
@@ -18,10 +32,6 @@ extern "C"{
 #endif
 int alloc_parts(pdata* P, int np);
 void free_parts(pdata* P);
-
-int InitLOSMemory(interp * species, int NumLos, int nbins);
-void FreeLOSMemory(interp * species);
-int WriteLOSData(interp* species,double * tau, int NumLos,FILE * output);
 
 #ifdef HDF5
 int load_hdf5_header(const char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);

@@ -15,7 +15,6 @@
 
 #include <math.h>
 #include "global_vars.h"
-#include "index_table.h"
 #include "gadgetreader.hpp"
 
 

@@ -1,4 +1,3 @@
-#include "global_vars.h"
 #include "index_table.h"
 #include <cmath>
 #include <cassert>

@@ -21,31 +21,24 @@ endif
 
 #Are we using gcc or icc?
 ifeq (icc,$(findstring icc,${CC}))
-  CFLAGS +=-O3 -g -w1 -openmp -I${GREAD} -fpic -march=native
+  CFLAGS +=-O3 -g -w1 -openmp -fpic -march=native
   LINK +=${CXX} -O3 -openmp -march=native
 else
-  CFLAGS +=-O3 -g -Wall -fopenmp -I${GREAD} -fPIC -march=native
-  LINK +=${CXX} -g -O3 -fopenmp $(PRO) -march=native
+  CFLAGS +=-O3 -g -Wall -fopenmp -fPIC
+  LINK +=${CXX} -g -O3 -fopenmp $(PRO)
   LFLAGS += -lm -lgomp
 endif
 OPTS =
 PG =
-OPTS += -DPERIODIC
-# Use a periodic spectra
-OPTS += -DPECVEL
-# Use peculiar velocites
-OPTS += -DVOIGT
 # Voigt profiles vs. Gaussian profiles
-OPTS += -DHDF5
+OPTS += -DVOIGT
 #Support for loading HDF5 files
-OPTS += -DGADGET3 #-DJAMIE
+OPTS += -DHDF5
 #This is misnamed: in reality it looks for NE instead of NHEP and NHEPP
-#OPTS += -DHELIUM
-# Enable helium absorption
+OPTS += -DGADGET3 #-DJAMIE
 CFLAGS += $(OPTS)
-CXXFLAGS += $(CFLAGS) -I${GREAD}
-COM_INC = parameters.h types.h global_vars.h index_table.h absorption.h part_int.h
-#LINK=$(CC)
+CXXFLAGS += $(CFLAGS)
+EXT_INC = global_vars.h index_table.h absorption.h part_int.h
 LIBS=-lrgad -L${GREAD} -Wl,-rpath,${GREAD} -lhdf5 -lhdf5_hl
 
 .PHONY: all clean dist test
@@ -61,8 +54,13 @@ rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
 statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-%.o: %.c $(COM_INC)
-%.o: %.cpp $(COM_INC)
+%.o: %.c global_vars.h
+main.o: main.cpp $(EXT_INC)
+read_snapshot.o: read_snapshot.cpp global_vars.h
+	$(CXX) $(CFLAGS) -I${GREAD} -c $<
+
+%.o: %.cpp %.h
+part_int.o: part_int.cpp part_int.h absorption.h index_table.h
 
 calc_power.o: calc_power.c smooth.o powerspectrum.o
 

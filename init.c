@@ -53,26 +53,6 @@ void populate_los_table(double * cofm, int * aaxis, int NumLos, char * ext_table
         }
 }
 
-/*****************************************************************************/
-int InitLOSMemory(interp* species,int NumLos, int nbins)
-{  
-  (*species).rho        = (double *) calloc((NumLos * nbins) , sizeof(double));
-  (*species).veloc        = (double *) calloc((NumLos * nbins) , sizeof(double));
-  (*species).temp   = (double *) calloc((NumLos * nbins) , sizeof(double));
-  if(!(*species).rho || !(*species).veloc || !(*species).temp)
-      return 1;
-  return 0;
-}
-/*****************************************************************************/
-
-/*****************************************************************************/
-void FreeLOSMemory(interp * species)
-{  
-  free((*species).rho);
-  free((*species).veloc);
-  free((*species).temp);
-}
-
 /*Note this assumes only one species*/
 int alloc_parts(pdata* P, int np)
 {

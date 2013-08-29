@@ -1,6 +1,5 @@
 #include <math.h>
 #include "statistic.h"
-#include "parameters.h"
 #include <math.h>
 
 /* #define SIGMA 2.5 */
