@@ -16,12 +16,12 @@
 #include <algorithm>
 #include <cmath>
 
-/* Physical constants, SI units */
-#define  SIGMA_T 6.652458558e-29 /* Thompson cross-section in m^2*/
-#define  BOLTZMANN   1.3806504e-23  /* m2 kg s-2 K-1 */
-#define  LIGHT           2.99792458e8 /*in m/s*/
-// convert energy/unit mass to J kg^-1
-#define  ESCALE (1.0e6)
+/* Physical constants, cgs units */
+#define  SIGMA_T 6.652458558e-24 /* Thompson cross-section in cm^2*/
+#define  BOLTZMANN  1.3806504e-16  /* cm2 g s-2 K-1 */
+#define  LIGHT      2.99792458e10 /*in cm/s*/
+// convert energy/unit mass to erg/g
+#define  ESCALE 1.0e10
 /* Some useful numbers */
 #define  GAMMA (5.0/3.0)
 

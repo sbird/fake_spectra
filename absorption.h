@@ -1,7 +1,7 @@
 #ifndef ABSORPTION_H
 #define ABSORPTION_H
 
-#define  PROTONMASS  1.66053886e-27 /* 1 a.m.u */
+#define  PROTONMASS  1.66053886e-24 /* 1 a.m.u */
 
 /* Class to compute the absorption from a single particle
  * onto a spectrum
@@ -41,6 +41,7 @@ class LineAbsorption
 
         /* Compute the absorption in a single bin, using
          * either straight Gaussian or a Voigt profile.
+         * Note! No unit conversion is done on the column density.
          * Arguments:
          * colden: column density of absorber in amu per m^2.
          * vdiff: the relative velocities between absorper and bin.
