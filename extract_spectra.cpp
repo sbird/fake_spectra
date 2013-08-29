@@ -21,6 +21,56 @@
 #include "parameters.h"
 #include "absorption.h"
 
+//1 KPC in m
+#define  KPC 3.08568025e19
+#define  GRAVITY     6.67428e-11
+/*****************************************************************************/
+/* This function calculates absorption from a given integrated temperature, density
+ * and line profile properties.
+ * Note: a lot of variables are named _H1. This is historical: the function works for arbitrary species.
+ * Arguments are:
+ * tau_H1: Array to store the ouput optical depth
+ * H1 : species with density, velocity and temperature arrays
+ * Hz: conversion factor from linear to velocity space, Hubble(z) in km/s/Mpc
+ * box100: box size in comoving kpc/h
+ * h100: hubble constant h (~ 0.7)
+ * atime: a = 1/(1+z)
+ * lambda_lya, gamma_lya, fosc_lya: parameters of the atomic transition (use those from VPFIT)
+ * mass: mass of the species in amu
+ * */
+void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * temp, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
+{
+  /* Conversion factors from internal units */
+  const double rscale = (KPC*atime)/h100;   /* convert length to m */
+  /*    Calculate the length scales to be used in the box */
+  const double vmax = box100 * Hz * rscale/ (1e3*KPC); /* box size (kms^-1) */
+  const double dzgrid   = box100 * rscale / (double) nbins; /* bin size m */
+  const double dvbin = dzgrid * Hz / (1e3*KPC); /* velocity bin size (kms^-1) */
+  LineAbsorption line(lambda_lya, gamma_lya, fosc_lya, mass);
+  /* Compute the HI Lya spectra */
+  for(int i=0;i<nbins;i++){
+      for(int j=0;j<nbins;j++)
+        {
+          double u_H1, vdiff_H1;
+
+          u_H1  = dvbin*j*1.0e3;
+      #ifdef PECVEL
+          u_H1 +=veloc[j]*1.0e3;
+      #endif
+          /* Note this is indexed with i, above with j!
+           * This is the difference in velocities between two clouds
+           * on the same sightline*/
+          vdiff_H1  = fabs(dvbin*i*1.0e3 - u_H1); /* ms^-1 */
+       #ifdef PERIODIC
+          if (vdiff_H1 > (vmax/2.0*1.0e3))
+              vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
+       #endif
+          tau_H1[j] += line.tau_single(dzgrid * rho[j]/(mass*PROTONMASS), vdiff_H1, temp[j]);
+        }
+  }             /* Spectrum convolution */
+
+  return;
+}
 
 /* Function to rescale the units of the density temperature and velocity skewers*/
 void Rescale_Units(double * rho, double * veloc, double * temp, const int nbins, const double h100, const double atime)

@@ -22,6 +22,9 @@
 #include "statistic.h"
 #include "parameters.h"
 
+/*The value from 0711.1862 is (0.0023±0.0007) (1+z)^(3.65±0.21)*/
+#define TAU_EFF 0.0023*pow(1.0+redshift,3.65)
+
 #define PBINS 21
 int output(double *array, int size, char *suffix, char *outdir);
 void help(void);

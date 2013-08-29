@@ -6,8 +6,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include "global_vars.h"
-#include "parameters.h"
 
+#define PARTTYPE 0/* Particle type required */
 #ifndef N_TYPE
         #define N_TYPE 6
 #endif

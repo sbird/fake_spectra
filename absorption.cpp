@@ -14,54 +14,19 @@
 
 #include "absorption.h"
 #include <algorithm>
+#include <cmath>
 
-/*****************************************************************************/
-/* This function calculates absorption from a given integrated temperature, density
- * and line profile properties.
- * Note: a lot of variables are named _H1. This is historical: the function works for arbitrary species.
- * Arguments are:
- * tau_H1: Array to store the ouput optical depth
- * H1 : species with density, velocity and temperature arrays
- * Hz: conversion factor from linear to velocity space, Hubble(z) in km/s/Mpc
- * box100: box size in comoving kpc/h
- * h100: hubble constant h (~ 0.7)
- * atime: a = 1/(1+z)
- * lambda_lya, gamma_lya, fosc_lya: parameters of the atomic transition (use those from VPFIT)
- * mass: mass of the species in amu
- * */
-void Compute_Absorption(double * tau_H1, double * rho, double * veloc, double * temp, const int nbins, const double Hz, const double h100, const double box100, const double atime, const double lambda_lya, const double gamma_lya, const double fosc_lya, const double mass)
-{
-  /* Conversion factors from internal units */
-  const double rscale = (KPC*atime)/h100;   /* convert length to m */
-  /*    Calculate the length scales to be used in the box */
-  const double vmax = box100 * Hz * rscale/ (1e3*KPC); /* box size (kms^-1) */
-  const double dzgrid   = box100 * rscale / (double) nbins; /* bin size m */
-  const double dvbin = dzgrid * Hz / (1e3*KPC); /* velocity bin size (kms^-1) */
-  LineAbsorption line(lambda_lya, gamma_lya, fosc_lya, mass);
-  /* Compute the HI Lya spectra */
-  for(int i=0;i<nbins;i++){
-      for(int j=0;j<nbins;j++)
-        {
-          double u_H1, vdiff_H1;
+/* Physical constants, SI units */
+#define  SIGMA_T 6.652458558e-29 /* Thompson cross-section in m^2*/
+#define  BOLTZMANN   1.3806504e-23  /* m2 kg s-2 K-1 */
+#define  LIGHT           2.99792458e8 /*in m/s*/
+// convert energy/unit mass to J kg^-1
+#define  ESCALE (1.0e6)
+/* Some useful numbers */
+#define  GAMMA (5.0/3.0)
 
-          u_H1  = dvbin*j*1.0e3;
-      #ifdef PECVEL
-          u_H1 +=veloc[j]*1.0e3;
-      #endif
-          /* Note this is indexed with i, above with j!
-           * This is the difference in velocities between two clouds
-           * on the same sightline*/
-          vdiff_H1  = fabs(dvbin*i*1.0e3 - u_H1); /* ms^-1 */
-       #ifdef PERIODIC
-          if (vdiff_H1 > (vmax/2.0*1.0e3))
-              vdiff_H1 = (vmax*1.0e3) - vdiff_H1;
-       #endif
-          tau_H1[j] += line.tau_single(dzgrid * rho[j]/(mass*PROTONMASS), vdiff_H1, temp[j]);
-        }
-  }             /* Spectrum convolution */
-      
-  return;
-}
+/*Conversion factor between internal energy and mu and temperature in K */
+#define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
 #define NGRID 8
 
@@ -86,7 +51,7 @@ inline double sph_kernel(const double q)
  * and q^2 = b^2 + z^2, then this is:
  * int_zlow^zhigh K(q) dz
  * */
-double sph_kern_frac(double zlow, double zhigh, double bb2)
+inline double sph_kern_frac(double zlow, double zhigh, double bb2)
 {
     //Outside useful range.
     if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
@@ -108,12 +73,19 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     return 8*deltaz*total/M_PI;
 }
 
+LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
+sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
+bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS)) ),
+voigt_fac( gamma*lambda/(4.*M_PI) ),
+velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
+{
+}
 
 /* Add the absorption from a particle to the spectrum in the array
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void ComputeLineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
+void LineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
    * in (1e10 M_sun /h) / (kpc/h)^2.
@@ -169,4 +141,48 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
   }
 
   return;
+}
+
+inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double temp)
+{
+    /* b has the units of velocity: km/s*/
+    const double b_H1   = bfac*sqrt(temp);
+    const double T0 = pow(vdiff/b_H1,2);
+    const double T1 = exp(-T0);
+    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
+     * includes thermal and doppler broadening. */
+  #ifdef VOIGT
+    const double aa_H1 = voigt_fac/b_H1;
+    const double T2 = 1.5/T0;
+    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa_H1/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
+  #else
+    const double profile_H1 = T1;
+  #endif
+    return sigma_a / sqrt(M_PI) * (LIGHT/b_H1) * colden * profile_H1;
+}
+
+/* Compute temperature (in K) from internal energy.
+ * uu: internal energy in Gadget units
+ * ne: electron abundance
+ * xh: hydrogen mass fraction (0.76)
+ * Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+ * T = U (γ-1) μ m_P / k_B
+ * where k_B is the Boltzmann constant
+ * γ is 5/3, the perfect gas constant
+ * m_P is the proton mass
+ * μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+ */
+double compute_temp(const double uu, const double ne, const double xh)
+{
+    /*Mean molecular weight:
+     * \mu = 1 / molecules per unit atomic weight
+     *     = 1 / (X + Y /4 + E)
+     *     where E = Ne * X, and Y = (1-X).
+     *     Can neglect metals as they are heavy.
+     *     Leading contribution is from electrons, which is already included
+     *     [+ Z / (12->16)] from metal species
+     *     [+ Z/16*4 ] for OIV from electrons. */
+    const double mu = 1.0/(xh*(0.75+ne) + 0.25);
+    return uu*mu * TSCALE; /* T in K */
+
 }

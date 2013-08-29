@@ -43,12 +43,18 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
     return;
 }
 
+//The gadget mass unit is 1e10 M_sun/h in g/h
+#define  GADGET_MASS 1.98892e43
+//The gadget length unit is 1 kpc/h in cm/h
+#define  GADGET_LENGTH 3.085678e21
+
 /*Convert the units of colden from (internal mass)/(kpc/h)^2 to atoms/cm^2*/
 void convert_colden_units(double * colden, const int nbins, const double h100, const double atime)
 {
   /* Conversion factors from internal units */
-  const double mscale = (1.0e10*SOLAR_MASS)/h100; /* convert mass to kg */
-  const double rscale = (KPC*atime)/h100;
+  const double mscale = GADGET_MASS/h100; /* convert mass to g */
+  // kpc/h (comov) to cm (phys)
+  const double rscale = GADGET_LENGTH*atime/h100;
   for(int i = 0;i<nbins;i++)
      colden[i]*=mscale/PROTONMASS*pow(rscale,-2);
   return;

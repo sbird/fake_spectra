@@ -15,10 +15,12 @@
 
 #include <math.h>
 #include "global_vars.h"
-#include "parameters.h"
 #include "index_table.h"
 #include "gadgetreader.hpp"
 
+
+/* Snapshot information */
+#define PARTTYPE 0/* Particle type required */
 
 int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
 {
@@ -99,12 +101,12 @@ int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata
       /* The free electron fraction */
       if(snap.GetHeader().flag_cooling)
         {
-          int k;
           /* Some versions of Gadget have Ne, some have NHP, NHEP and NHEPP,
            * which I map to NHEQ.*/
           /* Use that the universe is neutral, so 
            * NE = NHP + NHEP +2 NHEPP*/
       #ifndef GADGET3
+          int k;
           snap.GetBlock("NHP ",(*P).Ne,NumPart,StartPart,0);
           /*Use the space for HSML as temp space*/
           snap.GetBlock("NHEP",(*P).h,NumPart,StartPart,0);
@@ -138,36 +140,6 @@ int64_t load_snapshot(const char *fname,int64_t StartPart,int64_t MaxRead, pdata
         printf("P[%ld].NH0 = %e\n", NumPart, (*P).fraction[NumPart-1]);
         printf("P[%ld].h = %f\n",NumPart, (*P).h[NumPart-1]);
   }
-#if 0 
-    int i;
-  /*   Convert to SI units from GADGET-3 units */
-  #pragma omp for schedule(static, 128)
-  for(i=0;i<Ntype;i++)
-  {
-      double mu;
-      int ic;
-      for(ic=0;ic<3;ic++)
-	{
-	  (*P).Pos[3*i+ic] *= rscale; /* m, physical */
-	  (*P).Vel[3*i+ic] *= vscale; /* km s^-1, physical */
-	}
-      
-      (*P).h[i] *= hscale;   /* m, physical */
-/*      (*P).Mass[i] = (*P).Mass[i] * mscale; *//* kg */
-      /*We leave mass in GADGET units, to prevent a floating overflow
-       * when we have poor resolution. (*P).Mass[i] only affects rhoker, 
-       * so we simply rescale rhoker later.*/ 
-
-      /* Mean molecular weight */
-      mu = 1.0/(XH*(0.75+(*P).Ne[i]) + 0.25);
-      (*P).U[i] *= ((GAMMA-1.0) * mu * HMASS * PROTONMASS * escale ) / BOLTZMANN; /* K */
-  }
-  #pragma omp master
-  {
-    printf("Converted units.\n");
-  }
-  #pragma omp barrier
-#endif
   return NumPart;
 }
 

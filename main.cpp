@@ -31,6 +31,20 @@
 #ifdef HDF5
 #include <hdf5.h>
 
+/* Model parameters outwith header */
+#define XH 0.76  /* hydrogen fraction by mass */
+/*The value from 0711.1862 is (0.0023±0.0007) (1+z)^(3.65±0.21)*/
+#define TAU_EFF 0.0023*pow(1.0+redshift,3.65)
+
+/* Atomic data for hydrogen (from VPFIT) */
+#define  LAMBDA_LYA_H1 1215.6701e-10
+#define  LAMBDA_LYA_HE2 303.7822e-10
+#define  FOSC_LYA 0.416400
+#define  HMASS 1.00794   /* Hydrogen mass in a.m.u. */
+#define  HEMASS 4.002602 /* Helium-4 mass in a.m.u. */
+#define  GAMMA_LYA_H1 6.265e8
+#define  GAMMA_LYA_HE2 6.27e8
+
 std::string find_first_hdf_file(const std::string& infname)
 {
   /*Switch off error handling so that we can check whether a
@@ -165,7 +179,7 @@ int main(int argc, char **argv)
     populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
     const double velfac = h100*atime*Hz/1e3;
-    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, cofm, axis,NumLos);
+    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos);
   if(!(output=fopen(outname.c_str(),"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));

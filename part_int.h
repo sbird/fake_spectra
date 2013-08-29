@@ -18,14 +18,14 @@
 #include "index_table.h"
 #include "absorption.h"
 
-/* Class extending ComputeLineAbsorption to efficiently loop
+/* Class extending LineAbsorption to efficiently loop
  * over all particles, using an index table to find those near each line
  */
-class ParticleInterp: public ComputeLineAbsorption
+class ParticleInterp: public LineAbsorption
 {
     public:
         ParticleInterp(double * tau_i, double * colden_i, const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const double atime, const double cofm[], const int axis[], const int NumLos):
-        ComputeLineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize, atime),
+        LineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize, atime),
         tau(tau_i), colden(colden_i),nbins(nbins_i),nlos(NumLos),
         sort_los_table(cofm, axis, NumLos, boxsize)
         {
