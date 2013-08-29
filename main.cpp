@@ -221,6 +221,7 @@ int main(int argc, char **argv)
           free_parts(&P);
   } while(i_fileno > 0);
   convert_colden_units(colden_H1, NBINS*NumLos, h100, atime);
+  convert_colden_units(tau_H1, NBINS*NumLos, h100, atime);
   free(cofm);
   free(axis);
   printf("Done interpolating, now calculating absorption\n");

@@ -428,6 +428,7 @@ class Spectra:
         #(gadget mass)/(gadget length)^2 to atoms/cm^2
         conv = (self.UnitMass_in_g/self.hubble)/self.protonmass/(self.UnitLength_in_cm*self.atime/self.hubble)**2
         colden *= conv
+        tau *= conv
         return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
