@@ -60,13 +60,15 @@ class ComputeLineAbsorption: public LineAbsorption
          * distances in kpc/h (comoving)
          * velfac: factor to convert from distance to velocity units.
          * Should be  atime /h100 * Hz/1e3 (Hz in km/s/Mpc)
+         * boxsize: Size of the box in comoving kpc/h
+         * atime: Scale factor
          * */
         //This makes dvbin be in km/s: the 1e3 converts Hz from km/s/Mpc to km/s/kpc
         // kpc /h       h                    km/s/kpc
         //vbox = ( box100 * h100 * atime * Hz/1e3 ) /* box size (kms^-1) */
-        ComputeLineAbsorption(const double lambda, const double gamma, const double fosc, const double mass, const double velfac_i, const double boxsize):
+        ComputeLineAbsorption(const double lambda, const double gamma, const double fosc, const double mass, const double velfac_i, const double boxsize, const double atime_i):
         LineAbsorption(lambda, gamma, fosc, mass),
-        velfac(velfac_i), vbox(boxsize*velfac_i)
+        velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
         {
         }
 
@@ -91,7 +93,7 @@ class ComputeLineAbsorption: public LineAbsorption
         void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth);
 
     private:
-        const double velfac, vbox;
+        const double velfac, vbox, atime;
 };
 
 /* Compute temperature (in K) from internal energy.

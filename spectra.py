@@ -265,7 +265,7 @@ class Spectra:
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, mass, temp, hh, axis, cofm)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, mass, temp, hh, axis, cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""

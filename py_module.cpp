@@ -98,16 +98,16 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     //Things which should be from input
     int nbins, NumLos, compute_tau;
     long long Npart;
-    double box100, velfac, lambda, gamma, fosc, amumass;
+    double box100, velfac, lambda, gamma, fosc, amumass, atime;
     npy_intp size[2];
     //Input variables in np format
     PyArrayObject *pos, *vel, *mass, *temp, *h;
     PyArrayObject *cofm, *axis;
 
     //Get our input
-    if(!PyArg_ParseTuple(args, "iiddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+    if(!PyArg_ParseTuple(args, "iidddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &atime, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
     {
-      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use compute_tau, nbins, boxsize, velfac, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm\n");
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use compute_tau, nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm\n");
       return NULL;
     }
 
@@ -189,7 +189,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
-    ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, Cofm, Axis ,NumLos);
+    ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos);
     //Do the work
     pint.do_work(Pos, Vel, Mass, Temp, Hh, Npart);
 
@@ -218,7 +218,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 static PyMethodDef spectrae[] = {
   {"_Particle_Interpolate", Py_Particle_Interpolation, METH_VARARGS,
    "Find absorption and column density by interpolating particles. "
-   "    Arguments: compute_tau nbins, boxsize, velfac, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm"
+   "    Arguments: compute_tau nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm"
    "    "},
   {"_near_lines", Py_near_lines,METH_VARARGS,
    "Give a list of particles and sightlines, "

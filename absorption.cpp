@@ -124,8 +124,10 @@ void ComputeLineAbsorption::add_particle(double * tau, double * colden, const in
   const double avgdens = 3/4./M_PI*mass*pow(smooth,-2);
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
-  /* Velocity of particle parallel to los: pos in */
-  const double vel = (velfac * ppos + pvel );
+  /* Velocity of particle parallel to los: pos in kpc/h comoving
+     to vel in km/s physical. Note that gadget velocities come comoving,
+     so we need the sqrt(a) conversion factor*/
+  const double vel = (velfac * ppos + pvel * sqrt(atime));
   const double vsmooth = velfac * smooth;
   const double zrange = velfac * sqrt(smooth*smooth - dr2);
   const int zlow = floor((nbins/vbox) * (vel - zrange));
