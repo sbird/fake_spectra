@@ -234,11 +234,6 @@ class Spectra:
         mass *= self.get_mass_frac(elem, data, ind)
         #Cloudy density in physical H atoms / cm^3
         star=cold_gas.RahmatiRT(self.red, self.hubble)
-        #In (hydrogen) atoms / cm^3
-        den=star.get_code_rhoH(data)
-        den = den[ind]
-        temp = star.get_temp(den, data)
-        temp = temp[ind]
         #Find the mass fraction in this ion
         #Special case H1:
         if elem == 'H' and ion == 1:
@@ -246,17 +241,23 @@ class Spectra:
             mass *= star.get_reproc_HI(data)[ind]
         elif ion != -1:
             mass *= self.cloudy_table.ion(elem, ion, den, temp)
-        ff.close()
-        #Get rid of ind so we have some memory for the interpolator
-        del ind
         #Get line data
         #If we don't want tau, any line will do
         if get_tau:
+            #In (hydrogen) atoms / cm^3
+            den=star.get_code_rhoH(data)
+            den = den[ind]
+            temp = star.get_temp(den, data)
+            temp = temp[ind]
             line = self.lines[(elem,ion)][ll]
             amumass = self.lines.get_mass(elem)
         else:
             line = self.lines[("H",1)][0]
             amumass = 1
+            temp = np.array([], dtype=np.float32)
+        ff.close()
+        #Get rid of ind so we have some memory for the interpolator
+        del ind
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
