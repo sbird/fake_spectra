@@ -31,13 +31,13 @@ class LineAbsorption
          *
          * Input:
          * dr2: transverse distance to spectra from particle (comoving kpc/h)
-         * mass: mass of particle in absorbing species (1e10 M_sun / h)
+         * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 or amu/cm^3)
          * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
          * pvel: particle velocity parallel to spectrum (physical km/s)
          * temp: particle temperature (K)
          * smooth: particle smoothing length (comoving kpc/h)
          */
-        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth);
+        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
 
         /* Compute the absorption in a single bin, using
          * either straight Gaussian or a Voigt profile.

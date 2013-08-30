@@ -221,32 +221,20 @@ class Spectra:
         else:
             cofm = self.cofm
             axis = self.axis
+
         #Find particles we care about
         ind = self.particles_near_lines(pos, hh,axis,cofm)
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
+        star=cold_gas.RahmatiRT(self.red, self.hubble)
         vel = np.array(data["Velocities"],dtype=np.float32)
         vel = vel[ind,:]
-        mass = np.array(data["Masses"],dtype=np.float32)
-        mass = mass[ind]
-        #Get the mass in this species
-        mass *= self.get_mass_frac(elem, data, ind)
-        #Cloudy density in physical H atoms / cm^3
-        star=cold_gas.RahmatiRT(self.red, self.hubble)
-        #Find the mass fraction in this ion
-        #Special case H1:
-        if elem == 'H' and ion == 1:
-            # Neutral hydrogen mass frac
-            mass *= star.get_reproc_HI(data)[ind]
-        elif ion != -1:
-            mass *= self.cloudy_table.ion(elem, ion, den, temp)
+        #gas density amu / cm^3
+        den=star.get_code_rhoH(data)
         #Get line data
         #If we don't want tau, any line will do
         if get_tau:
-            #In (hydrogen) atoms / cm^3
-            den=star.get_code_rhoH(data)
-            den = den[ind]
             temp = star.get_temp(den, data)
             temp = temp[ind]
             line = self.lines[(elem,ion)][ll]
@@ -255,13 +243,25 @@ class Spectra:
             line = self.lines[("H",1)][0]
             amumass = 1
             temp = np.array([], dtype=np.float32)
+
+        den = den[ind]
+        #Get the density in this species
+        den *= self.get_mass_frac(elem, data, ind)
+        #Find the mass fraction in this ion
+        #Special case H1:
+        if elem == 'H' and ion == 1:
+            # Neutral hydrogen mass frac
+            den *= star.get_reproc_HI(data)[ind]
+        elif ion != -1:
+            #Cloudy density in physical H atoms / cm^3
+            den *= self.cloudy_table.ion(elem, ion, den, temp)
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
         del ind
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, mass, temp, hh, axis, cofm)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, den, temp, hh, axis, cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -426,8 +426,8 @@ class Spectra:
             del ttau
             del tcolden
         #Rescale the units on column density from
-        #(gadget mass)/(gadget length)^2 to atoms/cm^2
-        conv = (self.UnitMass_in_g/self.hubble)/self.protonmass/(self.UnitLength_in_cm*self.atime/self.hubble)**2
+        # amu / cm^3 *(gadget length) to atoms/cm^2
+        conv = self.UnitLength_in_cm*self.atime/self.hubble
         colden *= conv
         tau *= conv
         return (tau, colden)

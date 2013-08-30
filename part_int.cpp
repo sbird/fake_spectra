@@ -16,7 +16,7 @@
 //For NULL
 #include <cstddef>
 
-void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const long long npart)
+void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart)
 {
     const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
     //Use a plain int as not sure openmp can handle iterators efficiently.
@@ -38,7 +38,7 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float M
           const float pvel = Vel[3*ipart+axis-1];
           //Don't need temp if no tau
           const float ptemp = ( tau ? temp[ipart] : 0 );
-          add_particle(tau_loc, colden_loc, nbins, dr2, Mass[ipart], ppos, pvel, ptemp, h[ipart]);
+          add_particle(tau_loc, colden_loc, nbins, dr2, Dens[ipart], ppos, pvel, ptemp, h[ipart]);
 	    }  /*Loop over list of particles near LOS*/
     } /* Loop over LOS*/
 

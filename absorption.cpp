@@ -60,6 +60,7 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     //Maximal range that will do anything
     zlow = std::max(zlow, -sqrt(1-bb2));
     zhigh = std::min(zhigh, sqrt(1-bb2));
+    //return 3./(4*M_PI)*(zhigh - zlow);
     double total = sph_kernel(sqrt(bb2+zlow*zlow))/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
@@ -85,15 +86,14 @@ velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void LineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float mass, const float ppos, const float pvel, const float temp, const float smooth)
+void LineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
-   * in (1e10 M_sun /h) / (kpc/h)^2.
-   * We compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
-   * ρ = M/V  and h^3 = 3 V /(4 π)
-   * so the correct dimensional factors are:
-   *  3/(4π) M/h^2 */
-  const double avgdens = 3/4./M_PI*mass*pow(smooth,-2);
+   * in [dens units] * [h units] (atoms/cm^3 * kpc/h comov if from python,
+   * (1e10 M_sun /h) / (kpc/h)^2 if from C).
+   * The factor of h is because we compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
+   */
+  const double avgdens = dens * smooth;
   /*Impact parameter in units of the smoothing length */
   const double bb2 = dr2/smooth/smooth;
   const double vsmooth = velfac * smooth;

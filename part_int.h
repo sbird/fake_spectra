@@ -34,7 +34,7 @@ class ParticleInterp: public LineAbsorption
         /*Interpolate the particles in the given arrays onto
          * the spectra pointed at by tau and colden
          * */
-        void do_work(const float Pos[], const float Vel[], const float Mass[], const float temp[], const float h[], const long long npart);
+        void do_work(const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart);
 
     private:
         double *tau, *colden;

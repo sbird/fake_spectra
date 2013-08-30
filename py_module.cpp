@@ -101,18 +101,18 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     double box100, velfac, lambda, gamma, fosc, amumass, atime;
     npy_intp size[2];
     //Input variables in np format
-    PyArrayObject *pos, *vel, *mass, *temp, *h;
+    PyArrayObject *pos, *vel, *dens, *temp, *h;
     PyArrayObject *cofm, *axis;
 
     //Get our input
-    if(!PyArg_ParseTuple(args, "iidddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &atime, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &mass, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+    if(!PyArg_ParseTuple(args, "iidddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &atime, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &dens, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
     {
-      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use compute_tau, nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm\n");
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use compute_tau, nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, dens, temp, h, axis, cofm\n");
       return NULL;
     }
 
     //Check that our input has the right types
-    if(check_float(pos) || check_float(vel) || check_float(mass) || check_float(temp) || check_float(h)){
+    if(check_float(pos) || check_float(vel) || check_float(dens) || check_float(temp) || check_float(h)){
        PyErr_SetString(PyExc_TypeError, "One of the data arrays does not have 32-bit float type\n");
        return NULL;
     }
@@ -172,26 +172,26 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     //so to avoid leaking we need to save the PyArrayObject pointer.
     pos = PyArray_GETCONTIGUOUS(pos);
     vel = PyArray_GETCONTIGUOUS(vel);
-    mass = PyArray_GETCONTIGUOUS(mass);
+    dens = PyArray_GETCONTIGUOUS(dens);
     temp = PyArray_GETCONTIGUOUS(temp);
     h = PyArray_GETCONTIGUOUS(h);
     float * Pos =(float *) PyArray_DATA(pos);
     float * Hh= (float *) PyArray_DATA(h);
     float * Vel =(float *) PyArray_DATA(vel);
-    float * Mass =(float *) PyArray_DATA(mass);
+    float * Dens =(float *) PyArray_DATA(dens);
     float * Temp =(float *) PyArray_DATA(temp);
 
     cofm = PyArray_GETCONTIGUOUS(cofm);
     axis = PyArray_GETCONTIGUOUS(axis);
     double * Cofm =(double *) PyArray_DATA(cofm);
     int32_t * Axis =(int32_t *) PyArray_DATA(axis);
-    if( !Pos || !Vel || !Mass || !Temp || !Hh || !Cofm || !Axis ){
+    if( !Pos || !Vel || !Dens || !Temp || !Hh || !Cofm || !Axis ){
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
     ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos);
     //Do the work
-    pint.do_work(Pos, Vel, Mass, Temp, Hh, Npart);
+    pint.do_work(Pos, Vel, Dens, Temp, Hh, Npart);
 
     //Build a tuple from the interp struct
     PyObject * for_return;
@@ -206,7 +206,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     //and may have made an allocation, in which case this does not point to what it used to.
     Py_DECREF(pos);
     Py_DECREF(vel);
-    Py_DECREF(mass);
+    Py_DECREF(dens);
     Py_DECREF(temp);
     Py_DECREF(h);
     Py_DECREF(cofm);
@@ -218,7 +218,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 static PyMethodDef spectrae[] = {
   {"_Particle_Interpolate", Py_Particle_Interpolation, METH_VARARGS,
    "Find absorption and column density by interpolating particles. "
-   "    Arguments: compute_tau nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, mass, temp, h, axis, cofm"
+   "    Arguments: compute_tau nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, dens, temp, h, axis, cofm"
    "    "},
   {"_near_lines", Py_near_lines,METH_VARARGS,
    "Give a list of particles and sightlines, "

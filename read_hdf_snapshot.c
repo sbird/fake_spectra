@@ -111,6 +111,7 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
   int i;
   int npart[N_TYPE];
   double mass[N_TYPE];
+  int using_mass = 0;
   char name[16];
   double Omega0;
   int flag_cooling;
@@ -159,8 +160,12 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
         for(i=0; i< length;i++)
            (*P).Mass[i] = mass[PARTTYPE];
   else
-     if (length != get_single_dataset("Masses",(*P).Mass,length,&hdf_group,fileno))
+     if (length != get_single_dataset("Density",(*P).Mass,length,&hdf_group,fileno)){
+        if (length != get_single_dataset("Masses",(*P).Mass,length,&hdf_group,fileno))
              goto exit;
+        else
+            using_mass = 1;
+     }
   (*omegab) = (*P).Mass[0]/((*P).Mass[0]+mass[1])*Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
@@ -196,6 +201,13 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
         if (length != get_single_dataset("SmoothingLength",(*P).h,length,&hdf_group,fileno))
             goto exit;
         }
+    if(using_mass){
+     //Convert mass to Density
+     int k;
+     for(k=0;k<npart[PARTTYPE];k++){
+         (*P).Mass[k] = 4*M_PI/3.*(*P).Mass[k] /pow((*P).h[k],3);
+     }
+    }
     }
 exit:
   H5Gclose(hdf_group);
@@ -203,7 +215,7 @@ exit:
   if(fileno < 1){
         printf("\nP[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
         printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-        printf("P[-1].Mass = %e\n", (*P).Mass[0]);
+        printf("P[-1].Density = %e\n", (*P).Mass[0]);
         printf("P[-1].U = %f\n\n", (*P).U[length-1]);
         printf("P[-1].Ne = %e\n",  (*P).Ne[length-1]);
         printf("P[-1].NH0 = %e\n", (*P).fraction[length-1]);

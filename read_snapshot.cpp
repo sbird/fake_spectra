@@ -103,15 +103,14 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *ome
           /* Use that the universe is neutral, so 
            * NE = NHP + NHEP +2 NHEPP*/
       #ifdef SPLIT_NE
-          int k;
           snap.GetBlock("NHP ",(*P).Ne,NumPart,StartPart,0);
           /*Use the space for HSML as temp space*/
           snap.GetBlock("NHEP",(*P).h,NumPart,StartPart,0);
-          for(k=0;k<NumPart;k++){
+          for(int k=0;k<NumPart;k++){
                   (*P).Ne[k]+=(*P).h[k];
           }
           snap.GetBlock("NHEQ",(*P).h,NumPart,StartPart,0);
-          for(k=0;k<NumPart;k++){
+          for(int k=0;k<NumPart;k++){
                   (*P).Ne[k]+=2*(*P).h[k];
           }
       #else
@@ -126,6 +125,9 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *ome
         }
      /* The smoothing length */
      snap.GetBlock("HSML",(*P).h,NumPart,StartPart,0);
+     for(int k=0;k<NumPart;k++){
+         (*P).Mass[k] = 4*M_PI/3.*(*P).Mass[k] /pow((*P).h[k],3);
+     }
     }
 
   if(StartPart==0){
