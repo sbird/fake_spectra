@@ -1,7 +1,7 @@
 #ifndef ABSORPTION_H
 #define ABSORPTION_H
 
-#define  PROTONMASS  1.66053886e-24 /* 1 a.m.u */
+#define  PROTONMASS  1.67262178e-24 /* 1 a.m.u */
 
 /* Class to compute the absorption from a single particle
  * onto a spectrum

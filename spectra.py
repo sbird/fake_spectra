@@ -53,7 +53,7 @@ class Spectra:
         #Speed of light in cm/s
         self.light = 2.99e10
         #proton mass in g
-        self.protonmass=1.66053886e-24
+        self.protonmass=1.67262178e-24
         self.num = num
         self.base = base
         #Empty dictionary to add results to
