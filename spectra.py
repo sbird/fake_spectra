@@ -245,8 +245,6 @@ class Spectra:
             temp = np.array([], dtype=np.float32)
 
         den = den[ind]
-        #Get the density in this species
-        den *= self.get_mass_frac(elem, data, ind)
         #Find the mass fraction in this ion
         #Special case H1:
         if elem == 'H' and ion == 1:
@@ -255,6 +253,8 @@ class Spectra:
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             den *= self.cloudy_table.ion(elem, ion, den, temp)
+        #Get the mass fracion in this species
+        den *= self.get_mass_frac(elem, data, ind)
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
         del ind
