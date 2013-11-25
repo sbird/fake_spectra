@@ -42,7 +42,7 @@ class HaloSpectra(spectra.Spectra):
             np.random.seed(23)
             cofm = self.get_cofm()
 
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir,reload_file=True)
 
         #If we did not load from a snapshot
         if cofm != None:

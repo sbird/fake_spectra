@@ -9,7 +9,7 @@ import os.path as path
 
 class GridSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, numlos=5000, res = 1., cdir = None, dla=True, savefile="rand_spectra_DLA.hdf5", savedir=None, gridfile="boxhi_grid_H2.hdf5"):
+    def __init__(self,num, base, numlos=5000, res = 1., cdir = None, dla=True, savefile="grid_spectra_DLA.hdf5", savedir=None, gridfile="boxhi_grid_H2.hdf5"):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]
@@ -26,7 +26,7 @@ class GridSpectra(spectra.Spectra):
         #Re-seed for repeatability
         np.random.seed(23)
         cofm = self.get_cofm()
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, cdir, savefile=savefile,savedir=savedir)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, cdir, savefile=savefile,savedir=savedir, reload_file=True)
 
         if dla:
             self.replace_not_DLA(10**20.3)

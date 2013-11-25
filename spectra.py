@@ -44,7 +44,7 @@ class Spectra:
             axis - axis along which to put the sightline
             res (optional) - Spectra pixel resolution in km/s
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False):
         #Various physical constants
         #Internal gadget mass unit: 1e10 M_sun/h in g/h
         self.UnitMass_in_g=1.989e43
@@ -65,18 +65,14 @@ class Spectra:
         self.npart = 512**3
         try:
             self.files = hdfsim.get_all_files(num, base)
+            self.files.reverse()
         except IOError:
             pass
         if savedir == None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
-        try:
-            try:
-                self.cofm
-            except AttributeError:
-                self.load_savefile(self.savefile)
-        except (IOError, KeyError):
+        if reload_file:
             print "Reloading from snapshot (savefile: ",self.savefile," )"
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
@@ -93,7 +89,8 @@ class Spectra:
             mass_bar = np.sum(ff["PartType0"]["Masses"])
             self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
             ff.close()
-
+        else:
+            self.load_savefile(self.savefile)
         # Conversion factors from internal units
         self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to m
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
@@ -103,7 +100,7 @@ class Spectra:
             # velocity bin size (kms^-1)
             self.dvbin = self.vmax / (1.*self.nbins)
         except AttributeError:
-            #This will occur if we are not reloading from a snapshot
+            #This will occur if we are not loading from a savefile
             self.dvbin = res # velocity bin size (kms^-1)
             #Number of bins to achieve the required resolution
             self.nbins = int(self.vmax / self.dvbin)
@@ -267,7 +264,7 @@ class Spectra:
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             den *= self.cloudy_table.ion(elem, ion, den, temp)
-        #Get the mass fracion in this species: den is now density in ionic species in amu/cm^3
+        #Get the mass fraction in this species: den is now density in ionic species in amu/cm^3
         den *= self.get_mass_frac(elem, data, ind)
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
@@ -275,7 +272,8 @@ class Spectra:
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, den, temp, hh, axis, cofm)
+        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, den, temp, hh, axis, cofm)
+        return (tau,colden)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -446,7 +444,7 @@ class Spectra:
         #Rescale the units on column density from
         # amu / cm^3 *(gadget length) to atoms (of species) /cm^2
         amumass = self.lines.get_mass(elem)
-        conv = self.UnitLength_in_cm*self.atime/self.hubble/amumass
+        conv = self.rscale/amumass
         colden *= conv
         tau *= conv
         return (tau, colden)
