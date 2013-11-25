@@ -58,6 +58,7 @@ class Spectra:
         self.base = base
         #Empty dictionary to add results to
         self.tau_obs = {}
+        self.tau = {}
         self.colden = {}
         self.num_important = {}
         self.discarded=0
@@ -146,31 +147,39 @@ class Spectra:
         grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
+        #Observer tau is the strongest unsaturated line
         grp_grid = f.create_group("tau_obs")
-        for (key, value) in self.tau_obs.iteritems():
-            try:
-                gg = grp_grid[key[0]]
-            except KeyError:
-                grp_grid.create_group(key[0])
-                gg = grp_grid[key[0]]
-            gg.create_dataset(str(key[1]),data=value)
+        self._save_multihash(self.tau_obs, grp_grid)
+        #Optical depth in specific lines
+        grp_grid = f.create_group("tau")
+        self._save_multihash(self.tau, grp_grid)
+        #Column density
         grp_grid = f.create_group("colden")
-        for (key, value) in self.colden.iteritems():
-            try:
-                gg = grp_grid[key[0]]
-            except KeyError:
-                grp_grid.create_group(key[0])
-                gg = grp_grid[key[0]]
-            gg.create_dataset(str(key[1]),data=value)
+        self._save_multihash(self.colden, grp_grid)
+        #Number of particles important for each spectrum
         grp_grid = f.create_group("num_important")
-        for (key, value) in self.num_important.iteritems():
-            try:
-                gg = grp_grid[key[0]]
-            except KeyError:
-                grp_grid.create_group(key[0])
-                gg = grp_grid[key[0]]
-            gg.create_dataset(str(key[1]),data=value)
+        self._save_multihash(self.num_important, grp_grid)
         f.close()
+
+    def _save_multihash(self,save_array, grp):
+        """Save an array using a tuple key, like save_array[(elem, ion, line)]
+        to a hierarchy of hdf groups below grp"""
+        gg = grp
+        for (key, value) in save_array.iteritems():
+            #Create directory hierarchy recursively
+            for ii in xrange(np.size(key)-1):
+                try:
+                    gg = gg[key[ii]]
+                except KeyError:
+                    gg.create_group(key[ii])
+                    gg = gg[key[ii]]
+            #Delete old dataset if present
+            try:
+                del gg[str(key[-1])]
+            except KeyError:
+                pass
+            #Save the dataset
+            gg.create_dataset(str(key[-1]),data=value)
 
     def load_savefile(self,savefile=None):
         """Load data from a file"""
@@ -184,11 +193,7 @@ class Spectra:
         self.omegab=grid_file.attrs["omegab"]
         self.OmegaLambda=grid_file.attrs["omegal"]
         self.hubble=grid_file.attrs["hubble"]
-        try:
-            self.npart = np.array(grid_file.attrs["npart"])
-        except KeyError:
-            #Back-compat hack
-            pass
+        self.npart = np.array(grid_file.attrs["npart"])
         self.box=grid_file.attrs["box"]
         self.discarded=grid_file.attrs["discarded"]
         grp = f["colden"]
@@ -199,6 +204,11 @@ class Spectra:
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
+        grp = f["tau"]
+        for elem in grp.keys():
+            for ion in grp[elem].keys():
+                for line in grp[elem][ion].keys():
+                    self.tau[(elem, int(ion),int(line))] = np.array(grp[elem][ion][line])
         grp = f["num_important"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
@@ -361,24 +371,27 @@ class Spectra:
         wanted = np.size(self.axis)
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        (_, col_den) = self.compute_spectra("H",1,1,False)
+        (tau, col_den) = self.compute_spectra("H",1,1,True)
         ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
+        tau_DLA = np.empty_like(tau)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
         cofm_DLA[found:top] = self.cofm[ind][:top,:]
         H1_DLA[found:top] = col_den[ind][:top,:]
+        tau_DLA[found:top] = tau[ind][:top,:]
         found += np.size(ind)
         self.discarded = wanted-np.size(ind)
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            (_, col_den) = self.compute_spectra("H",1,1,False)
+            (tau, col_den) = self.compute_spectra("H",1,1,True)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found,:]
             H1_DLA[found:top] = col_den[ind][:top-found,:]
+            tau_DLA[found:top] = tau[ind][:top-found,:]
             found += np.size(ind)
             self.discarded += wanted-np.size(ind)
             print "Discarded: ",self.discarded
@@ -386,6 +399,7 @@ class Spectra:
         #Copy back
         self.cofm=cofm_DLA
         self.colden[("H",1)]=H1_DLA
+        self.tau[("H",1,1)]=tau_DLA
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
@@ -754,7 +768,7 @@ class Spectra:
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
-        (tau, dummy) = self.compute_spectra(elem, ion, line,True)
+        tau = self.get_tau(elem, ion, line)
         ind = self.get_filt(elem, line)
         #1 bin in wavelength: δλ =  λ . v / c
         #λ here is the rest wavelength of the line.
@@ -774,8 +788,18 @@ class Spectra:
         try:
             return self.colden[(elem, ion)]
         except KeyError:
-            (dummy, colden) = self.compute_spectra(elem, ion, 0,False)
+            (_, colden) = self.compute_spectra(elem, ion, 0,False)
             self.colden[(elem, ion)] = colden
+            return colden
+
+    def get_tau(self, elem, ion,line):
+        """Get the column density in each pixel for a given species"""
+        try:
+            return self.tau[(elem, ion,line)]
+        except KeyError:
+            (tau, colden) = self.compute_spectra(elem, ion, line,True)
+            self.colden[(elem, ion)] = colden
+            self.tau[(elem, ion,line)] = tau
             return colden
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
