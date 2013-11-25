@@ -224,6 +224,10 @@ class Spectra:
 
         #Find particles we care about
         ind = self.particles_near_lines(pos, hh,axis,cofm)
+        #Do nothing if there aren't any, and return a suitably shaped zero array
+        if np.size(ind) == 0:
+            ret = np.zeros([np.shape(cofm)[0],self.nbins],dtype=np.float32)
+            return (ret,ret)
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
