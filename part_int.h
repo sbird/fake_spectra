@@ -43,7 +43,7 @@ class ParticleInterp: public LineAbsorption
         IndexTable sort_los_table;
 };
 
-/*Convert the units of colden from atoms/(kpc/h)^2 to atoms/cm^2*/
-void convert_colden_units(double * colden, const int nbins, const double h100, const double atime);
+/*Convert the units of colden from atoms/(kpc/h)^2 to atoms (of species)/cm^2*/
+void convert_colden_units(double * colden, const int nbins, const double h100, const double atime, const double amumass);
 
 #endif

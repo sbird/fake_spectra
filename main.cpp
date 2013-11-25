@@ -220,8 +220,8 @@ int main(int argc, char **argv)
           /*Free the particle list once we don't need it*/
           free_parts(&P);
   } while(i_fileno > 0);
-  convert_colden_units(colden_H1, NBINS*NumLos, h100, atime);
-  convert_colden_units(tau_H1, NBINS*NumLos, h100, atime);
+  convert_colden_units(colden_H1, NBINS*NumLos, h100, atime, HMASS);
+  convert_colden_units(tau_H1, NBINS*NumLos, h100, atime,HMASS);
   free(cofm);
   free(axis);
   printf("Done interpolating, now calculating absorption\n");

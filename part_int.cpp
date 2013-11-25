@@ -51,13 +51,13 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float D
 #define  GADGET_LENGTH 3.085678e21
 
 /*Convert the units of colden from (internal mass)/(kpc/h)^2 to atoms/cm^2*/
-void convert_colden_units(double * colden, const int nbins, const double h100, const double atime)
+void convert_colden_units(double * colden, const int nbins, const double h100, const double atime, const double amumass)
 {
   /* Conversion factors from internal units */
   const double mscale = GADGET_MASS/h100; /* convert mass to g */
   // kpc/h (comov) to cm (phys)
   const double rscale = GADGET_LENGTH*atime/h100;
   for(int i = 0;i<nbins;i++)
-     colden[i]*=mscale/PROTONMASS*pow(rscale,-2);
+     colden[i]*=mscale/(amumass*PROTONMASS)*pow(rscale,-2);
   return;
 }

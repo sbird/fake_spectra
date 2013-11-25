@@ -267,7 +267,7 @@ class Spectra:
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             den *= self.cloudy_table.ion(elem, ion, den, temp)
-        #Get the mass fracion in this species
+        #Get the mass fracion in this species: den is now density in ionic species in amu/cm^3
         den *= self.get_mass_frac(elem, data, ind)
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
@@ -444,8 +444,9 @@ class Spectra:
             del ttau
             del tcolden
         #Rescale the units on column density from
-        # amu / cm^3 *(gadget length) to atoms/cm^2
-        conv = self.UnitLength_in_cm*self.atime/self.hubble
+        # amu / cm^3 *(gadget length) to atoms (of species) /cm^2
+        amumass = self.lines.get_mass(elem)
+        conv = self.UnitLength_in_cm*self.atime/self.hubble/amumass
         colden *= conv
         tau *= conv
         return (tau, colden)

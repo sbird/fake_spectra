@@ -116,7 +116,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       const double vlow = (boxtosm*z - vel);
       const double vhigh = (boxtosm*(z+1) - vel);
 
-      //colden in units of Gadget_mass / Gadget_length^2 * integral in terms of z / h
+      //colden in units of [den units]*[h units] * integral in terms of z / h
       const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
 
       // The index may be periodic wrapped.
