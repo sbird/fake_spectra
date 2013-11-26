@@ -17,8 +17,11 @@
 #include <cmath>
 
 /* Physical constants, cgs units */
-#define  SIGMA_T 6.652458558e-24 /* Thompson cross-section in cm^2*/
-#define  BOLTZMANN  1.3806504e-16  /* cm2 g s-2 K-1 */
+#define  SIGMA_T 6.652458558e-25 /* Thompson cross-section in cm^2*/
+//Note BOLTZMANN is given in cgs units, velocities supplied
+//from outside will be here are in km/s
+#define  BOLTZMANN  1.3806504e-16  /*  ergs K-1 or cm2 g s-2 K-1 */
+
 #define  LIGHT      2.99792458e10 /*in cm/s*/
 // convert energy/unit mass to erg/g
 #define  ESCALE 1.0e10
@@ -74,9 +77,10 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     return 8*deltaz*total/M_PI;
 }
 
+//Factor of 1e5 in bfac converts from cm/s to km/s
 LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
-bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS)) ),
+bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI) ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
 {
