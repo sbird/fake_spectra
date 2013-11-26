@@ -45,9 +45,9 @@ class LineAbsorption
          * Arguments:
          * colden: column density of absorber in amu per m^2.
          * vdiff: the relative velocities between absorper and bin.
-         * temp: temperature of absorber in K
+         * b_H1: b parameter of absorber. = bfac * sqrt(temp), temperature of absorber in K
          */
-        inline double tau_single(const double colden, const double vdiff, const double temp);
+        inline double tau_single(const double colden, const double vdiff, const double b_H1);
 
     private:
         /* Absorption cross-sections m^2 */

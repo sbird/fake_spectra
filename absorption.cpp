@@ -130,12 +130,14 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       //Add natural broadening someday
       // 
       if (tau) {
+        /* b has the units of velocity: km/s*/
+        const double b_H1   = bfac*sqrt(temp);
         for(int i=0;i<nbins;i++)
         {
             double vdiff = fabs(vbox*(i-j)/nbins);
             if (vdiff > (vbox/2.0))
               vdiff = vbox - vdiff;
-            tau[i] += tau_single(colden_this, vdiff, temp);
+            tau[i] += tau_single(colden_this, vdiff, b_H1);
         }
       }
   }
@@ -143,10 +145,8 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   return;
 }
 
-inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double temp)
+inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double b_H1)
 {
-    /* b has the units of velocity: km/s*/
-    const double b_H1   = bfac*sqrt(temp);
     const double T0 = pow(vdiff/b_H1,2);
     const double T1 = exp(-T0);
     /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
