@@ -147,16 +147,21 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
         //and thus i < j + b * sqrt(-log(PROCUT))
         //         i > j - b ...
         const double vcut = bb * sqrt(-LPROCUT);
-        const int ilow = j - nbins * vcut /vbox;
-        const int ihigh = j + nbins * vcut /vbox;
-        for(int i=ilow;i<ihigh;i++)
+        const double vbin = vbox/nbins;
+        const int ilow = j - vcut/vbin;
+        const int ihigh = j + vcut/vbin;
+        for(int i=ilow;i<j;i++)
         {
-            double vdiff = fabs(vbox*(i-j)/nbins);
-            int ii = i;
-            while (ii < 0)
-                ii+=10*nbins;
-            ii %= nbins;
+            double vdiff = vbin*(j-i);
+            int ii = i % nbins;
+            if (ii < 0)
+                ii+=nbins;
             tau[ii] += tau_single(colden_this, vdiff, bb);
+        }
+        for(int i=j;i<ihigh;i++)
+        {
+            double vdiff = vbin*(i-j);
+            tau[i % nbins] += tau_single(colden_this, vdiff, bb);
         }
       }
   }
@@ -166,7 +171,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
 
 inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double b_H1)
 {
-    const double T0 = pow(vdiff/b_H1,2);
+    const double T0 = (vdiff/b_H1)*(vdiff/b_H1);
     const double T1 = exp(-T0);
     /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
      * includes thermal and doppler broadening. */
