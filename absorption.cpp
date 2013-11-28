@@ -32,6 +32,11 @@
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
 #define NGRID 8
+//Profile percentage threshold below which we don't
+//care about the profile contributions in log units
+//Since we really care about exp(-tau)
+//the effect is even smaller
+#define LPROCUT -2.5
 
 inline double sph_kernel(const double q)
 {
@@ -135,13 +140,23 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       // 
       if (tau) {
         /* b has the units of velocity: km/s*/
-        const double b_H1   = bfac*sqrt(temp);
-        for(int i=0;i<nbins;i++)
+        const double bb   = bfac*sqrt(temp);
+        //In the small limit, the profile goes like exp(-(vdiff/b)**2)
+        //So if we don't care about profile parts less than a threshold PROCUT,
+        //can enforce vdiff < b * sqrt(-log(PROCUT))
+        //and thus i < j + b * sqrt(-log(PROCUT))
+        //         i > j - b ...
+        const double vcut = bb * sqrt(-LPROCUT);
+        const int ilow = j - nbins * vcut /vbox;
+        const int ihigh = j + nbins * vcut /vbox;
+        for(int i=ilow;i<ihigh;i++)
         {
             double vdiff = fabs(vbox*(i-j)/nbins);
-            if (vdiff > (vbox/2.0))
-              vdiff = vbox - vdiff;
-            tau[i] += tau_single(colden_this, vdiff, b_H1);
+            int ii = i;
+            while (ii < 0)
+                ii+=10*nbins;
+            ii %= nbins;
+            tau[ii] += tau_single(colden_this, vdiff, bb);
         }
       }
   }
