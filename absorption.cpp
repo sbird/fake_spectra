@@ -137,8 +137,34 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       /* Loop again, because the column density that contributes to this
        * bin may be broadened thermal or doppler broadened*/
       //Add natural broadening someday
-      // 
       if (tau) {
+          //Compute absorption
+          tau_single(tau, j, colden_this,temp,nbins);
+      }
+  }
+
+  return;
+}
+
+//Get the Voigt or Gaussian profile for a particle
+//T0 = (vdiff / b_H1)**2 and aa = voigt_fac/b_H1
+inline double LineAbsorption::profile(const double T0, const double aa)
+{
+    const double T1 = exp(-T0);
+    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
+     * includes thermal and doppler broadening. */
+  #ifdef VOIGT
+    const double T2 = 1.5/T0;
+    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
+  #else
+    const double profile_H1 = T1;
+  #endif
+    return profile_H1;
+}
+
+//Compute the absorption for a single particle
+void LineAbsorption::tau_single(double * tau, const int j, const double colden, const double temp, const int nbins)
+{
         /* b has the units of velocity: km/s*/
         const double bb   = bfac*sqrt(temp);
         //In the small limit, the profile goes like exp(-(vdiff/b)**2)
@@ -146,43 +172,19 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
         //can enforce vdiff < b * sqrt(-log(PROCUT))
         //and thus i < j + b * sqrt(-log(PROCUT))
         //         i > j - b ...
-        const double vcut = bb * sqrt(-LPROCUT);
-        const double vbin = vbox/nbins;
-        const int ilow = j - vcut/vbin;
-        const int ihigh = j + vcut/vbin;
-        for(int i=ilow;i<j;i++)
+        const double vbin = vbox/nbins/bb;
+        const int ilow = j - sqrt(-LPROCUT)/vbin;
+        const int ihigh = j + sqrt(-LPROCUT)/vbin;
+        const double aa = voigt_fac/bb;
+        const double amp = sigma_a / sqrt(M_PI) * (LIGHT/bb) * colden;
+        for(int i=ilow;i<ihigh;i++)
         {
-            double vdiff = vbin*(j-i);
+            const double T0 = vbin*vbin*(i-j)*(i-j);
             int ii = i % nbins;
             if (ii < 0)
                 ii+=nbins;
-            tau[ii] += tau_single(colden_this, vdiff, bb);
+            tau[ii] += amp * profile(T0, aa);
         }
-        for(int i=j;i<ihigh;i++)
-        {
-            double vdiff = vbin*(i-j);
-            tau[i % nbins] += tau_single(colden_this, vdiff, bb);
-        }
-      }
-  }
-
-  return;
-}
-
-inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double b_H1)
-{
-    const double T0 = (vdiff/b_H1)*(vdiff/b_H1);
-    const double T1 = exp(-T0);
-    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-     * includes thermal and doppler broadening. */
-  #ifdef VOIGT
-    const double aa_H1 = voigt_fac/b_H1;
-    const double T2 = 1.5/T0;
-    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa_H1/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
-  #else
-    const double profile_H1 = T1;
-  #endif
-    return sigma_a / sqrt(M_PI) * (LIGHT/b_H1) * colden * profile_H1;
 }
 
 /* Compute temperature (in K) from internal energy.
