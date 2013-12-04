@@ -17,8 +17,11 @@
 #include <cmath>
 
 /* Physical constants, cgs units */
-#define  SIGMA_T 6.652458558e-24 /* Thompson cross-section in cm^2*/
-#define  BOLTZMANN  1.3806504e-16  /* cm2 g s-2 K-1 */
+#define  SIGMA_T 6.652458558e-25 /* Thompson cross-section in cm^2*/
+//Note BOLTZMANN is given in cgs units, velocities supplied
+//from outside will be here are in km/s
+#define  BOLTZMANN  1.3806504e-16  /*  ergs K-1 or cm2 g s-2 K-1 */
+
 #define  LIGHT      2.99792458e10 /*in cm/s*/
 // convert energy/unit mass to erg/g
 #define  ESCALE 1.0e10
@@ -29,6 +32,11 @@
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
 #define NGRID 8
+//Profile percentage threshold below which we don't
+//care about the profile contributions in log units
+//Since we really care about exp(-tau)
+//the effect is even smaller
+#define LPROCUT -2.5
 
 inline double sph_kernel(const double q)
 {
@@ -74,9 +82,10 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     return 8*deltaz*total/M_PI;
 }
 
+//Factor of 1e5 in bfac converts from cm/s to km/s
 LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
-bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS)) ),
+bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI) ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
 {
@@ -128,37 +137,54 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       /* Loop again, because the column density that contributes to this
        * bin may be broadened thermal or doppler broadened*/
       //Add natural broadening someday
-      // 
       if (tau) {
-        for(int i=0;i<nbins;i++)
-        {
-            double vdiff = fabs(vbox*(i-j)/nbins);
-            if (vdiff > (vbox/2.0))
-              vdiff = vbox - vdiff;
-            tau[i] += tau_single(colden_this, vdiff, temp);
-        }
+          //Compute absorption
+          tau_single(tau, j, colden_this,temp,nbins);
       }
   }
 
   return;
 }
 
-inline double LineAbsorption::tau_single(const double colden, const double vdiff, const double temp)
+//Get the Voigt or Gaussian profile for a particle
+//T0 = (vdiff / b_H1)**2 and aa = voigt_fac/b_H1
+inline double LineAbsorption::profile(const double T0, const double aa)
 {
-    /* b has the units of velocity: km/s*/
-    const double b_H1   = bfac*sqrt(temp);
-    const double T0 = pow(vdiff/b_H1,2);
     const double T1 = exp(-T0);
     /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
      * includes thermal and doppler broadening. */
   #ifdef VOIGT
-    const double aa_H1 = voigt_fac/b_H1;
     const double T2 = 1.5/T0;
-    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa_H1/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
+    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
   #else
     const double profile_H1 = T1;
   #endif
-    return sigma_a / sqrt(M_PI) * (LIGHT/b_H1) * colden * profile_H1;
+    return profile_H1;
+}
+
+//Compute the absorption for a single particle
+void LineAbsorption::tau_single(double * tau, const int j, const double colden, const double temp, const int nbins)
+{
+        /* b has the units of velocity: km/s*/
+        const double bb   = bfac*sqrt(temp);
+        //In the small limit, the profile goes like exp(-(vdiff/b)**2)
+        //So if we don't care about profile parts less than a threshold PROCUT,
+        //can enforce vdiff < b * sqrt(-log(PROCUT))
+        //and thus i < j + b * sqrt(-log(PROCUT))
+        //         i > j - b ...
+        const double vbin = vbox/nbins/bb;
+        const int ilow = j - sqrt(-LPROCUT)/vbin;
+        const int ihigh = j + sqrt(-LPROCUT)/vbin;
+        const double aa = voigt_fac/bb;
+        const double amp = sigma_a / sqrt(M_PI) * (LIGHT/bb) * colden;
+        for(int i=ilow;i<ihigh;i++)
+        {
+            const double T0 = vbin*vbin*(i-j)*(i-j);
+            int ii = i % nbins;
+            if (ii < 0)
+                ii+=nbins;
+            tau[ii] += amp * profile(T0, aa);
+        }
 }
 
 /* Compute temperature (in K) from internal energy.
