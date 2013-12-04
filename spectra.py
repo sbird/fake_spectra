@@ -30,7 +30,7 @@ import hdfsim
 import halocat
 from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
 from _spectra_priv import _Particle_Interpolate, _near_lines
@@ -513,9 +513,7 @@ class Spectra:
         res = fwhm/self.dvbin
         #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
         sigma = res/(2*np.sqrt(2*np.log(2)))
-        oflux = np.empty_like(flux)
-        for xx in xrange(np.shape(flux)[0]):
-            oflux[xx,:] = gaussian_filter(flux[xx,:], sigma)
+        oflux = gaussian_filter1d(flux, sigma, axis=-1)
         return oflux
 
 
