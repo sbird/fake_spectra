@@ -39,24 +39,6 @@ class LineAbsorption
          */
         void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
 
-        /* Compute the absorption in a single bin, using
-         * either straight Gaussian or a Voigt profile.
-         * Note! No unit conversion is done on the column density.
-         * Arguments:
-         * colden: column density of absorber in amu per m^2.
-         * T0 = (vdiff/b_H1)**2
-         * vdiff: the relative velocities between absorper and bin.
-         * aa_H1: voigt_fac/b_H1
-         * b_H1: b parameter of absorber. = bfac * sqrt(temp), temperature of absorber in K
-         */
-        inline double profile(const double T0, const double aa);
-        //Compute the absorption for a single particle:
-        //tau: where to save absorption to
-        //j: bin where absorbing particle is from
-        //temp: particle temperature
-        //nbins: total number of bins in spectrum
-        void tau_single(double * tau, const int j, const double colden, const double temp, const int nbins);
-
     private:
         /* Absorption cross-sections m^2 */
         const double sigma_a;

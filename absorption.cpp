@@ -82,6 +82,112 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     return 8*deltaz*total/M_PI;
 }
 
+/* Compute the Voigt or Gaussian profile.
+ * Arguments:
+ * T0 = (vdiff/btherm)**2
+ * aa: voigt_fac/btherm
+ * (note btherm is sqrt(2k T / M))
+ */
+inline double profile(const double T0, const double aa)
+{
+    const double T1 = exp(-T0);
+    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
+     * includes thermal and doppler broadening. */
+  #ifdef VOIGT
+    const double T2 = 1.5/T0;
+    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
+  #else
+    const double profile_H1 = T1;
+  #endif
+    return profile_H1;
+}
+
+
+class SingleAbsorber
+{
+    public:
+
+        /*This class evaluates the convolution integral for the optical depth.
+         * This is:
+         *
+         * tau = int_{bin} dv' int_{sph kernel support} dv n(v) Phi(v-v')
+         * where n is the local density and Phi is the broadening function.
+         *
+         * Arguments:
+         * btherm: thermal b parameter: sqrt(2kT/m)
+         * vel: velocity of particle parallel to sightline
+         * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
+         * vsmooth: smoothing length in velocity units (km/s)
+         * aa: voigt_fac/btherm the parameter for the Voight profile
+         */
+        SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
+            btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i)
+        {};
+
+        /*Evaluate the outer integral in the convolution which gives us the optical depth.
+         * This is:
+         *
+         * tau = int_{bin} dv' tau_kern_inner(v)
+         * Arguments:
+         * vlow, vhigh: integration limits, which should be v_bin - v_particle
+         */
+        double tau_kern_outer(const double vlow, const double vhigh)
+        {
+            double total = tau_kern_inner(vlow)/2.;
+            const double deltav=(vhigh-vlow)/NGRID;
+            for(int i=1; i<NGRID; ++i)
+            {
+                const double vv = i*deltav+vlow;
+                total += tau_kern_inner(vv);
+            }
+            total += tau_kern_inner(vhigh)/2.;
+            return deltav*total;
+        }
+
+    private:
+        /*Evaluate the inner integral in the convolution which gives us the optical depth.
+         * This is:
+         *
+         * tau = int_{bin} dv' int_{sph kernel support} dv n(v) Phi(v-v')
+         * where n is the local density and Phi is the broadening function.
+         *
+         * This does the inner function: int{sph kernel support} dv n(v) Phi(v-v')
+         * (Strictly speaking internally we use v'' = v - v_part and v''' = v' - v_part)
+         * Arguments:
+         * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
+         * vouter: velocity value for the outer integral. This should be v_bin - v_particle.
+         * btherm: thermal b parameter: sqrt(2kT/m)
+         * vsmooth: smoothing length in velocity units (km/s)
+         */
+        double tau_kern_inner(const double vouter)
+        {
+            //Compute SPH kernel support region
+            const double vhigh = sqrt(vsmooth*vsmooth-vdr2);
+            //Integration region goes from -vhigh to vhigh
+            const double deltav=2.*vhigh/NGRID;
+            //Because we are integrating over the whole sph kernel,
+            //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
+            double total = 0;
+            for(int i=1; i<NGRID; ++i)
+            {
+                const double vv = i*deltav-vhigh;
+                const double q = sqrt(vdr2+vv*vv)/vsmooth;
+                //The difference between this velocity bin and the particle velocity
+                const double vdiff = vv - vouter;
+                const double T0 = pow(vdiff/btherm,2);
+                total+=sph_kernel(q)*profile(T0,aa);
+            }
+            return 8*deltav*total/M_PI;
+        }
+
+        const double btherm;
+        const double vdr2;
+        const double vsmooth;
+        const double aa;
+};
+
+
+
 //Factor of 1e5 in bfac converts from cm/s to km/s
 LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
@@ -118,7 +224,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   // z is position in units of the box
   const int zlow = floor((vel - zrange) / boxtosm);
   const int zhigh = ceil((vel + zrange) / boxtosm);
-  /* Compute the HI Lya spectra */
+  // Compute the column density
   for(int z=zlow; z<=zhigh; z++)
   {
       /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
@@ -134,57 +240,33 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       if (j < 0)
         j+=nbins;
       colden[j] += colden_this;
-      /* Loop again, because the column density that contributes to this
-       * bin may be broadened thermal or doppler broadened*/
-      //Add natural broadening someday
-      if (tau) {
-          //Compute absorption
-          tau_single(tau, j, colden_this,temp,nbins);
-      }
+  }
+  //Finish now if not computing absorption
+  if (!tau) {
+      return;
   }
 
+  /* btherm has the units of velocity: km/s*/
+  const double btherm = bfac*sqrt(temp);
+  // Create absorption object
+  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, vsmooth, voigt_fac/btherm );
+  // Do the tau integral for each bin
+  const double bintov = vbox/nbins;
+  // Amplitude factor for the strength of the transition.
+  // sqrt(pi)*c / btherm comes from the profile.
+  const double amp = sigma_a / sqrt(M_PI) * (LIGHT/btherm);
+  for(int z=0; z<nbins; z++)
+  {
+      double vlow = z*bintov - vel;
+      // Deal with periodicity.
+      // If this bin is more than half a box away from
+      // the particle, move it closer
+      // Note that damping wings that span a whole box will be cut off; they do not wrap around.
+      if (fabs(vlow) > vbox/2.)
+          vlow -= vbox;
+      tau[z]+=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+  }
   return;
-}
-
-//Get the Voigt or Gaussian profile for a particle
-//T0 = (vdiff / b_H1)**2 and aa = voigt_fac/b_H1
-inline double LineAbsorption::profile(const double T0, const double aa)
-{
-    const double T1 = exp(-T0);
-    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-     * includes thermal and doppler broadening. */
-  #ifdef VOIGT
-    const double T2 = 1.5/T0;
-    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
-  #else
-    const double profile_H1 = T1;
-  #endif
-    return profile_H1;
-}
-
-//Compute the absorption for a single particle
-void LineAbsorption::tau_single(double * tau, const int j, const double colden, const double temp, const int nbins)
-{
-        /* b has the units of velocity: km/s*/
-        const double bb   = bfac*sqrt(temp);
-        //In the small limit, the profile goes like exp(-(vdiff/b)**2)
-        //So if we don't care about profile parts less than a threshold PROCUT,
-        //can enforce vdiff < b * sqrt(-log(PROCUT))
-        //and thus i < j + b * sqrt(-log(PROCUT))
-        //         i > j - b ...
-        const double vbin = vbox/nbins/bb;
-        const int ilow = j - sqrt(-LPROCUT)/vbin;
-        const int ihigh = j + sqrt(-LPROCUT)/vbin;
-        const double aa = voigt_fac/bb;
-        const double amp = sigma_a / sqrt(M_PI) * (LIGHT/bb) * colden;
-        for(int i=ilow;i<ihigh;i++)
-        {
-            const double T0 = vbin*vbin*(i-j)*(i-j);
-            int ii = i % nbins;
-            if (ii < 0)
-                ii+=nbins;
-            tau[ii] += amp * profile(T0, aa);
-        }
 }
 
 /* Compute temperature (in K) from internal energy.
@@ -210,5 +292,4 @@ double compute_temp(const double uu, const double ne, const double xh)
      *     [+ Z/16*4 ] for OIV from electrons. */
     const double mu = 1.0/(xh*(0.75+ne) + 0.25);
     return uu*mu * TSCALE; /* T in K */
-
 }
