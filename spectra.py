@@ -260,22 +260,25 @@ class Spectra:
 
         den = den[ind]
         #Find the mass fraction in this ion
+        #Get the mass fraction in this species: den is now density in ionic species in amu/cm^3
+        elem_den = den*self.get_mass_frac(elem,data,ind)
         #Special case H1:
         if elem == 'H' and ion == 1:
             # Neutral hydrogen mass frac
-            den *= star.get_reproc_HI(data)[ind]
+            elem_den *= star.get_reproc_HI(data)[ind]
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
-            den *= self.cloudy_table.ion(elem, ion, den, temp)
-        #Get the mass fraction in this species: den is now density in ionic species in amu/cm^3
-        den *= self.get_mass_frac(elem, data, ind)
+            ind2 = np.where(elem_den > 0)
+            elem_den[ind2] *= self.cloudy_table.ion(elem, ion, den[ind2], temp[ind2])
+            del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
         del ind
+        del den
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, den, temp, hh, axis, cofm)
+        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, axis, cofm)
         return (tau,colden)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
@@ -305,8 +308,7 @@ class Spectra:
             mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
             mass_frac = mass_frac[ind]
             #Deal with floating point roundoff - mass_frac will sometimes be negative
-            #10^-30 is Cloudy's definition of zero.
-            mass_frac[np.where(mass_frac < 1e-30)] = 1e-30
+            mass_frac[np.where(mass_frac <= 0)] = 0
         except KeyError:
             #If GFM_Metals is not defined, fall back to primordial abundances
             metal_abund = np.array([0.76, 0.24],dtype=np.float32)
