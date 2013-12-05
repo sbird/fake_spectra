@@ -32,11 +32,9 @@
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
 #define NGRID 8
-//Profile percentage threshold below which we don't
-//care about the profile contributions in log units
-//Only used if INACCURATE is defined, as unfortunately the
-//tails are important for saturated lines
-#define NEGLECT 1e-5
+
+//Threshold of tau below which we stop computing profiles
+#define TAUTAIL 0.001
 
 inline double sph_kernel(const double q)
 {
@@ -136,24 +134,6 @@ class SingleAbsorber
         {
             double total = tau_kern_inner(vlow)/2.;
             const double deltav=(vhigh-vlow)/NGRID;
-#ifdef INACCURATE
-            //Short-circuit the integration when profile is always very small
-            //Want the minimal value of T0  = (v - vouter)^2 / b^2
-            //If v < vouter, then min at v = vhigh
-            //If v > vouter then min at v = vlow = -vhigh
-            if (vhigh < 0)
-            {
-                T0min = pow((vhigh + vsmooth)/btherm,2);
-            }
-            else if (vlow > 0)
-            {
-                T0min = pow((vlow - vsmooth)/btherm,2);
-            }
-            //Profile goes like a/pi x^2 in the damping wings and exp(-x^2) in the Gaussian core.
-            //Short-circuit integration if both are small
-            if (T0min > 0 && aa/sqrt(M_PI)/T0min < NEGLECT && exp(-T0min) < NEGLECT)
-                return 0;
-#endif
             for(int i=1; i<NGRID; ++i)
             {
                 const double vv = i*deltav+vlow;
@@ -274,17 +254,31 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   // Amplitude factor for the strength of the transition.
   // sqrt(pi)*c / btherm comes from the profile.
   const double amp = sigma_a / sqrt(M_PI) * (LIGHT/btherm);
-  for(int z=0; z<nbins; z++)
+  //Bin nearest the particle
+  const int zmax = floor(vel/bintov);
+  //Go from nearest the particle to half a box away.
+  //After that we certainly want to stop as we will have wrapped around.
+  //This means that damping wings which span a whole box will be cut off at the edges.
+  for(int z=zmax; z<zmax+nbins/2; ++z)
   {
       double vlow = z*bintov - vel;
-      // Deal with periodicity.
-      // If this bin is more than half a box away from
-      // the particle, move it closer
-      // Note that damping wings that span a whole box will be cut off; they do not wrap around.
-      if (fabs(vlow) > vbox/2.)
-          vlow -= vbox;
-      tau[z]+=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+      const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+      tau[z % nbins ]+=taulast;
+      //Absorption will only decrease as you go further from the particle.
+      if(taulast < TAUTAIL)
+        break;
   }
+  //Go from the particle backwards
+  for(int z=zmax-1; z>zmax-nbins/2; --z)
+  {
+      double vlow = z*bintov - vel;
+      const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+      tau[(z + nbins) % nbins ]+=taulast;
+      //Absorption will only decrease as you go further from the particle.
+      if(taulast < TAUTAIL)
+        break;
+  }
+
   return;
 }
 
