@@ -236,7 +236,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       // The index may be periodic wrapped.
       // Index in units of the box
       int j = z % nbins;
-      if (j < 0)
+      if (j<0)
         j+=nbins;
       colden[j] += colden_this;
   }
@@ -263,7 +263,11 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   {
       double vlow = z*bintov - vel;
       const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
-      tau[z % nbins ]+=taulast;
+      // Make sure index is properly wrapped
+      int j = z % nbins;
+      if (j<0)
+        j+=nbins;
+      tau[j]+=taulast;
       //Absorption will only decrease as you go further from the particle.
       if(taulast < TAUTAIL)
         break;
@@ -273,7 +277,11 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   {
       double vlow = z*bintov - vel;
       const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
-      tau[(z + nbins) % nbins ]+=taulast;
+      // Make sure index is properly wrapped
+      int j = z % nbins;
+      if (j<0)
+        j+=nbins;
+      tau[j]+=taulast;
       //Absorption will only decrease as you go further from the particle.
       if(taulast < TAUTAIL)
         break;
