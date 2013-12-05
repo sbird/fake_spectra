@@ -34,9 +34,9 @@
 #define NGRID 8
 //Profile percentage threshold below which we don't
 //care about the profile contributions in log units
-//Since we really care about exp(-tau)
-//the effect is even smaller
-#define LPROCUT -2.5
+//Only used if INACCURATE is defined, as unfortunately the
+//tails are important for saturated lines
+#define NEGLECT 1e-5
 
 inline double sph_kernel(const double q)
 {
@@ -83,6 +83,9 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
 }
 
 /* Compute the Voigt or Gaussian profile.
+ * Uses the approximation to the Voigt profile from Tepper-Garcia, 2006, MNRAS, 369, 2025
+ * (astro-ph/0602124) eq. 25, somewhat simplified
+ * which is accurate to 1% in the worst case, a narrow region between the wings and the core.
  * Arguments:
  * T0 = (vdiff/btherm)**2
  * aa: voigt_fac/btherm
@@ -91,8 +94,6 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
 inline double profile(const double T0, const double aa)
 {
     const double T1 = exp(-T0);
-    /* Voigt profile: Tepper-Garcia, 2006, MNRAS, 369, 2025
-     * includes thermal and doppler broadening. */
   #ifdef VOIGT
     const double T2 = 1.5/T0;
     const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
@@ -135,6 +136,24 @@ class SingleAbsorber
         {
             double total = tau_kern_inner(vlow)/2.;
             const double deltav=(vhigh-vlow)/NGRID;
+#ifdef INACCURATE
+            //Short-circuit the integration when profile is always very small
+            //Want the minimal value of T0  = (v - vouter)^2 / b^2
+            //If v < vouter, then min at v = vhigh
+            //If v > vouter then min at v = vlow = -vhigh
+            if (vhigh < 0)
+            {
+                T0min = pow((vhigh + vsmooth)/btherm,2);
+            }
+            else if (vlow > 0)
+            {
+                T0min = pow((vlow - vsmooth)/btherm,2);
+            }
+            //Profile goes like a/pi x^2 in the damping wings and exp(-x^2) in the Gaussian core.
+            //Short-circuit integration if both are small
+            if (T0min > 0 && aa/sqrt(M_PI)/T0min < NEGLECT && exp(-T0min) < NEGLECT)
+                return 0;
+#endif
             for(int i=1; i<NGRID; ++i)
             {
                 const double vv = i*deltav+vlow;
@@ -159,7 +178,7 @@ class SingleAbsorber
          * btherm: thermal b parameter: sqrt(2kT/m)
          * vsmooth: smoothing length in velocity units (km/s)
          */
-        double tau_kern_inner(const double vouter)
+        inline double tau_kern_inner(const double vouter)
         {
             //Compute SPH kernel support region
             const double vhigh = sqrt(vsmooth*vsmooth-vdr2);
