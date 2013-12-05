@@ -228,17 +228,13 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   {
       /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
       const double vlow = (boxtosm*z - vel);
-      const double vhigh = (boxtosm*(z+1) - vel);
-
-      //colden in units of [den units]*[h units] * integral in terms of z / h
-      const double colden_this = avgdens*sph_kern_frac(vlow, vhigh, bb2);
-
       // The index may be periodic wrapped.
       // Index in units of the box
       int j = z % nbins;
       if (j<0)
         j+=nbins;
-      colden[j] += colden_this;
+      //colden in units of [den units]*[h units] * integral in terms of z / h
+      colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
   }
   //Finish now if not computing absorption
   if (!tau) {
