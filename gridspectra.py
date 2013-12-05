@@ -41,8 +41,8 @@ class GridSpectra(spectra.Spectra):
             num = self.NumLos
 
         #Get some random indices into the box.
-        index = np.random.random_integers(0,np.size(self.dlaind[:,0])-1,num)
-        cofm = np.array([self.dlaind[index,0],self.dlaind[index,0],self.dlaind[index,1]]).T
+        index = np.random.random_integers(0,np.size(self.dlaind[0,:])-1,num)
+        cofm = np.array([self.dlaind[0,index],self.dlaind[0,index],self.dlaind[1,index]]).T
         #Randomize positions within a cell
         cofm[:,1] += self.celsz*(np.random.random_sample(num)-0.5)
         cofm[:,2] += self.celsz*(np.random.random_sample(num)-0.5)
