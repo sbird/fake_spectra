@@ -60,6 +60,7 @@ class Spectra:
         self.tau_obs = {}
         self.tau = {}
         self.colden = {}
+        self.ind = {}
         self.num_important = {}
         self.discarded=0
         self.npart = 512**3
@@ -230,7 +231,11 @@ class Spectra:
             axis = self.axis
 
         #Find particles we care about
-        ind = self.particles_near_lines(pos, hh,axis,cofm)
+        try:
+          ind = self.ind[fn]
+        except KeyError:
+          ind = self.particles_near_lines(pos, hh,axis,cofm)
+          self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
             ret = np.zeros([np.shape(cofm)[0],self.nbins],dtype=np.float32)
@@ -273,7 +278,6 @@ class Spectra:
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
-        del ind
         del den
         #Do interpolation.
         velfac = self.vmax/self.box
