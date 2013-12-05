@@ -451,7 +451,10 @@ class Spectra:
             del tcolden
         #Rescale the units on column density from
         # amu / cm^3 *(gadget length) to atoms (of species) /cm^2
-        amumass = self.lines.get_mass(elem)
+        if elem != "Z":
+            amumass = self.lines.get_mass(elem)
+        else:
+            amumass = 1
         conv = self.rscale/amumass
         colden *= conv
         tau *= conv
