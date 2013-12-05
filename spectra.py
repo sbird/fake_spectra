@@ -393,6 +393,7 @@ class Spectra:
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
+            self.ind = {}
             (tau, col_den) = self.compute_spectra("H",1,1,get_tau)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
