@@ -166,10 +166,10 @@ class Spectra:
             #Create directory hierarchy recursively
             for ii in xrange(np.size(key)-1):
                 try:
-                    gg = gg[key[ii]]
+                    gg = gg[str(key[ii])]
                 except KeyError:
-                    gg.create_group(key[ii])
-                    gg = gg[key[ii]]
+                    gg.create_group(str(key[ii]))
+                    gg = gg[str(key[ii])]
             #Delete old dataset if present
             try:
                 del gg[str(key[-1])]
