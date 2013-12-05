@@ -33,8 +33,8 @@ ifeq (icc,$(findstring icc,${CC}))
   CFLAGS +=-O3 -g -w1 -openmp -fpic -march=native
   LINK +=${CXX} -O3 -openmp -march=native
 else
-  CFLAGS +=-O3 -g -Wall -fopenmp -fPIC
-  LINK +=${CXX} -g -O3 -fopenmp $(PRO)
+  CFLAGS +=-O3 -g -Wall -fopenmp -fPIC -ffast-math
+  LINK +=${CXX} -g -O3 -fopenmp $(PRO) -ffast-math
   LFLAGS += -lm -lgomp
 endif
 PG =
