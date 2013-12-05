@@ -1,7 +1,9 @@
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include "part_int.h"
 #include <set>
+
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
