@@ -6,6 +6,8 @@ import os.path as path
 import numpy as np
 
 np.seterr(all='raise')
+np.seterr(under='warn')
+
 
 snapnum=sys.argv[1]
 sim=sys.argv[2]
