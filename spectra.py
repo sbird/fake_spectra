@@ -218,10 +218,14 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass, line) = self._read_particle_data(fn, elem, ion, ll, get_tau)
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion, get_tau)
+        if get_tau:
+            line = self.lines[(elem,ion)][ll]
+        else:
+            line = self.lines[("H",1)][0]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self,fn, elem, ion, ll, get_tau):
+    def _read_particle_data(self,fn, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -249,15 +253,8 @@ class Spectra:
         vel = vel[ind,:]
         #gas density amu / cm^3
         den=star.get_code_rhoH(data)
-        #Get line data
-        #If we don't want tau, any line will do
-        if get_tau:
-            temp = star.get_temp(den, data)
-            temp = temp[ind]
-            line = self.lines[(elem,ion)][ll]
-        else:
-            line = self.lines[("H",1)][0]
-            temp = np.array([], dtype=np.float32)
+        #Fake-define temp for now
+        temp = np.array([], dtype=np.float32)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
@@ -273,6 +270,9 @@ class Spectra:
             # Neutral hydrogen mass frac
             elem_den *= star.get_reproc_HI(data)[ind]
         elif ion != -1:
+            #Only need temp for ionic density, and tau later
+            temp = star.get_temp(den, data)
+            temp = temp[ind]
             #Cloudy density in physical H atoms / cm^3
             ind2 = np.where(elem_den > 0)
             #Shrink arrays: we don't want to interpolate particles
@@ -289,7 +289,7 @@ class Spectra:
         #Put density into number density of particles, from amu
         elem_den/=amumass
         #Do interpolation.
-        return (pos, vel, elem_den, temp, hh, amumass, line)
+        return (pos, vel, elem_den, temp, hh, amumass)
 
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
