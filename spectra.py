@@ -494,12 +494,28 @@ class Spectra:
                 pass
         #Compute tau for each line
         nlines = np.size(self.lines[(elem,ion)])
-        tau = np.array([self.compute_spectra(elem, ion, ll, True)[0] for ll in xrange(nlines)])
+        numlos = np.size(self.axis)
+        tau = np.empty([nlines, numlos,self.nbins])
+        pos = {}
+        vel = {}
+        elem_den = {}
+        temp = {}
+        hh = {}
+        for ff in self.files:
+            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], _) = self._read_particle_data(ff, elem, ion)
+
+        amumass = self.lines.get_mass(elem)
+        for ll in xrange(nlines):
+            line = self.lines[(elem,ion)][ll]
+            for ff in self.files:
+                if pos[ff] != False:
+                    (tau_loc, _) = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass, line, True)
+                    tau[ll,:,:] += tau_loc
+                    del tau_loc
         #Maximum tau in each spectra with each line
         maxtaus = np.max(tau, axis=-1)
         #Array for line indices
-        numlos = np.shape(tau)[0]
-        ntau = np.empty_like(tau[0])
+        ntau = np.empty([numlos, self.nbins])
         #Use the maximum unsaturated optical depth
         for ii in xrange(numlos):
             # we want unsaturated lines, defined as those with F > 0.1
