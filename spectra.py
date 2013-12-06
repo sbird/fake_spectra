@@ -216,29 +216,27 @@ class Spectra:
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def _interpolate_single_file(self,fn, elem, ion, ll, get_tau, h_ind=None):
+    def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
+        (pos, vel, elem_den, temp, hh, amumass, line) = self._read_particle_data(fn, elem, ion, ll, get_tau)
+        return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
+
+    def _read_particle_data(self,fn, elem, ion, ll, get_tau):
+        """Read the particle data for a single interpolation"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
         hh = hsml.get_smooth_length(data)
-        #Filter lines
-        if h_ind != None:
-            cofm = self.cofm[h_ind]
-            axis = self.axis[h_ind]
-        else:
-            cofm = self.cofm
-            axis = self.axis
 
         #Find particles we care about
         try:
             ind = self.ind[fn]
         except KeyError:
-            ind = self.particles_near_lines(pos, hh,axis,cofm)
+            ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
             self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            ret = np.zeros([np.shape(cofm)[0],self.nbins],dtype=np.float32)
+            ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
             if get_tau:
                 return (ret,ret)
             else:
@@ -270,7 +268,6 @@ class Spectra:
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
         elem_den = (den*self.rscale)*self.get_mass_frac(elem,data,ind)
-        print "minimal density",np.min(den), np.min(elem_den)
         #Special case H1:
         if elem == 'H' and ion == 1:
             # Neutral hydrogen mass frac
@@ -292,9 +289,13 @@ class Spectra:
         #Put density into number density of particles, from amu
         elem_den/=amumass
         #Do interpolation.
+        return (pos, vel, elem_den, temp, hh, amumass, line)
+
+    def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
+        """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, axis, cofm)
+        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
         return (tau,colden)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
