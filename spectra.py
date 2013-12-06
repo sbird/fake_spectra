@@ -289,7 +289,7 @@ class Spectra:
             pos = pos[ind2]
             hh = hh[ind2]
             vel = vel[ind2]
-            elem_den = elem_den[ind2]*self.cloudy_table.ion(elem, ion, den[ind2], temp)
+            elem_den = elem_den[ind2]*np.float32(self.cloudy_table.ion(elem, ion, den[ind2], temp))
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
