@@ -258,7 +258,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   for(int z=zmax; z<zmax+nbins/2; ++z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
@@ -272,7 +272,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   for(int z=zmax-1; z>zmax-nbins/2; --z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*absorber.tau_kern_outer(vlow, vlow+bintov);
+      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
