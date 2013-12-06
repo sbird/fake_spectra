@@ -267,8 +267,10 @@ class Spectra:
             amumass = 1
         den = den[ind]
         #Find the mass fraction in this ion
-        #Get the mass fraction in this species: den is now density in ionic species in amu/cm^3
-        elem_den = den*self.get_mass_frac(elem,data,ind)
+        #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
+        #(these weird units are chosen to be correct when multiplied by the smoothing length)
+        elem_den = (den*self.rscale)*self.get_mass_frac(elem,data,ind)
+        print "minimal density",np.min(den), np.min(elem_den)
         #Special case H1:
         if elem == 'H' and ion == 1:
             # Neutral hydrogen mass frac
@@ -472,9 +474,6 @@ class Spectra:
             colden += tcolden
             del ttau
             del tcolden
-        #Convert from cm-3 [gadget length] to cm-2
-        colden*=self.rscale
-        tau*=self.rscale
         return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
