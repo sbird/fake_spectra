@@ -219,7 +219,7 @@ class Spectra:
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion)
-        if pos == False:
+        if amumass == False:
             ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
             if get_tau:
                 return (ret,np.array(0.0))
@@ -246,7 +246,7 @@ class Spectra:
             self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            return (False, False, False, False,False)
+            return (False, False, False, False,False,False)
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
@@ -435,7 +435,6 @@ class Spectra:
         dlabins = int(self.vmax/dla_dvbin)
         if dlabins < self.nbins:
             cum = np.ceil(self.nbins*1. / dlabins)
-            print cum, dlabins
             ccdla = np.empty([np.shape(col_den)[0],dlabins])
             for ii in xrange(dlabins):
                 ccdla[:,ii] = np.sum(col_den[:,cum*ii:cum*(ii+1)],axis=1)
@@ -501,15 +500,15 @@ class Spectra:
         elem_den = {}
         temp = {}
         hh = {}
+        amumass = {}
         for ff in self.files:
-            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], _) = self._read_particle_data(ff, elem, ion)
+            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion)
 
-        amumass = self.lines.get_mass(elem)
         for ll in xrange(nlines):
             line = self.lines[(elem,ion)][ll]
             for ff in self.files:
-                if pos[ff] != False:
-                    (tau_loc, _) = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass, line, True)
+                if amumass[ff] != False:
+                    (tau_loc, _) = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
                     tau[ll,:,:] += tau_loc
                     del tau_loc
         #Maximum tau in each spectra with each line
