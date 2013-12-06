@@ -60,7 +60,10 @@ class Spectra:
         self.tau_obs = {}
         self.tau = {}
         self.colden = {}
-        self.ind = {}
+        #A cache of the indices of particles near sightlines.
+        self.part_ind = {}
+        #This variable should be set to true once the sightlines are fixed, and the cache can be used.
+        self.cofm_final = False
         self.num_important = {}
         self.discarded=0
         self.npart = 512**3
@@ -239,11 +242,14 @@ class Spectra:
         hh = hsml.get_smooth_length(data)
 
         #Find particles we care about
-        try:
-            ind = self.ind[fn]
-        except KeyError:
+        if self.cofm_final:
+            try:
+                ind = self.part_ind[fn]
+            except KeyError:
+                ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
+                self.part_ind[fn] = ind
+        else:
             ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
-            self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
             return (False, False, False, False,False,False)
@@ -406,7 +412,6 @@ class Spectra:
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            self.ind = {}
             (_, col_den) = self.compute_spectra("H",1,1,False)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
@@ -420,6 +425,8 @@ class Spectra:
         #Copy back
         self.cofm=cofm_DLA
         self.colden[("H",1)]=H1_DLA
+        #Finalise the cofm array
+        self.cofm_final = True
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overridden by child classes"""
