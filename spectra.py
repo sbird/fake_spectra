@@ -245,8 +245,6 @@ class Spectra:
                 return(np.array(0.0),ret)
         pos = pos[ind,:]
         hh = hh[ind]
-        #Put smoothing length into cm.
-        hh *= self.rscale
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
         star=cold_gas.RahmatiRT(self.red, self.hubble)
         vel = np.array(data["Velocities"],dtype=np.float32)
@@ -267,7 +265,6 @@ class Spectra:
             amumass = self.lines.get_mass(elem)
         else:
             amumass = 1
-
         den = den[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: den is now density in ionic species in amu/cm^3
@@ -475,6 +472,9 @@ class Spectra:
             colden += tcolden
             del ttau
             del tcolden
+        #Convert from cm-3 [gadget length] to cm-2
+        colden*=self.rscale
+        tau*=self.rscale
         return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
