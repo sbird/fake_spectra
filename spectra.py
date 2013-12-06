@@ -218,14 +218,20 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion, get_tau)
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion)
+        if pos == False:
+            ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+            if get_tau:
+                return (ret,np.array(0.0))
+            else:
+                return(np.array(0.0),ret)
         if get_tau:
             line = self.lines[(elem,ion)][ll]
         else:
             line = self.lines[("H",1)][0]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self,fn, elem, ion, get_tau):
+    def _read_particle_data(self,fn, elem, ion):
         """Read the particle data for a single interpolation"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -240,11 +246,7 @@ class Spectra:
             self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-            if get_tau:
-                return (ret,ret)
-            else:
-                return(np.array(0.0),ret)
+            return (False, False, False, False,False)
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
