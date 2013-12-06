@@ -278,7 +278,13 @@ class Spectra:
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = np.where(elem_den > 0)
-            elem_den[ind2] *= self.cloudy_table.ion(elem, ion, den[ind2], temp[ind2])
+            #Shrink arrays: we don't want to interpolate particles
+            #with no mass in them
+            temp = temp[ind2]
+            pos = pos[ind2]
+            hh = hh[ind2]
+            vel = vel[ind2]
+            elem_den = elem_den[ind2]*self.cloudy_table.ion(elem, ion, den[ind2], temp)
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
