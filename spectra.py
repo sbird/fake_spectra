@@ -232,10 +232,10 @@ class Spectra:
 
         #Find particles we care about
         try:
-          ind = self.ind[fn]
+            ind = self.ind[fn]
         except KeyError:
-          ind = self.particles_near_lines(pos, hh,axis,cofm)
-          self.ind[fn] = ind
+            ind = self.particles_near_lines(pos, hh,axis,cofm)
+            self.ind[fn] = ind
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
             ret = np.zeros([np.shape(cofm)[0],self.nbins],dtype=np.float32)
@@ -420,12 +420,23 @@ class Spectra:
             self.tau[("H",1,1)]=tau_DLA
 
     def get_cofm(self, num = None):
-        """Find a bunch more sightlines: should be overriden by child classes"""
+        """Find a bunch more sightlines: should be overridden by child classes"""
         raise NotImplementedError
 
     def filter_DLA(self, col_den, thresh=10**20.3):
         """Find sightlines without a DLA"""
-        ind = np.where(np.max(col_den, axis=1) > thresh)
+        #because DLAs are huge objects in redshift space (several 10s of A wide), so we want to
+        #use a lower spectral resolution here to smear the column densities together.
+        #10 A is roughly 2500 km/s, and 1 is 250. For the grid code
+        #we used 2.5 Mpc ~ 750 km/s ~ 3 A. Use the same here.
+        dla_dvbin = 750
+        dlabins = int(self.vmax/dla_dvbin)
+        ccdla = np.empty([np.shape(col_den)[0],dlabins])
+        cum = np.ceil(self.nbins*1. / dlabins)
+        print cum, dlabins
+        for ii in xrange(dlabins):
+            ccdla[:,ii] = np.sum(col_den[:,cum*ii:cum*(ii+1)],axis=1)
+        ind = np.where(np.max(ccdla, axis=1) > thresh)
         return ind
 
     def get_metallicity(self, solar=0.0133):
