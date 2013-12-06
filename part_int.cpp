@@ -26,7 +26,7 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float D
     {
         const int axis = sort_los_table.get_axis(i);
         double * tau_loc = (tau ? &tau[i*nbins] : NULL);
-        double * colden_loc = &colden[i*nbins];
+        double * colden_loc =(colden ? &colden[i*nbins] : NULL);
         //List of particles near this los
         //Loop over them
         for(std::map<int, double>::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)

@@ -143,14 +143,19 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     /* Allocate array space. This is (I hope) contiguous.
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
-    PyArrayObject * colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+    PyArrayObject * colden_out;
     PyArrayObject * tau_out;
-    double * tau;
+    double * tau, * colden;
     if (compute_tau){
         tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
         tau = (double *) PyArray_DATA(tau_out);
+        colden_out = (PyArrayObject *) PyArray_SimpleNew(0, size, NPY_DOUBLE);
+        colden = NULL;
+
     }
     else{
+        colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+        colden = (double *) PyArray_DATA(colden_out);
         tau_out = (PyArrayObject *) PyArray_SimpleNew(0, size, NPY_DOUBLE);
         tau = NULL;
     }
@@ -166,7 +171,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     PyArray_FILLWBYTE(tau_out, 0);
 
     //Here comes the cheat
-    double * colden = (double *) PyArray_DATA(colden_out);
+
 
     //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.

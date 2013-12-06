@@ -225,17 +225,19 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   const int zlow = floor((vel - zrange) / boxtosm);
   const int zhigh = ceil((vel + zrange) / boxtosm);
   // Compute the column density
-  for(int z=zlow; z<=zhigh; z++)
-  {
-      /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
-      const double vlow = (boxtosm*z - vel);
-      // The index may be periodic wrapped.
-      // Index in units of the box
-      int j = z % nbins;
-      if (j<0)
-        j+=nbins;
-      //colden in units of [den units]*[h units] * integral in terms of z / h
-      colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
+  if (colden != NULL) {
+      for(int z=zlow; z<=zhigh; z++)
+      {
+          /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
+          const double vlow = (boxtosm*z - vel);
+          // The index may be periodic wrapped.
+          // Index in units of the box
+          int j = z % nbins;
+          if (j<0)
+            j+=nbins;
+          //colden in units of [den units]*[h units] * integral in terms of z / h
+          colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
+      }
   }
   //Finish now if not computing absorption
   if (!tau) {
