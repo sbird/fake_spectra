@@ -93,7 +93,7 @@ class Spectra:
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
-        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to m
+        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to cm
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         self.vmax = self.box * self.Hz /1000. # box size (physical kms^-1)
@@ -245,6 +245,8 @@ class Spectra:
                 return(np.array(0.0),ret)
         pos = pos[ind,:]
         hh = hh[ind]
+        #Put smoothing length into cm.
+        hh *= self.rscale
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
         star=cold_gas.RahmatiRT(self.red, self.hubble)
         vel = np.array(data["Velocities"],dtype=np.float32)
@@ -257,11 +259,14 @@ class Spectra:
             temp = star.get_temp(den, data)
             temp = temp[ind]
             line = self.lines[(elem,ion)][ll]
-            amumass = self.lines.get_mass(elem)
         else:
             line = self.lines[("H",1)][0]
-            amumass = 1
             temp = np.array([], dtype=np.float32)
+        # Get mass of atomic species
+        if elem != "Z":
+            amumass = self.lines.get_mass(elem)
+        else:
+            amumass = 1
 
         den = den[ind]
         #Find the mass fraction in this ion
@@ -279,6 +284,8 @@ class Spectra:
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
         del den
+        #Put density into number density of particles, from amu
+        elem_den/=amumass
         #Do interpolation.
         velfac = self.vmax/self.box
         #Don't forget to convert line width (lambda_X) from Angstrom to m!
@@ -454,15 +461,6 @@ class Spectra:
             colden += tcolden
             del ttau
             del tcolden
-        #Rescale the units on column density from
-        # amu / cm^3 *(gadget length) to atoms (of species) /cm^2
-        if elem != "Z":
-            amumass = self.lines.get_mass(elem)
-        else:
-            amumass = 1
-        conv = self.rscale/amumass
-        colden *= conv
-        tau *= conv
         return (tau, colden)
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
