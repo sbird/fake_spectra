@@ -431,11 +431,14 @@ class Spectra:
         #we used 2.5 Mpc ~ 750 km/s ~ 3 A. Use the same here.
         dla_dvbin = 750
         dlabins = int(self.vmax/dla_dvbin)
-        ccdla = np.empty([np.shape(col_den)[0],dlabins])
-        cum = np.ceil(self.nbins*1. / dlabins)
-        print cum, dlabins
-        for ii in xrange(dlabins):
-            ccdla[:,ii] = np.sum(col_den[:,cum*ii:cum*(ii+1)],axis=1)
+        if dlabins < self.nbins:
+            cum = np.ceil(self.nbins*1. / dlabins)
+            print cum, dlabins
+            ccdla = np.empty([np.shape(col_den)[0],dlabins])
+            for ii in xrange(dlabins):
+                ccdla[:,ii] = np.sum(col_den[:,cum*ii:cum*(ii+1)],axis=1)
+        else:
+            ccdla = col_den
         ind = np.where(np.max(ccdla, axis=1) > thresh)
         return ind
 
