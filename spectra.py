@@ -162,9 +162,9 @@ class Spectra:
     def _save_multihash(self,save_array, grp):
         """Save an array using a tuple key, like save_array[(elem, ion, line)]
         to a hierarchy of hdf groups below grp"""
-        gg = grp
         for (key, value) in save_array.iteritems():
             #Create directory hierarchy recursively
+            gg = grp
             for ii in xrange(np.size(key)-1):
                 try:
                     gg = gg[str(key[ii])]
