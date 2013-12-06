@@ -22,7 +22,7 @@ class RandSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, cdir, savefile=savefile,savedir=savedir,reload_file=True)
 
         if thresh > 0:
-            self.replace_not_DLA(thresh, False)
+            self.replace_not_DLA(thresh)
         print "Found DLAs"
 
 

@@ -29,9 +29,9 @@ class GridSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, cdir, savefile=savefile,savedir=savedir, reload_file=True)
 
         if dla:
-            self.replace_not_DLA(10**20.3, False)
+            self.replace_not_DLA(10**20.3)
         else:
-            self.replace_not_DLA(10**17, False)
+            self.replace_not_DLA(10**17)
         print "Found DLAs"
 
 

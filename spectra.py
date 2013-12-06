@@ -380,7 +380,7 @@ class Spectra:
         return num_important
 
 
-    def replace_not_DLA(self, thresh=10**20.3, get_tau=False):
+    def replace_not_DLA(self, thresh=10**20.3):
         """
         Replace those sightlines which do not contain a DLA with new sightlines, until all sightlines contain a DLA.
         Must implement get_cofm for this to work
@@ -390,30 +390,26 @@ class Spectra:
         wanted = np.size(self.axis)
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        (tau, col_den) = self.compute_spectra("H",1,1,get_tau)
+        (_, col_den) = self.compute_spectra("H",1,1,False)
         ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
         cofm_DLA[found:top] = self.cofm[ind][:top,:]
         H1_DLA[found:top] = col_den[ind][:top,:]
-        if get_tau:
-            tau_DLA = np.empty_like(tau)
-            tau_DLA[found:top] = tau[ind][:top,:]
         found += np.size(ind)
         self.discarded = wanted-np.size(ind)
+        print "Discarded: ",self.discarded
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             self.ind = {}
-            (tau, col_den) = self.compute_spectra("H",1,1,get_tau)
+            (_, col_den) = self.compute_spectra("H",1,1,False)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found,:]
             H1_DLA[found:top] = col_den[ind][:top-found,:]
-            if get_tau:
-                tau_DLA[found:top] = tau[ind][:top-found,:]
             found += np.size(ind)
             self.discarded += wanted-np.size(ind)
             print "Discarded: ",self.discarded
@@ -421,8 +417,6 @@ class Spectra:
         #Copy back
         self.cofm=cofm_DLA
         self.colden[("H",1)]=H1_DLA
-        if get_tau:
-            self.tau[("H",1,1)]=tau_DLA
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overridden by child classes"""
@@ -827,10 +821,9 @@ class Spectra:
         try:
             return self.tau[(elem, ion,line)]
         except KeyError:
-            (tau, colden) = self.compute_spectra(elem, ion, line,True)
-            self.colden[(elem, ion)] = colden
+            (tau, _) = self.compute_spectra(elem, ion, line,True)
             self.tau[(elem, ion,line)] = tau
-            return colden
+            return tau
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
