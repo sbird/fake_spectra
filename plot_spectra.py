@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="rand_spectra_DLA.hdf5"):
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5"):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
@@ -127,13 +127,13 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_metallicity(self, HI_cut=10**20.3, nbins=20,color="blue"):
         """Plot the distribution of metallicities"""
-        bins=np.logspace(-3,0,nbins)
+        bins=np.linspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
         ind = self.get_filt("Z", "-1", HI_cut, None)
         #Abs. distance for entire spectrum
-        hist = np.histogram(np.log10(met[ind]),np.log10(bins),density=True)[0]
-        plt.semilogx(mbin,hist,color=color)
+        hist = np.histogram(np.log10(met[ind]),bins,density=True)[0]
+        plt.plot(mbin,hist,color=color)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
