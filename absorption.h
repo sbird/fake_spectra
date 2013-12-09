@@ -16,6 +16,9 @@ class LineAbsorption
          * Should be  atime /h100 * Hz/1e3 (Hz in km/s/Mpc)
          * boxsize: Size of the box in comoving kpc/h
          * atime: Scale factor
+         * lambda: wavelength in cm
+         * gamma: transition rate in 1/s
+         * fosc: oscillation fraction
          * */
         LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i);
 
@@ -40,12 +43,12 @@ class LineAbsorption
         void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
 
     private:
-        /* Absorption cross-sections m^2 */
+        /* Absorption cross-sections cm^2 */
         const double sigma_a;
-        /* Constant factor to turn sqrt(temperature) into velocity*/
+        /* Constant factor to turn sqrt(temperature) in K into velocity in km/s*/
         const double bfac;
         /* Factor to turn b into a dimensionless Voigt profile broadening factor,
-         * giving the balance between doppler and thermal broadening. */
+         * giving the balance between doppler and thermal broadening in km/s. */
         const double voigt_fac;
         const double velfac, vbox, atime;
 };

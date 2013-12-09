@@ -189,10 +189,11 @@ class SingleAbsorber
 
 
 //Factor of 1e5 in bfac converts from cm/s to km/s
+//Factor of 1e5 in voigt_fac converts from cm/s to km/s
 LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
-voigt_fac( gamma*lambda/(4.*M_PI) ),
+voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
 {
 }
@@ -252,7 +253,8 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
   // sqrt(pi)*c / btherm comes from the profile.
-  const double amp = sigma_a / sqrt(M_PI) * (LIGHT/btherm);
+  //Extra factor of 1e5 because LIGHT is in cm/s and btherm is in km/s
+  const double amp = sigma_a / sqrt(M_PI) * (LIGHT/1e5/btherm);
   //Bin nearest the particle
   const int zmax = floor(vel/bintov);
   //Go from nearest the particle to half a box away.

@@ -307,8 +307,8 @@ class Spectra:
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         velfac = self.vmax/self.box
-        #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
+        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
         return (tau,colden)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
