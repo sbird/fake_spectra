@@ -261,14 +261,15 @@ class Spectra:
         vel = vel[ind,:]
         #gas density amu / cm^3
         den=star.get_code_rhoH(data)
-        #Fake-define temp for now
-        temp = np.array([], dtype=np.float32)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
         else:
             amumass = 1
         den = den[ind]
+        #Only need temp for ionic density, and tau later
+        temp = star.get_temp(den, data)
+        temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
@@ -278,9 +279,6 @@ class Spectra:
             # Neutral hydrogen mass frac
             elem_den *= star.get_reproc_HI(data)[ind]
         elif ion != -1:
-            #Only need temp for ionic density, and tau later
-            temp = star.get_temp(den, data)
-            temp = temp[ind]
             #Cloudy density in physical H atoms / cm^3
             ind2 = np.where(elem_den > 0)
             #Shrink arrays: we don't want to interpolate particles
