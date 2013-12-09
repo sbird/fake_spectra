@@ -102,14 +102,14 @@ def plot_metallicity(sims, snap, ff=True):
         vel_data.plot_prochaska_2008_data(zrange[snap])
     plt.ylim(0,1.6)
     plt.xlim(1,8000)
-    save_figure(path.join(outdir,"cosmo_feedback_z"+str(snap)))
+    save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
     plt.clf()
     (vbin, vels7) = hspec[7].vel_width_hist("Si", 2)
     #Make rel plot
     for sss in sims:
         (vbin, vel) = hspec[sss].vel_width_hist("Si", 2)
         mm = np.min([np.size(vel), np.size(vels7)])
-        plt.semilogx(vbin[:mm], vels[:mm]/vels7[:mm], color=colors[sss],ls=lss[sss])
+        plt.semilogx(vbin[:mm], vel[:mm]/vels7[:mm], color=colors[sss],ls=lss[sss])
     plt.xlim(1, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
