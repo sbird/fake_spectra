@@ -330,19 +330,18 @@ class Spectra:
         """
         if elem == "Z":
             mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
-            return mass_frac[ind]
-
-        nelem = self.species.index(elem)
-        #Get metallicity of this metal species
-        try:
-            mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
-            mass_frac = mass_frac[ind]
-            #Deal with floating point roundoff - mass_frac will sometimes be negative
-            mass_frac[np.where(mass_frac <= 0)] = 0
-        except KeyError:
-            #If GFM_Metals is not defined, fall back to primordial abundances
-            metal_abund = np.array([0.76, 0.24],dtype=np.float32)
-            mass_frac = metal_abund[nelem]
+        else:
+            nelem = self.species.index(elem)
+            #Get metallicity of this metal species
+            try:
+                mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
+            except KeyError:
+                #If GFM_Metals is not defined, fall back to primordial abundances
+                metal_abund = np.array([0.76, 0.24],dtype=np.float32)
+                mass_frac = metal_abund[nelem]
+        mass_frac = mass_frac[ind]
+        #Deal with floating point roundoff - mass_frac will sometimes be negative
+        mass_frac[np.where(mass_frac <= 0)] = 0
         return mass_frac
 
     def get_particle_number(self, elem, ion, res=8):
