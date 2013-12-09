@@ -31,7 +31,7 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
-#define NGRID 8
+#define NGRID 7
 
 //Threshold of tau below which we stop computing profiles
 //Note that because this is for each particle, it should be fairly small.
