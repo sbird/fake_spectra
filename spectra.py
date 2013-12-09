@@ -289,7 +289,12 @@ class Spectra:
             pos = pos[ind2]
             hh = hh[ind2]
             vel = vel[ind2]
-            elem_den = elem_den[ind2]*np.float32(self.cloudy_table.ion(elem, ion, den[ind2], temp))
+            if np.max(temp) > 10**8.6:
+                temp2 = np.array(temp)
+                temp2[np.where(temp2 > 10**8.6)] = 10**8.6
+            else:
+                temp2 = temp
+            elem_den = elem_den[ind2]*np.float32(self.cloudy_table.ion(elem, ion, den[ind2], temp2))
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
