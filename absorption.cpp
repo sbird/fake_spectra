@@ -94,8 +94,7 @@ inline double profile(const double T0, const double aa)
 {
     const double T1 = exp(-T0);
   #ifdef VOIGT
-    const double T2 = 1.5/T0;
-    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + T2) - T2 -1.0));
+    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + 1.5/T0) - 1.5/T0 -1.0));
   #else
     const double profile_H1 = T1;
   #endif
