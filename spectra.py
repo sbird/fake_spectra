@@ -305,8 +305,8 @@ class Spectra:
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         velfac = self.vmax/self.box
-        #Don't forget to convert line width (lambda_X) from Angstrom to m!
-        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-10, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
+        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
         return (tau,colden)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
@@ -328,19 +328,18 @@ class Spectra:
         """
         if elem == "Z":
             mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
-            return mass_frac[ind]
-
-        nelem = self.species.index(elem)
-        #Get metallicity of this metal species
-        try:
-            mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
-            mass_frac = mass_frac[ind]
-            #Deal with floating point roundoff - mass_frac will sometimes be negative
-            mass_frac[np.where(mass_frac <= 0)] = 0
-        except KeyError:
-            #If GFM_Metals is not defined, fall back to primordial abundances
-            metal_abund = np.array([0.76, 0.24],dtype=np.float32)
-            mass_frac = metal_abund[nelem]
+        else:
+            nelem = self.species.index(elem)
+            #Get metallicity of this metal species
+            try:
+                mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
+            except KeyError:
+                #If GFM_Metals is not defined, fall back to primordial abundances
+                metal_abund = np.array([0.76, 0.24],dtype=np.float32)
+                mass_frac = metal_abund[nelem]
+        mass_frac = mass_frac[ind]
+        #Deal with floating point roundoff - mass_frac will sometimes be negative
+        mass_frac[np.where(mass_frac <= 0)] = 0
         return mass_frac
 
     def get_particle_number(self, elem, ion, res=8):
