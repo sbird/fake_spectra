@@ -216,7 +216,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
      Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
-  const double vel = (velfac * ppos + pvel * sqrt(atime))/vsmooth;
+  const double vel = velfac * ppos + pvel * sqrt(atime);
   const double velsm = vel/vsmooth;
   //Allowed z range in units of smoothing length
   const double zrange = sqrt(1. - bb2);
