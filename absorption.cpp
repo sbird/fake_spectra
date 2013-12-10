@@ -217,19 +217,20 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
      so we need the sqrt(a) conversion factor.
      Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
   const double vel = (velfac * ppos + pvel * sqrt(atime))/vsmooth;
+  const double velsm = vel/vsmooth;
   //Allowed z range in units of smoothing length
   const double zrange = sqrt(1. - bb2);
   //Conversion between units of the smoothing length to units of the box.
   const double boxtosm = vbox / vsmooth / nbins;
   // z is position in units of the box
-  const int zlow = floor((vel - zrange) / boxtosm);
-  const int zhigh = ceil((vel + zrange) / boxtosm);
+  const int zlow = floor((velsm - zrange) / boxtosm);
+  const int zhigh = ceil((velsm + zrange) / boxtosm);
   // Compute the column density
   if (colden != NULL) {
       for(int z=zlow; z<=zhigh; z++)
       {
           /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
-          const double vlow = (boxtosm*z - vel);
+          const double vlow = (boxtosm*z - velsm);
           // The index may be periodic wrapped.
           // Index in units of the box
           int j = z % nbins;
