@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5"):
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label=""):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
+        self.label=label
 
     def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
@@ -28,7 +29,7 @@ class PlottingSpectra(spectra.Spectra):
 
         """
         (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut)
-        plt.semilogx(vbin, vels, color=color, lw=3, ls=ls)
+        plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_extra_stat(self, elem, line, stat=False, dv=0.03, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
         """Plot the Prochaska extra statistics
@@ -44,7 +45,7 @@ class PlottingSpectra(spectra.Spectra):
                       Removes unobservable systems.
         """
         (vbin, vels) = self.extra_stat_hist(elem, line, stat, dv, HI_cut, met_cut)
-        plt.plot(vbin, vels, color=color, lw=3, ls=ls)
+        plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
         """Plot the equivalent widths of this snapshot. W_1526 is the default and the most useful here."""
@@ -133,7 +134,7 @@ class PlottingSpectra(spectra.Spectra):
         ind = self.get_filt("Z", "-1", HI_cut, None)
         #Abs. distance for entire spectrum
         hist = np.histogram(np.log10(met[ind]),bins,density=True)[0]
-        plt.plot(mbin,hist,color=color)
+        plt.plot(mbin,hist,color=color,label=self.label)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
