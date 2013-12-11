@@ -29,8 +29,8 @@
 #include <sstream>
 #include <iostream>
 /* Atomic data for hydrogen (from VPFIT) */
-#define  LAMBDA_LYA_H1 1215.6701e-10
-#define  LAMBDA_LYA_HE2 303.7822e-10
+#define  LAMBDA_LYA_H1 1215.6701e-8
+#define  LAMBDA_LYA_HE2 303.7822e-8
 #define  FOSC_LYA 0.416400
 #define  HMASS 1.00794   /* Hydrogen mass in a.m.u. */
 #define  HEMASS 4.002602 /* Helium-4 mass in a.m.u. */
