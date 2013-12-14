@@ -435,22 +435,55 @@ class Spectra:
         raise NotImplementedError
 
     def filter_DLA(self, col_den, thresh=10**20.3):
-        """Find sightlines without a DLA"""
-        #because DLAs are huge objects in redshift space (several 10s of A wide), so we want to
-        #use a lower spectral resolution here to smear the column densities together.
-        #10 A is roughly 2500 km/s, and 1 is 250. For the grid code
-        #we used 2.5 Mpc ~ 750 km/s ~ 3 A. Use the same here.
-        dla_dvbin = 750
-        dlabins = int(self.vmax/dla_dvbin)
-        if dlabins < self.nbins:
-            cum = np.ceil(self.nbins*1. / dlabins)
-            ccdla = np.empty([np.shape(col_den)[0],dlabins])
-            for ii in xrange(dlabins):
-                ccdla[:,ii] = np.sum(col_den[:,cum*ii:cum*(ii+1)],axis=1)
-        else:
-            ccdla = col_den
-        ind = np.where(np.max(ccdla, axis=1) > thresh)
+        """Find sightlines with a DLA"""
+        #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
+        #sum the column densities over their equivalent widths.
+        #Find largest column density bin
+        ind = []
+        #center on maximum
+        col_den = self._get_rolled_spectra(col_den)
+        #For each line...
+        for line in xrange(np.shape(col_den)[0]):
+            lcol = col_den[line,:]
+            maxc = np.max(lcol)
+            #First check whether the max value is enough on its own
+            if maxc > thresh:
+                ind.append(line)
+                continue
+            #Then compute the equivalent width and sum over that range
+            newwidth = self._eq_width_from_colden(maxc)
+            while True:
+                width = newwidth
+                low = np.max([0,int(self.nbins/2-width/2)])
+                high = np.min([self.nbins,int(self.nbins/2+width/2)])
+                dlacol = np.sum(lcol[low:high])
+                newwidth = self._eq_width_from_colden(dlacol)
+                if np.max(newwidth - width) < self.dvbin*2:
+                    break
+            if dlacol > thresh:
+                ind.append(line)
         return ind
+
+    def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
+        """Find the equivalent width of the line from the column density,
+           assuming we are in the damping wing regime. Default line is Lyman-alpha.
+           Returns width in km/s.
+        """
+        #line properties
+        line = self.lines[(elem,ion)][line]
+        #Convert wavelength to cm
+        lambdacgs = line.lambda_X*1e-8
+        #Tompson cross-section for the electron
+        sigma_t = 6.652458558e-25
+        #Line cross-section
+        sigma_a = np.sqrt(3*math.pi*sigma_t/8.)*lambdacgs*line.fosc_X
+        #In the damping wing, W ~ sqrt(N).
+        #Coefficients come from setting tau = 1, and expanding the Voigt function used
+        #in Tepper-Garcia 2006 where exp(-x^2) ~ 0 (ie, far from the line center)
+        #then simplifying a bit
+        width = np.sqrt(line.gamma_X*lambdacgs*self.light*col_den*sigma_a)/math.pi
+        #Convert from cm/s to km/s
+        return width/1e5
 
     def get_metallicity(self, solar=0.0133):
         """Return the metallicity, as M/H"""
