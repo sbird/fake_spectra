@@ -206,11 +206,11 @@ if __name__ == "__main__":
         plot_spectrum(ss,3, 457)
     plot_spectrum(2,3, 272)
 
-    simlist = (0,1,3,7)
+    simlist = range(8) #(0,1,3,7)
     for zz in (3,):
         plot_met_corr(simlist,zz)
         plot_metallicity(simlist, zz)
-        plot_vel_width_sim(simlist, zz)
+        plot_vel_width_sims(simlist, zz)
         plot_mean_median(simlist, zz)
         plot_f_peak(simlist, zz)
 
