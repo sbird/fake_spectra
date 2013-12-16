@@ -229,7 +229,7 @@ velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void LineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
+void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float smooth)
 {
   /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
    * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
@@ -244,8 +244,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
      Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
-  const double vel = velfac * ppos + pvel * sqrt(atime);
-  const double velsm = vel/vsmooth;
+  const double velsm = (velfac * ppos + pvel * sqrt(atime))/vsmooth;
   //Allowed z range in units of smoothing length
   const double zrange = sqrt(1. - bb2);
   //Conversion between units of the smoothing length to units of the box.
@@ -254,29 +253,37 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   const int zlow = floor((velsm - zrange) / boxtosm);
   const int zhigh = ceil((velsm + zrange) / boxtosm);
   // Compute the column density
-  if (colden != NULL) {
-      for(int z=zlow; z<=zhigh; z++)
-      {
-          /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
-          const double vlow = (boxtosm*z - velsm);
-          // The index may be periodic wrapped.
-          // Index in units of the box
-          int j = z % nbins;
-          if (j<0)
-            j+=nbins;
-          //colden in units of [den units]*[h units] * integral in terms of z / h
-          colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
-      }
+  for(int z=zlow; z<=zhigh; z++)
+  {
+      /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
+      const double vlow = (boxtosm*z - velsm);
+      // The index may be periodic wrapped.
+      // Index in units of the box
+      int j = z % nbins;
+      if (j<0)
+        j+=nbins;
+      //colden in units of [den units]*[h units] * integral in terms of z / h
+      colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
   }
-  //Finish now if not computing absorption
-  if (!tau) {
-      return;
-  }
+}
 
+void LineAbsorption::add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
+{
+  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
+   * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
+   * (1e10 M_sun /h) / (kpc/h)^2 if from C).
+   * The factor of h is because we compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
+   */
+  const double avgdens = dens * smooth;
+  /* Velocity of particle parallel to los: pos in kpc/h comoving
+     to vel in km/s physical. Note that gadget velocities come comoving,
+     so we need the sqrt(a) conversion factor.
+     Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
+  const double vel = velfac * ppos + pvel * sqrt(atime);
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, vsmooth, voigt_fac/btherm );
+  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
@@ -315,8 +322,6 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       if(taulast < TAUTAIL)
         break;
   }
-
-  return;
 }
 
 /* Compute temperature (in K) from internal energy.

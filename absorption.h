@@ -23,7 +23,8 @@ class LineAbsorption
         LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i);
 
         /* Add the absorption from a particle to the spectrum in the array
-         * tau, and the density from the particle to the array colden
+         * tau, or the density from the particle to the array colden,
+         * depending on function called.
          * The slightly C-style interface is so we can easily use the data in python.
          *
          * Output:
@@ -37,10 +38,11 @@ class LineAbsorption
          * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 or amu/cm^3)
          * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
          * pvel: particle velocity parallel to spectrum (physical km/s)
-         * temp: particle temperature (K)
+         * temp: particle temperature (K) (not needed for colden)
          * smooth: particle smoothing length (comoving kpc/h)
          */
-        void add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
+        void add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float smooth);
+        void add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
 
     private:
         /* Absorption cross-sections cm^2 */
