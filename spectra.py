@@ -660,9 +660,9 @@ class Spectra:
         if np.size(high) == 0:
             high = np.size(cum_tau)-1
         if np.size(low) > 1:
-            low = low[0]
+            low = self._check_actual_root(low,tdiff)
         if np.size(high) > 1:
-            high = high[0]
+            high = self._check_actual_root(high,tdiff)
 
         return (low, high)
 
@@ -674,7 +674,22 @@ class Spectra:
         x = np.arange(0,np.size(cum_tau))
         spl = UnivariateSpline(x, tdiff, s=0)
         high = spl.roots()
+        if np.size(high) > 1:
+            return self._check_actual_root(high,tdiff)
         return high
+
+    def _check_actual_root(self,roots,array):
+        """
+        Sometimes spl.roots returns multiple roots.
+        Ideally we would use a linear spline to avoid this
+        but root-finding is not supported for that (?!)
+        So check by hand that each of these solutions is an actual root,
+        ie that the sign of the array changes there.
+        """
+        for hh in roots:
+            if array[np.floor(hh)]*array[np.ceil(hh)] < 0:
+                return hh
+        return np.array([])
 
     def vel_mean_median(self, tau):
         """Find the difference between the mean velocity and the median velocity.
