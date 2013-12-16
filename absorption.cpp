@@ -31,7 +31,7 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
-#define NGRID 7
+#define NGRID 8
 
 //Threshold of tau below which we stop computing profiles
 //Note that because this is for each particle, it should be fairly small.
@@ -48,8 +48,8 @@ inline double sph_kernel(const double q)
 }
 
 #ifndef TOP_HAT_KERNEL
-/* Find the fraction of the total particle density in this pixel by integrating an SPH kernel
- * over the z direction. All distances in units of smoothing length.
+/* Find the integral of the particle density in this pixel by integrating an SPH kernel
+ * over the z direction.
  * Arguments:
  * zlow - Lower z limit for the integral (as z distance from particle center).
  * zhigh - Upper z limit for the integral (again as distance from particle center)
@@ -59,25 +59,25 @@ inline double sph_kernel(const double q)
  * and q^2 = b^2 + z^2, then this is:
  * int_zlow^zhigh K(q) dz
  * */
-double sph_kern_frac(double zlow, double zhigh, double bb2)
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
 {
     //Outside useful range.
-    if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
+    const double zrange = sqrt(smooth*smooth - dr2);
+    if (zlow > zrange || zhigh < -zrange){
         return 0;
     }
     //Maximal range that will do anything
-    zlow = std::max(zlow, -sqrt(1-bb2));
-    zhigh = std::min(zhigh, sqrt(1-bb2));
-    //return 3./(4*M_PI)*(zhigh - zlow);
-    double total = sph_kernel(sqrt(bb2+zlow*zlow))/2.;
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    double total = sph_kernel(sqrt(dr2+zlow*zlow)/smooth)/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
     {
         const double zz = i*deltaz+zlow;
-        const double q = sqrt(bb2+zz*zz);
+        const double q = sqrt(dr2+zz*zz)/smooth;
         total+=sph_kernel(q);
     }
-    double qhigh = sqrt(bb2+zhigh*zhigh);
+    double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
     total += sph_kernel(qhigh)/2.;
     return 8*deltaz*total/M_PI;
 }
@@ -85,27 +85,22 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
 #else
 
 /* Find the fraction of the total particle density in this pixel by integrating a top hat kernel
- * over the z direction. All distances in units of smoothing length.
+ * over the z direction. This assumes that rho = rho_0, a constant, within the cell.
  * Arguments:
  * zlow - Lower z limit for the integral (as z distance from particle center).
  * zhigh - Upper z limit for the integral (again as distance from particle center)
- * bb2 - transverse distance from particle to pixel, squared.
- *
- * This is normalised such that 4 pi int_{q < 1} K q^2 dq = (4 pi /3) K = 1
- * and q^2 = b^2 + z^2, and thus calculates:
- * (zhigh-zlow) 3/(4pi)
+ * smooth - smoothing length
+ * dr2 - transverse distance from particle to pixel, squared.
  * */
 
-double sph_kern_frac(double zlow, double zhigh, double bb2)
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
 {
-    //Outside useful range.
-    if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
-        return 0;
-    }
-    //Maximal range that will do anything
-    zlow = std::max(zlow, -sqrt(1-bb2));
-    zhigh = std::min(zhigh, sqrt(1-bb2));
-    return 3./(4*M_PI)*(zhigh - zlow);
+    //Cell boundaries
+    const double zrange = sqrt(smooth*smooth - dr2);
+    //Integration limits
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    return std::max(0.,zhigh - zlow);
 }
 #endif
 
@@ -231,39 +226,34 @@ velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
  */
 void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float smooth)
 {
-  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
-   * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
-   * (1e10 M_sun /h) / (kpc/h)^2 if from C).
-   * The factor of h is because we compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
-   */
-  const double avgdens = dens * smooth;
-  /*Impact parameter in units of the smoothing length */
-  const double bb2 = dr2/smooth/smooth;
-  const double vsmooth = velfac * smooth;
   /* Velocity of particle parallel to los: pos in kpc/h comoving
      to vel in km/s physical. Note that gadget velocities come comoving,
-     so we need the sqrt(a) conversion factor.
-     Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
-  const double velsm = (velfac * ppos + pvel * sqrt(atime))/vsmooth;
-  //Allowed z range in units of smoothing length
-  const double zrange = sqrt(1. - bb2);
-  //Conversion between units of the smoothing length to units of the box.
-  const double boxtosm = vbox / vsmooth / nbins;
+     so we need the sqrt(a) conversion factor.*/
+  const double pos = ppos + pvel * sqrt(atime)/velfac;
+  //z range covered by particle in kpc/h
+  const double zrange = sqrt(smooth*smooth - dr2);
+  //Conversion between units of position to units of the box.
+  const double boxtokpc = vbox / nbins / velfac;
   // z is position in units of the box
-  const int zlow = floor((velsm - zrange) / boxtosm);
-  const int zhigh = ceil((velsm + zrange) / boxtosm);
+  const int zlow = floor((pos - zrange) / boxtokpc);
+  const int zhigh = ceil((pos + zrange) / boxtokpc);
   // Compute the column density
   for(int z=zlow; z<=zhigh; z++)
   {
-      /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
-      const double vlow = (boxtosm*z - velsm);
+      //Difference between position of bin this edge and particle
+      const double plow = (boxtokpc*z - pos);
       // The index may be periodic wrapped.
       // Index in units of the box
       int j = z % nbins;
       if (j<0)
         j+=nbins;
-      //colden in units of [den units]*[h units] * integral in terms of z / h
-      colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
+      /*Factor to convert the quantity found by sph_kern_frac which has units of kpc/h, to a column density,
+       * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
+       * (1e10 M_sun /h) / (kpc/h)^2 if from C).
+       * We compute int_z ρ dz
+       */
+      //colden in units of [den units]*[h units] * integral in terms of z
+      colden[j] += dens*sph_kern_frac(plow, plow + boxtokpc, smooth, dr2);
   }
 }
 
