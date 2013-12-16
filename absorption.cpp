@@ -47,6 +47,7 @@ inline double sph_kernel(const double q)
         return 2*pow(1.- q,3);
 }
 
+#ifndef TOP_HAT_KERNEL
 /* Find the fraction of the total particle density in this pixel by integrating an SPH kernel
  * over the z direction. All distances in units of smoothing length.
  * Arguments:
@@ -80,6 +81,33 @@ double sph_kern_frac(double zlow, double zhigh, double bb2)
     total += sph_kernel(qhigh)/2.;
     return 8*deltaz*total/M_PI;
 }
+
+#else
+
+/* Find the fraction of the total particle density in this pixel by integrating a top hat kernel
+ * over the z direction. All distances in units of smoothing length.
+ * Arguments:
+ * zlow - Lower z limit for the integral (as z distance from particle center).
+ * zhigh - Upper z limit for the integral (again as distance from particle center)
+ * bb2 - transverse distance from particle to pixel, squared.
+ *
+ * This is normalised such that 4 pi int_{q < 1} K q^2 dq = (4 pi /3) K = 1
+ * and q^2 = b^2 + z^2, and thus calculates:
+ * (zhigh-zlow) 3/(4pi)
+ * */
+
+double sph_kern_frac(double zlow, double zhigh, double bb2)
+{
+    //Outside useful range.
+    if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
+        return 0;
+    }
+    //Maximal range that will do anything
+    zlow = std::max(zlow, -sqrt(1-bb2));
+    zhigh = std::min(zhigh, sqrt(1-bb2));
+    return 3./(4*M_PI)*(zhigh - zlow);
+}
+#endif
 
 /* Compute the Voigt or Gaussian profile.
  * Uses the approximation to the Voigt profile from Tepper-Garcia, 2006, MNRAS, 369, 2025
