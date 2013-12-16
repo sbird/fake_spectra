@@ -70,9 +70,13 @@ class PlottingSpectra(spectra.Spectra):
         if high - low > 0:
             plt.plot([low,low],[0,1])
             plt.plot([high,high],[0,1])
-        plt.text(high+self.dvbin*30,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
+        if high - low > 150:
+            tpos = low + 15
+        else:
+            tpos = high+15
+        plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
+        plt.xlim(low-70,high+70)
         return (low, high)
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
@@ -88,12 +92,12 @@ class PlottingSpectra(spectra.Spectra):
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
         col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
         plt.subplot(211)
-        self.plot_spectrum(tau)
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
+        (low, high) = self.plot_spectrum(tau)
+        plt.xlim(low-50,high+50)
         plt.subplot(212)
         ind = np.where(col_den > 1)
         plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
-        plt.xlim(0,np.size(tau_l)*self.dvbin)
+        plt.xlim(low-50,high+50)
         plt.yticks(np.array([1e10, 1e15,1e20]))
 
     def plot_col_density(self, elem, ion):
