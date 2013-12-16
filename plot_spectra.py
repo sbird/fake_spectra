@@ -103,7 +103,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
         col_dens = self.get_col_density(elem, ion)
-        vels = self.vel_width(self.get_observer_tau(elem, ion))
+        vels = self.vel_width(self.get_observer_tau(elem, ion),self.get_col_density("H",1))
         plt.loglog(np.max(col_dens,axis=1),vels)
 
     def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue"):
@@ -122,7 +122,7 @@ class PlottingSpectra(spectra.Spectra):
         mindist is in km/s
         """
         sep = self.get_separated(elem, ion, thresh,mindist)
-        vels = self.vel_width(self.get_observer_tau(elem, ion))
+        vels = self.vel_width(self.get_observer_tau(elem, ion),self.get_col_density("H",1))
         v_table = 10**np.arange(0, np.log10(np.max(vels)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         hist1 = np.histogram(vels, v_table)
@@ -144,9 +144,10 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the correlation between metallicity and velocity width"""
         met = self.get_metallicity()
         tau = self.get_observer_tau(elem, line)
+        colden = self.get_col_density("H",1)
         ind = self.get_filt(elem, line)
         met = met[ind]
-        vel = self.vel_width(tau[ind])
+        vel = self.vel_width(tau[ind],colden[ind])
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
         plt.loglog(vel[ind2],met[ind2], 'x',color=color)
@@ -181,7 +182,8 @@ class PlottingSpectra(spectra.Spectra):
         (halo, _) = self.find_nearest_halo(min_mass)
         tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
-        vel = self.vel_width(tau[ind])
+        colden = self.get_col_density("H",1)
+        vel = self.vel_width(tau[ind],colden[ind])
         mass = self.sub_mass[halo][ind]
         plt.loglog(mass,vel, 'x',color=color)
         ind2 = np.where(np.logical_and(vel > 15, vel < 100))
@@ -200,7 +202,8 @@ class PlottingSpectra(spectra.Spectra):
         tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
         met = np.log10(met[ind])
-        vel = np.log10(self.vel_width(tau[ind]))
+        colden = self.get_col_density("H",1)
+        vel = np.log10(self.vel_width(tau[ind],colden[ind]))
         data2 = np.array([met,vel]).T
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
@@ -209,8 +212,8 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the velocity width vs the virial velocity of the hosting halo"""
         ind = self.get_filt(elem,line)
         tau = self.get_observer_tau(elem, line)
-        vel = self.vel_width(tau[ind])
-
+        colden = self.get_col_density("H",1)
+        vel = self.vel_width(tau[ind],colden[ind])
         (halos, dists) = self.find_nearest_halo()
         radius = self.sub_radii[halos][ind]
         mass = self.sub_mass[halos][ind]
@@ -237,7 +240,8 @@ class PlottingSpectra(spectra.Spectra):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
         ind = self.get_filt(elem,line)
         tau = self.get_observer_tau(elem, line)
-        vel = self.vel_width(tau[ind])
+        colden = self.get_col_density("H",1)
+        vel = self.vel_width(tau[ind],colden[ind])
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
         (halos, _) = self.find_nearest_halo()

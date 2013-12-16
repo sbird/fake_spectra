@@ -615,42 +615,57 @@ class Spectra:
         ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut))
         return ind
 
-    def vel_width(self, tau, dla_limit=True):
+    def vel_width(self, tau, colden=None):
         """Find the velocity width of a line
            defined as the width of 90% of the integrated optical depth.
            This is a little complicated by periodic boxes,
            so we internally cycle the line until the deepest absorption
            is in the middle
-           If dla_limit is true, limit the width examined to the width
+           If colden is set, limit the width examined to the width
            of the DLA around the line.
            """
         #  Size of a single velocity bin
-        vel_width = np.zeros(np.shape(tot_tau))
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        tau = self._get_rolled_spectra(tau)
-        for ll in np.arange(0, np.shape(tau)[0]):
-            #Deal with periodicity by making sure the deepest point is in the middle
-            ldla = self.nbins/2-dlawidth[ll]/2
-            hdla = self.nbins/2+dlawidth[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vel_width[ll] = self.dvbin*(high-low)
+        vel_width = np.zeros(np.shape(tau)[0])
+        if colden != None:
+            (dlawidth, _) = self.find_dla_width(colden)
+            #deal with periodicity by making sure the deepest point is in the middle
+            tau = self._get_rolled_spectra(tau,colden)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                ldla = self.nbins/2-dlawidth[ll]/2
+                hdla = self.nbins/2+dlawidth[ll]/2
+                tot_tau = np.sum(tau[ll,ldla:hdla])
+                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
+                vel_width[ll] = self.dvbin*(high-low)
+        else:
+            #deal with periodicity by making sure the deepest point is in the middle
+            tau = self._get_rolled_spectra(tau)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                tot_tau = np.sum(tau[ll,:])
+                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
+                vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
 
-    def _get_rolled_spectra(self,tau):
-        """Cycle the spectrum so that the deepest absorption is at the middle"""
+    def _get_rolled_spectra(self,tau, colden=None):
+        """
+        Cycle the array in tau so that the deepest absorption is at the middle.
+        If colden = None, the new midpoint is the maximal value of tau,
+        otherwise it is the maximal value of colden.
+        """
+        if colden == None:
+            colden = tau
+        if np.any(np.shape(tau) != np.shape(colden)):
+            raise ValueError("tau and colden different shapes")
         tau_out = np.zeros(np.shape(tau))
         for ll in np.arange(0, np.shape(tau)[0]):
             #Deal with periodicity by making sure the deepest point is in the middle
-            tau_l = tau[ll,:]
-            max_t = np.max(tau_l)
-            if max_t == 0:
+            colden_l = colden[ll,:]
+            max_c = np.max(colden_l)
+            if max_c == 0:
                 continue
-            ind_m = np.where(tau_l == max_t)[0][0]
-            tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+            ind_m = np.where(colden_l == max_c)[0][0]
+            tau_out[ll] = np.roll(tau[ll,:], np.size(colden_l)/2- ind_m)
         return tau_out
-
 
     def _vel_width_bound(self, tau, tot_tau):
         """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
@@ -699,23 +714,33 @@ class Spectra:
                 return hh
         return np.array([])
 
-    def vel_mean_median(self, tau):
+    def vel_mean_median(self, tau, colden=None):
         """Find the difference between the mean velocity and the median velocity.
            The mean velocity is the point halfway across the extent of the velocity width.
            The median velocity is v(tau = tot_tau /2)
            """
         mean_median = np.zeros(np.shape(tau)[0])
-        tau = self._get_rolled_spectra(tau)
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        for ll in np.arange(0, np.shape(tau)[0]):
-            #Deal with periodicity by making sure the deepest point is in the middle
-            ldla = self.nbins/2-dlawidth[ll]/2
-            hdla = self.nbins/2+dlawidth[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vmean = low+(high-low)/2.
-            vel_median = self._vel_median(tau[ll,ldla:hdla],tot_tau)
-            mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
+        if colden != None:
+            tau = self._get_rolled_spectra(tau,colden)
+            (dlawidth, _) = self.find_dla_width(colden)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                #Deal with periodicity by making sure the deepest point is in the middle
+                ldla = self.nbins/2-dlawidth[ll]/2
+                hdla = self.nbins/2+dlawidth[ll]/2
+                tot_tau = np.sum(tau[ll,ldla:hdla])
+                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
+                vmean = low+(high-low)/2.
+                vel_median = self._vel_median(tau[ll,ldla:hdla],tot_tau)
+                mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
+        else:
+            tau = self._get_rolled_spectra(tau)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                #Deal with periodicity by making sure the deepest point is in the middle
+                tot_tau = np.sum(tau[ll,:])
+                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
+                vmean = low+(high-low)/2.
+                vel_median = self._vel_median(tau[ll,:],tot_tau)
+                mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
         #Return the width
         return mean_median
 
@@ -739,11 +764,12 @@ class Spectra:
         """
         if tau == None:
             tau = self.get_observer_tau(elem, line)
-
+        ind = self.get_filt(elem, line, HI_cut, met_cut)
+        colden = self.get_col_density("H",1)
         if stat:
-            vel_width = self.vel_peak(tau[self.get_filt(elem, line, HI_cut, met_cut)])
+            vel_width = self.vel_peak(tau[ind],colden[ind])
         else:
-            vel_width = self.vel_mean_median(tau[self.get_filt(elem, line, HI_cut, met_cut)])
+            vel_width = self.vel_mean_median(tau[ind],colden[ind])
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = np.arange(0, 1, dv)
@@ -751,22 +777,33 @@ class Spectra:
         vels = np.histogram(vel_width,v_table, density=True)[0]
         return (vbin, vels)
 
-    def vel_peak(self, tau):
+    def vel_peak(self, tau, colden=None):
         """Find the difference between the peak optical depth and the mean velocity, divided by the velocity width.
         """
         mean_median = np.zeros(np.shape(tau)[0])
-        tau = self._get_rolled_spectra(tau)
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        for ll in np.arange(0, np.shape(tau)[0]):
-            #Deal with periodicity by making sure the deepest point is in the middle
-            ldla = self.nbins/2-dlawidth[ll]/2
-            hdla = self.nbins/2+dlawidth[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vmean = low+(high-low)/2.
-            #Peak is at 0
-            vmax = np.where(tau[ll,ldla:hdla] == np.max(tau[ll,ldla:hdla]))
-            mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
+        if colden != None:
+            tau = self._get_rolled_spectra(tau,colden)
+            (dlawidth, _) = self.find_dla_width(colden)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                #Deal with periodicity by making sure the deepest point is in the middle
+                ldla = self.nbins/2-dlawidth[ll]/2
+                hdla = self.nbins/2+dlawidth[ll]/2
+                tot_tau = np.sum(tau[ll,ldla:hdla])
+                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
+                vmean = low+(high-low)/2.
+                #Peak is at 0
+                vmax = np.where(tau[ll,ldla:hdla] == np.max(tau[ll,ldla:hdla]))
+                mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
+        else:
+            tau = self._get_rolled_spectra(tau)
+            for ll in np.arange(0, np.shape(tau)[0]):
+                #Deal with periodicity by making sure the deepest point is in the middle
+                tot_tau = np.sum(tau[ll,:])
+                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
+                vmean = low+(high-low)/2.
+                #Peak is at 0
+                vmax = np.where(tau[ll,:] == np.max(tau[ll,:]))
+                mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
         #Return the width
         return mean_median
 
@@ -782,7 +819,7 @@ class Spectra:
         #  Size of a single velocity bin
         tot_tau = np.sum(tau,axis = 1)
         mean_median = np.zeros(np.shape(tot_tau))
-        tau = self._get_rolled_spectra(tau)
+        tau = self._get_rolled_spectra(tau,self.get_col_density("H",1))
         for ll in np.arange(0, np.shape(tau)[0]):
             (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
             vmean = low+(high-low)/2.
@@ -850,7 +887,8 @@ class Spectra:
             tau = self.get_observer_tau(elem, line)
         #Filter small number of spectra without metals
         ind = self.get_filt(elem, line, HI_cut, met_cut)
-        vel_width = self.vel_width(tau[ind])
+        colden = self.get_col_density("H",1)
+        vel_width = self.vel_width(tau[ind], colden[ind])
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
