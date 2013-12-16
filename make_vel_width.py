@@ -31,7 +31,7 @@ def get_hspec(sim, snap):
     try:
         hspec = hspec_cache[(sim, snap)]
     except KeyError:
-        hspec = ps.PlottingSpectra(snap, halo, None, None)
+        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim])
         hspec_cache[(sim, snap)] = hspec
     return hspec
 
