@@ -203,7 +203,7 @@ class SingleAbsorber
                 const double T0 = pow(vdiff/btherm,2);
                 total+=sph_kernel(q)*profile(T0,aa);
             }
-            return 8*deltav*total/M_PI;
+            return 32./3.*deltav*total;
         }
 
         const double btherm;
