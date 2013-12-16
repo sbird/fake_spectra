@@ -32,7 +32,7 @@
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
                 && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
 
-double sph_kern_frac(double zlow, double zhigh, double vsmooth, double vdr2);
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2,double zrange);
 
 BOOST_AUTO_TEST_CASE(check_sph_kern)
 {
@@ -45,20 +45,21 @@ BOOST_AUTO_TEST_CASE(check_sph_kern)
     * The full range of the function is:
     * zlow = -1, zhigh = 1, coming to:
     *  2 int_0^1 K(z) dz = 8
+    *  zrange = sqrt(smooth*smooth-dr2)
     */
-    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0), 8.);
+    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0,1), 8.);
     //Should be the same with a wide range.
-    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0), 8.);
+    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0,1), 8.);
     //Small variations
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0), 0.489167);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0,1), 0.489167);
     //b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4), 0.051004);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8), 0.000167423);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9), 0.00040101);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4,0.774597), 0.051004);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8,0.447214), 0.000167423);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9,0.316228), 0.00040101);
     //Test wider range with b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3), 0.177801);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), 0.177801);
     //Check outside of range
-    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0), 0);
+    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0,1), 0);
 }
 
 

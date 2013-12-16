@@ -53,7 +53,9 @@ inline double sph_kernel(const double q)
  * Arguments:
  * zlow - Lower z limit for the integral (as z distance from particle center).
  * zhigh - Upper z limit for the integral (again as distance from particle center)
- * bb2 - transverse distance from particle to pixel, squared.
+ * smooth - smoothing length
+ * dr2 - transverse distance from particle to pixel, squared.
+ * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
  *
  * If K(q) is the SPH kernel we need
  * int_zlow^zhigh K(q) dz
@@ -63,25 +65,25 @@ inline double sph_kernel(const double q)
  * we want a normalisation of 32/3
  *
  * */
-double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
 {
-    //Outside useful range.
-    const double zrange = sqrt(smooth*smooth - dr2);
-    if (zlow > zrange || zhigh < -zrange){
-        return 0;
-    }
-    //Maximal range that will do anything
+    //Truncate bin size to support of kernel
     zlow = std::max(zlow, -zrange);
     zhigh = std::min(zhigh, zrange);
-    double total = sph_kernel(sqrt(dr2+zlow*zlow)/smooth)/2.;
+    if (zlow > zhigh)
+        return 0;
+    const double qlow = sqrt(dr2+zlow*zlow)/smooth;
+    double total = sph_kernel(qlow)/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
     {
         const double zz = i*deltaz+zlow;
         const double q = sqrt(dr2+zz*zz)/smooth;
+
         total+=sph_kernel(q);
     }
     double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
+
     total += sph_kernel(qhigh)/2.;
     return 32./3.*deltaz*total;
 }
@@ -95,12 +97,11 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
  * zhigh - Upper z limit for the integral (again as distance from particle center)
  * smooth - smoothing length
  * dr2 - transverse distance from particle to pixel, squared.
+ * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
  * */
 
-double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
 {
-    //Cell boundaries
-    const double zrange = sqrt(smooth*smooth - dr2);
     //Integration limits
     zlow = std::max(zlow, -zrange);
     zhigh = std::min(zhigh, zrange);
@@ -147,7 +148,8 @@ class SingleAbsorber
          * aa: voigt_fac/btherm the parameter for the Voight profile
          */
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
-            btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i)
+            btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i),
+            vhigh(sqrt(vsmooth*vsmooth-vdr2))
         {};
 
         /*Find the mean optical depth in the bin, by averaging over the optical depth
@@ -201,9 +203,7 @@ class SingleAbsorber
          */
         inline double tau_kern_inner(const double vouter)
         {
-            //Compute SPH kernel support region
-            const double vhigh = sqrt(vsmooth*vsmooth-vdr2);
-            //Integration region goes from -vhigh to vhigh
+            //Integration region goes from -vhigh to vhigh, where vhigh is precomputed kernel support
             const double deltav=2.*vhigh/NGRID;
             //Because we are integrating over the whole sph kernel,
             //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
@@ -224,6 +224,7 @@ class SingleAbsorber
         const double vdr2;
         const double vsmooth;
         const double aa;
+        const double vhigh;
 };
 
 
@@ -248,6 +249,9 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.*/
   const double pos = ppos + pvel * sqrt(atime)/velfac;
+  //If we are outside the kernel, do nothing.
+  if (smooth*smooth - dr2 <= 0)
+      return;
   //z range covered by particle in kpc/h
   const double zrange = sqrt(smooth*smooth - dr2);
   //Conversion between units of position to units of the box.
@@ -271,7 +275,7 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
        * We compute int_z ρ dz
        */
       //colden in units of [den units]*[h units] * integral in terms of z
-      colden[j] += dens*sph_kern_frac(plow, plow + boxtokpc, smooth, dr2);
+      colden[j] += dens*sph_kern_frac(plow, plow + boxtokpc, smooth, dr2,zrange);
   }
 }
 
@@ -284,6 +288,9 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   const double vel = velfac * ppos + pvel * sqrt(atime);
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
+  //Double check we are within the kernel support
+  if(smooth*smooth - dr2 <=0)
+      return;
   // Create absorption object
   SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
   // Do the tau integral for each bin
