@@ -16,7 +16,7 @@ from save_figure import save_figure
 
 outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
-zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
+zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
@@ -81,27 +81,29 @@ def plot_metallicity(sims, snap, ff=True):
     out = "cosmo_metallicity_z"+str(snap)
     for sim in sims:
         halo = myname.get_name(sim, ff)
-        hspec[sim] = ps.PlottingSpectra(snap, halo)
-        hspec[sim].plot_metallicity(color=colors[sim])
+        hspec[sim] = ps.PlottingSpectra(snap, halo,label=labels[sim])
+        hspec[sim].plot_metallicity(color=colors[sim], ls=lss[sim])
     vel_data.plot_alpha_metal_data(zrange[snap])
+    plt.legend()
     save_figure(path.join(outdir,out))
     plt.clf()
-#     for sim in sims:
-#         print "Met vel corr. Simulation ",sim
-#         out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
-#         hspec[sim].plot_Z_vs_vel_width(color=colors[sim])
-#         vel_data.plot_prochaska_2008_correlation(zrange[snap])
-#         save_figure(path.join(outdir,out))
-#         plt.clf()
-#         (_, met, vels) = vel_data.load_data()
-#         print "KS test is : ",hspec[sim].kstest(10**met, vels)
+    for sim in sims:
+        print "Met vel corr. Simulation ",sim
+        out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
+        hspec[sim].plot_Z_vs_vel_width(color=colors[sim])
+        vel_data.plot_prochaska_2008_correlation(zrange[snap])
+        save_figure(path.join(outdir,out))
+        plt.clf()
+        (_, met, vels) = vel_data.load_data()
+        print "KS test is : ",hspec[sim].kstest(10**met, vels)
 
     for sss in sims:
         #Make abs. plot
         hspec[sss].plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
-        vel_data.plot_prochaska_2008_data(zrange[snap])
+    vel_data.plot_prochaska_2008_data(zrange[snap])
     plt.ylim(0,1.6)
-    plt.xlim(1,8000)
+    plt.xlim(10,1000)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
     plt.clf()
     (vbin, vels7) = hspec[7].vel_width_hist("Si", 2)
@@ -110,18 +112,20 @@ def plot_metallicity(sims, snap, ff=True):
         (vbin, vel) = hspec[sss].vel_width_hist("Si", 2)
         mm = np.min([np.size(vel), np.size(vels7)])
         plt.semilogx(vbin[:mm], vel[:mm]/vels7[:mm], color=colors[sss],ls=lss[sss])
-    plt.xlim(1, 1000)
+    plt.xlim(10, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
     #Plot extra statistics
     for sss in sims:
         hspec[sss].plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(False,zrange[snap])
-    plt.ylim(0,4)
+    plt.ylim(0,3)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
     for sss in sims:
         hspec[sss].plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
+    plt.legend()
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
     save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
@@ -194,15 +198,14 @@ if __name__ == "__main__":
     plot_spectrum(2,3, 272)
 
     for zz in (3,):
-        plot_metallicity(range(8), zz)
+        plot_metallicity((0,1,3,7), zz)
 
 #     for ss in (0,1,2,3,4):
 #         plot_sep_frac(ss,3)
 #     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
 #     plt.clf()
 
-    for zz in (3,):
-        plot_vel_widths_sims(zz)
+#     for zz in (3,):
 #         plot_vel_widths_res(zz)
 #
 
