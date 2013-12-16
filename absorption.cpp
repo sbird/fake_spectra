@@ -150,27 +150,38 @@ class SingleAbsorber
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i)
         {};
 
-        /*Find the mean optical depth in the bin, as bins may be broader than the SPH kernel.
-         * This is:
+        /*Find the mean optical depth in the bin, by averaging over the optical depth
+         * at different points within it. The relevant scale here is the thermal broadening, b,
+         * and we only need to sample once every delta v = b. If b > bin width, no sub-sampling is necessary.
          *
-         * tau = 1/V int_{bin} dv' tau_kern_inner(v)
-         * where V is the bin width
+         * In practice b ~ 0.13 sqrt(T/Z) (where Z is the atomic mass of the species)
+         * For iron at 10^4 K this gives b ~ 2, and so 1 km/s bins are fine
+         * and no subsampling is needed.
+         * The minimal b we should encounter is iron at T = 2000K,
+         * which gives b ~ 0.8 and 1 km/s is still probably ok, however we subsample a little anyway.
          * Arguments:
          * vlow, vhigh: integration limits, which should be v_bin - v_particle
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
+            //If the bin width is less than the thermal broadening scale,
+            //no need to subsample
+            if ((vhigh - vlow) < btherm)
+            {
+              return tau_kern_inner((vhigh+vlow)/2.);
+            }
+            const int npoints = 2*ceil((vhigh - vlow)/btherm/2)+1.;
             double total = tau_kern_inner(vlow)/2.;
             //Note that the number of points does not need to be NGRID here,
             //but it is for now.
-            const double deltav=(vhigh-vlow)/NGRID;
-            for(int i=1; i<NGRID; ++i)
+            const double deltav=(vhigh-vlow)/(npoints-1);
+            for(int i=1; i< npoints-1; ++i)
             {
                 const double vv = i*deltav+vlow;
                 total += tau_kern_inner(vv);
             }
             total += tau_kern_inner(vhigh)/2.;
-            return total/NGRID;
+            return total/(npoints-1);
         }
 
     private:
