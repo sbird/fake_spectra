@@ -55,9 +55,13 @@ inline double sph_kernel(const double q)
  * zhigh - Upper z limit for the integral (again as distance from particle center)
  * bb2 - transverse distance from particle to pixel, squared.
  *
- * If K(q) is the SPH kernel normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
- * and q^2 = b^2 + z^2, then this is:
+ * If K(q) is the SPH kernel we need
  * int_zlow^zhigh K(q) dz
+ *
+ * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+ * and q^2 = (b^2 + z^2)/h^2, implying that (since int_{q<1} K(q) q^2 dq = 1/32)
+ * we want a normalisation of 32/3
+ *
  * */
 double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
 {
@@ -79,7 +83,7 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2)
     }
     double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
     total += sph_kernel(qhigh)/2.;
-    return 8*deltaz*total/M_PI;
+    return 32./3.*deltaz*total;
 }
 
 #else

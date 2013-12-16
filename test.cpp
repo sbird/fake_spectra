@@ -26,37 +26,39 @@
 
 #define FLOATS_NEAR_TO(x,y) \
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
-                && fabs((x) - (y)) <= std::max<float>(fabs(x),fabs(y))/1e5 ,(x)<<" is not close to "<<(y))
+                && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e5 ,(x)<<" is not close to "<<(y))
 //Here we are cool with 1% accuracy.
 #define FLOATS_APPROX_NEAR_TO(x,y) \
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
-                && fabs((x) - (y)) <= std::max<float>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
+                && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
 
-double sph_kern_frac(double zlow, double zhigh, double bb2);
+double sph_kern_frac(double zlow, double zhigh, double vsmooth, double vdr2);
 
 BOOST_AUTO_TEST_CASE(check_sph_kern)
 {
-    /* Integrals evaluated exactly with Mathematica*/
-    /* If K(q) is the SPH kernel normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
-    * and q^2 = b^2 + z^2, then sph_kern_frac computes:
-    * int_zlow^zhigh K(q) dz.
+   /* Integrals evaluated with Mathematica
+    * If K(q) is the SPH kernel we need
+    * int_zlow^zhigh K(q) dz
+    *
+    * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+    * and q^2 = (b^2 + z^2)/h^2
     * The full range of the function is:
     * zlow = -1, zhigh = 1, coming to:
-    *  2 int_0^1 K(z) dz = 6 / pi
+    *  2 int_0^1 K(z) dz = 8
     */
-    FLOATS_NEAR_TO(sph_kern_frac(-1,1,0), 6./M_PI);
+    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0), 8.);
     //Should be the same with a wide range.
-    FLOATS_NEAR_TO(sph_kern_frac(-3,10,0), 6./M_PI);
+    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0), 8.);
     //Small variations
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,0), 0.11678);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0), 0.489167);
     //b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,0.4), 0.0121763);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,0.8), 3.99694e-5);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,0.9), 9.57342e-5);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4), 0.051004);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8), 0.000167423);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9), 0.00040101);
     //Test wider range with b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,0.3), 0.0424468);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3), 0.177801);
     //Check outside of range
-    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,0), 0);
+    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0), 0);
 }
 
 
@@ -77,7 +79,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     test.add_colden_particle(colden, TNBINS, 0, 1,5002.5,0, 1);
     //Column density should be in one bin only
     //and total should be rho h int(-1,1)
-    double total = 6/M_PI;
+    double total = 8.;
     BOOST_CHECK_EQUAL(colden[999],0);
     FLOATS_NEAR_TO(colden[1000],total);
     BOOST_CHECK_EQUAL(colden[1001],0);
@@ -142,7 +144,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     //Check non-zero offset from line
     test.add_colden_particle(colden, TNBINS, 0.7, 1,4852.5,0, 1);
     FLOATS_NEAR_TO(colden[969],0);
-    FLOATS_APPROX_NEAR_TO(colden[970],0.0107795);
+    FLOATS_APPROX_NEAR_TO(colden[970],0.0451531);
     BOOST_CHECK_EQUAL(colden[971],0);
     nonzero.insert(970);
     //Offset enough to not add anything
