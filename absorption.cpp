@@ -150,16 +150,19 @@ class SingleAbsorber
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i)
         {};
 
-        /*Evaluate the outer integral in the convolution which gives us the optical depth.
+        /*Find the mean optical depth in the bin, as bins may be broader than the SPH kernel.
          * This is:
          *
-         * tau = int_{bin} dv' tau_kern_inner(v)
+         * tau = 1/V int_{bin} dv' tau_kern_inner(v)
+         * where V is the bin width
          * Arguments:
          * vlow, vhigh: integration limits, which should be v_bin - v_particle
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
             double total = tau_kern_inner(vlow)/2.;
+            //Note that the number of points does not need to be NGRID here,
+            //but it is for now.
             const double deltav=(vhigh-vlow)/NGRID;
             for(int i=1; i<NGRID; ++i)
             {
@@ -167,17 +170,17 @@ class SingleAbsorber
                 total += tau_kern_inner(vv);
             }
             total += tau_kern_inner(vhigh)/2.;
-            return deltav*total;
+            return total/NGRID;
         }
 
     private:
-        /*Evaluate the inner integral in the convolution which gives us the optical depth.
+        /* This gives us the optical depth at velocity vouter, from a convolution of the density and
+         * broadening function.
          * This is:
          *
-         * tau = int_{bin} dv' int_{sph kernel support} dv n(v) Phi(v-v')
+         * tau(v') = int_{sph kernel support} dv n(v) Phi(v-v')
          * where n is the local density and Phi is the broadening function.
          *
-         * This does the inner function: int{sph kernel support} dv n(v) Phi(v-v')
          * (Strictly speaking internally we use v'' = v - v_part and v''' = v' - v_part)
          * Arguments:
          * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
@@ -263,16 +266,10 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
 
 void LineAbsorption::add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
 {
-  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
-   * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
-   * (1e10 M_sun /h) / (kpc/h)^2 if from C).
-   * The factor of h is because we compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
-   */
-  const double avgdens = dens * smooth;
   /* Velocity of particle parallel to los: pos in kpc/h comoving
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
-     Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
+   */
   const double vel = velfac * ppos + pvel * sqrt(atime);
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
@@ -292,7 +289,9 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   for(int z=zmax; z<zmax+nbins/2; ++z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
+      //dens is in atoms/cm^3, amp is in cm^2. tau_kern_outer returns in velocity units (here km/s),
+      //so then we have units of the end of km/s /cm, and need to divide by velfac to get kpc/h/cm
+      const double taulast=amp*dens*absorber.tau_kern_outer(vlow, vlow+bintov)/velfac;
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
@@ -306,7 +305,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   for(int z=zmax-1; z>zmax-nbins/2; --z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
+      const double taulast=amp*dens*absorber.tau_kern_outer(vlow, vlow+bintov)/velfac;
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
