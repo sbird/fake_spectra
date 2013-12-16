@@ -455,7 +455,7 @@ class Spectra:
             lcol = col_den[line,:]
             maxc = np.max(lcol)
             #Then compute the equivalent width and sum over that range
-            newwidth = self._eq_width_from_colden(maxc)
+            newwidth = 2*self._eq_width_from_colden(maxc)
             while True:
                 width = newwidth
                 low = np.max([0,int(self.nbins/2-width/2)])
