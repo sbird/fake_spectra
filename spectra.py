@@ -664,18 +664,17 @@ class Spectra:
         x = np.arange(0,np.size(cum_tau))
         spl = UnivariateSpline(x, tdiff, s=0)
         high = spl.roots()
+        if np.size(high) > 1:
+            high = self._check_actual_root(high,tdiff)
         tdiff = cum_tau - 0.05*tot_tau
         spl = UnivariateSpline(x, tdiff, s=0)
         low = spl.roots()
+        if np.size(low) > 1:
+            low = self._check_actual_root(low,tdiff)
         if np.size(low) == 0:
             low = 0
         if np.size(high) == 0:
             high = np.size(cum_tau)-1
-        if np.size(low) > 1:
-            low = self._check_actual_root(low,tdiff)
-        if np.size(high) > 1:
-            high = self._check_actual_root(high,tdiff)
-
         return (low, high)
 
     def _vel_median(self, tau, tot_tau):
