@@ -90,7 +90,7 @@ def plot_met_corr(sims,snap):
         save_figure(path.join(outdir,out))
         plt.clf()
         (_, met, vels) = vel_data.load_data()
-        print "KS test is : ",hspec[sim].kstest(10**met, vels)
+        print "KS test is : ",hspec.kstest(10**met, vels)
 
 def plot_vel_width_sims(sims, snap):
     """Plot velocity widths for a series of simulations"""
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     plot_spectrum(2,3, 272)
 
     simlist = range(8) #(0,1,3,7)
-    for zz in (3,):
+    for zz in (1, 3, 5):
         plot_met_corr(simlist,zz)
         plot_metallicity(simlist, zz)
         plot_vel_width_sims(simlist, zz)
