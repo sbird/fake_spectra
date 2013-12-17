@@ -16,45 +16,40 @@ from save_figure import save_figure
 
 outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
-zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
+zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
 labels = {0:"REF",1:"HVEL", 2:"HVNA",3:"NOSN", 4:"NAWW", 5:"MVEL",6:"METAL",7:"TUV"}
 
-def plot_vel_width_sim(sim, snap, color="red", ff=True, HI_cut = None):
-    """Load a simulation and plot its velocity width"""
-    halo = myname.get_name(sim, ff)
+hspec_cache = {}
+
+def get_hspec(sim, snap):
+    """Get a spectra object, possibly from the cache"""
+    halo = myname.get_name(sim, True)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    try:
+        hspec = hspec_cache[(sim, snap)]
+    except KeyError:
+        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim])
+        hspec_cache[(sim, snap)] = hspec
+    return hspec
+
+def plot_vel_width_sim(sim, snap, color="red", HI_cut = None):
+    """Load a simulation and plot its velocity width"""
+    hspec = get_hspec(sim, snap)
     hspec.plot_vel_width("Si", 2, color=color, HI_cut = HI_cut)
 
 def plot_sep_frac(sim, snap):
     """Plot fraction of lines from separated halos"""
-    halo = myname.get_name(sim, True)
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    hspec = get_hspec(sim, snap)
     hspec.plot_sep_frac()
-
-def plot_rel_vel_width(sim1, sim2, snap, color="black"):
-    """Load and make a plot of the difference between two simulations"""
-    halo1 = myname.get_name(sim1, True)
-    halo2 = myname.get_name(sim2, True)
-    hspec1 = ps.PlottingSpectra(snap, halo1)
-    (vbin, vels1) = hspec1.vel_width_hist("Si", 2)
-    hspec1 = ps.PlottingSpectra(snap, halo2)
-    (vbin, vels2) = hspec1.vel_width_hist("Si", 2)
-    mm = np.min((np.size(vels2), np.size(vels1)))
-    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color=color)
 
 def plot_spectrum(sim, snap, num):
     """Plot a spectrum"""
-    halo = myname.get_name(sim, True)
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2, num)
     hspec.plot_spectrum(tau)
-#     plt.xlim(1000,1500)
 
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_Si_spectrum"))
     plt.clf()
@@ -68,60 +63,80 @@ def plot_spectrum(sim, snap, num):
 
 def plot_spectrum_density_velocity(sim, snap, num):
     """Plot a spectrum"""
-    halo = myname.get_name(sim, True)
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = get_hspec(sim, snap)
     hspec.plot_spectrum_density_velocity("Si",2, num)
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_tdv_Si_spectrum"))
     plt.clf()
 
-def plot_metallicity(sims, snap, ff=True):
+def plot_metallicity(sims, snap):
     """Plot metallicity, vel width, their correlation and the extra statistics"""
-    hspec={}
     out = "cosmo_metallicity_z"+str(snap)
     for sim in sims:
-        halo = myname.get_name(sim, ff)
-        hspec[sim] = ps.PlottingSpectra(snap, halo)
-        hspec[sim].plot_metallicity(color=colors[sim])
+        hspec = get_hspec(sim, snap)
+        hspec.plot_metallicity(color=colors[sim], ls=lss[sim])
     vel_data.plot_alpha_metal_data(zrange[snap])
+    plt.legend()
     save_figure(path.join(outdir,out))
     plt.clf()
-#     for sim in sims:
-#         print "Met vel corr. Simulation ",sim
-#         out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
-#         hspec[sim].plot_Z_vs_vel_width(color=colors[sim])
-#         vel_data.plot_prochaska_2008_correlation(zrange[snap])
-#         save_figure(path.join(outdir,out))
-#         plt.clf()
-#         (_, met, vels) = vel_data.load_data()
-#         print "KS test is : ",hspec[sim].kstest(10**met, vels)
 
+def plot_met_corr(sims,snap):
+    """Plot metallicity velwidth correlations"""
+    for sim in sims:
+        print "Met vel corr. Simulation ",sim
+        out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
+        hspec = get_hspec(sim, snap)
+        hspec.plot_Z_vs_vel_width(color=colors[sim])
+        vel_data.plot_prochaska_2008_correlation(zrange[snap])
+        save_figure(path.join(outdir,out))
+        plt.clf()
+        (_, met, vels) = vel_data.load_data()
+        print "KS test is : ",hspec[sim].kstest(10**met, vels)
+
+def plot_vel_width_sims(sims, snap):
+    """Plot velocity widths for a series of simulations"""
     for sss in sims:
         #Make abs. plot
-        hspec[sss].plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
-        vel_data.plot_prochaska_2008_data(zrange[snap])
+        hspec = get_hspec(sss, snap)
+        hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
+    vel_data.plot_prochaska_2008_data(zrange[snap])
     plt.ylim(0,1.6)
-    plt.xlim(1,8000)
+    plt.xlim(10,1000)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
     plt.clf()
-    (vbin, vels7) = hspec[7].vel_width_hist("Si", 2)
+
+def plot_rel_vel_width(sims, snap):
+    """Plot velocity widths relative to simulation 7"""
+    hspec = get_hspec(7, snap)
+    (vbin, vels7) = hspec.vel_width_hist("Si", 2)
     #Make rel plot
     for sss in sims:
-        (vbin, vel) = hspec[sss].vel_width_hist("Si", 2)
+        hspec = get_hspec(sss, snap)
+        (vbin, vel) = hspec.vel_width_hist("Si", 2)
         mm = np.min([np.size(vel), np.size(vels7)])
         plt.semilogx(vbin[:mm], vel[:mm]/vels7[:mm], color=colors[sss],ls=lss[sss])
-    plt.xlim(1, 1000)
+    plt.xlim(10, 1000)
     save_figure(path.join(outdir,"cosmo_rel_vel_z"+str(snap)))
     plt.clf()
+
+def plot_mean_median(sims, snap):
+    """Plot mean-median statistic for all sims on one plot"""
     #Plot extra statistics
     for sss in sims:
-        hspec[sss].plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
+        hspec = get_hspec(sss, snap)
+        hspec.plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(False,zrange[snap])
-    plt.ylim(0,4)
+    plt.ylim(0,3)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
+
+def plot_f_peak(sims, snap):
+    """Plot peak statistic for all sims on one plot"""
     for sss in sims:
-        hspec[sss].plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
+        hspec = get_hspec(sss, snap)
+        hspec.plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
+    plt.legend()
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
     save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
@@ -184,8 +199,6 @@ def plot_vel_redshift_evo(sim):
     plt.clf()
 
 if __name__ == "__main__":
-#     colors=["blue", "purple", "orange", "red"]
-
 #     plot_vel_widths_cloudy()
 
     for ss in (0,1,2,3,4):
@@ -193,16 +206,20 @@ if __name__ == "__main__":
         plot_spectrum(ss,3, 457)
     plot_spectrum(2,3, 272)
 
+    simlist = range(8) #(0,1,3,7)
     for zz in (3,):
-        plot_metallicity(range(8), zz)
+        plot_met_corr(simlist,zz)
+        plot_metallicity(simlist, zz)
+        plot_vel_width_sims(simlist, zz)
+        plot_mean_median(simlist, zz)
+        plot_f_peak(simlist, zz)
 
 #     for ss in (0,1,2,3,4):
 #         plot_sep_frac(ss,3)
 #     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
 #     plt.clf()
 
-    for zz in (3,):
-        plot_vel_widths_sims(zz)
+#     for zz in (3,):
 #         plot_vel_widths_res(zz)
 #
 

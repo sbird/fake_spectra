@@ -31,7 +31,7 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
-#define NGRID 7
+#define NGRID 8
 
 //Threshold of tau below which we stop computing profiles
 //Note that because this is for each particle, it should be fairly small.
@@ -47,39 +47,67 @@ inline double sph_kernel(const double q)
         return 2*pow(1.- q,3);
 }
 
-/* Find the fraction of the total particle density in this pixel by integrating an SPH kernel
- * over the z direction. All distances in units of smoothing length.
+#ifndef TOP_HAT_KERNEL
+/* Find the integral of the particle density in this pixel by integrating an SPH kernel
+ * over the z direction.
  * Arguments:
  * zlow - Lower z limit for the integral (as z distance from particle center).
  * zhigh - Upper z limit for the integral (again as distance from particle center)
- * bb2 - transverse distance from particle to pixel, squared.
+ * smooth - smoothing length
+ * dr2 - transverse distance from particle to pixel, squared.
+ * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
  *
- * If K(q) is the SPH kernel normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
- * and q^2 = b^2 + z^2, then this is:
+ * If K(q) is the SPH kernel we need
  * int_zlow^zhigh K(q) dz
+ *
+ * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+ * and q^2 = (b^2 + z^2)/h^2, implying that (since int_{q<1} K(q) q^2 dq = 1/32)
+ * we want a normalisation of 32/3
+ *
  * */
-double sph_kern_frac(double zlow, double zhigh, double bb2)
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
 {
-    //Outside useful range.
-    if (zlow > sqrt(1-bb2) || zhigh < -sqrt(1-bb2)){
+    //Truncate bin size to support of kernel
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    if (zlow > zhigh)
         return 0;
-    }
-    //Maximal range that will do anything
-    zlow = std::max(zlow, -sqrt(1-bb2));
-    zhigh = std::min(zhigh, sqrt(1-bb2));
-    //return 3./(4*M_PI)*(zhigh - zlow);
-    double total = sph_kernel(sqrt(bb2+zlow*zlow))/2.;
+    const double qlow = sqrt(dr2+zlow*zlow)/smooth;
+    double total = sph_kernel(qlow)/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
     {
         const double zz = i*deltaz+zlow;
-        const double q = sqrt(bb2+zz*zz);
+        const double q = sqrt(dr2+zz*zz)/smooth;
+
         total+=sph_kernel(q);
     }
-    double qhigh = sqrt(bb2+zhigh*zhigh);
+    double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
+
     total += sph_kernel(qhigh)/2.;
-    return 8*deltaz*total/M_PI;
+    return 32./3.*deltaz*total;
 }
+
+#else
+
+/* Find the fraction of the total particle density in this pixel by integrating a top hat kernel
+ * over the z direction. This assumes that rho = rho_0, a constant, within the cell.
+ * Arguments:
+ * zlow - Lower z limit for the integral (as z distance from particle center).
+ * zhigh - Upper z limit for the integral (again as distance from particle center)
+ * smooth - smoothing length
+ * dr2 - transverse distance from particle to pixel, squared.
+ * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
+ * */
+
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
+{
+    //Integration limits
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    return std::max(0.,zhigh - zlow);
+}
+#endif
 
 /* Compute the Voigt or Gaussian profile.
  * Uses the approximation to the Voigt profile from Tepper-Garcia, 2006, MNRAS, 369, 2025
@@ -120,37 +148,52 @@ class SingleAbsorber
          * aa: voigt_fac/btherm the parameter for the Voight profile
          */
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
-            btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i)
+            btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i),
+            vhigh(sqrt(vsmooth*vsmooth-vdr2))
         {};
 
-        /*Evaluate the outer integral in the convolution which gives us the optical depth.
-         * This is:
+        /*Find the mean optical depth in the bin, by averaging over the optical depth
+         * at different points within it. The relevant scale here is the thermal broadening, b,
+         * and we only need to sample once every delta v = b. If b > bin width, no sub-sampling is necessary.
          *
-         * tau = int_{bin} dv' tau_kern_inner(v)
+         * In practice b ~ 0.13 sqrt(T/Z) (where Z is the atomic mass of the species)
+         * For iron at 10^4 K this gives b ~ 2, and so 1 km/s bins are fine
+         * and no subsampling is needed.
+         * The minimal b we should encounter is iron at T = 2000K,
+         * which gives b ~ 0.8 and 1 km/s is still probably ok, however we subsample a little anyway.
          * Arguments:
          * vlow, vhigh: integration limits, which should be v_bin - v_particle
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
+            //If the bin width is less than the thermal broadening scale,
+            //no need to subsample
+            if ((vhigh - vlow) < btherm)
+            {
+              return tau_kern_inner((vhigh+vlow)/2.);
+            }
+            const int npoints = 2*ceil((vhigh - vlow)/btherm/2)+1.;
             double total = tau_kern_inner(vlow)/2.;
-            const double deltav=(vhigh-vlow)/NGRID;
-            for(int i=1; i<NGRID; ++i)
+            //Note that the number of points does not need to be NGRID here,
+            //but it is for now.
+            const double deltav=(vhigh-vlow)/(npoints-1);
+            for(int i=1; i< npoints-1; ++i)
             {
                 const double vv = i*deltav+vlow;
                 total += tau_kern_inner(vv);
             }
             total += tau_kern_inner(vhigh)/2.;
-            return deltav*total;
+            return total/(npoints-1);
         }
 
     private:
-        /*Evaluate the inner integral in the convolution which gives us the optical depth.
+        /* This gives us the optical depth at velocity vouter, from a convolution of the density and
+         * broadening function.
          * This is:
          *
-         * tau = int_{bin} dv' int_{sph kernel support} dv n(v) Phi(v-v')
+         * tau(v') = int_{sph kernel support} dv n(v) Phi(v-v')
          * where n is the local density and Phi is the broadening function.
          *
-         * This does the inner function: int{sph kernel support} dv n(v) Phi(v-v')
          * (Strictly speaking internally we use v'' = v - v_part and v''' = v' - v_part)
          * Arguments:
          * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
@@ -160,9 +203,7 @@ class SingleAbsorber
          */
         inline double tau_kern_inner(const double vouter)
         {
-            //Compute SPH kernel support region
-            const double vhigh = sqrt(vsmooth*vsmooth-vdr2);
-            //Integration region goes from -vhigh to vhigh
+            //Integration region goes from -vhigh to vhigh, where vhigh is precomputed kernel support
             const double deltav=2.*vhigh/NGRID;
             //Because we are integrating over the whole sph kernel,
             //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
@@ -176,13 +217,14 @@ class SingleAbsorber
                 const double T0 = pow(vdiff/btherm,2);
                 total+=sph_kernel(q)*profile(T0,aa);
             }
-            return 8*deltav*total/M_PI;
+            return 32./3.*deltav*total;
         }
 
         const double btherm;
         const double vdr2;
         const double vsmooth;
         const double aa;
+        const double vhigh;
 };
 
 
@@ -201,54 +243,56 @@ velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void LineAbsorption::add_particle(double * tau, double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
+void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float smooth)
 {
-  /*Factor to convert the dimensionless quantity found by sph_kern_frac to a column density,
-   * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
-   * (1e10 M_sun /h) / (kpc/h)^2 if from C).
-   * The factor of h is because we compute int_z ρ dz, using dimensionless units for z, s.t. χ = z/h,
-   */
-  const double avgdens = dens * smooth;
-  /*Impact parameter in units of the smoothing length */
-  const double bb2 = dr2/smooth/smooth;
-  const double vsmooth = velfac * smooth;
+  /* Velocity of particle parallel to los: pos in kpc/h comoving
+     to vel in km/s physical. Note that gadget velocities come comoving,
+     so we need the sqrt(a) conversion factor.*/
+  const double pos = ppos + pvel * sqrt(atime)/velfac;
+  //If we are outside the kernel, do nothing.
+  if (smooth*smooth - dr2 <= 0)
+      return;
+  //z range covered by particle in kpc/h
+  const double zrange = sqrt(smooth*smooth - dr2);
+  //Conversion between units of position to units of the box.
+  const double boxtokpc = vbox / nbins / velfac;
+  // z is position in units of the box
+  const int zlow = floor((pos - zrange) / boxtokpc);
+  const int zhigh = ceil((pos + zrange) / boxtokpc);
+  // Compute the column density
+  for(int z=zlow; z<=zhigh; z++)
+  {
+      //Difference between position of bin this edge and particle
+      const double plow = (boxtokpc*z - pos);
+      // The index may be periodic wrapped.
+      // Index in units of the box
+      int j = z % nbins;
+      if (j<0)
+        j+=nbins;
+      /*Factor to convert the quantity found by sph_kern_frac which has units of kpc/h, to a column density,
+       * in [dens units] * [h units] (atoms/cm^3 * kpc/h if from python,
+       * (1e10 M_sun /h) / (kpc/h)^2 if from C).
+       * We compute int_z ρ dz
+       */
+      //colden in units of [den units]*[h units] * integral in terms of z
+      colden[j] += dens*sph_kern_frac(plow, plow + boxtokpc, smooth, dr2,zrange);
+  }
+}
+
+void LineAbsorption::add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
+{
   /* Velocity of particle parallel to los: pos in kpc/h comoving
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
-     Finally divide by h * velfac to give the velocity in units of the smoothing length.*/
+   */
   const double vel = velfac * ppos + pvel * sqrt(atime);
-  const double velsm = vel/vsmooth;
-  //Allowed z range in units of smoothing length
-  const double zrange = sqrt(1. - bb2);
-  //Conversion between units of the smoothing length to units of the box.
-  const double boxtosm = vbox / vsmooth / nbins;
-  // z is position in units of the box
-  const int zlow = floor((velsm - zrange) / boxtosm);
-  const int zhigh = ceil((velsm + zrange) / boxtosm);
-  // Compute the column density
-  if (colden != NULL) {
-      for(int z=zlow; z<=zhigh; z++)
-      {
-          /*Difference between velocity of bin this edge and particle in units of the smoothing length*/
-          const double vlow = (boxtosm*z - velsm);
-          // The index may be periodic wrapped.
-          // Index in units of the box
-          int j = z % nbins;
-          if (j<0)
-            j+=nbins;
-          //colden in units of [den units]*[h units] * integral in terms of z / h
-          colden[j] += avgdens*sph_kern_frac(vlow, vlow + boxtosm, bb2);
-      }
-  }
-  //Finish now if not computing absorption
-  if (!tau) {
-      return;
-  }
-
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
+  //Double check we are within the kernel support
+  if(smooth*smooth - dr2 <=0)
+      return;
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, vsmooth, voigt_fac/btherm );
+  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
@@ -263,7 +307,9 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   for(int z=zmax; z<zmax+nbins/2; ++z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
+      //dens is in atoms/cm^3, amp is in cm^2. tau_kern_outer returns in velocity units (here km/s),
+      //so then we have units of the end of km/s /cm, and need to divide by velfac to get kpc/h/cm
+      const double taulast=amp*dens*absorber.tau_kern_outer(vlow, vlow+bintov)/velfac;
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
@@ -277,7 +323,7 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
   for(int z=zmax-1; z>zmax-nbins/2; --z)
   {
       double vlow = z*bintov - vel;
-      const double taulast=amp*avgdens*absorber.tau_kern_outer(vlow, vlow+bintov);
+      const double taulast=amp*dens*absorber.tau_kern_outer(vlow, vlow+bintov)/velfac;
       // Make sure index is properly wrapped
       int j = z % nbins;
       if (j<0)
@@ -287,8 +333,6 @@ void LineAbsorption::add_particle(double * tau, double * colden, const int nbins
       if(taulast < TAUTAIL)
         break;
   }
-
-  return;
 }
 
 /* Compute temperature (in K) from internal energy.

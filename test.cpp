@@ -26,37 +26,40 @@
 
 #define FLOATS_NEAR_TO(x,y) \
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
-                && fabs((x) - (y)) <= std::max<float>(fabs(x),fabs(y))/1e5 ,(x)<<" is not close to "<<(y))
+                && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e5 ,(x)<<" is not close to "<<(y))
 //Here we are cool with 1% accuracy.
 #define FLOATS_APPROX_NEAR_TO(x,y) \
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
-                && fabs((x) - (y)) <= std::max<float>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
+                && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
 
-double sph_kern_frac(double zlow, double zhigh, double bb2);
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2,double zrange);
 
 BOOST_AUTO_TEST_CASE(check_sph_kern)
 {
-    /* Integrals evaluated exactly with Mathematica*/
-    /* If K(q) is the SPH kernel normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
-    * and q^2 = b^2 + z^2, then sph_kern_frac computes:
-    * int_zlow^zhigh K(q) dz.
+   /* Integrals evaluated with Mathematica
+    * If K(q) is the SPH kernel we need
+    * int_zlow^zhigh K(q) dz
+    *
+    * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+    * and q^2 = (b^2 + z^2)/h^2
     * The full range of the function is:
     * zlow = -1, zhigh = 1, coming to:
-    *  2 int_0^1 K(z) dz = 6 / pi
+    *  2 int_0^1 K(z) dz = 8
+    *  zrange = sqrt(smooth*smooth-dr2)
     */
-    FLOATS_NEAR_TO(sph_kern_frac(-1,1,0), 6./M_PI);
+    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0,1), 8.);
     //Should be the same with a wide range.
-    FLOATS_NEAR_TO(sph_kern_frac(-3,10,0), 6./M_PI);
+    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0,1), 8.);
     //Small variations
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,0), 0.11678);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0,1), 0.489167);
     //b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,0.4), 0.0121763);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,0.8), 3.99694e-5);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,0.9), 9.57342e-5);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4,0.774597), 0.051004);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8,0.447214), 0.000167423);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9,0.316228), 0.00040101);
     //Test wider range with b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,0.3), 0.0424468);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), 0.177801);
     //Check outside of range
-    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,0), 0);
+    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0,1), 0);
 }
 
 
@@ -72,12 +75,12 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     std::set<int> nonzero;
     /* Various checks on the column density*/
     //Add a particle with some reasonable properties that is exactly on the line of sight
-    //halfway along the spectrum, not moving and has a temperature of 10^4 K.
+    //halfway along the spectrum, not moving.
     //Bins are 5kpc wide.
-    test.add_particle(tau, colden, TNBINS, 0, 1,5002.5,0, 10000, 1);
+    test.add_colden_particle(colden, TNBINS, 0, 1,5002.5,0, 1);
     //Column density should be in one bin only
     //and total should be rho h int(-1,1)
-    double total = 6/M_PI;
+    double total = 8.;
     BOOST_CHECK_EQUAL(colden[999],0);
     FLOATS_NEAR_TO(colden[1000],total);
     BOOST_CHECK_EQUAL(colden[1001],0);
@@ -85,19 +88,19 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     //Scales correctly with h:
     total /=4;
     //Change particle density with h
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,1002.5,0, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1002.5,0, 2);
     BOOST_CHECK_EQUAL(colden[199],0);
     FLOATS_NEAR_TO(colden[200],total);
     BOOST_CHECK_EQUAL(colden[201],0);
     nonzero.insert(200);
     //Scales correctly with M:
-    test.add_particle(tau, colden, TNBINS, 0, 10/8.,1012.5,0, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 10/8.,1012.5,0, 2);
     BOOST_CHECK_EQUAL(colden[201],0);
     FLOATS_NEAR_TO(colden[202],10*total);
     BOOST_CHECK_EQUAL(colden[203],0);
     nonzero.insert(202);
     //Split evenly over two bins
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,1030,0, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1030,0, 2);
     BOOST_CHECK_EQUAL(colden[204],0);
     FLOATS_NEAR_TO(colden[205],total/2.);
     FLOATS_NEAR_TO(colden[206],total/2.);
@@ -105,7 +108,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(205);
     nonzero.insert(206);
     //Correct periodic wrapping 
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,10000,0, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,10000,0, 2);
     BOOST_CHECK_EQUAL(colden[1998],0);
     FLOATS_NEAR_TO(colden[1999],total/2.);
     FLOATS_NEAR_TO(colden[0],total/2.);
@@ -114,7 +117,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(0);
     //Correct shifting due to peculiar velocity:
     //velfac is 0.11, so this is a shift by 50kpc = 10 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,5000,5.838101932181076, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,5.838101932181076, 2);
     BOOST_CHECK_EQUAL(colden[1008],0);
     FLOATS_NEAR_TO(colden[1009],total/2.);
     FLOATS_NEAR_TO(colden[1010],total/2.);
@@ -123,7 +126,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(1010);
     //Correct shifting due to negative peculiar velocity:
     //velfac is 0.11, so this is a shift by -50kpc = -10 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,5000,-5.838101932181076, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,-5.838101932181076, 2);
     BOOST_CHECK_EQUAL(colden[988],0);
     FLOATS_NEAR_TO(colden[989],total/2.);
     FLOATS_NEAR_TO(colden[990],total/2.);
@@ -132,7 +135,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(990);
     //Correct periodic wrapping due to velocity shifting
     //velfac is 0.0589, so this is a shift by -20Mpc - 100kpc = -20 bins.
-    test.add_particle(tau, colden, TNBINS, 0, 1/8.,5000,-2346.9169767367925, 10000, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,-2346.9169767367925, 2);
     BOOST_CHECK_EQUAL(colden[978],0);
     FLOATS_APPROX_NEAR_TO(colden[979],total/2.);
     FLOATS_APPROX_NEAR_TO(colden[980],total/2.);
@@ -140,13 +143,13 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(979);
     nonzero.insert(980);
     //Check non-zero offset from line
-    test.add_particle(tau, colden, TNBINS, 0.7, 1,4852.5,0, 10000, 1);
+    test.add_colden_particle(colden, TNBINS, 0.7, 1,4852.5,0, 1);
     FLOATS_NEAR_TO(colden[969],0);
-    FLOATS_APPROX_NEAR_TO(colden[970],0.0107795);
+    FLOATS_APPROX_NEAR_TO(colden[970],0.0451531);
     BOOST_CHECK_EQUAL(colden[971],0);
     nonzero.insert(970);
     //Offset enough to not add anything
-    test.add_particle(tau, colden, TNBINS, 1.0, 1,4802.5,0, 10000, 1);
+    test.add_colden_particle(colden, TNBINS, 1.0, 1,4802.5,0, 1);
     FLOATS_NEAR_TO(colden[960],0);
 
     //Check that all other values are zero still.
