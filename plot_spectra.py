@@ -178,7 +178,7 @@ class PlottingSpectra(spectra.Spectra):
         print "Z mass correlation: ",lsq.pearson(met, mass,intercept, slope)
         print "Z mass kstest: ",lsq.kstest(met, mass,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
-        plt.loglog(10**intercept*xx**slope, xx, color="black")
+        plt.loglog(10**intercept*xx**slope, xx, color="black", label=self.label)
 
     def plot_vel_vs_mass(self,elem, line, min_mass=1e9, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
@@ -198,7 +198,7 @@ class PlottingSpectra(spectra.Spectra):
         print "Z vel correlation: ",lsq.pearson(vel, mass,intercept, slope)
         print "Z vel kstest: ",lsq.kstest(vel, mass,intercept, slope)
         xx = np.logspace(np.min(vel), np.max(vel),15)
-        plt.loglog(10**intercept*xx**slope, xx, color="black")
+        plt.loglog(10**intercept*xx**slope, xx, color="black",label=self.label)
 
     def kstest(self, Zdata, veldata, elem="Si", line=2):
         """Find the 2D KS test value of the Vel width and log metallicity with respect to an external dataset, veldata and Z data"""
