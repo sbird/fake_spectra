@@ -889,14 +889,15 @@ class Spectra:
         Returns:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
         """
-        min_mass = self.min_halo_mass()*1e10
-        (halos, _) = self.find_nearest_halo(min_mass)
+        (halos, _) = self.find_nearest_halo()
+        f_ind = np.where(halos == -1)
         ind = self.get_filt("Si",2)
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         m_table = 10**np.arange(np.log10(min_mass), np.log10(np.max(self.sub_mass)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
-        pdf = np.histogram(np.log10(self.sub_mass[halos][ind]),np.log10(m_table), density=True)[0]
+        pdf = np.histogram(np.log10(self.sub_mass[halos[f_ind]][ind]),np.log10(m_table), density=True)[0]
+        print "Field DLAs: ",np.size(f_ind)
         return (mbin, pdf)
 
     def equivalent_width(self, elem, ion, line):
@@ -1087,10 +1088,10 @@ class Spectra:
         min_mass = target_mass * minpart
         return min_mass
 
-    def find_nearest_halo(self, min_mass = None):
+    def find_nearest_halo(self, min_mass = 0, mult=1.):
         """
-        Find the nearest halo to the highest density peak of the sightline,
-        with a halo mass greater than min_mass (to avoid unresolved halos)
+        Assign a DLA (defined as the position along the sightline with highest column density)
+        to the largest halo whose virial radius it is within.
         """
         if min_mass == None:
             min_mass = self.min_halo_mass()*1e10
@@ -1110,10 +1111,18 @@ class Spectra:
             #Third coordinate given by spectrum HI density peak
             maxHI = np.where(col_den[ii,:] == np.max(col_den[ii,:]))[0][0]
             proj_pos[ax] = maxHI*1.*self.box/self.nbins
-            #Find halo that minimises distance from this peak
+            #Is this within the virial radius of any halo?
             dd = np.sqrt(np.sum((self.sub_cofm - proj_pos)**2,axis=1))
-            dists[ii] = np.min(dd[m_ind])
-            halos[ii] = int(np.where(dists[ii] == dd)[0][0])
+            ind = np.where(dd[m_ind] < mult*self.sub_radii)
+            #Field DLA
+            if np.size(ind) == 0:
+                halos[ii] = -1.
+                dists[ii] = 0.
+            #Most massive halo
+            else:
+                mm_ind = np.where(self.sub_mass[m_ind][ind] == np.max(self.sub_mass[m_ind][ind]))
+                dists[ii] = dd[m_ind][ind][mm_ind]
+                halos[ii] = int(np.where(dists[ii] == dd)[0][0])
         return (halos, dists)
 
     def load_halo(self):
