@@ -599,20 +599,13 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, line, HI_cut = 10**20.3, met_cut = 1e13):
+    def get_filt(self, elem, line, met_cut = 1e13):
         """
-        Get an index list of spectra with a DLA in them, and metal column density above a certain value
+        Get an index list of spectra with metal column density above a certain value
         """
         #Remember this is not in log...
-        if HI_cut == None:
-            HI_cut = 0
-        if met_cut == None:
-            rho_H = self.get_col_density("H",1)
-            ind = np.where(np.max(rho_H,axis=1) > HI_cut)
-            return ind
         rho = self.get_col_density(elem,line)
-        rho_H = self.get_col_density("H",1)
-        ind = np.where((np.max(rho,axis=1) > met_cut)*(np.max(rho_H,axis=1) > HI_cut))
+        ind = np.where((np.max(rho,axis=1) > met_cut))
         return ind
 
     def vel_width(self, tau, dlawidth=None):
@@ -877,7 +870,7 @@ class Spectra:
         vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
         return (vbin, vels)
 
-    def mass_hist(self, dm=0.1):
+    def mass_hist(self, dm=0.1, min_mass=9,max_mass=13):
         """
         Compute a histogram of the host halo mass of each DLA spectrum.
 
@@ -889,14 +882,13 @@ class Spectra:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
         """
         (halos, _) = self.find_nearest_halo()
-        f_ind = np.where(halos == -1)
-        ind = self.get_filt("Si",2)
+        f_ind = np.where(halos != -1)
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
-        m_table = 10**np.arange(np.log10(min_mass), np.log10(np.max(self.sub_mass)), dm)
+        m_table = 10**np.arange(min_mass, max_mass, dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
-        pdf = np.histogram(np.log10(self.sub_mass[halos[f_ind]][ind]),np.log10(m_table), density=True)[0]
-        print "Field DLAs: ",np.size(f_ind)
+        pdf = np.histogram(np.log10(self.sub_mass[halos[f_ind]]),np.log10(m_table), density=True)[0]
+        print "Field DLAs: ",np.size(halos)-np.size(f_ind)
         return (mbin, pdf)
 
     def equivalent_width(self, elem, ion, line):
@@ -1112,7 +1104,7 @@ class Spectra:
             proj_pos[ax] = maxHI*1.*self.box/self.nbins
             #Is this within the virial radius of any halo?
             dd = np.sqrt(np.sum((self.sub_cofm - proj_pos)**2,axis=1))
-            ind = np.where(dd[m_ind] < mult*self.sub_radii)
+            ind = np.where(dd[m_ind] < mult*self.sub_radii[m_ind])
             #Field DLA
             if np.size(ind) == 0:
                 halos[ii] = -1.
