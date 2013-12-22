@@ -78,8 +78,7 @@ def plot_vel_mass(sim, snap, ff=True):
     vel= hspec.vel_width(hspec.get_observer_tau("Si",2))[ind]
     (halos, _) = hspec.find_nearest_halo()
     mass = hspec.sub_mass[halos][ind]
-    ind = np.where(vel > 10)
-    (H, xedges, yedges) = np.histogram2d(np.log10(mass[ind]), np.log10(vel[ind]), bins=30,normed=True)
+    (H, xedges, yedges) = np.histogram2d(np.log10(mass), np.log10(vel), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
@@ -106,9 +105,7 @@ def plot_vel_metals(sim, snap, ff=True):
     met = hspec.get_metallicity()
     tau = hspec.get_observer_tau("Si", 2)
     vel = hspec.vel_width(tau)
-    #Ignore objects too faint to be seen or unresolved
-    ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
-    (H, xedges, yedges) = np.histogram2d(np.log10(met[ind2]), np.log10(vel[ind2]), bins=30,normed=True)
+    (H, xedges, yedges) = np.histogram2d(np.log10(met), np.log10(vel), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
@@ -124,9 +121,7 @@ def plot_Si_metals(sim, snap, ff=True):
     mms = np.sum(MM, axis=1)
     hhs = np.sum(HH, axis=1)
     Simet = mms/hhs/0.0133
-    #Ignore objects too faint to be seen or unresolved
-    ind2 = np.where(met > 1e-3)
-    (H, xedges, yedges) = np.histogram2d(np.log10(met[ind2]), np.log10(Simet[ind2]), bins=30,normed=True)
+    (H, xedges, yedges) = np.histogram2d(np.log10(met), np.log10(Simet), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
