@@ -1092,6 +1092,7 @@ class Spectra:
         #X axis first
         col_den = self.get_col_density("H",1)
         axes = [0,1,2]
+        (dlawidth, _) = self.find_dla_width(col_den)
         for ii in xrange(np.size(self.axis)):
             proj_pos = np.zeros(3)
             #Get two coordinates given by axis label
@@ -1099,9 +1100,32 @@ class Spectra:
             ax = self.axis[ii]-1
             sax.remove(ax)
             proj_pos[sax] = self.cofm[ii,sax]
-            #Third coordinate given by spectrum HI density peak
-            maxHI = np.where(col_den[ii,:] == np.max(col_den[ii,:]))[0][0]
-            proj_pos[ax] = maxHI*1.*self.box/self.nbins
+            #Find region of DLA
+            centHI = np.where(col_den[ii,:] == np.max(col_den[ii,:]))[0][0]
+            #Width of the DLA
+            minHI = centHI - dlawidth[ii]
+            maxHI = centHI + dlawidth[ii]
+            #Third coordinate given by HI mass-weighted depth along sightline
+            #If width is wider than the box, simply sum over the whole sightline
+            if minHI < 0 and maxHI > self.nbins:
+                minHI = 0
+                maxHI = self.nbins
+            zcol_den = col_den[ii,:]*np.arange(self.nbins)
+            zpos = np.sum(zcol_den[np.max([0,minHI]):np.min([self.nbins,maxHI])])
+            summ = np.sum(col_den[ii,np.max([0,minHI]):np.min([self.nbins,maxHI])])
+            #Otherwise sum the periodic wrapped bits separately
+            if minHI < 0:
+                zposwrap = col_den[ii,:]*(np.arange(self.nbins)-self.nbins)
+                zpos += np.sum(zposwrap[minHI:self.nbins])
+                summ += np.sum(col_den[ii,minHI:self.nbins])
+            elif maxHI > self.nbins:
+                zposwrap = col_den[ii,:]*(np.arange(self.nbins)+self.nbins)
+                zpos += np.sum(zposwrap[0:maxHI-self.nbins])
+                summ += np.sum(col_den[ii,0:maxHI-self.nbins])
+            zpos /= summ
+            #Make sure it refers to a valid position
+            zpos = zpos % self.nbins
+            proj_pos[ax] = zpos*1.*self.box/self.nbins
             #Is this within the virial radius of any halo?
             dd = np.sqrt(np.sum((self.sub_cofm - proj_pos)**2,axis=1))
             ind = np.where(dd[m_ind] < mult*self.sub_radii[m_ind])
