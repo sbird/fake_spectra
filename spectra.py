@@ -515,16 +515,14 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        (tau, colden) =  self._interpolate_single_file(self.files[0], elem, ion, ll, get_tau)
+        result =  self._interpolate_single_file(self.files[0], elem, ion, ll, get_tau)
         #Do remaining files
         for fn in self.files[1:]:
-            (ttau, tcolden) =  self._interpolate_single_file(fn, elem, ion, ll, get_tau)
+            tresult =  self._interpolate_single_file(fn, elem, ion, ll, get_tau)
             #Add new file
-            tau += ttau
-            colden += tcolden
-            del ttau
-            del tcolden
-        return (tau, colden)
+            result += tresult
+            del tresult
+        return result
 
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
         """Get the optical depth for a particular element out of:
