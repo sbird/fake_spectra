@@ -554,7 +554,7 @@ class Spectra:
             line = self.lines[(elem,ion)][ll]
             for ff in self.files:
                 if amumass[ff] != False:
-                    (tau_loc, _) = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
+                    tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
                     tau[ll,:,:] += tau_loc
                     del tau_loc
         #Maximum tau in each spectra with each line
