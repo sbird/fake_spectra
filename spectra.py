@@ -290,7 +290,8 @@ class Spectra:
             temp = temp[ind2]
             pos = pos[ind2]
             hh = hh[ind2]
-            vel = vel[ind2]
+            if get_tau:
+                vel = vel[ind2]
             if np.max(temp) > 10**8.6:
                 temp2 = np.array(temp)
                 temp2[np.where(temp2 > 10**8.6)] = 10**8.6
