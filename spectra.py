@@ -27,12 +27,12 @@ import cold_gas
 import line_data
 import h5py
 import hdfsim
-import halocat
 from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
 from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
+import readsubfHDF5
 from _spectra_priv import _Particle_Interpolate, _near_lines
 
 class Spectra:
@@ -1136,9 +1136,18 @@ class Spectra:
         return (halos, dists)
 
     def load_halo(self):
-        """Load a halo catalogue"""
+        """Load a halo catalogue: note this will return some halos with zero radius.
+           These are empty FoF groups and should not be a problem."""
+        SolarMass_in_g=1.989e33
         try:
-            (_, self.sub_mass, self.sub_cofm, self.sub_radii) = halocat.find_all_halos(self.num, self.base, 0)
+            subs=readsubfHDF5.subfind_catalog(self.base, self.num,long_ids=True)
+            #Get particle center of mass, use group catalogue.
+            self.sub_cofm=subs.GroupPos
+            #halo masses in M_sun/h: use M_200
+            self.sub_mass=subs.Group_M_Crit200*self.UnitMass_in_g/SolarMass_in_g
+            #r200 in kpc/h (comoving).
+            self.sub_radii = subs.Group_R_Crit200
+            #self.sub_vel = subs.GroupVel
         except IOError:
             pass
 
