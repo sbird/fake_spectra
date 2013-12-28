@@ -257,8 +257,8 @@ class Spectra:
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
         star=cold_gas.RahmatiRT(self.red, self.hubble)
-        vel = np.zeros(1)
-        temp = np.zeros(1)
+        vel = np.zeros(1,dtype=np.float32)
+        temp = np.zeros(1,dtype=np.float32)
         if get_tau:
           vel = np.array(data["Velocities"],dtype=np.float32)
           vel = vel[ind,:]
