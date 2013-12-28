@@ -243,12 +243,8 @@ velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float smooth)
+void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float pos, const float smooth)
 {
-  /* Velocity of particle parallel to los: pos in kpc/h comoving
-     to vel in km/s physical. Note that gadget velocities come comoving,
-     so we need the sqrt(a) conversion factor.*/
-  const double pos = ppos + pvel * sqrt(atime)/velfac;
   //If we are outside the kernel, do nothing.
   if (smooth*smooth - dr2 <= 0)
       return;

@@ -35,13 +35,13 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float D
           const double dr2 = it->second;
           //Particle position parallel to axis
           const float ppos = Pos[3*ipart+axis-1];
-          const float pvel = Vel[3*ipart+axis-1];
           //Don't need temp if no tau
           if(tau){
+            const float pvel = Vel[3*ipart+axis-1];
             add_tau_particle(tau_loc, nbins, dr2, Dens[ipart], ppos, pvel, temp[ipart], h[ipart]);
           }
           if(colden){
-            add_colden_particle(colden_loc, nbins, dr2, Dens[ipart], ppos, pvel, h[ipart]);
+            add_colden_particle(colden_loc, nbins, dr2, Dens[ipart], ppos, h[ipart]);
           }
         }  /*Loop over list of particles near LOS*/
     } /* Loop over LOS*/

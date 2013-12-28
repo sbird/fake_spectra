@@ -75,9 +75,9 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     std::set<int> nonzero;
     /* Various checks on the column density*/
     //Add a particle with some reasonable properties that is exactly on the line of sight
-    //halfway along the spectrum, not moving.
+    //halfway along the spectrum
     //Bins are 5kpc wide.
-    test.add_colden_particle(colden, TNBINS, 0, 1,5002.5,0, 1);
+    test.add_colden_particle(colden, TNBINS, 0, 1,5002.5, 1);
     //Column density should be in one bin only
     //and total should be rho h int(-1,1)
     double total = 8.;
@@ -88,19 +88,19 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     //Scales correctly with h:
     total /=4;
     //Change particle density with h
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1002.5,0, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1002.5, 2);
     BOOST_CHECK_EQUAL(colden[199],0);
     FLOATS_NEAR_TO(colden[200],total);
     BOOST_CHECK_EQUAL(colden[201],0);
     nonzero.insert(200);
     //Scales correctly with M:
-    test.add_colden_particle(colden, TNBINS, 0, 10/8.,1012.5,0, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 10/8.,1012.5, 2);
     BOOST_CHECK_EQUAL(colden[201],0);
     FLOATS_NEAR_TO(colden[202],10*total);
     BOOST_CHECK_EQUAL(colden[203],0);
     nonzero.insert(202);
     //Split evenly over two bins
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1030,0, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,1030, 2);
     BOOST_CHECK_EQUAL(colden[204],0);
     FLOATS_NEAR_TO(colden[205],total/2.);
     FLOATS_NEAR_TO(colden[206],total/2.);
@@ -108,48 +108,21 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nonzero.insert(205);
     nonzero.insert(206);
     //Correct periodic wrapping 
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,10000,0, 2);
+    test.add_colden_particle(colden, TNBINS, 0, 1/8.,10000, 2);
     BOOST_CHECK_EQUAL(colden[1998],0);
     FLOATS_NEAR_TO(colden[1999],total/2.);
     FLOATS_NEAR_TO(colden[0],total/2.);
     BOOST_CHECK_EQUAL(colden[1],0);
     nonzero.insert(1999);
     nonzero.insert(0);
-    //Correct shifting due to peculiar velocity:
-    //velfac is 0.11, so this is a shift by 50kpc = 10 bins.
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,5.838101932181076, 2);
-    BOOST_CHECK_EQUAL(colden[1008],0);
-    FLOATS_NEAR_TO(colden[1009],total/2.);
-    FLOATS_NEAR_TO(colden[1010],total/2.);
-    BOOST_CHECK_EQUAL(colden[1011],0);
-    nonzero.insert(1009);
-    nonzero.insert(1010);
-    //Correct shifting due to negative peculiar velocity:
-    //velfac is 0.11, so this is a shift by -50kpc = -10 bins.
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,-5.838101932181076, 2);
-    BOOST_CHECK_EQUAL(colden[988],0);
-    FLOATS_NEAR_TO(colden[989],total/2.);
-    FLOATS_NEAR_TO(colden[990],total/2.);
-    BOOST_CHECK_EQUAL(colden[991],0);
-    nonzero.insert(989);
-    nonzero.insert(990);
-    //Correct periodic wrapping due to velocity shifting
-    //velfac is 0.0589, so this is a shift by -20Mpc - 100kpc = -20 bins.
-    test.add_colden_particle(colden, TNBINS, 0, 1/8.,5000,-2346.9169767367925, 2);
-    BOOST_CHECK_EQUAL(colden[978],0);
-    FLOATS_APPROX_NEAR_TO(colden[979],total/2.);
-    FLOATS_APPROX_NEAR_TO(colden[980],total/2.);
-    BOOST_CHECK_EQUAL(colden[981],0);
-    nonzero.insert(979);
-    nonzero.insert(980);
     //Check non-zero offset from line
-    test.add_colden_particle(colden, TNBINS, 0.7, 1,4852.5,0, 1);
+    test.add_colden_particle(colden, TNBINS, 0.7, 1,4852.5, 1);
     FLOATS_NEAR_TO(colden[969],0);
     FLOATS_APPROX_NEAR_TO(colden[970],0.0451531);
     BOOST_CHECK_EQUAL(colden[971],0);
     nonzero.insert(970);
     //Offset enough to not add anything
-    test.add_colden_particle(colden, TNBINS, 1.0, 1,4802.5,0, 1);
+    test.add_colden_particle(colden, TNBINS, 1.0, 1,4802.5, 1);
     FLOATS_NEAR_TO(colden[960],0);
 
     //Check that all other values are zero still.
