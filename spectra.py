@@ -724,7 +724,7 @@ class Spectra:
         #Return the width
         return mean_median
 
-    def extra_stat_hist(self, elem, line, stat=False, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, tau=None):
+    def extra_stat_hist(self, elem, line, stat=False, dv=0.1, met_cut = 1e13, tau=None):
         """
         Compute a histogram of the mean median statistic of our spectra, with the purpose of
         comparing to the data of Neeleman 2013
@@ -734,8 +734,6 @@ class Spectra:
             line - line to use (the components of this line must be pre-computed and stored in self.metals)
             stat - Statistic to use. If true, f_edge. If False, f_median
             dv - bin spacing
-            HI_cut - Prochaska used a subsample of spectra containing a DLA.
-                     If this value is not None, consider only HI column densities above this threshold.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
 
@@ -744,7 +742,7 @@ class Spectra:
         """
         if tau == None:
             tau = self.get_observer_tau(elem, line)
-        ind = self.get_filt(elem, line, HI_cut, met_cut)
+        ind = self.get_filt(elem, line, met_cut)
         colden = self.get_col_density("H",1)
         (dlawidth, _) = self.find_dla_width(colden[ind])
         if stat:
@@ -832,7 +830,7 @@ class Spectra:
         #Return the width
         return mean_median
 
-    def vel_width_hist(self, elem, line, dv=0.1, HI_cut = 10**20.3, met_cut = 1e13, tau=None):
+    def vel_width_hist(self, elem, line, dv=0.1, met_cut = 1e13, tau=None):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -847,9 +845,6 @@ class Spectra:
             elem - element to use
             line - line to use (the components of this line must be pre-computed and stored in self.metals)
             dv - bin spacing
-            HI_cut - Prochaska used a subsample of spectra containing a DLA.
-                     If this value is not None, consider only HI column densities above this threshold.
-                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
 
@@ -859,7 +854,7 @@ class Spectra:
         if tau == None:
             tau = self.get_observer_tau(elem, line)
         #Filter small number of spectra without metals
-        ind = self.get_filt(elem, line, HI_cut, met_cut)
+        ind = self.get_filt(elem, line, met_cut)
         colden = self.get_col_density("H",1)
         (dlawidth, _) = self.find_dla_width(colden[ind])
         vel_width = self.vel_width(tau[ind], dlawidth)

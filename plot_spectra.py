@@ -15,36 +15,30 @@ class PlottingSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
         self.label=label
 
-    def plot_vel_width(self, elem, line, dv=0.1, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
+    def plot_vel_width(self, elem, line, dv=0.1, met_cut = 1e13, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
             line - line to use (the components of this line must be pre-computed and stored in self.metals)
             dv - bin spacing
-            HI_cut - Prochaska used a subsample of spectra containing a DLA.
-                     If this value is not None, consider only HI column densities above this threshold.
-                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
 
         """
-        (vbin, vels) = self.vel_width_hist(elem, line, dv, HI_cut, met_cut)
+        (vbin, vels) = self.vel_width_hist(elem, line, dv, met_cut=met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_extra_stat(self, elem, line, stat=False, dv=0.03, HI_cut = None, met_cut = 1e13, color="red", ls="-"):
+    def plot_extra_stat(self, elem, line, stat=False, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """Plot the Prochaska extra statistics
         Parameters:
             elem - element to use
             line - line to use (the components of this line must be pre-computed and stored in self.metals)
             stat - Statistic to use. If true, f_edge. If False, f_median
             dv - bin spacing
-            HI_cut - Prochaska used a subsample of spectra containing a DLA.
-                     If this value is not None, consider only HI column densities above this threshold.
-                     If the spectra are taken within the halo virial radius, this does not make much of a difference.
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
         """
-        (vbin, vels) = self.extra_stat_hist(elem, line, stat, dv, HI_cut, met_cut)
+        (vbin, vels) = self.extra_stat_hist(elem, line, stat, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
@@ -132,12 +126,12 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]))
 
-    def plot_metallicity(self, HI_cut=10**20.3, nbins=20,color="blue", ls="-"):
+    def plot_metallicity(self, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities"""
         bins=np.linspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
-        ind = self.get_filt("Z", "-1", HI_cut, None)
+        ind = self.get_filt("Z", "-1", None)
         #Abs. distance for entire spectrum
         hist = np.histogram(np.log10(met[ind]),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
