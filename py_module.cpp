@@ -139,29 +139,22 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
       return NULL;
     }
 
-    //Here comes the cheat
-
-
     //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.
     //PyArray_GETCONTIGUOUS increments the reference count of the object,
     //so to avoid leaking we need to save the PyArrayObject pointer.
     pos = PyArray_GETCONTIGUOUS(pos);
-    vel = PyArray_GETCONTIGUOUS(vel);
     dens = PyArray_GETCONTIGUOUS(dens);
-    temp = PyArray_GETCONTIGUOUS(temp);
     h = PyArray_GETCONTIGUOUS(h);
     float * Pos =(float *) PyArray_DATA(pos);
     float * Hh= (float *) PyArray_DATA(h);
-    float * Vel =(float *) PyArray_DATA(vel);
     float * Dens =(float *) PyArray_DATA(dens);
-    float * Temp =(float *) PyArray_DATA(temp);
 
     cofm = PyArray_GETCONTIGUOUS(cofm);
     axis = PyArray_GETCONTIGUOUS(axis);
     double * Cofm =(double *) PyArray_DATA(cofm);
     int32_t * Axis =(int32_t *) PyArray_DATA(axis);
-    if( !Pos || !Vel || !Dens || !Temp || !Hh || !Cofm || !Axis ){
+    if( !Pos || !Dens || !Hh || !Cofm || !Axis ){
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
@@ -172,6 +165,17 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
     if (compute_tau){
+        vel = PyArray_GETCONTIGUOUS(vel);
+        temp = PyArray_GETCONTIGUOUS(temp);
+
+        float * Vel =(float *) PyArray_DATA(vel);
+        float * Temp =(float *) PyArray_DATA(temp);
+
+        if( !Vel || !Temp ){
+          PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of Vel and Temp failed\n");
+          return NULL;
+        }
+
         PyArrayObject * tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
         double * tau = (double *) PyArray_DATA(tau_out);
         if ( !tau_out ){
@@ -185,6 +189,9 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         //Build a tuple from the interp struct
         for_return = Py_BuildValue("O", tau_out);
         Py_DECREF(tau_out);
+        Py_DECREF(vel);
+        Py_DECREF(temp);
+
     }
     else{
         PyArrayObject * colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
@@ -207,9 +214,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     //Because PyArray_GETCONTIGUOUS incremented the reference count,
     //and may have made an allocation, in which case this does not point to what it used to.
     Py_DECREF(pos);
-    Py_DECREF(vel);
     Py_DECREF(dens);
-    Py_DECREF(temp);
     Py_DECREF(h);
     Py_DECREF(cofm);
     Py_DECREF(axis);
@@ -219,7 +224,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 
 static PyMethodDef spectrae[] = {
   {"_Particle_Interpolate", Py_Particle_Interpolation, METH_VARARGS,
-   "Find absorption and column density by interpolating particles. "
+   "Find absorption or column density by interpolating particles. "
    "    Arguments: compute_tau nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, dens, temp, h, axis, cofm"
    "    "},
   {"_near_lines", Py_near_lines,METH_VARARGS,

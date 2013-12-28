@@ -221,7 +221,7 @@ class Spectra:
 
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion)
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,get_tau)
         if amumass == False:
             ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
             if get_tau:
@@ -234,7 +234,7 @@ class Spectra:
             line = self.lines[("H",1)][0]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self,fn, elem, ion):
+    def _read_particle_data(self,fn, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
         ff = h5py.File(fn, "r")
         data = ff["PartType0"]
@@ -257,8 +257,11 @@ class Spectra:
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
         star=cold_gas.RahmatiRT(self.red, self.hubble)
-        vel = np.array(data["Velocities"],dtype=np.float32)
-        vel = vel[ind,:]
+        vel = np.zeros(1)
+        temp = np.zeros(1)
+        if get_tau:
+          vel = np.array(data["Velocities"],dtype=np.float32)
+          vel = vel[ind,:]
         #gas density amu / cm^3
         den=star.get_code_rhoH(data)
         # Get mass of atomic species
@@ -268,8 +271,9 @@ class Spectra:
             amumass = 1
         den = den[ind]
         #Only need temp for ionic density, and tau later
-        temp = star.get_temp(den, data)
-        temp = temp[ind]
+        if get_tau or ion != -1:
+            temp = star.get_temp(den, data)
+            temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
@@ -546,7 +550,7 @@ class Spectra:
         hh = {}
         amumass = {}
         for ff in self.files:
-            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion)
+            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion,True)
 
         for ll in xrange(nlines):
             line = self.lines[(elem,ion)][ll]
