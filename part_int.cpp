@@ -16,7 +16,7 @@
 //For NULL
 #include <cstddef>
 
-void ParticleInterp::do_work(const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart)
+void ParticleInterp::compute_tau(double tau[], const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart)
 {
     const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
     //Use a plain int as not sure openmp can handle iterators efficiently.
@@ -25,8 +25,32 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float D
     for(unsigned int i = 0; i < nlines; ++i)
     {
         const int axis = sort_los_table.get_axis(i);
-        double * tau_loc = (tau ? &tau[i*nbins] : NULL);
-        double * colden_loc =(colden ? &colden[i*nbins] : NULL);
+        double * tau_loc = &tau[i*nbins];
+        //List of particles near this los
+        //Loop over them
+        for(std::map<int, double>::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)
+        {
+          const int ipart = it->first;
+          const double dr2 = it->second;
+          //Particle position parallel to axis
+          const float ppos = Pos[3*ipart+axis-1];
+          const float pvel = Vel[3*ipart+axis-1];
+          add_tau_particle(tau_loc, nbins, dr2, Dens[ipart], ppos, pvel, temp[ipart], h[ipart]);
+        }  /*Loop over list of particles near LOS*/
+    } /* Loop over LOS*/
+    return;
+}
+
+void ParticleInterp::compute_colden(double colden[], const float Pos[], const float Dens[], const float h[], const long long npart)
+{
+    const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
+    //Use a plain int as not sure openmp can handle iterators efficiently.
+    const unsigned int nlines = nearby_array.size();
+    #pragma omp parallel for
+    for(unsigned int i = 0; i < nlines; ++i)
+    {
+        const int axis = sort_los_table.get_axis(i);
+        double * colden_loc = &colden[i*nbins];
         //List of particles near this los
         //Loop over them
         for(std::map<int, double>::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)
@@ -36,16 +60,9 @@ void ParticleInterp::do_work(const float Pos[], const float Vel[], const float D
           //Particle position parallel to axis
           const float ppos = Pos[3*ipart+axis-1];
           //Don't need temp if no tau
-          if(tau){
-            const float pvel = Vel[3*ipart+axis-1];
-            add_tau_particle(tau_loc, nbins, dr2, Dens[ipart], ppos, pvel, temp[ipart], h[ipart]);
-          }
-          if(colden){
-            add_colden_particle(colden_loc, nbins, dr2, Dens[ipart], ppos, h[ipart]);
-          }
+          add_colden_particle(colden_loc, nbins, dr2, Dens[ipart], ppos, h[ipart]);
         }  /*Loop over list of particles near LOS*/
     } /* Loop over LOS*/
-
     return;
 }
 

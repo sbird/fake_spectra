@@ -175,7 +175,7 @@ int main(int argc, char **argv)
     populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
     const double velfac = h100*atime*Hz/1e3;
-    ParticleInterp pint(tau_H1, colden_H1, NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos);
+    ParticleInterp pint(NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos);
   if(!(output=fopen(outname.c_str(),"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));
@@ -216,7 +216,9 @@ int main(int argc, char **argv)
              P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
            }
           /*Do the hard SPH interpolation*/
-          pint.do_work(P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
+          pint.compute_tau(tau_H1,P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);
+          pint.compute_colden(colden_H1,P.Pos, P.Mass, P.h, Npart);
+
           /*Free the particle list once we don't need it*/
           free_parts(&P);
   } while(i_fileno > 0);

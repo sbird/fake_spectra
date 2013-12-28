@@ -139,37 +139,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
       return NULL;
     }
 
-
-    /* Allocate array space. This is (I hope) contiguous.
-     * Note: for an array of shape (a,b), element (i,j) can be accessed as
-     * [i*b+j] */
-    PyArrayObject * colden_out;
-    PyArrayObject * tau_out;
-    double * tau, * colden;
-    if (compute_tau){
-        tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
-        tau = (double *) PyArray_DATA(tau_out);
-        colden_out = (PyArrayObject *) PyArray_SimpleNew(0, size, NPY_DOUBLE);
-        colden = NULL;
-
-    }
-    else{
-        colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
-        colden = (double *) PyArray_DATA(colden_out);
-        tau_out = (PyArrayObject *) PyArray_SimpleNew(0, size, NPY_DOUBLE);
-        tau = NULL;
-    }
-
-
-    if ( !colden_out || !tau_out ){
-        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output arrays\n");
-        return NULL;
-    }
-
-    //Initialise output arrays to 0.
-    PyArray_FILLWBYTE(colden_out, 0);
-    PyArray_FILLWBYTE(tau_out, 0);
-
     //Here comes the cheat
 
 
@@ -196,19 +165,45 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
-    ParticleInterp pint(tau, colden, nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos);
-    //Do the work
-    pint.do_work(Pos, Vel, Dens, Temp, Hh, Npart);
+    ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos);
 
-    //Build a tuple from the interp struct
     PyObject * for_return;
-	for_return = Py_BuildValue("OO", tau_out, colden_out);
+    /* Allocate array space. This is (I hope) contiguous.
+     * Note: for an array of shape (a,b), element (i,j) can be accessed as
+     * [i*b+j] */
+    if (compute_tau){
+        PyArrayObject * tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+        double * tau = (double *) PyArray_DATA(tau_out);
+        if ( !tau_out ){
+          PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for tau\n");
+          return NULL;
+        }
+        PyArray_FILLWBYTE(tau_out, 0);
+        //Do the work
+        pint.compute_tau(tau, Pos, Vel, Dens, Temp, Hh, Npart);
 
-    //Decrement the refcount
-    if(tau_out){
+        //Build a tuple from the interp struct
+        for_return = Py_BuildValue("O", tau_out);
         Py_DECREF(tau_out);
     }
-    Py_DECREF(colden_out);
+    else{
+        PyArrayObject * colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
+        double * colden = (double *) PyArray_DATA(colden_out);
+        if ( !colden_out ){
+          PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for colden\n");
+          return NULL;
+        }
+        //Initialise output arrays to 0.
+        PyArray_FILLWBYTE(colden_out, 0);
+
+        //Do the work
+        pint.compute_colden(colden, Pos, Dens, Hh, Npart);
+
+        //Build a tuple from the interp struct
+        for_return = Py_BuildValue("O", colden_out);
+        Py_DECREF(colden_out);
+    }
+
     //Because PyArray_GETCONTIGUOUS incremented the reference count,
     //and may have made an allocation, in which case this does not point to what it used to.
     Py_DECREF(pos);

@@ -306,8 +306,7 @@ class Spectra:
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         velfac = self.vmax/self.box
         #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
-        (tau,colden) = _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
-        return (tau,colden)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -401,7 +400,7 @@ class Spectra:
         wanted = np.size(self.axis)
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        (_, col_den) = self.compute_spectra("H",1,1,False)
+        col_den = self.compute_spectra("H",1,1,False)
         ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
@@ -414,7 +413,7 @@ class Spectra:
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            (_, col_den) = self.compute_spectra("H",1,1,False)
+            col_den = self.compute_spectra("H",1,1,False)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
@@ -908,7 +907,7 @@ class Spectra:
         try:
             return self.colden[(elem, ion)]
         except KeyError:
-            (_, colden) = self.compute_spectra(elem, ion, 0,False)
+            colden = self.compute_spectra(elem, ion, 0,False)
             self.colden[(elem, ion)] = colden
             return colden
 
@@ -917,7 +916,7 @@ class Spectra:
         try:
             return self.tau[(elem, ion,line)]
         except KeyError:
-            (tau, _) = self.compute_spectra(elem, ion, line,True)
+            tau = self.compute_spectra(elem, ion, line,True)
             self.tau[(elem, ion,line)] = tau
             return tau
 
