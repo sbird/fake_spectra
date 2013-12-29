@@ -32,6 +32,7 @@ from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
 import readsubfHDF5
+import numexpr as ne
 from _spectra_priv import _Particle_Interpolate, _near_lines
 
 class Spectra:
@@ -1094,6 +1095,7 @@ class Spectra:
                 pass
         if min_mass == None:
             min_mass = self.min_halo_mass()*1e10
+        nbins = self.nbins
         dists = np.empty(np.size(self.axis))
         halos = np.empty(np.size(self.axis),dtype=np.int)
         m_ind = np.where(self.sub_mass > min_mass)
@@ -1115,37 +1117,40 @@ class Spectra:
             maxHI = centHI + dlawidth[ii]
             #Third coordinate given by HI mass-weighted depth along sightline
             #If width is wider than the box, simply sum over the whole sightline
-            if minHI < 0 and maxHI > self.nbins:
+            if minHI < 0 and maxHI > nbins:
                 minHI = 0
-                maxHI = self.nbins
-            zcol_den = col_den[ii,:]*np.arange(self.nbins)
-            zpos = np.sum(zcol_den[np.max([0,minHI]):np.min([self.nbins,maxHI])])
-            summ = np.sum(col_den[ii,np.max([0,minHI]):np.min([self.nbins,maxHI])])
+                maxHI = nbins
+            lcolden = col_den[ii,np.max([0,minHI]):np.min([nbins,maxHI])]
+            nn = np.arange(nbins)[np.max([0,minHI]):np.min([nbins,maxHI])]
+            zpos = ne.evaluate("sum(lcolden*nn)")
+            summ = ne.evaluate("sum(lcolden)")
             #Otherwise sum the periodic wrapped bits separately
             if minHI < 0:
-                zposwrap = col_den[ii,:]*(np.arange(self.nbins)-self.nbins)
-                zpos += np.sum(zposwrap[minHI:self.nbins])
-                summ += np.sum(col_den[ii,minHI:self.nbins])
-            elif maxHI > self.nbins:
-                zposwrap = col_den[ii,:]*(np.arange(self.nbins)+self.nbins)
-                zpos += np.sum(zposwrap[0:maxHI-self.nbins])
-                summ += np.sum(col_den[ii,0:maxHI-self.nbins])
-            zpos /= summ
+                zposwrap = col_den[ii,:]*(np.arange(nbins)-nbins)
+                zpos += np.sum(zposwrap[minHI:nbins])
+                summ += np.sum(col_den[ii,minHI:nbins])
+            elif maxHI > nbins:
+                zposwrap = col_den[ii,:]*(np.arange(nbins)+nbins)
+                zpos += np.sum(zposwrap[0:maxHI-nbins])
+                summ += np.sum(col_den[ii,0:maxHI-nbins])
+            zpos = (zpos / summ) % nbins
             #Make sure it refers to a valid position
-            zpos = zpos % self.nbins
             proj_pos[ax] = zpos*1.*self.box/self.nbins
             #Is this within the virial radius of any halo?
-            dd = np.sqrt(np.sum((self.sub_cofm - proj_pos)**2,axis=1))
-            ind = np.where(dd[m_ind] < mult*self.sub_radii[m_ind])
+            cofm = self.sub_cofm
+            dd = ne.evaluate("sum((cofm - proj_pos)**2,axis=1)")
+            ind = np.where(dd[m_ind] < (mult*self.sub_radii[m_ind])**2)
             #Field DLA
             if np.size(ind) == 0:
                 halos[ii] = -1.
                 dists[ii] = 0.
             #Most massive halo
             else:
-                mm_ind = np.where(self.sub_mass[m_ind][ind] == np.max(self.sub_mass[m_ind][ind]))
+                mmass = self.sub_mass[m_ind][ind]
+                mm_ind = np.where(mmass == np.max(mmass))
                 dists[ii] = dd[m_ind][ind][mm_ind]
                 halos[ii] = int(np.where(dists[ii] == dd)[0][0])
+                dists[ii] = np.sqrt(dists[ii])
         self.spectra_halos = halos
         self.spectra_dists = dists
         return (halos, dists)
