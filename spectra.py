@@ -259,8 +259,8 @@ class Spectra:
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
-          vel = np.array(data["Velocities"],dtype=np.float32)
-          vel = vel[ind,:]
+            vel = np.array(data["Velocities"],dtype=np.float32)
+            vel = vel[ind,:]
         #gas density amu / cm^3
         den=star.get_code_rhoH(data)
         # Get mass of atomic species
@@ -491,12 +491,19 @@ class Spectra:
         #Convert from cm/s to km/s
         return width/1e5
 
-    def get_metallicity(self, solar=0.0133):
+    def get_metallicity(self, solar=0.0133,dlawidth=None):
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
-        mms = np.sum(MM, axis=1)
-        hhs = np.sum(HH, axis=1)
+        maxM = np.max(MM,axis=1)
+        if dlawidth != None:
+            ldla = maxM-dlawidth/2
+            hdla = maxM+dlawidth/2
+        else:
+            ldla = 0
+            hdla = self.nbins
+        mms = np.sum(MM[:,ldla,hdla], axis=1)
+        hhs = np.sum(HH[:,ldla,hdla], axis=1)
         return mms/hhs/solar
         #Use only DLA regions: tricky to preserve shape
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)

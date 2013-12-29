@@ -138,13 +138,13 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
-        met = self.get_metallicity()
         tau = self.get_observer_tau(elem, line)
         colden = self.get_col_density("H",1)
         ind = self.get_filt(elem, line)
-        met = met[ind]
         (dlawidth, _) = self.find_dla_width(colden[ind])
         vel = self.vel_width(tau[ind],dlawidth)
+        met = self.get_metallicity(dlawidth)
+        met = met[ind]
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
         plt.loglog(vel[ind2],met[ind2], 'x',color=color)
@@ -164,7 +164,8 @@ class PlottingSpectra(spectra.Spectra):
         ind = np.where(halo > 0)
         halo = halo[ind]
         mass = self.sub_mass[halo]
-        met = self.get_metallicity()[ind]
+        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
+        met = self.get_metallicity(dlawidth=dlawidth)[ind]
         plt.loglog(mass,met, 'x',color=color)
         met = np.log10(met)
         mass = np.log10(mass)
