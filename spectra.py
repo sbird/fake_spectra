@@ -289,7 +289,8 @@ class Spectra:
             temp = temp[ind2]
             pos = pos[ind2]
             hh = hh[ind2]
-            vel = vel[ind2]
+            if get_tau:
+                vel = vel[ind2]
             if np.max(temp) > 10**8.6:
                 temp2 = np.array(temp)
                 temp2[np.where(temp2 > 10**8.6)] = 10**8.6
@@ -553,7 +554,7 @@ class Spectra:
             line = self.lines[(elem,ion)][ll]
             for ff in self.files:
                 if amumass[ff] != False:
-                    (tau_loc, _) = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
+                    tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
                     tau[ll,:,:] += tau_loc
                     del tau_loc
         #Maximum tau in each spectra with each line
