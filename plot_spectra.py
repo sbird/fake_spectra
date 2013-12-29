@@ -168,12 +168,16 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(mass,met, 'x',color=color)
         met = np.log10(met)
         mass = np.log10(mass)
+        mind = np.where(met > -4)
+        met = met[mind]
+        mass = mass[mind]
         (intercept, slope, var) = lsq.leastsq(met,mass)
         print "Z mass corr: ",intercept, slope, np.sqrt(var)
         print "Z mass correlation: ",lsq.pearson(met, mass,intercept, slope)
         print "Z mass kstest: ",lsq.kstest(met, mass,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
         plt.loglog(10**intercept*xx**slope, xx, color="black", label=self.label)
+        plt.xlim(1e-4,10)
 
     def plot_vel_vs_mass(self,elem, line, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
