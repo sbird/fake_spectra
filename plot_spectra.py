@@ -158,15 +158,16 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
 
-    def plot_Z_vs_mass(self,min_mass=1e9, color="blue"):
+    def plot_Z_vs_mass(self,color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         met = self.get_metallicity()
-        (halo, _) = self.find_nearest_halo(min_mass)
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo > 0)
+        halo = halo[ind]
         mass = self.sub_mass[halo]
-        ind2 = np.where(met > 1e-3)
-        plt.loglog(mass[ind2],met[ind2], 'x',color=color)
-        met = np.log10(met[ind2])
-        mass = np.log10(mass[ind2])
+        plt.loglog(mass,met, 'x',color=color)
+        met = np.log10(met)
+        mass = np.log10(mass)
         (intercept, slope, var) = lsq.leastsq(met,mass)
         print "Z mass corr: ",intercept, slope, np.sqrt(var)
         print "Z mass correlation: ",lsq.pearson(met, mass,intercept, slope)
@@ -174,9 +175,11 @@ class PlottingSpectra(spectra.Spectra):
         xx = np.logspace(np.min(met), np.max(met),15)
         plt.loglog(10**intercept*xx**slope, xx, color="black", label=self.label)
 
-    def plot_vel_vs_mass(self,elem, line, min_mass=1e9, color="blue"):
+    def plot_vel_vs_mass(self,elem, line, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
-        (halo, _) = self.find_nearest_halo(min_mass)
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo > 0)
+        halo = halo[ind]
         tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line)
         colden = self.get_col_density("H",1)
@@ -184,9 +187,8 @@ class PlottingSpectra(spectra.Spectra):
         vel = self.vel_width(tau[ind],dlawidth)
         mass = self.sub_mass[halo][ind]
         plt.loglog(mass,vel, 'x',color=color)
-        ind2 = np.where(np.logical_and(vel > 15, vel < 100))
-        vel = np.log10(vel[ind2])
-        mass = np.log10(mass[ind2])
+        vel = np.log10(vel)
+        mass = np.log10(mass)
         (intercept, slope, var) = lsq.leastsq(vel,mass)
         print "Z vel corr: ",intercept, slope, np.sqrt(var)
         print "Z vel correlation: ",lsq.pearson(vel, mass,intercept, slope)
