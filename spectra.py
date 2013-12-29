@@ -495,15 +495,15 @@ class Spectra:
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
-        maxM = np.max(MM,axis=1)
+        mms = np.sum(MM, axis=1)
+        hhs = np.sum(HH, axis=1)
         if dlawidth != None:
-            ldla = maxM-dlawidth/2
-            hdla = maxM+dlawidth/2
-        else:
-            ldla = 0
-            hdla = self.nbins
-        mms = np.sum(MM[:,ldla,hdla], axis=1)
-        hhs = np.sum(HH[:,ldla,hdla], axis=1)
+            for ll in xrange(np.shape(MM)[0]):
+                maxM = np.where(MM[ll,:] == np.max(MM[ll,:]))[0][0]
+                ldla = maxM-dlawidth[ll]/2
+                hdla = maxM+dlawidth[ll]/2
+                mms[ll] = np.sum(MM[ll,ldla:hdla])
+                hhs[ll] = np.sum(HH[ll,ldla:hdla])
         return mms/hhs/solar
         #Use only DLA regions: tricky to preserve shape
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
