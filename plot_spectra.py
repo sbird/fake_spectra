@@ -160,11 +160,11 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_Z_vs_mass(self,color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
-        met = self.get_metallicity()
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
         mass = self.sub_mass[halo]
+        met = self.get_metallicity()[ind]
         plt.loglog(mass,met, 'x',color=color)
         met = np.log10(met)
         mass = np.log10(mass)
@@ -181,11 +181,10 @@ class PlottingSpectra(spectra.Spectra):
         ind = np.where(halo > 0)
         halo = halo[ind]
         tau = self.get_observer_tau(elem, line)
-        ind = self.get_filt(elem, line)
         colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
-        vel = self.vel_width(tau[ind],dlawidth)
-        mass = self.sub_mass[halo][ind]
+        (dlawidth, _) = self.find_dla_width(colden)
+        vel = self.vel_width(tau,dlawidth)[ind]
+        mass = self.sub_mass[halo]
         plt.loglog(mass,vel, 'x',color=color)
         vel = np.log10(vel)
         mass = np.log10(mass)
