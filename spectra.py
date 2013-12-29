@@ -1087,6 +1087,11 @@ class Spectra:
         Assign a DLA (defined as the position along the sightline with highest column density)
         to the largest halo whose virial radius it is within.
         """
+        if min_mass == 0 and mult == 1.:
+            try:
+                return (self.spectra_halos, self.spectra_dists)
+            except AttributeError:
+                pass
         if min_mass == None:
             min_mass = self.min_halo_mass()*1e10
         dists = np.empty(np.size(self.axis))
@@ -1141,6 +1146,8 @@ class Spectra:
                 mm_ind = np.where(self.sub_mass[m_ind][ind] == np.max(self.sub_mass[m_ind][ind]))
                 dists[ii] = dd[m_ind][ind][mm_ind]
                 halos[ii] = int(np.where(dists[ii] == dd)[0][0])
+        self.spectra_halos = halos
+        self.spectra_dists = dists
         return (halos, dists)
 
     def load_halo(self):
