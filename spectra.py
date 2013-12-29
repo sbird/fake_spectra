@@ -18,7 +18,6 @@ sum(GFM_Metals[:2]) +  GFM_Metallicity ~ 1
 Also note that there is some instability at very low metallicities - the code will often return +-1e-20.
 """
 
-
 import numpy as np
 import hsml
 import math
@@ -271,8 +270,8 @@ class Spectra:
             amumass = 1
         den = den[ind]
         #Only need temp for ionic density, and tau later
-        if get_tau or ion != -1:
-            temp = star.get_temp(den, data)
+        if get_tau or (ion != -1 and elem != 'H'):
+            temp = star.get_temp(data)
             temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
