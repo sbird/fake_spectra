@@ -131,7 +131,7 @@ class PlottingSpectra(spectra.Spectra):
         bins=np.linspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         met = self.get_metallicity()
-        ind = self.get_filt("Z", "-1", None)
+        ind = self.get_filt("Z", -1, None)
         #Abs. distance for entire spectrum
         hist = np.histogram(np.log10(met[ind]),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
