@@ -75,7 +75,7 @@ def plot_metallicity(sims, snap):
         hspec = get_hspec(sim, snap)
         hspec.plot_metallicity(color=colors[sim], ls=lss[sim])
     vel_data.plot_alpha_metal_data(zrange[snap])
-    plt.legend()
+    plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -101,7 +101,7 @@ def plot_vel_width_sims(sims, snap):
     vel_data.plot_prochaska_2008_data(zrange[snap])
     plt.ylim(0,1.6)
     plt.xlim(10,1000)
-    plt.legend()
+    plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
     plt.clf()
 
@@ -127,7 +127,7 @@ def plot_mean_median(sims, snap):
         hspec.plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(False,zrange[snap])
     plt.ylim(0,3)
-    plt.legend()
+    plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
 
@@ -136,7 +136,7 @@ def plot_f_peak(sims, snap):
     for sss in sims:
         hspec = get_hspec(sss, snap)
         hspec.plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
-    plt.legend()
+    plt.legend(loc=2,ncol=3)
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
     save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
