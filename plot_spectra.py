@@ -141,9 +141,9 @@ class PlottingSpectra(spectra.Spectra):
         tau = self.get_observer_tau(elem, line)
         colden = self.get_col_density("H",1)
         ind = self.get_filt(elem, line)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
-        vel = self.vel_width(tau[ind],dlawidth)
-        met = self.get_metallicity(dlawidth)
+        (dlawidth, _) = self.find_dla_width(colden)
+        vel = self.vel_width(tau[ind],dlawidth[ind])
+        met = self.get_metallicity(dlawidth=dlawidth)
         met = met[ind]
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
