@@ -73,6 +73,15 @@ def test_pecvel():
     hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_pecvel.hdf5")
     plot_check(hspec,hspec2,"pecvel")
 
+def test_tophat():
+    """Plot the velocity widths with and with top hat vs SPH"""
+    #Do spectral resolution test
+    halo = myname.get_name(7)
+    #Higher resolution spectrum
+    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_tophat.hdf5")
+    plot_check(hspec,hspec2,"tophat")
+
 def test_box_resolution():
     """Plot the velocity widths for different size boxes"""
     #Do spectral resolution test
@@ -105,6 +114,7 @@ if __name__ == "__main__":
     test_spec_resolution()
     test_box_resolution()
     test_pecvel()
+    test_tophat()
 
 #     plot_vel_width_SiII(0, 3)
 
