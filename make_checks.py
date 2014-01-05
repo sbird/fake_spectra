@@ -64,6 +64,15 @@ def test_spec_resolution():
     hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_res.hdf5")
     plot_check(hspec,hspec2,"specres")
 
+def test_pecvel():
+    """Plot the velocity widths with and without peculiar velocities"""
+    #Do spectral resolution test
+    halo = myname.get_name(7)
+    #Higher resolution spectrum
+    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_pecvel.hdf5")
+    plot_check(hspec,hspec2,"pecvel")
+
 def test_box_resolution():
     """Plot the velocity widths for different size boxes"""
     #Do spectral resolution test
@@ -89,12 +98,13 @@ def plot_check(hspec, hspec2, ofile):
         plt.semilogx(vbin[:maxx],one[:maxx]/two[:maxx])
     else:
         plt.semilogx(vbin,one/two)
-    save_figure(path.join(outdir,"cosmi_rel_vel_width_"+ofile))
+    save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile))
     plt.clf()
 
 if __name__ == "__main__":
     test_spec_resolution()
     test_box_resolution()
+    test_pecvel()
 
 #     plot_vel_width_SiII(0, 3)
 
