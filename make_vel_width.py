@@ -85,6 +85,7 @@ def plot_metallicity(sims, snap):
         hspec.plot_metallicity(color=colors[sim], ls=lss[sim])
     vel_data.plot_alpha_metal_data(zrange[snap])
     plt.legend(loc=2,ncol=3)
+    plt.ylim(0,2)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -108,7 +109,7 @@ def plot_vel_width_sims(sims, snap):
         hspec = get_hspec(sss, snap)
         hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
     vel_data.plot_prochaska_2008_data(zrange[snap])
-    plt.ylim(0,1.6)
+    plt.ylim(0,2)
     plt.xlim(10,1000)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
@@ -149,26 +150,6 @@ def plot_f_peak(sims, snap):
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
     save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
-    plt.clf()
-
-def plot_vel_widths_res(snap):
-    """Plot some velocity width data at a particular redshift"""
-    #Load sims
-    hspec0 = ps.PlottingSpectra(snap, myname.get_name(0, False))
-    hspec512 = ps.PlottingSpectra(snap, myname.get_name(0,True))
-    #Make abs. plot
-    hspec0.plot_vel_width("Si", 2, color="blue", ls="--")
-    hspec512.plot_vel_width("Si", 2, color="red", ls="-")
-    vel_data.plot_prochaska_2008_data(zrange[snap])
-    save_figure(path.join(outdir,"cosmo_feedback_res_z"+str(snap)))
-    plt.clf()
-    #Make rel plot
-    (vbin, vels0) = hspec0.vel_width_hist("Si", 2)
-    (vbin, vels2) = hspec512.vel_width_hist("Si", 2)
-    mm = np.min((np.size(vels2),np.size(vels0)))
-    plt.semilogx(vbin[:mm], vels0[:mm]/vels2[:mm], color="blue",ls="-")
-    plt.xlim(1, 1000)
-    save_figure(path.join(outdir,"cosmo_rel_vel_res_z"+str(snap)))
     plt.clf()
 
 def plot_vel_widths_cloudy():
@@ -225,14 +206,10 @@ if __name__ == "__main__":
         plot_mean_median(simlist, zz)
         plot_f_peak(simlist, zz)
 
-#     for ss in (0,1,2,3,4):
-#         plot_sep_frac(ss,3)
-#     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
-#     plt.clf()
-
-#     for zz in (3,):
-#         plot_vel_widths_res(zz)
-#
+    for ss in (0,1,3,7):
+        plot_sep_frac(ss,3)
+    save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
+    plt.clf()
 
 #     for ss in (0,1,2,3,4):
 #         plot_vel_redshift_evo(ss)
