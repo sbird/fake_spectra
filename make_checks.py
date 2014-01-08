@@ -104,9 +104,17 @@ def test_box_resolution():
     hspec2 = ps.PlottingSpectra(3, halo10)
     plot_check(hspec,hspec2,"box")
 
+def test_atten():
+    """Plot the velocity widths for different size boxes"""
+    #Do spectral resolution test
+    halo = myname.get_name(7)
+    hspec = ps.PlottingSpectra(3, halo)
+    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5")
+    plot_check(hspec,hspec2,"no_atten")
+
     #Higher resolution spectrum
 def plot_check(hspec, hspec2, ofile):
-    """Plot two halos both absolutely and relatively"""
+    """Plot velocity widths for two halos both absolutely and relatively"""
     hspec.plot_vel_width("Si",2, color="red")
     hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
@@ -122,8 +130,14 @@ def plot_check(hspec, hspec2, ofile):
         plt.semilogx(vbin,one/two)
     save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile))
     plt.clf()
+    hspec.plot_extra_stat("Si", 2, True, color="red")
+    hspec2.plot_extra_stat("Si", 2, True, color="red")
+    vel_data.plot_extra_stat_hist(True)
+    save_figure(path.join(outdir,"cosmo_fpeak_"+ofile))
+    plt.clf()
 
 if __name__ == "__main__":
+    test_atten()
     test_spec_resolution()
     test_box_resolution()
     test_pecvel()
@@ -131,5 +145,5 @@ if __name__ == "__main__":
 
 #     plot_vel_width_SiII(0, 3)
 
-#     plot_vel_width_metcol(0,3)
+    plot_vel_width_metcol(0,3)
     plot_metal_ion_corr(0,3)
