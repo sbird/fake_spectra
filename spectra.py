@@ -110,6 +110,8 @@ class Spectra:
             self.nbins = int(self.vmax / self.dvbin)
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
+        #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.3).
+        self.solar = {"H":1, "He":0.1, "C":3.55e-4,"N":9.33e-4,"O":7.41e-5,"Ne":1.17e-4,"Mg":3.8e-5,"Si":3.55e-5,"Fe":3.24e-5}
         #Generate cloudy tables
         if cdir != None:
             self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
@@ -510,6 +512,14 @@ class Spectra:
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
         #data = np.array([np.mean(ma_HH, axis=1)])
         #return data/solar
+
+    def get_ion_metallicity(self, species,ion, dlawidth=None):
+        """Get the metallicity derived from an ionic species"""
+        MM = self.get_col_density(species,ion)
+        HH = self.get_col_density("H",1)
+        mms = np.sum(MM, axis=1)
+        hhs = np.sum(HH, axis=1)
+        return mms/hhs/self.solar[species]
 
     def compute_spectra(self,elem, ion, ll, get_tau):
         """

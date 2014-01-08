@@ -17,6 +17,19 @@ from save_figure import save_figure
 outdir = path.join(myname.base, "plots/checks/")
 print "Plots at: ",outdir
 
+def plot_metal_ion_corr(sim, snap,species="Si",ion=2):
+    """Plot metallicity from Z/H vs from a single species for computing ionisation corrections"""
+    halo = myname.get_name(sim)
+    hspec = ps.PlottingSpectra(snap, halo)
+    hspec.plot_metallicity(color="red", ls="-")
+    hspec.plot_species_metallicity(species, ion, color="blue", ls="-")
+    vel_data.plot_alpha_metal_data((3.5,2.5))
+    save_figure(path.join(outdir, "cosmo"+str(sim)+"_ion_corr"+str(snap)))
+    plt.clf()
+    hspec.plot_ion_corr(species, ion)
+    save_figure(path.join(outdir, "cosmo"+str(sim)+"_rel_ion_corr"+str(snap)))
+    plt.clf()
+
 def plot_vel_width_metcol(sim, snap):
     """Load a simulation and plot its velocity width"""
     halo = myname.get_name(sim)
@@ -118,4 +131,5 @@ if __name__ == "__main__":
 
 #     plot_vel_width_SiII(0, 3)
 
-    plot_vel_width_metcol(0,3)
+#     plot_vel_width_metcol(0,3)
+    plot_metal_ion_corr(0,3)

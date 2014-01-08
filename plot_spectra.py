@@ -126,14 +126,35 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]))
 
-    def plot_metallicity(self, nbins=20,color="blue", ls="-"):
+    def _plot_metallicity(self, met, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities"""
         bins=np.linspace(-3,0,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
+        #Abs. distance for entire spectrum
+        hist = np.histogram(np.log10(met),bins,density=True)[0]
+        plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
+
+    def plot_metallicity(self, nbins=20,color="blue", ls="-"):
+        """Plot the distribution of metallicities"""
         met = self.get_metallicity()
         ind = self.get_filt("Z", -1, None)
-        #Abs. distance for entire spectrum
-        hist = np.histogram(np.log10(met[ind]),bins,density=True)[0]
+        self._plot_metallicity(met[ind],nbins,color,ls)
+
+    def plot_species_metallicity(self, species, ion, nbins=20,color="blue", ls="-"):
+        """Plot the distribution of metallicities from an ionic species"""
+        met = self.get_ion_metallicity(species,ion)
+        ind = self.get_filt(species, ion, None)
+        self._plot_metallicity(met[ind],nbins,color,ls)
+
+    def plot_ion_corr(self, species, ion, nbins=80,color="blue",ls="-",upper=1,lower=-1):
+        """Plot the difference between the single-species ionisation and the metallicity from GFM_Metallicity"""
+        met = np.log10(self.get_metallicity())
+        ion_met = np.log10(self.get_ion_metallicity(species, ion))
+        diff = 10**(ion_met - met)
+        print np.max(diff), np.min(diff), np.median(diff)
+        bins=np.linspace(-1,1,nbins)
+        mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
+        hist = np.histogram(np.log10(diff),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
 
     def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
