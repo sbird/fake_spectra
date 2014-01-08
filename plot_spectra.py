@@ -49,7 +49,7 @@ class PlottingSpectra(spectra.Spectra):
         whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
         plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
 
-    def plot_spectrum(self, tau):
+    def plot_spectrum(self, tau, dlawidth=None):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
         #  Size of a single velocity bin
@@ -59,8 +59,16 @@ class PlottingSpectra(spectra.Spectra):
         tmax = np.max(tau_l)
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+        if dlawidth != None:
+            ldla = np.size(tau_l)/2 - dlawidth/2
+            hdla = np.size(tau_l)/2 + dlawidth/2
+        else:
+            ldla = 0
+            hdla = np.size(tau_l)
         plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
-        (low, high) = self._vel_width_bound(tau_l, tot_tau)
+        (low, high) = self._vel_width_bound(tau_l[ldla:hdla], tot_tau)
+        low+=ldla
+        high+=ldla
         if high - low > 0:
             plt.plot([low,low],[0,1])
             plt.plot([high,high],[0,1])

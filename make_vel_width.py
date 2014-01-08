@@ -48,16 +48,25 @@ def plot_sep_frac(sim, snap):
 def plot_spectrum(sim, snap, num):
     """Plot a spectrum"""
     hspec = get_hspec(sim, snap)
-    tau = hspec.get_observer_tau("Si", 2, num)
-    hspec.plot_spectrum(tau)
-
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_Si_spectrum"))
+    tau = hspec.get_observer_tau("Si", 2)
+    ind = hspec.get_filt("Si", 2)
+    colden = hspec.get_col_density("H",1)
+    (dlawidth, _) = hspec.find_dla_width(colden[ind])
+    hspec.plot_spectrum(tau[ind][num],dlawidth[num])
+    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
     plt.clf()
-    vels = hspec.vel_width(hspec.get_observer_tau("Si",2))
-    ind = np.where(vels == np.max(vels[hspec.get_filt("Si",2)]))[0][0]
-    tau2 = hspec.get_observer_tau("Si",2,ind)
-    hspec.plot_spectrum(tau2)
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_maxv_Si_spectrum"))
+
+def plot_spectrum_max(sim, snap):
+    """Plot spectrum with max vel width"""
+    hspec = get_hspec(sim, snap)
+    tau = hspec.get_observer_tau("Si", 2)
+    ind = hspec.get_filt("Si", 2)
+    colden = hspec.get_col_density("H",1)
+    (dlawidth, _) = hspec.find_dla_width(colden[ind])
+    vels = hspec.vel_width(tau[ind],dlawidth)
+    ind2 = np.where(vels == np.max(vels))[0][0]
+    hspec.plot_spectrum(tau[ind][ind2], dlawidth[ind2])
+    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_spectrum"))
     plt.clf()
 
 
@@ -65,7 +74,7 @@ def plot_spectrum_density_velocity(sim, snap, num):
     """Plot a spectrum"""
     hspec = get_hspec(sim, snap)
     hspec.plot_spectrum_density_velocity("Si",2, num)
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_tdv_Si_spectrum"))
+    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_tdv_Si_spectrum"))
     plt.clf()
 
 def plot_metallicity(sims, snap):
@@ -201,9 +210,11 @@ def plot_vel_redshift_evo(sim):
 if __name__ == "__main__":
 #     plot_vel_widths_cloudy()
 
-    for ss in (0,1,2,3,4):
+    for ss in (0,1,3,7):
         plot_spectrum_density_velocity(ss,3, 15)
-        plot_spectrum(ss,3, 457)
+        for nn in (272,350,457,1030,2030,3333):
+            plot_spectrum(ss,3, nn)
+        plot_spectrum_max(ss,3)
     plot_spectrum(2,3, 272)
 
     simlist = range(8) #(0,1,3,7)
