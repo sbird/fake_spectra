@@ -276,3 +276,23 @@ BOOST_AUTO_TEST_CASE(check_index_table)
     BOOST_CHECK_EQUAL((++it)->first,2);
     BOOST_CHECK_EQUAL(nearby_array[8].begin()->first,5);
 }
+
+BOOST_AUTO_TEST_CASE(check_profile)
+{
+    //Check that the Voigt profile is as we expect.
+    //Integrals evaluated exactly with mathematica.
+    FLOATS_NEAR_TO(profile(0,0),1);
+    FLOATS_NEAR_TO(profile(0,0.1),0.896457);
+    //Close to center
+    FLOATS_NEAR_TO(profile(0.1,1e-6),0.990048);
+    FLOATS_NEAR_TO(profile(0.1,1e-4),0.989939);
+    //Far from center
+    FLOATS_NEAR_TO(profile(15,1e-6),2.52441e-9);
+    FLOATS_NEAR_TO(profile(15,1e-4),2.52441e-7);
+    FLOATS_NEAR_TO(profile(20,1e-7),1.4158e-10);
+    //Intermediate
+    FLOATS_NEAR_TO(profile(1,1e-4),0.367888);
+    FLOATS_NEAR_TO(profile(1.5,1e-6),0.1054);
+    FLOATS_NEAR_TO(profile(2,1e-7),0.0183157);
+    FLOATS_NEAR_TO(profile(1,1e-3),0.367965);
+}

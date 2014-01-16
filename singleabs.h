@@ -2,6 +2,7 @@
 #define SINGLE_ABSORBER_H
 
 #include <cmath>
+#include "Faddeeva.h"
 
 #define NGRID 8
 
@@ -20,24 +21,20 @@ inline double sph_kernel(const double q)
 }
 
 
-/* Compute the Voigt or Gaussian profile.
- * Uses the approximation to the Voigt profile from Tepper-Garcia, 2006, MNRAS, 369, 2025
- * (astro-ph/0602124) eq. 25, somewhat simplified
- * which is accurate to 1% in the worst case, a narrow region between the wings and the core.
+/* Compute the Voigt profile, which is the real part of the 
+ * Faddeeva (complex probability) function of the variable 
+ * w = u + i a
+ * So that F(w) = H(a,u) + i J(a,u) = exp(-w^2) erfc(-iw)
  * Arguments:
- * T0 = (vdiff/btherm)**2
+ * T0 = vdiff/btherm
  * aa: voigt_fac/btherm
  * (note btherm is sqrt(2k T / M))
  */
-inline double profile(const double T0, const double aa)
+inline double profile(const double uu, const double aa)
 {
-    const double T1 = exp(-T0);
-  #ifdef VOIGT
-    const double profile_H1 = (T0 < 1.e-6 ? T1 : T1 - aa/sqrt(M_PI)/T0*(T1*T1*(4.0*T0*T0 + 7.0*T0 + 4.0 + 1.5/T0) - 1.5/T0 -1.0));
-  #else
-    const double profile_H1 = T1;
-  #endif
-    return profile_H1;
+    std::complex<double> ww ( uu , aa);
+    std::complex<double> result = Faddeeva::w(ww);
+    return result.real();
 }
 
 class SingleAbsorber
@@ -55,7 +52,7 @@ class SingleAbsorber
          * vel: velocity of particle parallel to sightline
          * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
          * vsmooth: smoothing length in velocity units (km/s)
-         * aa: voigt_fac/btherm the parameter for the Voight profile
+         * aa: voigt_fac/btherm the parameter for the Voigt profile
          */
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i),
@@ -124,7 +121,7 @@ class SingleAbsorber
                 const double q = sqrt(vdr2+vv*vv)/vsmooth;
                 //The difference between this velocity bin and the particle velocity
                 const double vdiff = vv - vouter;
-                const double T0 = pow(vdiff/btherm,2);
+                const double T0 = vdiff/btherm;
                 total+=sph_kernel(q)*profile(T0,aa);
             }
             return 32./3.*deltav*total;

@@ -66,7 +66,7 @@ all: extract _spectra_priv.so statistic rescale
 
 python: _spectra_priv.so
 
-extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_table.o part_int.o
+extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
@@ -92,7 +92,7 @@ calc_power.o: calc_power.c smooth.o powerspectrum.o
 py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
-_spectra_priv.so: py_module.o absorption.o index_table.o part_int.o absorption.o
+_spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) -shared $^ -o $@
 
 clean:
@@ -101,7 +101,7 @@ clean:
 dist: Makefile
 	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
 
-btest: test.cpp absorption.o index_table.o
+btest: test.cpp absorption.o index_table.o Faddeeva.o
 	${LINK} ${LFLAGS} -lboost_unit_test_framework $^ -o $@
 
 test: btest
