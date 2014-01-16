@@ -1,6 +1,7 @@
 #ifndef SINGLE_ABSORBER_H
 #define SINGLE_ABSORBER_H
 
+#include <cmath>
 
 #define NGRID 8
 
