@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Generate some velocity widths through DLAs"""
 import gridspectra as gs
+import randspectra as rs
 import sys
 import os.path as path
 import numpy as np
@@ -14,7 +15,10 @@ sim=sys.argv[2]
 #base="/n/hernquistfs1/mvogelsberger/projects/GFM/Production/Cosmo/Cosmo"+str(sim)+"_V6/L25n512/output/"
 #savedir="/n/home11/spb/scratch/Cosmo/Cosmo"+str(sim)+"_V6_512/snapdir_"+str(snapnum).rjust(3,'0')
 base=path.expanduser("~/data/Cosmo/Cosmo"+str(sim)+"_V6/L25n512/output")
-halo = gs.GridSpectra(snapnum, base, numlos=5000)
+if len(sys.argv) > 3:
+    halo = rs.RandSpectra(snapnum, base, numlos=5000, thresh=0)
+else:
+    halo = gs.GridSpectra(snapnum, base, numlos=5000)
 halo.get_col_density("H",1)
 halo.get_observer_tau("Si",2)
 halo.get_tau("H",1,1)
