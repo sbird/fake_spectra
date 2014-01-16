@@ -83,6 +83,8 @@ read_snapshot.o: read_snapshot.cpp global_vars.h
 
 %.o: %.cpp %.h
 
+absorption.o: absorption.cpp absorption.h singleabs.h
+
 part_int.o: part_int.cpp part_int.h absorption.h index_table.h
 
 calc_power.o: calc_power.c smooth.o powerspectrum.o
