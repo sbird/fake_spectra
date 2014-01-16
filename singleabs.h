@@ -137,5 +137,6 @@ class SingleAbsorber
         const double vhigh;
 };
 
+double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);
 #endif
 

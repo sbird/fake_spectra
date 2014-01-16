@@ -17,6 +17,7 @@
  * Test suite using boost::test*/
 #define BOOST_TEST_MODULE FluxExtract
 #include "absorption.h"
+#include "singleabs.h"
 #include "index_table.h"
 #include <cstdio>
 #include <math.h>
@@ -32,9 +33,17 @@
         BOOST_CHECK_MESSAGE( !isinf((x)) && !isinf((y))  && !isnan((x)) && !isnan((y)) \
                 && fabs((x) - (y)) <= std::max<double>(fabs(x),fabs(y))/1e2 ,(x)<<" is not close to "<<(y))
 
-double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2,double zrange);
-
 BOOST_AUTO_TEST_CASE(check_sph_kern)
+{
+    //First check the kernel is working
+    FLOATS_NEAR_TO(sph_kernel(1),0);
+    FLOATS_NEAR_TO(sph_kernel(0),1);
+    FLOATS_NEAR_TO(sph_kernel(0.5),0.25);
+    FLOATS_NEAR_TO(sph_kernel(0.25),0.71875);
+    FLOATS_NEAR_TO(sph_kernel(0.75),0.03125);
+}
+
+BOOST_AUTO_TEST_CASE(check_sph_kern_frac)
 {
    /* Integrals evaluated with Mathematica
     * If K(q) is the SPH kernel we need
@@ -60,6 +69,8 @@ BOOST_AUTO_TEST_CASE(check_sph_kern)
     FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), 0.177801);
     //Check outside of range
     FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0,1), 0);
+
+
 }
 
 
