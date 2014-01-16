@@ -20,7 +20,7 @@ zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
-labels = {0:"REF",1:"HVEL", 2:"HVNA",3:"NOSN", 4:"NAWW", 5:"MVEL",6:"METAL",7:"TUV"}
+labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV"}
 
 hspec_cache = {}
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         plot_spectrum_max(ss,3)
     plot_spectrum(2,3, 272)
 
-    simlist = range(8) #(0,1,3,7)
+    simlist = (0,1,3,7) #range(8)
     for zz in (1, 3, 5):
         plot_met_corr(simlist,zz)
         plot_metallicity(simlist, zz)

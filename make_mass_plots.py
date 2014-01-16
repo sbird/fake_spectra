@@ -55,12 +55,12 @@ def plot_mass_vs(sim, snap):
     plt.clf()
 
 if __name__ == "__main__":
-    for ss in range(8):
+    for ss in (0,1,3,7):  #range(8):
         plot_mass_hists(ss, 3)
     save_figure(path.join(outdir,"cosmo_halos_feedback_z3"))
     plt.clf()
 
     for zz in (1,3,5):
-        for ss in range(8):
+        for ss in (0,1,3,5,6,7):  #range(8):
             plot_mass_vs(ss, zz)
 
