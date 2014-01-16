@@ -65,7 +65,7 @@ class SingleAbsorber
          *
          * In practice b ~ 0.13 sqrt(T/Z) (where Z is the atomic mass of the species)
          * For iron at 10^4 K this gives b ~ 2, and so 1 km/s bins are fine
-         * and no subsampling is needed.
+         * and no subsampling is needed (but we do it a litle just to be sure).
          * The minimal b we should encounter is iron at T = 2000K,
          * which gives b ~ 0.8 and 1 km/s is still probably ok, however we subsample a little anyway.
          * Arguments:
@@ -73,13 +73,14 @@ class SingleAbsorber
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
-            //If the bin width is less than the thermal broadening scale,
+            //If the bin width is less than half
+            //the thermal broadening scale,
             //no need to subsample
-            if ((vhigh - vlow) < btherm)
+            if ((vhigh - vlow) < btherm/2.)
             {
               return tau_kern_inner((vhigh+vlow)/2.);
             }
-            const int npoints = 2*ceil((vhigh - vlow)/btherm/2)+1.;
+            const int npoints = 2*ceil((vhigh - vlow)/(btherm/2.)/2)+1.;
             double total = tau_kern_inner(vlow)/2.;
             //Note that the number of points does not need to be NGRID here,
             //but it is for now.

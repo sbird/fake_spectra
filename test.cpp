@@ -296,3 +296,30 @@ BOOST_AUTO_TEST_CASE(check_profile)
     FLOATS_NEAR_TO(profile(2,1e-7),0.0183157);
     FLOATS_NEAR_TO(profile(1,1e-3),0.367965);
 }
+
+BOOST_AUTO_TEST_CASE(check_single_absorber)
+{
+    //Integrals evaluated numerically as usual with mathematica
+    //H at 20000 K.
+    double bb = 0.128557*sqrt(2e4/1);
+    //First test not offset
+    SingleAbsorber sing(bb,0,10,1.e-4);
+    //Absorption at the origin
+    FLOATS_NEAR_TO(sing.tau_kern_outer(0,0),78.0409);
+    FLOATS_NEAR_TO(sing.tau_kern_outer(5,5),72.6216);
+    FLOATS_NEAR_TO(sing.tau_kern_outer(10,10),58.5185);
+    FLOATS_NEAR_TO(sing.tau_kern_outer(20,20),24.6696);
+    //Try different smoothing length
+    SingleAbsorber sing2(bb,0,2,1.e-4);
+    FLOATS_NEAR_TO(sing2.tau_kern_outer(5,5),14.8203);
+    //Offset from the sightline
+    SingleAbsorber sing3(bb,25,10,1.e-4);
+    FLOATS_APPROX_NEAR_TO(sing3.tau_kern_outer(0,0),18.218);
+    FLOATS_APPROX_NEAR_TO(sing3.tau_kern_outer(5,5),16.9436);
+    //Check integrating over a range in v
+    //Carbon
+    bb = 0.128557*sqrt(2e4/16);
+    SingleAbsorber sing4(bb,0,5,1.e-6);
+    FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(0,10),16.0403);
+    FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(-5,5),27.1978);
+}
