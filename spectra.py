@@ -59,6 +59,7 @@ class Spectra:
         #Empty dictionary to add results to
         self.tau_obs = {}
         self.tau = {}
+        self.vel_widths = {}
         self.colden = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
@@ -612,9 +613,12 @@ class Spectra:
            elem - element to look at
            ion - ionisation state of this element.
         """
-        tau = self.get_observer_tau(elem, ion)
-        max_width = self.find_absorber_width()
-        return self._vel_width(tau, max_width)
+        try:
+            return self.vel_widths[(elem, ion)]
+        except KeyError:
+            tau = self.get_observer_tau(elem, ion)
+            max_width = self.find_absorber_width()
+            return self._vel_width(tau, max_width)
 
     def _vel_width(self, tau, max_width):
         """
