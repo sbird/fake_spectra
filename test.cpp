@@ -81,7 +81,6 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
     LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1);
 
-    double* tau = NULL;
     double colden[TNBINS] = {0};
     std::set<int> nonzero;
     /* Various checks on the column density*/
@@ -322,4 +321,53 @@ BOOST_AUTO_TEST_CASE(check_single_absorber)
     SingleAbsorber sing4(bb,0,5,1.e-6);
     FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(0,10),16.0403);
     FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(-5,5),27.1978);
+}
+
+#define  BOLTZMANN  1.3806504e-16  /*  ergs K-1 or cm2 g s-2 K-1 */
+#define  PROTONMASS  1.67262178e-24 /* 1 a.m.u */
+//Little macros to help in the below
+#define vbin(bin, pos) (10000*velfac/TNBINS*(bin) - velfac*(pos))
+#define SA(bin, pos, dens) (amp*(dens)/bb*sing.tau_kern_outer(vbin((bin),(pos)), vbin((bin+1),(pos)))/velfac)
+BOOST_AUTO_TEST_CASE(check_add_tau)
+{
+    //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
+    double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25);
+    //Since SingleAbsorber is tested above, use it in this test
+    double temp = 2e4;
+    double bb  = sqrt(2.0*BOLTZMANN/(PROTONMASS))/1e5*sqrt(temp/1.00794);
+    double smooth = 3;
+    double amp = 7.57973e-15;
+    double voigt_fac = 1215.6701e-10*6.265e8/(4.*M_PI)/1e5;
+    SingleAbsorber sing(bb,0,velfac*smooth,voigt_fac/bb);
+    //Conversion factor from cm to kpc/h at z=3
+    double rscale = 3.085678e21*0.25/0.7;
+    double tau[TNBINS] = {0};
+    /* Various checks on the column density*/
+    //Bins are 5kpc (1.5km/s) wide.
+    test.add_tau_particle(tau, TNBINS, 0, 1e-3*rscale,5002.5, 0,temp, smooth);
+    //Compare resulting tau to explicit calls to SingleAbsorber
+    FLOATS_NEAR_TO(tau[999],SA(999,5002.5, 1e-3*rscale));
+    FLOATS_NEAR_TO(tau[1000],SA(1000, 5002.5,1e-3*rscale));
+    //Symmetric function
+    FLOATS_NEAR_TO(tau[1001],tau[999]);
+    //Check tail
+    FLOATS_NEAR_TO(tau[0],SA(0,5002.5, 1e-3*rscale));
+    FLOATS_NEAR_TO(tau[1],SA(1,5002.5, 1e-3*rscale));
+    FLOATS_NEAR_TO(tau[2],SA(2,5002.5, 1e-3*rscale));
+    //Reset tau
+    memset(tau, 0, TNBINS*sizeof(double));
+    //Check peculiar vel dependence: this should just induce an offset
+    //3 bins
+    double pecvel = 10000/TNBINS*3*velfac/sqrt(0.25);
+    test.add_tau_particle(tau, TNBINS, 0, 1e-3*rscale,5002.5,pecvel ,temp, smooth);
+    FLOATS_NEAR_TO(tau[1002],SA(999,5002.5, 1e-3*rscale));
+    FLOATS_NEAR_TO(tau[1003],SA(1000, 5002.5,1e-3*rscale));
+    //Symmetric function
+    FLOATS_NEAR_TO(tau[1004],tau[1002]);
+    memset(tau, 0, TNBINS*sizeof(double));
+    //Offset enough to not add anything
+    test.add_tau_particle(tau, TNBINS, 1, 1,5002.5, 0,10000, 1);
+    FLOATS_NEAR_TO(tau[1000],0);
+    FLOATS_NEAR_TO(tau[1501],0);
 }
