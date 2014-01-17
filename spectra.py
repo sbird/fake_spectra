@@ -617,8 +617,9 @@ class Spectra:
             return self.vel_widths[(elem, ion)]
         except KeyError:
             tau = self.get_observer_tau(elem, ion)
-            max_width = self.find_absorber_width()
-            return self._vel_width(tau, max_width)
+            max_width = self.find_absorber_width(elem, ion)
+            self.vel_widths[(elem, ion)] = self._vel_width(tau, max_width)
+            return self.vel_widths[(elem, ion)]
 
     def _vel_width(self, tau, max_width):
         """
