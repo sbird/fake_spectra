@@ -35,7 +35,8 @@ class LineAbsorption
          *
          * Input:
          * dr2: transverse distance to spectra from particle (comoving kpc/h)
-         * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 or amu/cm^3)
+         * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 from C extractor 
+         * or amu/cm^2 kpc/h from the python module)
          * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
          * pvel: particle velocity parallel to spectrum (physical km/s) (not needed for colden)
          * temp: particle temperature (K) (not needed for colden)
