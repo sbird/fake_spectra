@@ -15,41 +15,47 @@ class PlottingSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
         self.label=label
 
-    def plot_vel_width(self, elem, line, dv=0.1, met_cut = 1e13, color="red", ls="-"):
+    def plot_vel_width(self, elem, ion, dv=0.1, met_cut = 1e13, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
-            line - line to use (the components of this line must be pre-computed and stored in self.metals)
+            ion - ionisation state: 1 is neutral.
             dv - bin spacing
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
 
         """
-        (vbin, vels) = self.vel_width_hist(elem, line, dv, met_cut=met_cut)
+        (vbin, vels) = self.vel_width_hist(elem, ion, dv, met_cut=met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_extra_stat(self, elem, line, stat=False, dv=0.03, met_cut = 1e13, color="red", ls="-"):
+    def plot_extra_stat(self, elem, ion, stat=False, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """Plot the Prochaska extra statistics
         Parameters:
             elem - element to use
-            line - line to use (the components of this line must be pre-computed and stored in self.metals)
+            ion - ionisation state: 1 is neutral.
             stat - Statistic to use. If true, f_edge. If False, f_median
             dv - bin spacing
             met_cut - Discard spectra whose maximal metal column density is below this level.
                       Removes unobservable systems.
         """
-        (vbin, vels) = self.extra_stat_hist(elem, line, stat, dv, met_cut=met_cut)
+        (vbin, vels) = self.extra_stat_hist(elem, ion, stat, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_equivalent_width(self, elem="Si", ion=2, line=2, dv=0.1, color="red", ls="-"):
-        """Plot the equivalent widths of this snapshot. W_1526 is the default and the most useful here."""
+    def plot_equivalent_width(self, elem, ion, line, dv=0.1, color="red", ls="-"):
+        """Plot the equivalent widths a spectrum.
+        Parameters:
+            elem - element to use
+            ion - ionisation state: 1 is neutral.
+            line - transition to plot equivalent width
+            dv - bin spacing
+        """
         ww = self.equivalent_width(elem, ion, line)
         w_table = 10**np.arange(np.log10(np.min(ww)), np.log10(np.max(ww)), dv)
         wbin = np.array([(w_table[i]+w_table[i+1])/2. for i in range(0,np.size(w_table)-1)])
         whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
         plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
 
-    def plot_spectrum(self, tau, dlawidth=None):
+    def plot_spectrum(self, tau, width=None):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
         #  Size of a single velocity bin
@@ -59,9 +65,9 @@ class PlottingSpectra(spectra.Spectra):
         tmax = np.max(tau_l)
         ind_m = np.where(tau_l == tmax)[0][0]
         tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-        if dlawidth != None:
-            ldla = np.size(tau_l)/2 - dlawidth/2
-            hdla = np.size(tau_l)/2 + dlawidth/2
+        if width != None:
+            ldla = np.size(tau_l)/2 - width/2
+            hdla = np.size(tau_l)/2 + width/2
         else:
             ldla = 0
             hdla = np.size(tau_l)
@@ -105,8 +111,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_col_density(self, elem, ion):
         """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
         col_dens = self.get_col_density(elem, ion)
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        vels = self.vel_width(self.get_observer_tau(elem, ion),dlawidth)
+        vels = self.vel_width(self.get_observer_tau(elem, ion))
         plt.loglog(np.max(col_dens,axis=1),vels)
 
     def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue", moment=False):
@@ -128,8 +133,7 @@ class PlottingSpectra(spectra.Spectra):
         mindist is in km/s
         """
         sep = self.get_separated(elem, ion, thresh,mindist)
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        vels = self.vel_width(self.get_observer_tau(elem, ion),dlawidth)
+        vels = self.vel_width(self.get_observer_tau(elem, ion))
         v_table = 10**np.arange(0, np.log10(np.max(vels)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         hist1 = np.histogram(vels, v_table)
@@ -157,7 +161,7 @@ class PlottingSpectra(spectra.Spectra):
         ind = self.get_filt(species, ion, None)
         self._plot_metallicity(met[ind],nbins,color,ls)
 
-    def plot_ion_corr(self, species, ion, nbins=80,color="blue",ls="-",upper=1,lower=-1):
+    def plot_ion_corr(self, species, ion, nbins=80,color="blue",ls="-"):
         """Plot the difference between the single-species ionisation and the metallicity from GFM_Metallicity"""
         met = np.log10(self.get_metallicity())
         ion_met = np.log10(self.get_ion_metallicity(species, ion))
@@ -168,14 +172,12 @@ class PlottingSpectra(spectra.Spectra):
         hist = np.histogram(np.log10(diff),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
 
-    def plot_Z_vs_vel_width(self,elem="Si", line=2, color="blue"):
+    def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
-        tau = self.get_observer_tau(elem, line)
-        colden = self.get_col_density("H",1)
-        ind = self.get_filt(elem, line)
-        (dlawidth, _) = self.find_dla_width(colden)
-        vel = self.vel_width(tau[ind],dlawidth[ind])
-        met = self.get_metallicity(dlawidth=dlawidth)
+        tau = self.get_observer_tau(elem, ion)
+        ind = self.get_filt(elem, ion)
+        vel = self.vel_width(tau[ind])
+        met = self.get_metallicity()
         met = met[ind]
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
@@ -196,8 +198,7 @@ class PlottingSpectra(spectra.Spectra):
         ind = np.where(halo > 0)
         halo = halo[ind]
         mass = self.sub_mass[halo]
-        (dlawidth, _) = self.find_dla_width(self.get_col_density("H",1))
-        met = self.get_metallicity(dlawidth=dlawidth)[ind]
+        met = self.get_metallicity()[ind]
         plt.loglog(mass,met, 'x',color=color)
         met = np.log10(met)
         mass = np.log10(mass)
@@ -212,15 +213,13 @@ class PlottingSpectra(spectra.Spectra):
         plt.loglog(10**intercept*xx**slope, xx, color="black", label=self.label)
         plt.ylim(1e-4,10)
 
-    def plot_vel_vs_mass(self,elem, line, color="blue"):
+    def plot_vel_vs_mass(self,elem, ion, color="blue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
-        tau = self.get_observer_tau(elem, line)
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden)
-        vel = self.vel_width(tau,dlawidth)[ind]
+        tau = self.get_observer_tau(elem, ion)
+        vel = self.vel_width(tau)[ind]
         mass = self.sub_mass[halo]
         plt.loglog(mass,vel, 'x',color=color)
         vel = np.log10(vel)
@@ -232,26 +231,22 @@ class PlottingSpectra(spectra.Spectra):
         xx = np.logspace(np.min(vel), np.max(vel),15)
         plt.loglog(10**intercept*xx**slope, xx, color="black",label=self.label)
 
-    def kstest(self, Zdata, veldata, elem="Si", line=2):
+    def kstest(self, Zdata, veldata, elem="Si", ion=2):
         """Find the 2D KS test value of the Vel width and log metallicity with respect to an external dataset, veldata and Z data"""
         met = self.get_metallicity()
-        tau = self.get_observer_tau(elem, line)
-        ind = self.get_filt(elem, line)
+        tau = self.get_observer_tau(elem, ion)
+        ind = self.get_filt(elem, ion)
         met = np.log10(met[ind])
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
-        vel = np.log10(self.vel_width(tau[ind],dlawidth))
+        vel = np.log10(self.vel_width(tau[ind]))
         data2 = np.array([met,vel]).T
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
 
-    def plot_radius_vs_vel_width(self, elem="Si", line=2, color="blue"):
+    def plot_radius_vs_vel_width(self, elem="Si", ion=2, color="blue"):
         """Plot the velocity width vs the virial velocity of the hosting halo"""
-        ind = self.get_filt(elem,line)
-        tau = self.get_observer_tau(elem, line)
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
-        vel = self.vel_width(tau[ind],dlawidth)
+        ind = self.get_filt(elem,ion)
+        tau = self.get_observer_tau(elem, ion)
+        vel = self.vel_width(tau[ind])
         (halos, dists) = self.find_nearest_halo()
         radius = self.sub_radii[halos][ind]
         mass = self.sub_mass[halos][ind]
@@ -274,13 +269,11 @@ class PlottingSpectra(spectra.Spectra):
         #xx = np.linspace(np.min(virial), np.max(virial),15)
         #plt.loglog( xx,intercept+xx*slope, color=color)
 
-    def plot_virial_vel_vs_vel_width(self,elem="Si", line=2):
+    def plot_virial_vel_vs_vel_width(self,elem="Si", ion=2):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
-        ind = self.get_filt(elem,line)
-        tau = self.get_observer_tau(elem, line)
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
-        vel = self.vel_width(tau[ind],dlawidth)
+        ind = self.get_filt(elem,ion)
+        tau = self.get_observer_tau(elem, ion)
+        vel = self.vel_width(tau[ind])
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
         (halos, _) = self.find_nearest_halo()

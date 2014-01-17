@@ -443,34 +443,20 @@ class Spectra:
     def filter_DLA(self, col_den, thresh=10**20.3):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
-        #sum the column densities over their equivalent widths.
-        (_, dlacol) = self.find_dla_width(col_den)
-        ind = np.where(dlacol > thresh)
+        #sum the column densities over the entire spectrum.
+        ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_dla_width(self, col_den):
-        """Find the region in velocity space covered by a DLA for each spectrum,
-           using the equivalent width from the column density
+    def find_absorber_width(self, col_den):
+        """
+           Find the region in velocity space considered to be an absorber for each spectrum.
+           This algorithm is specific to computing velocity widths, and is based on the region over
+           which there is significant SiII 1526 absorption.
         """
         #center on maximum
         col_den = self._get_rolled_spectra(col_den)
-        dlawidth = np.zeros(np.shape(col_den)[0])
+        dlawidth = 1000*np.ones(np.shape(col_den)[0])
         dlacol = np.zeros(np.shape(col_den)[0])
-        #For each line...
-        for line in xrange(np.shape(col_den)[0]):
-            lcol = col_den[line,:]
-            maxc = np.max(lcol)
-            #Then compute the equivalent width and sum over that range
-            newwidth = 2*self._eq_width_from_colden(maxc)
-            while True:
-                width = newwidth
-                low = np.max([0,int(self.nbins/2-width/2)])
-                high = np.min([self.nbins,int(self.nbins/2+width/2)])
-                dlacol[line] = np.sum(lcol[low:high])
-                newwidth = self._eq_width_from_colden(dlacol[line])
-                if np.max(newwidth - width) < self.dvbin*2 or newwidth >=self.nbins:
-                    break
-            dlawidth[line] = newwidth
         return (dlawidth, dlacol)
 
     def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
@@ -494,26 +480,19 @@ class Spectra:
         #Convert from cm/s to km/s
         return width/1e5
 
-    def get_metallicity(self, solar=0.0133,dlawidth=None):
+    def get_metallicity(self, solar=0.0133):
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
         mms = np.sum(MM, axis=1)
         hhs = np.sum(HH, axis=1)
-        if dlawidth != None:
-            for ll in xrange(np.shape(MM)[0]):
-                maxM = np.where(MM[ll,:] == np.max(MM[ll,:]))[0][0]
-                ldla = maxM-dlawidth[ll]/2
-                hdla = maxM+dlawidth[ll]/2
-                mms[ll] = np.sum(MM[ll,ldla:hdla])
-                hhs[ll] = np.sum(HH[ll,ldla:hdla])
         return mms/hhs/solar
         #Use only DLA regions: tricky to preserve shape
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
         #data = np.array([np.mean(ma_HH, axis=1)])
         #return data/solar
 
-    def get_ion_metallicity(self, species,ion, dlawidth=None):
+    def get_ion_metallicity(self, species,ion):
         """Get the metallicity derived from an ionic species"""
         MM = self.get_col_density(species,ion)
         HH = self.get_col_density("H",1)
@@ -763,7 +742,7 @@ class Spectra:
             tau = self.get_observer_tau(elem, line)
         ind = self.get_filt(elem, line, met_cut)
         colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
+        (dlawidth, _) = self.find_absorber_width(colden[ind])
         if stat:
             vel_width = self.vel_peak(tau[ind],dlawidth)
         else:
@@ -875,7 +854,7 @@ class Spectra:
         #Filter small number of spectra without metals
         ind = self.get_filt(elem, line, met_cut)
         colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_dla_width(colden[ind])
+        (dlawidth, _) = self.find_absorber_width(colden[ind])
         vel_width = self.vel_width(tau[ind], dlawidth)
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
@@ -1112,7 +1091,6 @@ class Spectra:
         #X axis first
         col_den = self.get_col_density("H",1)
         axes = [0,1,2]
-        (dlawidth, _) = self.find_dla_width(col_den)
         for ii in xrange(np.size(self.axis)):
             proj_pos = np.zeros(3)
             #Get two coordinates given by axis label
@@ -1120,29 +1098,13 @@ class Spectra:
             ax = self.axis[ii]-1
             sax.remove(ax)
             proj_pos[sax] = self.cofm[ii,sax]
-            #Find region of DLA
-            centHI = np.where(col_den[ii,:] == np.max(col_den[ii,:]))[0][0]
-            #Width of the DLA
-            minHI = centHI - dlawidth[ii]
-            maxHI = centHI + dlawidth[ii]
             #Third coordinate given by HI mass-weighted depth along sightline
             #If width is wider than the box, simply sum over the whole sightline
-            if minHI < 0 and maxHI > nbins:
-                minHI = 0
-                maxHI = nbins
-            lcolden = col_den[ii,np.max([0,minHI]):np.min([nbins,maxHI])]
-            nn = np.arange(nbins)[np.max([0,minHI]):np.min([nbins,maxHI])]
+            lcolden = col_den[ii,:]
+            nn = np.arange(nbins)
             zpos = ne.evaluate("sum(lcolden*nn)")
             summ = ne.evaluate("sum(lcolden)")
             #Otherwise sum the periodic wrapped bits separately
-            if minHI < 0:
-                zposwrap = col_den[ii,:]*(np.arange(nbins)-nbins)
-                zpos += np.sum(zposwrap[minHI:nbins])
-                summ += np.sum(col_den[ii,minHI:nbins])
-            elif maxHI > nbins:
-                zposwrap = col_den[ii,:]*(np.arange(nbins)+nbins)
-                zpos += np.sum(zposwrap[0:maxHI-nbins])
-                summ += np.sum(col_den[ii,0:maxHI-nbins])
             zpos = (zpos / summ) % nbins
             #Make sure it refers to a valid position
             proj_pos[ax] = zpos*1.*self.box/self.nbins
