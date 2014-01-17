@@ -28,17 +28,20 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.vel_width_hist(elem, ion, dv, met_cut=met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_extra_stat(self, elem, ion, stat=False, dv=0.03, met_cut = 1e13, color="red", ls="-"):
-        """Plot the Prochaska extra statistics
-        Parameters:
-            elem - element to use
-            ion - ionisation state: 1 is neutral.
-            stat - Statistic to use. If true, f_edge. If False, f_median
-            dv - bin spacing
-            met_cut - Discard spectra whose maximal metal column density is below this level.
-                      Removes unobservable systems.
+    def plot_f_meanmedian(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """
-        (vbin, vels) = self.extra_stat_hist(elem, ion, stat, dv, met_cut=met_cut)
+        Plot an f_mean_median histogram
+        For args see plot_vel_width
+        """
+        (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv, met_cut=met_cut)
+        plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
+
+    def plot_f_peak(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
+        """
+        Plot an f_peak histogram
+        For args see plot_vel_width
+        """
+        (vbin, vels) = self.f_peak_hist(elem, ion, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_equivalent_width(self, elem, ion, line, dv=0.1, color="red", ls="-"):
@@ -108,12 +111,6 @@ class PlottingSpectra(spectra.Spectra):
         plt.xlim(low-50,high+50)
         plt.yticks(np.array([1e10, 1e15,1e20]))
 
-    def plot_col_density(self, elem, ion):
-        """Plot the maximal column density in each sightline against vel_width, assuming rho and tau were already calculated"""
-        col_dens = self.get_col_density(elem, ion)
-        vels = self.vel_width(self.get_observer_tau(elem, ion))
-        plt.loglog(np.max(col_dens,axis=1),vels)
-
     def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue", moment=False):
         """Plots the column density distribution function. """
         (NHI,f_N)=self.column_density_function(elem, ion, dlogN,minN-1,maxN+1)
@@ -128,12 +125,13 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylim(1e-4,1)
 
     def plot_sep_frac(self,elem = "Si", ion = 2, thresh = 1e-2, mindist = 15, dv = 0.1):
-        """Plots the fraction of spectra in each velocity width bin which are separated.
+        """
+        Plots the fraction of spectra in each velocity width bin which are separated.
         Threshold is as a percentage of the maximum value.
         mindist is in km/s
         """
         sep = self.get_separated(elem, ion, thresh,mindist)
-        vels = self.vel_width(self.get_observer_tau(elem, ion))
+        vels = self.vel_width(elem, ion)
         v_table = 10**np.arange(0, np.log10(np.max(vels)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         hist1 = np.histogram(vels, v_table)
@@ -174,9 +172,8 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue"):
         """Plot the correlation between metallicity and velocity width"""
-        tau = self.get_observer_tau(elem, ion)
         ind = self.get_filt(elem, ion)
-        vel = self.vel_width(tau[ind])
+        vel = self.vel_width(elem, ion)[ind]
         met = self.get_metallicity()
         met = met[ind]
         #Ignore objects too faint to be seen or unresolved
@@ -218,8 +215,7 @@ class PlottingSpectra(spectra.Spectra):
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
-        tau = self.get_observer_tau(elem, ion)
-        vel = self.vel_width(tau)[ind]
+        vel = self.vel_width(elem, ion)[ind]
         mass = self.sub_mass[halo]
         plt.loglog(mass,vel, 'x',color=color)
         vel = np.log10(vel)
@@ -234,10 +230,9 @@ class PlottingSpectra(spectra.Spectra):
     def kstest(self, Zdata, veldata, elem="Si", ion=2):
         """Find the 2D KS test value of the Vel width and log metallicity with respect to an external dataset, veldata and Z data"""
         met = self.get_metallicity()
-        tau = self.get_observer_tau(elem, ion)
         ind = self.get_filt(elem, ion)
         met = np.log10(met[ind])
-        vel = np.log10(self.vel_width(tau[ind]))
+        vel = np.log10(self.vel_width(elem, ion))
         data2 = np.array([met,vel]).T
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
@@ -245,8 +240,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_radius_vs_vel_width(self, elem="Si", ion=2, color="blue"):
         """Plot the velocity width vs the virial velocity of the hosting halo"""
         ind = self.get_filt(elem,ion)
-        tau = self.get_observer_tau(elem, ion)
-        vel = self.vel_width(tau[ind])
+        vel = self.vel_width(elem, ion)[ind]
         (halos, dists) = self.find_nearest_halo()
         radius = self.sub_radii[halos][ind]
         mass = self.sub_mass[halos][ind]
@@ -272,8 +266,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_virial_vel_vs_vel_width(self,elem="Si", ion=2):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
         ind = self.get_filt(elem,ion)
-        tau = self.get_observer_tau(elem, ion)
-        vel = self.vel_width(tau[ind])
+        vel = self.vel_width(elem, ion)[ind]
         ind2 = np.where(vel > 15)
         vel = vel[ind2]
         (halos, _) = self.find_nearest_halo()

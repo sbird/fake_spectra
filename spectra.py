@@ -100,6 +100,7 @@ class Spectra:
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         self.vmax = self.box * self.Hz /1000. # box size (physical kms^-1)
+        self.NumLos = np.size(self.axis)
         try:
             # velocity bin size (kms^-1)
             self.dvbin = self.vmax / (1.*self.nbins)
@@ -119,7 +120,7 @@ class Spectra:
             self.cloudy_table = convert_cloudy.CloudyTable(self.red)
         #Line data
         self.lines = line_data.LineData()
-        print np.size(self.axis), " sightlines. resolution: ", self.dvbin, " z=", self.red
+        print self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red
         #Try to load a halo catalogue
         self.load_halo()
 
@@ -379,7 +380,7 @@ class Spectra:
             hh = hh[ind]
             del ind
             #For each spectrum find only those particles near the most massive region
-            for spec in xrange(np.size(self.axis)):
+            for spec in xrange(self.NumLos):
                 #Particles near this spectrum
                 ind = self.particles_near_lines(pos, hh, np.array([self.axis[spec],]), np.array([self.cofm[spec,:],]))
                 #Largest col. den region
@@ -404,7 +405,7 @@ class Spectra:
         """
         #Declare variables
         found = 0
-        wanted = np.size(self.axis)
+        wanted = self.NumLos
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
         col_den = self.compute_spectra("H",1,1,False)
@@ -447,17 +448,14 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, col_den):
+    def find_absorber_width(self):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This algorithm is specific to computing velocity widths, and is based on the region over
            which there is significant SiII 1526 absorption.
         """
-        #center on maximum
-        col_den = self._get_rolled_spectra(col_den)
-        dlawidth = 1000*np.ones(np.shape(col_den)[0])
-        dlacol = np.zeros(np.shape(col_den)[0])
-        return (dlawidth, dlacol)
+        dlawidth = 1000*np.ones(self.NumLos)
+        return dlawidth
 
     def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
         """Find the equivalent width of the line from the column density,
@@ -536,8 +534,7 @@ class Spectra:
                 pass
         #Compute tau for each line
         nlines = np.size(self.lines[(elem,ion)])
-        numlos = np.size(self.axis)
-        tau = np.empty([nlines, numlos,self.nbins])
+        tau = np.empty([nlines, self.NumLos,self.nbins])
         pos = {}
         vel = {}
         elem_den = {}
@@ -557,9 +554,9 @@ class Spectra:
         #Maximum tau in each spectra with each line
         maxtaus = np.max(tau, axis=-1)
         #Array for line indices
-        ntau = np.empty([numlos, self.nbins])
+        ntau = np.empty([self.NumLos, self.nbins])
         #Use the maximum unsaturated optical depth
-        for ii in xrange(numlos):
+        for ii in xrange(self.NumLos):
             # we want unsaturated lines, defined as those with F > 0.1
             ind = np.where(np.exp(-maxtaus[:,ii]) > 0.1)
             if np.size(ind) == 0:
@@ -606,28 +603,34 @@ class Spectra:
         ind = np.where((np.max(rho,axis=1) > met_cut))
         return ind
 
-    def vel_width(self, tau, dlawidth=None):
-        """Find the velocity width of a line
-           defined as the width of 90% of the integrated optical depth.
-           This is a little complicated by periodic boxes,
-           so we internally cycle the line until the deepest absorption
-           is in the middle
-           If dlawidth is set, limit the width examined to the width
-           of the DLA around the metal line.
-           """
+    def vel_width(self, elem, ion):
+        """
+           Find the velocity width of an ion.
+           This is the width in velocity space containing 90% of the optical depth
+           over the absorber.
+
+           elem - element to look at
+           ion - ionisation state of this element.
+        """
+        tau = self.get_observer_tau(elem, ion)
+        max_width = self.find_absorber_width()
+        return self._vel_width(tau, max_width)
+
+    def _vel_width(self, tau, max_width):
+        """
+           Find the velocity width of a spectrum given by tau,
+           defined as the width of 90% of the optical depth,
+           integrated over +- max_width, and centered on the strongest absorption.
+        """
         #  Size of a single velocity bin
         vel_width = np.zeros(np.shape(tau)[0])
         #deal with periodicity by making sure the deepest point is in the middle
         tau = self._get_rolled_spectra(tau)
         for ll in np.arange(0, np.shape(tau)[0]):
-            if dlawidth != None:
-                ldla = self.nbins/2-dlawidth[ll]/2
-                hdla = self.nbins/2+dlawidth[ll]/2
-                tot_tau = np.sum(tau[ll,ldla:hdla])
-                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            else:
-                tot_tau = np.sum(tau[ll,:])
-                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
+            ldla = self.nbins/2-max_width[ll]/2
+            hdla = self.nbins/2+max_width[ll]/2
+            tot_tau = np.sum(tau[ll,ldla:hdla])
+            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
             vel_width[ll] = self.dvbin*(high-low)
         #Return the width
         return vel_width
@@ -698,79 +701,43 @@ class Spectra:
                 return hh
         raise ValueError("No root found")
 
-    def vel_mean_median(self, tau, dlawidth=None):
+    def vel_mean_median(self, elem, ion):
         """Find the difference between the mean velocity and the median velocity.
            The mean velocity is the point halfway across the extent of the velocity width.
            The median velocity is v(tau = tot_tau /2)
            """
+        tau = self.get_observer_tau(elem, ion)
+        max_width = self.find_absorber_width()
         mean_median = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau = self._get_rolled_spectra(tau)
         for ll in np.arange(0, np.shape(tau)[0]):
-            if dlawidth != None:
-                ldla = self.nbins/2-dlawidth[ll]/2
-                hdla = self.nbins/2+dlawidth[ll]/2
-                tot_tau = np.sum(tau[ll,ldla:hdla])
-                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-                vel_median = self._vel_median(tau[ll,ldla:hdla],tot_tau)
-            else:
-                tot_tau = np.sum(tau[ll,:])
-                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
-                vel_median = self._vel_median(tau[ll,:],tot_tau)
+            ldla = self.nbins/2-max_width[ll]/2
+            hdla = self.nbins/2+max_width[ll]/2
+            tot_tau = np.sum(tau[ll,ldla:hdla])
+            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
+            vel_median = self._vel_median(tau[ll,ldla:hdla],tot_tau)
             vmean = low+(high-low)/2.
             mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
         #Return the width
         return mean_median
 
-    def extra_stat_hist(self, elem, line, stat=False, dv=0.1, met_cut = 1e13, tau=None):
+    def vel_peak(self, elem, ion):
         """
-        Compute a histogram of the mean median statistic of our spectra, with the purpose of
-        comparing to the data of Neeleman 2013
-
-        Parameters:
-            elem - element to use
-            line - line to use (the components of this line must be pre-computed and stored in self.metals)
-            stat - Statistic to use. If true, f_edge. If False, f_median
-            dv - bin spacing
-            met_cut - Discard spectra whose maximal metal column density is below this level.
-                      Removes unobservable systems.
-
-        Returns:
-            (v, f_table) - v (binned in log) and corresponding f(N)
+           Find the f_peak statistic for spectra in an ion.
+           f_peak = (vel_peak - vel_mean) / (v_90/2)
         """
-        if tau == None:
-            tau = self.get_observer_tau(elem, line)
-        ind = self.get_filt(elem, line, met_cut)
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_absorber_width(colden[ind])
-        if stat:
-            vel_width = self.vel_peak(tau[ind],dlawidth)
-        else:
-            vel_width = self.vel_mean_median(tau[ind],dlawidth)
-        #nlos = np.shape(vel_width)[0]
-        #print 'nlos = ',nlos
-        v_table = np.arange(0, 1, dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        vels = np.histogram(vel_width,v_table, density=True)[0]
-        return (vbin, vels)
-
-    def vel_peak(self, tau, dlawidth=None):
-        """Find the difference between the peak optical depth and the mean velocity, divided by the velocity width.
-        """
+        tau = self.get_observer_tau(elem, ion)
+        max_width = self.find_absorber_width()
         mean_median = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau = self._get_rolled_spectra(tau)
         for ll in np.arange(0, np.shape(tau)[0]):
-            if dlawidth != None:
-                ldla = self.nbins/2-dlawidth[ll]/2
-                hdla = self.nbins/2+dlawidth[ll]/2
-                tot_tau = np.sum(tau[ll,ldla:hdla])
-                (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-                vmax = np.where(tau[ll,ldla:hdla] == np.max(tau[ll,ldla:hdla]))
-            else:
-                tot_tau = np.sum(tau[ll,:])
-                (low, high) = self._vel_width_bound(tau[ll,:], tot_tau)
-                vmax = np.where(tau[ll,:] == np.max(tau[ll,:]))
+            ldla = self.nbins/2-max_width[ll]/2
+            hdla = self.nbins/2+max_width[ll]/2
+            tot_tau = np.sum(tau[ll,ldla:hdla])
+            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
+            vmax = np.where(tau[ll,ldla:hdla] == np.max(tau[ll,ldla:hdla]))
             vmean = low+(high-low)/2.
             mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
         #Return the width
@@ -828,7 +795,8 @@ class Spectra:
         #Return the width
         return mean_median
 
-    def vel_width_hist(self, elem, line, dv=0.1, met_cut = 1e13, tau=None):
+
+    def vel_width_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -849,18 +817,46 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        if tau == None:
-            tau = self.get_observer_tau(elem, line)
+        self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_width, log=True)
+
+    def f_meanmedian_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
+        """
+        Compute a histogram of the mean median statistic of our spectra, the difference in
+        units of the velocity width between the mean velocity and median velocity of
+        the absorber.
+
+        For arguments see vel_width_hist.
+        """
+        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_mean_median, log=False)
+
+    def f_peak_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
+        """
+        Compute a histogram of the peak statistic of our spectra, the difference in
+        units of the velocity width between the largest peak velocity and the mean velocity of
+        the absorber.
+
+        For arguments see vel_width_hist.
+        """
+        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_peak, log=False)
+
+    def _vel_stat_hist(self, elem, ion, dv, met_cut, func, log=True):
+        """
+           Internal function that finds the histogram in velocity space of
+           the values of a statistic for a particular ion.
+        """
         #Filter small number of spectra without metals
-        ind = self.get_filt(elem, line, met_cut)
-        colden = self.get_col_density("H",1)
-        (dlawidth, _) = self.find_absorber_width(colden[ind])
-        vel_width = self.vel_width(tau[ind], dlawidth)
-        #nlos = np.shape(vel_width)[0]
-        #print 'nlos = ',nlos
-        v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
+        ind = self.get_filt(elem, ion, met_cut)
+        vel_width = func(elem, ion)
+        vel_width = vel_width[ind]
+        if log:
+            v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
+        else:
+            v_table = np.arange(0, 1, dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
+        if log:
+            vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
+        else:
+            vels = np.histogram(vel_width,v_table, density=True)[0]
         return (vbin, vels)
 
     def mass_hist(self, dm=0.1, min_mass=9,max_mass=13):
@@ -1085,13 +1081,13 @@ class Spectra:
         if min_mass == None:
             min_mass = self.min_halo_mass()*1e10
         nbins = self.nbins
-        dists = np.empty(np.size(self.axis))
-        halos = np.empty(np.size(self.axis),dtype=np.int)
+        dists = np.empty(self.NumLos)
+        halos = np.empty(self.NumLos,dtype=np.int)
         m_ind = np.where(self.sub_mass > min_mass)
         #X axis first
         col_den = self.get_col_density("H",1)
         axes = [0,1,2]
-        for ii in xrange(np.size(self.axis)):
+        for ii in xrange(self.NumLos):
             proj_pos = np.zeros(3)
             #Get two coordinates given by axis label
             sax = list(axes)

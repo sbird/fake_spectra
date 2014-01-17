@@ -134,7 +134,7 @@ def plot_mean_median(sims, snap):
     #Plot extra statistics
     for sss in sims:
         hspec = get_hspec(sss, snap)
-        hspec.plot_extra_stat("Si", 2, False, color=colors[sss], ls=lss[sss])
+        hspec.plot_f_meanmedian("Si", 2, color=colors[sss], ls=lss[sss])
     vel_data.plot_extra_stat_hist(False,zrange[snap])
     plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
@@ -145,7 +145,7 @@ def plot_f_peak(sims, snap):
     """Plot peak statistic for all sims on one plot"""
     for sss in sims:
         hspec = get_hspec(sss, snap)
-        hspec.plot_extra_stat("Si", 2, True, color=colors[sss], ls=lss[sss])
+        hspec.plot_f_peak("Si", 2, color=colors[sss], ls=lss[sss])
     plt.legend(loc=2,ncol=3)
     vel_data.plot_extra_stat_hist(True,zrange[snap])
     plt.ylim(0,3)
