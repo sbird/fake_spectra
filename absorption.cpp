@@ -185,7 +185,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
         break;
   }
   //Go from the particle backwards
-  for(int z=zmax-1; z>zmax-nbins/2; --z)
+  for(int z=zmax-1; z>=zmax-nbins/2; --z)
   {
       double vlow = z*bintov - vel;
       const double taulast=amp*dens*absorber.tau_kern_outer(vlow, vlow+bintov)/velfac;
