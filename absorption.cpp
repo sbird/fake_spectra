@@ -32,6 +32,10 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
+//Threshold of tau below which we stop computing profiles
+//Note that because this is for each particle, it should be fairly small.
+#define TAUTAIL 1e-5
+
 #ifndef TOP_HAT_KERNEL
 /* Find the integral of the particle density in this pixel by integrating an SPH kernel
  * over the z direction.

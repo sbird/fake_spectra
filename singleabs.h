@@ -6,10 +6,6 @@
 
 #define NGRID 8
 
-//Threshold of tau below which we stop computing profiles
-//Note that because this is for each particle, it should be fairly small.
-#define TAUTAIL 1e-5
-
 inline double sph_kernel(const double q)
 {
     if (q >= 1)
