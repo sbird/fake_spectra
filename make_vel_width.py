@@ -50,9 +50,15 @@ def plot_spectrum(sim, snap, num):
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    width = hspec.find_absorber_width("Si",2)
-    hspec.plot_spectrum(tau[ind][num],width[num])
+    (low,high, offset) = hspec.find_absorber_width("Si",2)
+    tau_l = np.roll(tau[ind][num], offset[ind][num])
+    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
+    plt.clf()
+    tau = hspec.get_tau("Si", 2,4)
+    tau_l = np.roll(tau[ind][num], offset[ind][num])
+    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
+    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_1260_spectrum"))
     plt.clf()
 
 def plot_spectrum_max(sim, snap):
@@ -60,11 +66,17 @@ def plot_spectrum_max(sim, snap):
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    width = hspec.find_absorber_width("Si",2)
+    (low,high, offset) = hspec.find_absorber_width("Si",2)
     vels = hspec.vel_width("Si",2)
-    ind2 = np.where(vels == np.max(vels))[0][0]
-    hspec.plot_spectrum(tau[ind][ind2], width[ind2])
+    num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
+    tau_l = np.roll(tau[ind][num], offset[ind][num])
+    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_spectrum"))
+    plt.clf()
+    tau = hspec.get_tau("Si", 2,4)
+    tau_l = np.roll(tau[ind][num], offset[ind][num])
+    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
+    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_"+str(num)+"_1260_spectrum"))
     plt.clf()
 
 

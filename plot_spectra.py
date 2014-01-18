@@ -58,26 +58,12 @@ class PlottingSpectra(spectra.Spectra):
         whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
         plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
 
-    def plot_spectrum(self, tau, width=None):
+    def plot_spectrum(self, tau):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width."""
-        #  Size of a single velocity bin
         tot_tau = np.sum(tau)
-        #Deal with periodicity by making sure the deepest point is in the middle
-        tau_l = tau
-        tmax = np.max(tau_l)
-        ind_m = np.where(tau_l == tmax)[0][0]
-        tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-        if width != None:
-            ldla = np.size(tau_l)/2 - width/2
-            hdla = np.size(tau_l)/2 + width/2
-        else:
-            ldla = 0
-            hdla = np.size(tau_l)
-        plt.plot(np.arange(0,np.size(tau_l))*self.dvbin,np.exp(-tau_l))
-        (low, high) = self._vel_width_bound(tau_l[ldla:hdla], tot_tau)
-        low+=ldla
-        high+=ldla
+        plt.plot(np.arange(0,np.size(tau))*self.dvbin,np.exp(-tau))
+        (low, high) = self._vel_width_bound(tau, tot_tau)
         if high - low > 0:
             plt.plot([low,low],[0,1])
             plt.plot([high,high],[0,1])
@@ -87,7 +73,6 @@ class PlottingSpectra(spectra.Spectra):
             tpos = high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
-        plt.xlim(low-70,high+70)
         return (low, high)
 
     def plot_spectrum_density_velocity(self, elem, ion, i):

@@ -459,30 +459,31 @@ class Spectra:
            elem, ion - ion to look at
            thresh - threshold above which absorption is considered significant. For a spectrum with
            S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06. This may be a little low.
+           Returns the low and high indices of absorption
         """
         try:
             return self.absorber_width[(elem, ion)]
         except KeyError:
             pass
-        widths = np.ones(self.NumLos)
+        high = np.ones(self.NumLos)
+        low = np.ones(self.NumLos)
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines]
         ind = np.where(strength == np.max(strength))[0][0]
         #Absorption in a strong line: eg, SiII1260.
         #Note that the lines are 1 indexed
         strong = self.get_tau(elem, ion, ind+1)
-        roll = self._get_rolled_spectra(strong)
+        (offset, roll) = self._get_rolled_spectra(strong)
         for ii in xrange(self.NumLos):
             #Where is there no absorption leftwards of the peak?
-            lind = np.where(roll[ii,:self.nbins/2] < thresh)
+            lind = np.where(roll[ii,:self.nbins/2] > thresh)
             #First place absorption stops leftwards of the peak
-            low = np.max(lind)
-            hind = np.where(roll[ii,self.nbins/2:] < thresh)
+            low[ii] = np.min(np.append(np.ravel(lind), self.nbins/2-25))
+            hind = np.where(roll[ii,self.nbins/2:] > thresh)
             #First place absorption stops leftwards of the peak
-            high = np.min(hind)+self.nbins/2
-            widths[ii] = np.max((1000, high-low))
-        self.absorber_width[(elem, ion)] = widths
-        return widths
+            high[ii] = np.max(np.append(np.ravel(hind),25))+self.nbins/2
+        self.absorber_width[(elem, ion)] = (low, high, offset)
+        return (low, high, offset)
 
     def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
         """Find the equivalent width of the line from the column density,
@@ -643,35 +644,26 @@ class Spectra:
             return self.vel_widths[(elem, ion)]
         except KeyError:
             tau = self.get_observer_tau(elem, ion)
-            max_width = self.find_absorber_width(elem, ion)
-            self.vel_widths[(elem, ion)] = self._vel_width(tau, max_width)
+            (low, high, offset) = self.find_absorber_width(elem, ion)
+            #  Size of a single velocity bin
+            vel_width = np.zeros(np.shape(tau)[0])
+            #deal with periodicity by making sure the deepest point is in the middle
+            for ll in np.arange(0, np.shape(tau)[0]):
+                tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
+                tot_tau = np.sum(tau_l)
+                (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+                vel_width[ll] = self.dvbin*(nnhigh-nnlow)
+            #Return the width
+            self.vel_widths[(elem, ion)] = vel_width
             return self.vel_widths[(elem, ion)]
-
-    def _vel_width(self, tau, max_width):
-        """
-           Find the velocity width of a spectrum given by tau,
-           defined as the width of 90% of the optical depth,
-           integrated over +- max_width, and centered on the strongest absorption.
-        """
-        #  Size of a single velocity bin
-        vel_width = np.zeros(np.shape(tau)[0])
-        #deal with periodicity by making sure the deepest point is in the middle
-        tau = self._get_rolled_spectra(tau)
-        for ll in np.arange(0, np.shape(tau)[0]):
-            ldla = self.nbins/2-max_width[ll]/2
-            hdla = self.nbins/2+max_width[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vel_width[ll] = self.dvbin*(high-low)
-        #Return the width
-        return vel_width
 
     def _get_rolled_spectra(self,tau):
         """
         Cycle the array in tau so that the deepest absorption is at the middle.
         """
         tau_out = np.zeros(np.shape(tau))
-        for ll in np.arange(0, np.shape(tau)[0]):
+        roll = np.zeros(np.shape(tau[0]), dtype=int)
+        for ll in xrange(np.shape(tau)[0]):
             #Deal with periodicity by making sure the deepest point is in the middle
             tau_l = tau[ll,:]
             max_t = np.max(tau_l)
@@ -679,7 +671,8 @@ class Spectra:
                 continue
             ind_m = np.where(tau_l == max_t)[0][0]
             tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-        return tau_out
+            roll[ll] = np.size(tau_l)/2 - ind_m
+        return (roll, tau_out)
 
     def _vel_width_bound(self, tau, tot_tau):
         """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
