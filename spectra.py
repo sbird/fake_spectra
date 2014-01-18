@@ -731,18 +731,16 @@ class Spectra:
            The median velocity is v(tau = tot_tau /2)
            """
         tau = self.get_observer_tau(elem, ion)
-        max_width = self.find_absorber_width(elem, ion)
+        (low, high, offset) = self.find_absorber_width(elem, ion)
         mean_median = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
-        tau = self._get_rolled_spectra(tau)
-        for ll in np.arange(0, np.shape(tau)[0]):
-            ldla = self.nbins/2-max_width[ll]/2
-            hdla = self.nbins/2+max_width[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vel_median = self._vel_median(tau[ll,ldla:hdla],tot_tau)
-            vmean = low+(high-low)/2.
-            mean_median[ll] = np.abs(vmean - vel_median)/((high-low)*0.5)
+        for ll in xrange(np.shape(tau)[0]):
+            tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
+            tot_tau = np.sum(tau_l)
+            (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+            vel_median = self._vel_median(tau_l,tot_tau)
+            vmean = (nnlow+nnhigh)/2.
+            mean_median[ll] = np.abs(vmean - vel_median)/((nnhigh-nnlow)/2.)
         #Return the width
         return mean_median
 
@@ -752,24 +750,23 @@ class Spectra:
            f_peak = (vel_peak - vel_mean) / (v_90/2)
         """
         tau = self.get_observer_tau(elem, ion)
-        max_width = self.find_absorber_width(elem, ion)
-        mean_median = np.zeros(np.shape(tau)[0])
+        (low, high, offset) = self.find_absorber_width(elem, ion)
+        peak = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
-        tau = self._get_rolled_spectra(tau)
-        for ll in np.arange(0, np.shape(tau)[0]):
-            ldla = self.nbins/2-max_width[ll]/2
-            hdla = self.nbins/2+max_width[ll]/2
-            tot_tau = np.sum(tau[ll,ldla:hdla])
-            (low, high) = self._vel_width_bound(tau[ll,ldla:hdla], tot_tau)
-            vmax = np.where(tau[ll,ldla:hdla] == np.max(tau[ll,ldla:hdla]))
-            vmean = low+(high-low)/2.
-            mean_median[ll] = np.abs(vmax - vmean)/((high-low)*0.5)
+        for ll in xrange(np.shape(tau)[0]):
+            tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
+            tot_tau = np.sum(tau_l)
+            (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+            vmax = np.where(tau_l == np.max(tau_l))
+            vmean = (nnlow+nnhigh)/2.
+            peak[ll] = np.abs(vmax - vmean)/((nnhigh-nnlow)/2.)
         #Return the width
-        return mean_median
+        return peak
 
     def vel_2nd_peak(self, tau):
         """
-           Find the difference between the 2nd highest peak optical depth and the mean velocity, divided by the velocity width.
+           Find the difference between the 2nd highest peak optical depth and the mean velocity,
+           divided by the velocity width.
            To count as a peak, the 2nd peak must be > 1/3 the peak value,
            and must have a minimum between it and the peak, separated by at least "3-sigma".
            Since these spectra are noiseless, I interpret this as 5%.
