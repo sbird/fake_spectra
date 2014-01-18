@@ -21,6 +21,8 @@ else:
     halo = gs.GridSpectra(snapnum, base, numlos=5000)
 halo.get_col_density("H",1)
 halo.get_observer_tau("Si",2)
+#SiII 1260
+halo.get_tau("Si",2,4)
 halo.get_tau("H",1,1)
 halo.get_col_density("Si",2)
 halo.get_col_density("Z",-1)

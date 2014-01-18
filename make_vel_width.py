@@ -50,9 +50,8 @@ def plot_spectrum(sim, snap, num):
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    colden = hspec.get_col_density("H",1)
-    (dlawidth, _) = hspec.find_absorber_width(colden[ind])
-    hspec.plot_spectrum(tau[ind][num],dlawidth[num])
+    width = hspec.find_absorber_width("Si",2)
+    hspec.plot_spectrum(tau[ind][num],width[num])
     save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
     plt.clf()
 
@@ -61,11 +60,10 @@ def plot_spectrum_max(sim, snap):
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    colden = hspec.get_col_density("H",1)
-    (dlawidth, _) = hspec.find_absorber_width(colden[ind])
-    vels = hspec.vel_width(tau[ind],dlawidth)
+    width = hspec.find_absorber_width("Si",2)
+    vels = hspec.vel_width("Si",2)
     ind2 = np.where(vels == np.max(vels))[0][0]
-    hspec.plot_spectrum(tau[ind][ind2], dlawidth[ind2])
+    hspec.plot_spectrum(tau[ind][ind2], width[ind2])
     save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_spectrum"))
     plt.clf()
 
@@ -191,14 +189,14 @@ def plot_vel_redshift_evo(sim):
 if __name__ == "__main__":
 #     plot_vel_widths_cloudy()
 
-    for ss in (0,1,3,7):
+    simlist = (0,1,3,7) #range(8)
+    for ss in simlist:
         plot_spectrum_density_velocity(ss,3, 15)
         for nn in (272,350,457,1030,2030,3333):
             plot_spectrum(ss,3, nn)
         plot_spectrum_max(ss,3)
     plot_spectrum(2,3, 272)
 
-    simlist = (0,1,3,7) #range(8)
     for zz in (1, 3, 5):
         plot_met_corr(simlist,zz)
         plot_metallicity(simlist, zz)

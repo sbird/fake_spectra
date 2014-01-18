@@ -232,7 +232,7 @@ class PlottingSpectra(spectra.Spectra):
         met = self.get_metallicity()
         ind = self.get_filt(elem, ion)
         met = np.log10(met[ind])
-        vel = np.log10(self.vel_width(elem, ion))
+        vel = np.log10(self.vel_width(elem, ion)[ind])
         data2 = np.array([met,vel]).T
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)

@@ -60,6 +60,7 @@ class Spectra:
         self.tau_obs = {}
         self.tau = {}
         self.vel_widths = {}
+        self.absorber_width = {}
         self.colden = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
@@ -449,14 +450,39 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self):
+    def find_absorber_width(self, elem, ion, thresh=0.06):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
-           This algorithm is specific to computing velocity widths, and is based on the region over
-           which there is significant SiII 1526 absorption.
+           This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
+           absorption in the strongest line for this ion, where strongest is the line with the largest
+           cross-section, ie, greatest lambda * fosc.
+           elem, ion - ion to look at
+           thresh - threshold above which absorption is considered significant. For a spectrum with
+           S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06. This may be a little low.
         """
-        dlawidth = 1000*np.ones(self.NumLos)
-        return dlawidth
+        try:
+            return self.absorber_width[(elem, ion)]
+        except KeyError:
+            pass
+        widths = np.ones(self.NumLos)
+        lines = self.lines[(elem,ion)]
+        strength = [ll.fosc_X*ll.lambda_X for ll in lines]
+        ind = np.where(strength == np.max(strength))[0][0]
+        #Absorption in a strong line: eg, SiII1260.
+        #Note that the lines are 1 indexed
+        strong = self.get_tau(elem, ion, ind+1)
+        roll = self._get_rolled_spectra(strong)
+        for ii in xrange(self.NumLos):
+            #Where is there no absorption leftwards of the peak?
+            lind = np.where(roll[ii,:self.nbins/2] < thresh)
+            #First place absorption stops leftwards of the peak
+            low = np.max(lind)
+            hind = np.where(roll[ii,self.nbins/2:] < thresh)
+            #First place absorption stops leftwards of the peak
+            high = np.min(hind)+self.nbins/2
+            widths[ii] = np.max((1000, high-low))
+        self.absorber_width[(elem, ion)] = widths
+        return widths
 
     def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
         """Find the equivalent width of the line from the column density,
@@ -712,7 +738,7 @@ class Spectra:
            The median velocity is v(tau = tot_tau /2)
            """
         tau = self.get_observer_tau(elem, ion)
-        max_width = self.find_absorber_width()
+        max_width = self.find_absorber_width(elem, ion)
         mean_median = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau = self._get_rolled_spectra(tau)
@@ -733,7 +759,7 @@ class Spectra:
            f_peak = (vel_peak - vel_mean) / (v_90/2)
         """
         tau = self.get_observer_tau(elem, ion)
-        max_width = self.find_absorber_width()
+        max_width = self.find_absorber_width(elem, ion)
         mean_median = np.zeros(np.shape(tau)[0])
         #Deal with periodicity by making sure the deepest point is in the middle
         tau = self._get_rolled_spectra(tau)
@@ -822,7 +848,7 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_width, log=True)
+        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_width, log=True)
 
     def f_meanmedian_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
         """
