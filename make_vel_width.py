@@ -45,7 +45,7 @@ def plot_sep_frac(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_sep_frac()
 
-def plot_spectrum(sim, snap, num):
+def plot_spectrum(sim, snap, num, subdir=""):
     """Plot a spectrum"""
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
@@ -53,31 +53,24 @@ def plot_spectrum(sim, snap, num):
     (low,high, offset) = hspec.find_absorber_width("Si",2)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
+    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
     plt.clf()
     tau = hspec.get_tau("Si", 2,4)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_Si_"+str(num)+"_1260_spectrum"))
+    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_1260_spectrum"))
     plt.clf()
 
 def plot_spectrum_max(sim, snap):
     """Plot spectrum with max vel width"""
     hspec = get_hspec(sim, snap)
-    tau = hspec.get_observer_tau("Si", 2)
-    ind = hspec.get_filt("Si", 2)
-    (low,high, offset) = hspec.find_absorber_width("Si",2)
     vels = hspec.vel_width("Si",2)
+    ind = hspec.get_filt("Si", 2)
     num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
-    tau_l = np.roll(tau[ind][num], offset[ind][num])
-    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_spectrum"))
-    plt.clf()
-    tau = hspec.get_tau("Si", 2,4)
-    tau_l = np.roll(tau[ind][num], offset[ind][num])
-    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_maxv_Si_"+str(num)+"_1260_spectrum"))
-    plt.clf()
+    plot_spectrum(sim, snap, num, "max/")
+    num = np.where(vels[ind] > 500)[0]
+    for nn in num:
+        plot_spectrum(sim, snap, nn, "max/")
 
 
 def plot_spectrum_density_velocity(sim, snap, num):

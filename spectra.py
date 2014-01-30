@@ -450,7 +450,7 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, thresh=0.06):
+    def find_absorber_width(self, elem, ion, thresh=0.1):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
@@ -474,14 +474,27 @@ class Spectra:
         #Note that the lines are 1 indexed
         strong = self.get_tau(elem, ion, ind+1)
         (offset, roll) = self._get_rolled_spectra(strong)
+        cksz = 50
         for ii in xrange(self.NumLos):
+            #Easiest way I can think of to make a sum over
+            #each array segment of 50 elements
+            cc = np.cumsum(roll[ii,:self.nbins/2])
+            segments = np.array([cc[cksz*(i+1)-1]-cc[cksz*i] for i in xrange(np.size(cc)/cksz)])
             #Where is there no absorption leftwards of the peak?
-            lind = np.where(roll[ii,:self.nbins/2] > thresh)
+            lind = np.where(segments < thresh)
             #First place absorption stops leftwards of the peak
-            low[ii] = np.min(np.append(np.ravel(lind), self.nbins/2-25))
-            hind = np.where(roll[ii,self.nbins/2:] > thresh)
+            if np.size(lind) > 0:
+                low[ii] = cksz*np.max(lind)
+            else:
+                low[ii] = 0
+            cc = np.cumsum(roll[ii,self.nbins/2:])
+            segments = np.array([cc[cksz*(i+1)-1]-cc[cksz*i] for i in xrange(np.size(cc)/cksz)])
+            hind = np.where(segments < thresh)
             #First place absorption stops leftwards of the peak
-            high[ii] = np.max(np.append(np.ravel(hind),25))+self.nbins/2
+            if np.size(hind) > 0:
+                high[ii] = cksz*np.min(hind)+self.nbins/2
+            else:
+                high[ii] = self.nbins
         self.absorber_width[(elem, ion)] = (low, high, offset)
         return (low, high, offset)
 
