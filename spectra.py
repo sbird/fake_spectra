@@ -450,7 +450,7 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, thresh=0.1):
+    def find_absorber_width(self, elem, ion, thresh=0.1, minwidth=500.):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
@@ -460,6 +460,7 @@ class Spectra:
            thresh - threshold above which absorption is considered significant. For a spectrum with
            S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06. This may be a little low.
            Returns the low and high indices of absorption
+           Also imposes a minimum absorber width, which is +-minwidth from the peak.
         """
         try:
             return self.absorber_width[(elem, ion)]
@@ -495,6 +496,10 @@ class Spectra:
                 high[ii] = cksz*np.min(hind)+self.nbins/2
             else:
                 high[ii] = self.nbins
+            #Minimum
+            if minwidth > 0:
+                low[np.where(low > self.nbins/2-minwidth)] = self.nbins/2-minwidth
+                high[np.where(high < self.nbins/2+minwidth)] = self.nbins/2+minwidth
         self.absorber_width[(elem, ion)] = (low, high, offset)
         return (low, high, offset)
 

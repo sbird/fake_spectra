@@ -50,7 +50,7 @@ def plot_spectrum(sim, snap, num, subdir=""):
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    (low,high, offset) = hspec.find_absorber_width("Si",2)
+    (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=0)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
@@ -107,11 +107,11 @@ def plot_met_corr(sims,snap):
 
 def plot_vel_width_sims(sims, snap):
     """Plot velocity widths for a series of simulations"""
+    vel_data.plot_prochaska_2008_data(zrange[snap])
     for sss in sims:
         #Make abs. plot
         hspec = get_hspec(sss, snap)
         hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
-    vel_data.plot_prochaska_2008_data(zrange[snap])
     plt.ylim(0,2)
     plt.xlim(10,1000)
     plt.legend(loc=2,ncol=3)
@@ -197,10 +197,9 @@ if __name__ == "__main__":
     simlist = (0,1,3,7) #range(8)
     for ss in simlist:
         plot_spectrum_density_velocity(ss,3, 15)
-        for nn in (272,350,457,1030,2030,3333):
+        for nn in (272,350,457,1030,1496,2030,3333):
             plot_spectrum(ss,3, nn)
         plot_spectrum_max(ss,3)
-    plot_spectrum(2,3, 272)
 
     for zz in (1, 3, 5):
         plot_met_corr(simlist,zz)
