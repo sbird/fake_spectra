@@ -131,12 +131,13 @@ class Spectra:
         Saves spectra to a file, because they are slow to generate.
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
+        #We should make sure we have loaded all lazy-loaded things first.
         try:
+            if path.exists(self.savefile):
+                shutil.move(self.savefile,self.savefile+".backup")
             f=h5py.File(self.savefile,'w')
         except IOError:
             try:
-                if path.exists(self.savefile):
-                    shutil.move(self.savefile,self.savefile+".backup")
                 f=h5py.File(self.savefile,'w')
             except IOError:
                 raise IOError("Could not open ",self.savefile," for writing")
@@ -187,6 +188,21 @@ class Spectra:
             #Save the dataset
             gg.create_dataset(str(key[-1]),data=value)
 
+    def _really_load_array(self, key, array, array_name):
+        """Replace a lazy-loaded array with the real one from disc"""
+        #First check it was not already loaded
+        if np.size(array[key]) > 1:
+            return
+        #If not, load it.
+        f=h5py.File(self.savefile,'r')
+        if np.size(key) == 2:
+            array[key] = np.array(f[array_name][str(key[0])][str(key[1])])
+        elif np.size(key) == 3:
+            array[key] = np.array(f[array_name][str(key[0])][str(key[1])][str(key[2])])
+        else:
+            raise ValueError("Not supported")
+        f.close()
+
     def load_savefile(self,savefile=None):
         """Load data from a file"""
         #Name of savefile
@@ -205,16 +221,16 @@ class Spectra:
         grp = f["colden"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
-                self.colden[(elem, int(ion))] = np.array(grp[elem][ion])
+                self.colden[(elem, int(ion))] = np.array([0])
         grp = f["tau_obs"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
-                self.tau_obs[(elem, int(ion))] = np.array(grp[elem][ion])
+                self.tau_obs[(elem, int(ion))] = np.array([0])
         grp = f["tau"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 for line in grp[elem][ion].keys():
-                    self.tau[(elem, int(ion),int(line))] = np.array(grp[elem][ion][line])
+                    self.tau[(elem, int(ion),int(line))] = np.array([0])
         grp = f["num_important"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
@@ -571,6 +587,7 @@ class Spectra:
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
         if not force_recompute:
+            self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
             try:
                 if number >= 0:
                     return self.tau_obs[(elem, ion)][number,:]
@@ -939,6 +956,7 @@ class Spectra:
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species"""
         try:
+            self._really_load_array((elem, ion), self.colden, "colden")
             return self.colden[(elem, ion)]
         except KeyError:
             colden = self.compute_spectra(elem, ion, 0,False)
@@ -948,6 +966,7 @@ class Spectra:
     def get_tau(self, elem, ion,line):
         """Get the column density in each pixel for a given species"""
         try:
+            self._really_load_array((elem, ion, line), self.tau, "tau")
             return self.tau[(elem, ion,line)]
         except KeyError:
             tau = self.compute_spectra(elem, ion, line,True)
