@@ -132,6 +132,9 @@ class Spectra:
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
         """
         #We should make sure we have loaded all lazy-loaded things first.
+        self._load_all_multihash(self.tau_obs, "tau_obs")
+        self._load_all_multihash(self.tau, "tau")
+        self._load_all_multihash(self.colden, "colden")
         try:
             if path.exists(self.savefile):
                 shutil.move(self.savefile,self.savefile+".backup")
@@ -167,6 +170,12 @@ class Spectra:
         grp_grid = f.create_group("num_important")
         self._save_multihash(self.num_important, grp_grid)
         f.close()
+
+    def _load_all_multihash(self,array, array_name):
+        """Do all allowed lazy-loading for an array.
+        """
+        for key in array.keys():
+            self._really_load_array(key, array, array_name)
 
     def _save_multihash(self,save_array, grp):
         """Save an array using a tuple key, like save_array[(elem, ion, line)]
@@ -587,8 +596,8 @@ class Spectra:
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
         """
         if not force_recompute:
-            self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
             try:
+                self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
                 if number >= 0:
                     return self.tau_obs[(elem, ion)][number,:]
                 else:
