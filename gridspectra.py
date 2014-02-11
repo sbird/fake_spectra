@@ -22,7 +22,7 @@ class GridSpectra(spectra.Spectra):
         #All through y axis
         axis = np.ones(self.NumLos)
         #Load grid positions
-        self.dlaind = self._load_dla_index(gridfile, dla)
+        self.dlaind = self._load_dla_index(gridfile)
         #Re-seed for repeatability
         np.random.seed(23)
         cofm = self.get_cofm()
@@ -51,7 +51,7 @@ class GridSpectra(spectra.Spectra):
         #compared to the grid size.
         return cofm
 
-    def _load_dla_index(self, gridfile, dla=True):
+    def _load_dla_index(self, gridfile, dla=False):
         """Load the positions of DLAs or LLS from savefile"""
         #Load the DLA/LLS positions
         f=h5py.File(gridfile,'r')
@@ -60,13 +60,16 @@ class GridSpectra(spectra.Spectra):
         self.celsz = 1.*self.box/ngrid[0]
         grp = f["abslists"]
         #This is needed to make the dimensions right
-        if dla:
-            ind = (grp["DLA"][0,:],grp["DLA"][1,:],grp["DLA"][2,:])
-        else:
-            ind = (grp["LLS"][0,:],grp["LLS"][1,:],grp["LLS"][2,:])
+        ind = (grp["DLA"][0,:],grp["DLA"][1,:],grp["DLA"][2,:])
+        if not dla:
+            ind_lls = (grp["LLS"][0,:],grp["LLS"][1,:],grp["LLS"][2,:])
         f.close()
         yslab = (ind[1]+0.5)*self.celsz
+        yslab_lls = (ind_lls[1]+0.5)*self.celsz
+        yslab = np.append(yslab,yslab_lls)
         zslab = (ind[2]+0.5)*self.celsz
+        zslab_lls = (ind_lls[2]+0.5)*self.celsz
+        zslab = np.append(zslab,zslab_lls)
         return np.array((yslab, zslab))
 
 
