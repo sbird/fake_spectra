@@ -170,25 +170,27 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
-        (halo, _) = self.find_nearest_halo()
-        ind = np.where(halo > 0)
-        halo = halo[ind]
-        mass = self.sub_mass[halo]
         met = self.get_metallicity()[ind]
         mind = np.where(met > 10**(-4))
-        met = met[mind]
-        mass = mass[mind]
-        self._plot_2d_contour(mass, met, 10, "Z mass", color, color2)
+        self._plot_xx_vs_mass(met, "Z",color,color2,filter=mind)
         plt.ylim(1e-4,10)
 
     def plot_vel_vs_mass(self,elem, ion, color="blue",color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
+        vel = self.vel_width(elem, ion)
+        self._plot_xx_vs_mass(vel, "vel",color,color2)
+
+    def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", filter=None):
+        """Helper function to plot something against halo mass"""
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
-        vel = self.vel_width(elem, ion)[ind]
+        xx = xx[ind]
         mass = self.sub_mass[halo]
-        self._plot_2d_contour(mass, vel, 10, "vel mass", color, color2)
+        if filter != None:
+            xx = xx[filter]
+            mass = mass[filter]
+        self._plot_2d_contour(mass, xx, 10, name+" mass", color, color2)
 
     def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue"):
         """Helper function to make a 2D contour map of a correlation, as well as the best-fit linear fit"""
