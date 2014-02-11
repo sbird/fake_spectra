@@ -157,12 +157,10 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue",color2="darkblue"):
         """Plot the correlation between metallicity and velocity width"""
-        ind = self.get_filt(elem, ion)
-        vel = self.vel_width(elem, ion)[ind]
+        vel = self.vel_width(elem, ion)
         met = self.get_metallicity()
-        met = met[ind]
-        #Ignore objects too faint to be seen or unresolved
-        ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
+        #Ignore objects too faint to be seen
+        ind2 = np.where(met > 1e-4)
         met = met[ind2]
         vel = vel[ind2]
         self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2)
@@ -171,7 +169,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         met = self.get_metallicity()[ind]
-        mind = np.where(met > 10**(-4))
+        mind = np.where(met > 1e-4)
         self._plot_xx_vs_mass(met, "Z",color,color2,filter=mind)
         plt.ylim(1e-4,10)
 
