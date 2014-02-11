@@ -491,8 +491,8 @@ class Spectra:
             return self.absorber_width[(elem, ion)]
         except KeyError:
             pass
-        high = np.ones(self.NumLos)
-        low = np.ones(self.NumLos)
+        high = self.nbins*np.ones(self.NumLos)
+        low = np.zeros(self.NumLos)
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines]
         ind = np.where(strength == np.max(strength))[0][0]
@@ -500,31 +500,22 @@ class Spectra:
         #Note that the lines are 1 indexed
         strong = self.get_tau(elem, ion, ind+1)
         (offset, roll) = self._get_rolled_spectra(strong)
-        cksz = 50
+        chsz = 50
         for ii in xrange(self.NumLos):
-            #Easiest way I can think of to make a sum over
-            #each array segment of 50 elements
-            cc = np.cumsum(roll[ii,:self.nbins/2])
-            segments = np.array([cc[cksz*(i+1)-1]-cc[cksz*i] for i in xrange(np.size(cc)/cksz)])
             #Where is there no absorption leftwards of the peak?
-            lind = np.where(segments < thresh)
-            #First place absorption stops leftwards of the peak
-            if np.size(lind) > 0:
-                low[ii] = cksz*np.max(lind)
-            else:
-                low[ii] = 0
-            cc = np.cumsum(roll[ii,self.nbins/2:])
-            segments = np.array([cc[cksz*(i+1)-1]-cc[cksz*i] for i in xrange(np.size(cc)/cksz)])
-            hind = np.where(segments < thresh)
-            #First place absorption stops leftwards of the peak
-            if np.size(hind) > 0:
-                high[ii] = cksz*np.min(hind)+self.nbins/2
-            else:
-                high[ii] = self.nbins
-            #Minimum
-            if minwidth > 0:
-                low[np.where(low > self.nbins/2-minwidth)] = self.nbins/2-minwidth
-                high[np.where(high < self.nbins/2+minwidth)] = self.nbins/2+minwidth
+            for i in xrange(self.nbins/2,0,-chsz):
+                if np.all(roll[ii,i:(i+chsz)] < thresh):
+                    low[ii] = i
+                    break
+            #Where is there no absorption rightwards of the peak?
+            for i in xrange(self.nbins/2,self.nbins,chsz):
+                if np.all(roll[ii,i:(i+chsz)] < thresh):
+                    high[ii] = i+chsz
+                    break
+        #Minimum
+        if minwidth > 0:
+            low[np.where(low > self.nbins/2-minwidth)] = self.nbins/2-minwidth
+            high[np.where(high < self.nbins/2+minwidth)] = self.nbins/2+minwidth
         self.absorber_width[(elem, ion)] = (low, high, offset)
         return (low, high, offset)
 
