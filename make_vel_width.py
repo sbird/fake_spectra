@@ -19,6 +19,7 @@ print "Plots at: ",outdir
 zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
+colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
 labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV"}
 
@@ -98,24 +99,31 @@ def plot_met_corr(sims,snap):
         print "Met vel corr. Simulation ",sim
         out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
         hspec = get_hspec(sim, snap)
-        hspec.plot_Z_vs_vel_width(color=colors[sim])
+        hspec.plot_Z_vs_vel_width(color=colors[sim], color2=colors2[sim])
         vel_data.plot_prochaska_2008_correlation(zrange[snap])
         save_figure(path.join(outdir,out))
         plt.clf()
         (_, met, vels) = vel_data.load_data()
         print "KS test is : ",hspec.kstest(10**met, vels)
 
-def plot_vel_width_sims(sims, snap):
+def plot_vel_width_sims(sims, snap, log=False):
     """Plot velocity widths for a series of simulations"""
     vel_data.plot_prochaska_2008_data(zrange[snap])
     for sss in sims:
         #Make abs. plot
         hspec = get_hspec(sss, snap)
         hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
-    plt.ylim(0,2)
+    outstr = "cosmo_vel_width_z"+str(snap)
+    if log:
+        ax = plt.gca()
+        ax.set_yscale('log')
+        plt.ylim(1e-2,10)
+        outstr+="_log"
+    else:
+        plt.ylim(1e-2,2)
     plt.xlim(10,1000)
     plt.legend(loc=2,ncol=3)
-    save_figure(path.join(outdir,"cosmo_vel_width_z"+str(snap)))
+    save_figure(path.join(outdir,outstr))
     plt.clf()
 
 def plot_rel_vel_width(sims, snap):

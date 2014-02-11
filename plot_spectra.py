@@ -155,7 +155,7 @@ class PlottingSpectra(spectra.Spectra):
         hist = np.histogram(np.log10(diff),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
 
-    def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue"):
+    def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue",color2="darkblue"):
         """Plot the correlation between metallicity and velocity width"""
         ind = self.get_filt(elem, ion)
         vel = self.vel_width(elem, ion)[ind]
@@ -163,7 +163,6 @@ class PlottingSpectra(spectra.Spectra):
         met = met[ind]
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
-        plt.loglog(vel[ind2],met[ind2], 'x',color=color)
         met = np.log10(met[ind2])
         vel = np.log10(vel[ind2])
         (intercept, slope, var) = lsq.leastsq(met,vel)
@@ -171,6 +170,10 @@ class PlottingSpectra(spectra.Spectra):
         print "sim correlation: ",lsq.pearson(met, vel,intercept, slope)
         print "sim kstest: ",lsq.kstest(met, vel,intercept, slope)
         xx = np.logspace(np.min(met), np.max(met),15)
+        (H, xedges, yedges) = np.histogram2d(vel, met,bins=10,normed=True)
+        xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
+        ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
+        plt.contourf(10**xbins,10**ybins,H.T,[0.1,0.5,10],colors=(color,color2,"black"),alpha=0.5)
         plt.loglog(10**intercept*xx**slope, xx, color=color)
         plt.xlim(10,2e3)
 
