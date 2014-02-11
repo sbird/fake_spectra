@@ -163,56 +163,46 @@ class PlottingSpectra(spectra.Spectra):
         met = met[ind]
         #Ignore objects too faint to be seen or unresolved
         ind2 = np.where(np.logical_and(vel > 15, met > 1e-3))
-        met = np.log10(met[ind2])
-        vel = np.log10(vel[ind2])
-        (intercept, slope, var) = lsq.leastsq(met,vel)
-        print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",lsq.pearson(met, vel,intercept, slope)
-        print "sim kstest: ",lsq.kstest(met, vel,intercept, slope)
-        xx = np.logspace(np.min(met), np.max(met),15)
-        (H, xedges, yedges) = np.histogram2d(vel, met,bins=10,normed=True)
-        xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
-        ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
-        plt.contourf(10**xbins,10**ybins,H.T,[0.1,0.5,10],colors=(color,color2,"black"),alpha=0.5)
-        plt.loglog(10**intercept*xx**slope, xx, color=color)
+        met = met[ind2]
+        vel = vel[ind2]
+        self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2)
         plt.xlim(10,2e3)
 
-    def plot_Z_vs_mass(self,color="blue"):
+    def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
         mass = self.sub_mass[halo]
         met = self.get_metallicity()[ind]
-        plt.loglog(mass,met, 'x',color=color)
-        met = np.log10(met)
-        mass = np.log10(mass)
-        mind = np.where(met > -4)
+        mind = np.where(met > 10**(-4))
         met = met[mind]
         mass = mass[mind]
-        (intercept, slope, var) = lsq.leastsq(met,mass)
-        print "Z mass corr: ",intercept, slope, np.sqrt(var)
-        print "Z mass correlation: ",lsq.pearson(met, mass,intercept, slope)
-        print "Z mass kstest: ",lsq.kstest(met, mass,intercept, slope)
-        xx = np.logspace(np.min(met), np.max(met),15)
-        plt.loglog(10**intercept*xx**slope, xx, color="black", label=self.label)
+        self._plot_2d_contour(mass, met, 10, "Z mass", color, color2)
         plt.ylim(1e-4,10)
 
-    def plot_vel_vs_mass(self,elem, ion, color="blue"):
+    def plot_vel_vs_mass(self,elem, ion, color="blue",color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
         vel = self.vel_width(elem, ion)[ind]
         mass = self.sub_mass[halo]
-        plt.loglog(mass,vel, 'x',color=color)
-        vel = np.log10(vel)
-        mass = np.log10(mass)
-        (intercept, slope, var) = lsq.leastsq(vel,mass)
-        print "Z vel corr: ",intercept, slope, np.sqrt(var)
-        print "Z vel correlation: ",lsq.pearson(vel, mass,intercept, slope)
-        print "Z vel kstest: ",lsq.kstest(vel, mass,intercept, slope)
-        xx = np.logspace(np.min(vel), np.max(vel),15)
+        self._plot_2d_contour(mass, vel, 10, "vel mass", color, color2)
+
+    def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue"):
+        """Helper function to make a 2D contour map of a correlation, as well as the best-fit linear fit"""
+        xvals = np.log10(xvals)
+        yvals = np.log10(yvals)
+        (intercept, slope, var) = lsq.leastsq(yvals,xvals)
+        print name+" corr: ",intercept, slope, np.sqrt(var)
+        print name+" correlation: ",lsq.pearson(yvals,xvals,intercept, slope)
+        print name+" kstest: ",lsq.kstest(xvals, yvals,intercept, slope)
+        (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins,normed=True)
+        xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
+        ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
+        plt.contourf(10**xbins,10**ybins,H.T,[0.1,0.5,10],colors=(color,color2,"black"),alpha=0.5)
+        xx = np.logspace(np.min(yvals), np.max(yvals),15)
         plt.loglog(10**intercept*xx**slope, xx, color="black",label=self.label)
 
     def kstest(self, Zdata, veldata, elem="Si", ion=2):
