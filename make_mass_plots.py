@@ -61,12 +61,12 @@ def plot_mass_vs_mm(sim, snap):
     #Load from a save file only
     hspec = get_hspec(sim,snap)
     fmm = hspec.vel_mean_median("Si",2)
-    hspec._plot_xx_vs_mass(fmm, name = "fmm", color=colors[sim], color2=colors2[sim])
+    hspec._plot_xx_vs_mass(fmm, name = "fmm", color=colors[sim], color2=colors2[sim], log=False)
     save_figure(path.join(outdir,out))
     plt.clf()
     out = "cosmo"+str(sim)+"_fedge_mass_z"+str(snap)
     fpk = hspec.vel_peak("Si",2)
-    hspec._plot_xx_vs_mass(fpk, name = "fedge", color=colors[sim], color2=colors2[sim])
+    hspec._plot_xx_vs_mass(fpk, name = "fedge", color=colors[sim], color2=colors2[sim], log=False)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -78,12 +78,16 @@ def plot_mm_vs_vel(sim, snap):
     vel = hspec.vel_width("Si", 2)[ind]
     fmm = hspec.vel_mean_median("Si",2)[ind]
     fpk = hspec.vel_peak("Si",2)[ind]
-    hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim])
+    hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim], ylog=False)
 #     plt.xlim(10,2e3)
     save_figure(path.join(outdir,out))
     plt.clf()
     out = "cosmo"+str(sim)+"_fedge_vel_z"+str(snap)
-    hspec._plot_2d_contour(vel, fpk, 10, "fpk vel", color=colors[sim], color2=colors2[sim])
+    hspec._plot_2d_contour(vel, fpk, 10, "fpk vel", color=colors[sim], color2=colors2[sim], ylog=False)
+    save_figure(path.join(outdir,out))
+    plt.clf()
+    out = "cosmo"+str(sim)+"_fedge_fmm_z"+str(snap)
+    hspec._plot_2d_contour(fmm, fpk, 10, "fpk fmm", color=colors[sim], color2=colors2[sim], ylog=False, xlog=False)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     plt.clf()
 
     for zz in (1,3,5):
-        for ss in (0,1,3,5,6,7):  #range(8):
+        for ss in range(8):
             plot_mass_vs(ss, zz)
             plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)

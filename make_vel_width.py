@@ -44,7 +44,7 @@ def plot_vel_width_sim(sim, snap, color="red", HI_cut = None):
 def plot_sep_frac(sim, snap):
     """Plot fraction of lines from separated halos"""
     hspec = get_hspec(sim, snap)
-    hspec.plot_sep_frac()
+    hspec.plot_sep_frac(color=colors[sim], ls=lss[sim])
 
 def plot_spectrum(sim, snap, num, subdir=""):
     """Plot a spectrum"""
@@ -218,8 +218,9 @@ if __name__ == "__main__":
 
     for ss in (0,1,3,7):
         plot_sep_frac(ss,3)
+    plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
     plt.clf()
 
-#     for ss in (0,1,2,3,4):
-#         plot_vel_redshift_evo(ss)
+    for ss in simlist:
+        plot_vel_redshift_evo(ss)
