@@ -697,7 +697,7 @@ class Spectra:
         Cycle the array in tau so that the deepest absorption is at the middle.
         """
         tau_out = np.zeros(np.shape(tau))
-        roll = np.zeros(np.shape(tau[0]), dtype=int)
+        roll = np.zeros(np.shape(tau[:,0]), dtype=int)
         for ll in xrange(np.shape(tau)[0]):
             #Deal with periodicity by making sure the deepest point is in the middle
             tau_l = tau[ll,:]
