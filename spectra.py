@@ -1081,7 +1081,7 @@ class Spectra:
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
         return frac/(self.absorption_distance()/self.nbins)
 
-    def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=15):
+    def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=0):
         """Find spectra with more than a single density peak.
         Threshold is as a percentage of the maximum value.
         mindist is in km/s
