@@ -35,7 +35,7 @@ def plot_vel_col_den(sim, snap, ff=True):
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo, None, None)
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
-    vel= hspec.vel_width(hspec.get_observer_tau("Si",2))
+    vel= hspec.vel_width("Si",2)
     ind = np.where(metal_col_den > 1e12)
     (H, xedges, yedges) = np.histogram2d(np.log10(metal_col_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
@@ -47,8 +47,8 @@ def plot_vel_den(sim, snap, ff=True):
     halo = myname.get_name(sim, ff)
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo, None, None)
-    vel = hspec.vel_width(hspec.get_observer_tau("Si",2))
-    den = hspec.vel_width(hspec.get_col_density("Si", 2))
+    vel = hspec.vel_width("Si",2)
+    den = hspec.get_col_density("Si", 2)
     ind = hspec.get_filt("Si",2)
     (H, xedges, yedges) = np.histogram2d(np.log10(den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
@@ -62,7 +62,7 @@ def plot_vel_HI_col_den(sim, snap, ff=True):
     hspec = ps.PlottingSpectra(snap, halo, None, None)
     metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
     HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
-    vel= hspec.vel_width(hspec.get_observer_tau("Si",2))
+    vel= hspec.vel_width("Si",2)
     ind = np.where(metal_col_den > 1e12)
     (H, xedges, yedges) = np.histogram2d(np.log10(HI_col_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
@@ -75,7 +75,7 @@ def plot_vel_mass(sim, snap, ff=True):
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
-    vel= hspec.vel_width(hspec.get_observer_tau("Si",2))[ind]
+    vel= hspec.vel_width("Si",2)[ind]
     (halos, _) = hspec.find_nearest_halo()
     mass = hspec.sub_mass[halos][ind]
     (H, xedges, yedges) = np.histogram2d(np.log10(mass), np.log10(vel), bins=30,normed=True)
@@ -103,8 +103,7 @@ def plot_vel_metals(sim, snap, ff=True):
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo)
     met = hspec.get_metallicity()
-    tau = hspec.get_observer_tau("Si", 2)
-    vel = hspec.vel_width(tau)
+    vel = hspec.vel_width("Si",2)
     (H, xedges, yedges) = np.histogram2d(np.log10(met), np.log10(vel), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
