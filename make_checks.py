@@ -17,6 +17,8 @@ from save_figure import save_figure
 outdir = path.join(myname.base, "plots/checks/")
 print "Plots at: ",outdir
 
+zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
+
 def plot_metal_ion_corr(sim, snap,species="Si",ion=2):
     """Plot metallicity from Z/H vs from a single species for computing ionisation corrections"""
     halo = myname.get_name(sim)
@@ -100,9 +102,10 @@ def test_box_resolution():
     #Do spectral resolution test
     halo = myname.get_name(5)
     halo10 = myname.get_name(5,box=10)
-    hspec = ps.PlottingSpectra(3, halo)
-    hspec2 = ps.PlottingSpectra(3, halo10)
-    plot_check(hspec,hspec2,"box")
+    for zz in (1,3,5):
+        hspec = ps.PlottingSpectra(zz, halo, label="MVEL")
+        hspec2 = ps.PlottingSpectra(zz, halo10, label="MVELS")
+        plot_check(hspec,hspec2,"box", zz)
 
 def test_atten():
     """Plot the velocity widths for different size boxes"""
@@ -113,13 +116,13 @@ def test_atten():
     plot_check(hspec,hspec2,"no_atten")
 
     #Higher resolution spectrum
-def plot_check(hspec, hspec2, ofile):
+def plot_check(hspec, hspec2, ofile, snap=3):
     """Plot velocity widths for two halos both absolutely and relatively"""
     hspec.plot_vel_width("Si",2, color="red")
     hspec2.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     plt.xlim(1, 1000)
-    save_figure(path.join(outdir,"cosmo_vel_width_"+ofile))
+    save_figure(path.join(outdir,"cosmo_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
     (vbin,one) = hspec.vel_width_hist("Si",2)
     (vbin,two) = hspec2.vel_width_hist("Si",2)
@@ -128,12 +131,17 @@ def plot_check(hspec, hspec2, ofile):
         plt.semilogx(vbin[:maxx],one[:maxx]/two[:maxx])
     else:
         plt.semilogx(vbin,one/two)
-    save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile))
+    save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
-    hspec.plot_extra_stat("Si", 2, True, color="red")
-    hspec2.plot_extra_stat("Si", 2, True, color="red")
+    hspec.plot_f_peak("Si", 2, color="red")
+    hspec2.plot_f_peak("Si", 2, color="blue")
     vel_data.plot_extra_stat_hist(True)
     save_figure(path.join(outdir,"cosmo_fpeak_"+ofile))
+    plt.clf()
+    hspec.plot_Z_vs_vel_width(color="red", color2="darkred")
+    hspec2.plot_Z_vs_vel_width(color="blue", color2="purple")
+    vel_data.plot_prochaska_2008_correlation(zrange[snap])
+    save_figure(path.join(outdir,"cosmo_correlation_"+ofile+"_z"+str(snap)))
     plt.clf()
 
 if __name__ == "__main__":
