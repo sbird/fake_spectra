@@ -261,7 +261,7 @@ class Spectra:
         if get_tau:
             line = self.lines[(elem,ion)][ll]
         else:
-            line = self.lines[("H",1)][0]
+            line = self.lines[("H",1)][1215]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
     def _read_particle_data(self,fn, elem, ion, get_tau):
@@ -435,7 +435,7 @@ class Spectra:
         wanted = self.NumLos
         cofm_DLA = np.empty_like(self.cofm)
         #Filter
-        col_den = self.compute_spectra("H",1,1,False)
+        col_den = self.compute_spectra("H",1,1215,False)
         ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
@@ -448,7 +448,7 @@ class Spectra:
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            col_den = self.compute_spectra("H",1,1,False)
+            col_den = self.compute_spectra("H",1,1215,False)
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
@@ -494,11 +494,12 @@ class Spectra:
         high = self.nbins*np.ones(self.NumLos)
         low = np.zeros(self.NumLos)
         lines = self.lines[(elem,ion)]
-        strength = [ll.fosc_X*ll.lambda_X for ll in lines]
+        strength = [ll.fosc_X*ll.lambda_X for ll in lines.values()]
         ind = np.where(strength == np.max(strength))[0][0]
+        #Lines are indexed by wavelength
+        strlam = int(lines.values()[ind].lambda_X)
         #Absorption in a strong line: eg, SiII1260.
-        #Note that the lines are 1 indexed
-        strong = self.get_tau(elem, ion, ind+1)
+        strong = self.get_tau(elem, ion, strlam)
         (offset, roll) = self._get_rolled_spectra(strong)
         chsz = 50
         for ii in xrange(self.NumLos):
@@ -519,7 +520,7 @@ class Spectra:
         self.absorber_width[(elem, ion)] = (low, high, offset)
         return (low, high, offset)
 
-    def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1):
+    def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1215):
         """Find the equivalent width of the line from the column density,
            assuming we are in the damping wing regime. Default line is Lyman-alpha.
            Returns width in km/s.
@@ -608,7 +609,7 @@ class Spectra:
             (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion,True)
 
         for ll in xrange(nlines):
-            line = self.lines[(elem,ion)][ll]
+            line = (self.lines[(elem,ion)].values())[ll]
             for ff in self.files:
                 if amumass[ff] != False:
                     tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
@@ -851,6 +852,22 @@ class Spectra:
         #Return the width
         return mean_median
 
+    def equivalent_width(self, elem, ion, line):
+        """Calculate the equivalent width of a line in Angstroms"""
+        tau = self.get_tau(elem, ion, line)
+        #1 bin in wavelength: δλ =  λ . v / c
+        #λ here is the rest wavelength of the line.
+        #speed of light in km /s
+        light = self.light / 1e5
+        #Line data
+        line = self.lines[(elem,ion)][line]
+        #lambda in Angstroms, dvbin in km/s,
+        #so dl is in Angstrom
+        dl = self.dvbin / light * line.lambda_X
+        eq_width = cumtrapz(1-np.exp(-tau),dx=dl, axis=1)[:,-1]
+        #Don't need to divide by 1+z as lambda_X is already rest wavelength
+        return eq_width
+
 
     def vel_width_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
         """
@@ -895,6 +912,24 @@ class Spectra:
         """
         return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_peak, log=False)
 
+    def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
+        """
+        Compute a histogram of the equivalent width distribution of our spectra, with the purpose of
+        comparing to the data of Neeleman 2013.
+
+        Returns:
+            (v, f_table) - v (binned in log) and corresponding f(N)
+        """
+        print "For ",self.lines[(elem,ion)][line].lambda_X," Angstrom"
+        vel_width = self.equivalent_width(elem, ion, line)
+        #Filter small eq. widths as they would not be detected
+        ind = np.where(vel_width > eq_cut)
+        vel_width = vel_width[ind]
+        v_table = 10**np.arange(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)), dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        vels = np.histogram(vel_width,v_table, density=True)[0]
+        return (vbin, vels)
+
     def _vel_stat_hist(self, elem, ion, dv, met_cut, func, log=True):
         """
            Internal function that finds the histogram in velocity space of
@@ -935,23 +970,6 @@ class Spectra:
         pdf = np.histogram(np.log10(self.sub_mass[halos[f_ind]]),np.log10(m_table), density=True)[0]
         print "Field DLAs: ",np.size(halos)-np.size(f_ind)
         return (mbin, pdf)
-
-    def equivalent_width(self, elem, ion, line):
-        """Calculate the equivalent width of a line in Angstroms"""
-        tau = self.get_tau(elem, ion, line)
-        ind = self.get_filt(elem, line)
-        #1 bin in wavelength: δλ =  λ . v / c
-        #λ here is the rest wavelength of the line.
-        #speed of light in km /s
-        light = self.light / 1e5
-        #Line data
-        line = self.lines[(elem,ion)][line]
-        #lambda in Angstroms, dvbin in km/s,
-        #so dl is in Angstrom
-        dl = self.dvbin / light * line.lambda_X
-        eq_width = cumtrapz(1-np.exp(-tau[ind]),dx=dl, axis=1)[:,-1]
-        #Don't need to divide by 1+z as lambda_X is already rest wavelength
-        return eq_width
 
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species"""

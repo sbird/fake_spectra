@@ -28,6 +28,20 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.vel_width_hist(elem, ion, dv, met_cut=met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
+    def plot_eq_width(self, elem, ion, line, dv=0.05, eq_cut = 0.02, color="red", ls="-"):
+        """Plot the velocity widths of this snapshot
+        Parameters:
+            elem - element to use
+            ion - ionisation state: 1 is neutral.
+            line - line number to use
+            dv - bin spacing
+            met_cut - Discard spectra whose maximal metal column density is below this level.
+                      Removes unobservable systems.
+
+        """
+        (bin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
+        plt.semilogx(bin, eqw, color=color, lw=3, ls=ls,label=self.label)
+
     def plot_f_meanmedian(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """
         Plot an f_mean_median histogram
@@ -74,6 +88,12 @@ class PlottingSpectra(spectra.Spectra):
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
         return (low, high)
+
+    def plot_col_density(self, colden):
+        """Plot the column density of a line across the absorber"""
+        phys = self.dvbin/self.vmax*self.box
+        #Add one to avoid zeros on the log plot
+        plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,colden+1)
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
         """Plot the spectrum of a line, centered on the deepest point,

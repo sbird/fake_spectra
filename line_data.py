@@ -38,9 +38,9 @@ class LineData:
             line = Line(lambda_X, fosc_X, gamma_X)
             #Only add the first transition for lines
             if not (specie,ion) in self.lines:
-                self.lines[(specie,ion)]=[line,]
+                self.lines[(specie,ion)]={int(lambda_X):line}
             else:
-                self.lines[(specie,ion)].append(line)
+                self.lines[(specie,ion)][int(lambda_X)] = line
 #                 print "Read line: ",specie,ion
 
     def __getitem__(self,specion):

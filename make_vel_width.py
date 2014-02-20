@@ -16,7 +16,7 @@ from save_figure import save_figure
 
 outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
-zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
+zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
 #Colors and linestyles for the simulations
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
 colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey"}
@@ -122,6 +122,20 @@ def plot_vel_width_sims(sims, snap, log=False):
     else:
         plt.ylim(1e-2,2)
     plt.xlim(10,1000)
+    plt.legend(loc=2,ncol=3)
+    save_figure(path.join(outdir,outstr))
+    plt.clf()
+
+def plot_eq_width(sims, snap):
+    """Plot velocity widths for a series of simulations"""
+    for sss in sims:
+        #Make abs. plot
+        hspec = get_hspec(sss, snap)
+        hspec.plot_eq_width("Si", 2, 1, color=colors[sss], ls=lss[sss])
+    outstr = "cosmo_eq_width_z"+str(snap)
+    vel_data.plot_si1526_eqw() #zrange[snap])
+#     plt.ylim(1e-2,2)
+#     plt.xlim(10**-1.5,10**0.5)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,outstr))
     plt.clf()
