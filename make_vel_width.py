@@ -56,10 +56,31 @@ def plot_spectrum(sim, snap, num, subdir=""):
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
     plt.clf()
-    tau = hspec.get_tau("Si", 2,4)
+    tau = hspec.get_tau("Si", 2,1260)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_1260_spectrum"))
+    plt.clf()
+
+def plot_colden(sim, snap, num, subdir=""):
+    """Plot column density"""
+    hspec = get_hspec(sim, snap)
+    ind = hspec.get_filt("Si", 2)
+    col_den = hspec.get_col_density("Si", 2)[ind]
+    mcol = np.max(col_den[num])
+    ind_m = np.where(col_den[num] == mcol)[0][0]
+    col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
+    hspec.plot_col_density(col_den)
+    plt.xlim(-100, +100)
+    plt.ylim(ymin=1e7)
+    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_colden"))
+    plt.clf()
+    col_den = hspec.get_col_density("H", 1)[ind]
+    col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
+    hspec.plot_col_density(col_den)
+    plt.xlim(-100, +100)
+    plt.ylim(ymin=1e15)
+    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_H_"+str(num)+"_colden"))
     plt.clf()
 
 def plot_spectrum_max(sim, snap):
@@ -131,7 +152,7 @@ def plot_eq_width(sims, snap):
     for sss in sims:
         #Make abs. plot
         hspec = get_hspec(sss, snap)
-        hspec.plot_eq_width("Si", 2, 1, color=colors[sss], ls=lss[sss])
+        hspec.plot_eq_width("Si", 2, 1526, color=colors[sss], ls=lss[sss])
     outstr = "cosmo_eq_width_z"+str(snap)
     vel_data.plot_si1526_eqw() #zrange[snap])
 #     plt.ylim(1e-2,2)
@@ -216,21 +237,25 @@ def plot_vel_redshift_evo(sim):
 if __name__ == "__main__":
 #     plot_vel_widths_cloudy()
 
-    simlist = (0,1,3,7) #range(8)
+    simlist = (1,3,7) #range(8)
     for ss in simlist:
-        plot_spectrum_density_velocity(ss,3, 15)
         for nn in (272,350,457,1030,1496,2030,3333):
             plot_spectrum(ss,3, nn)
+            plot_colden(ss,3,nn)
         plot_spectrum_max(ss,3)
 
+    plot_vel_width_sims(simlist, 3, log=True)
+    for zz in (1,3,5):
+        plot_met_corr(range(8),zz)
+        hspec_cache = {}
+
     for zz in (1, 3, 5):
-        plot_met_corr(simlist,zz)
         plot_metallicity(simlist, zz)
         plot_vel_width_sims(simlist, zz)
         plot_mean_median(simlist, zz)
         plot_f_peak(simlist, zz)
 
-    for ss in (0,1,3,7):
+    for ss in simlist:
         plot_sep_frac(ss,3)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
