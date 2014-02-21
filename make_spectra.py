@@ -2,6 +2,7 @@
 """Generate some velocity widths through DLAs"""
 import gridspectra as gs
 import randspectra as rs
+import spectra as ss
 import sys
 import os.path as path
 import numpy as np
@@ -19,11 +20,14 @@ if len(sys.argv) > 3:
     halo = rs.RandSpectra(snapnum, base, numlos=5000, thresh=0)
 else:
     halo = gs.GridSpectra(snapnum, base, numlos=5000)
+
+# halo = ss.Spectra(snapnum, base, None, None,savefile = "grid_spectra_DLA.hdf5")
 halo.get_col_density("H",1)
 halo.get_observer_tau("Si",2)
 #SiII 1260
-halo.get_tau("Si",2,4)
-halo.get_tau("H",1,1)
+halo.get_tau("Si",2,1260)
+halo.get_tau("Si",2,1526)
+halo.get_tau("H",1,1215)
 halo.get_col_density("Si",2)
 halo.get_col_density("Z",-1)
 halo.get_col_density("H",-1)
