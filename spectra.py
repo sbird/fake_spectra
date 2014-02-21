@@ -921,14 +921,14 @@ class Spectra:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
         print "For ",self.lines[(elem,ion)][line].lambda_X," Angstrom"
-        vel_width = self.equivalent_width(elem, ion, line)
+        eq_width = self.equivalent_width(elem, ion, line)
         #Filter small eq. widths as they would not be detected
-        ind = np.where(vel_width > eq_cut)
-        vel_width = vel_width[ind]
-        v_table = 10**np.arange(np.log10(np.min(vel_width)), np.log10(np.max(vel_width)), dv)
+        ind = np.where(eq_width > eq_cut)
+        eq_width = eq_width[ind]
+        v_table = np.arange(np.log10(np.min(eq_width)), np.log10(np.max(eq_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        vels = np.histogram(vel_width,v_table, density=True)[0]
-        return (vbin, vels)
+        eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
+        return (vbin, eqws)
 
     def _vel_stat_hist(self, elem, ion, dv, met_cut, func, log=True):
         """

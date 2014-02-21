@@ -28,7 +28,7 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.vel_width_hist(elem, ion, dv, met_cut=met_cut)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_eq_width(self, elem, ion, line, dv=0.05, eq_cut = 0.02, color="red", ls="-"):
+    def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.02, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
@@ -40,7 +40,7 @@ class PlottingSpectra(spectra.Spectra):
 
         """
         (bin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
-        plt.semilogx(bin, eqw, color=color, lw=3, ls=ls,label=self.label)
+        plt.plot(bin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_f_meanmedian(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """
@@ -57,20 +57,6 @@ class PlottingSpectra(spectra.Spectra):
         """
         (vbin, vels) = self.f_peak_hist(elem, ion, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
-
-    def plot_equivalent_width(self, elem, ion, line, dv=0.1, color="red", ls="-"):
-        """Plot the equivalent widths a spectrum.
-        Parameters:
-            elem - element to use
-            ion - ionisation state: 1 is neutral.
-            line - transition to plot equivalent width
-            dv - bin spacing
-        """
-        ww = self.equivalent_width(elem, ion, line)
-        w_table = 10**np.arange(np.log10(np.min(ww)), np.log10(np.max(ww)), dv)
-        wbin = np.array([(w_table[i]+w_table[i+1])/2. for i in range(0,np.size(w_table)-1)])
-        whist = np.histogram(np.log10(ww),np.log10(w_table), density=True)[0]
-        plt.semilogx(wbin, whist, color=color, lw=3, ls=ls)
 
     def plot_spectrum(self, tau):
         """Plot the spectrum of a line, centered on the deepest point,

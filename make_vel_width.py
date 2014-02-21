@@ -154,9 +154,8 @@ def plot_eq_width(sims, snap):
         hspec = get_hspec(sss, snap)
         hspec.plot_eq_width("Si", 2, 1526, color=colors[sss], ls=lss[sss])
     outstr = "cosmo_eq_width_z"+str(snap)
-    vel_data.plot_si1526_eqw() #zrange[snap])
-#     plt.ylim(1e-2,2)
-#     plt.xlim(10**-1.5,10**0.5)
+    vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
+    plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,outstr))
     plt.clf()
@@ -250,6 +249,7 @@ if __name__ == "__main__":
         hspec_cache = {}
 
     for zz in (1, 3, 5):
+        plot_eq_width(simlist, zz)
         plot_metallicity(simlist, zz)
         plot_vel_width_sims(simlist, zz)
         plot_mean_median(simlist, zz)
