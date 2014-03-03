@@ -233,21 +233,20 @@ class PlottingSpectra(spectra.Spectra):
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
 
-    def plot_virial_vel_vs_vel_width(self,elem, ion):
+    def plot_virial_vel_vs_vel_width(self,elem, ion,color="red", ls="-", label="", dm=0.1):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
-        ind = self.get_filt(elem,ion)
-        vel = self.vel_width(elem, ion)[ind]
         (halos, _) = self.find_nearest_halo()
-        #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
-        virial = self.virial_vel(halos[ind])
-        ind2 = np.where(vel < 300)
-        (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
-        print "median v/vir: ",np.median(vel[ind2]/virial[ind2])
-        plt.semilogx(10**xedges[:-1], H, color="red")
-        ind2 = np.where(vel > 300)
-        (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
-        plt.semilogx(10**xedges[:-1], H, color="blue")
-
+        ind = self.get_filt(elem,ion)
+        f_ind = np.where(halos[ind] != -1)
+        vel = self.vel_width(elem, ion)[ind][f_ind]
+        virial = self.virial_vel(halos[ind][f_ind])
+        vvvir = vel/virial
+        m_table = 10**np.arange(np.log10(np.min(vvvir)), np.log10(np.max(vvvir)), dm)
+        mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
+        pdf = np.histogram(np.log10(vvvir),np.log10(m_table), density=True)[0]
+        print "median v/vir: ",np.median(vvvir)
+        plt.semilogx(mbin, pdf, color=color, ls=ls, label=label)
+        return (mbin, pdf)
 
 class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
