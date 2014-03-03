@@ -54,6 +54,10 @@ def plot_mass_vs(sim, snap):
     hspec.plot_vel_vs_mass("Si",2, color=colors[sim], color2=colors2[sim])
     save_figure(path.join(outdir,out))
     plt.clf()
+    out = "cosmo"+str(sim)+"_vel_vir_z"+str(snap)
+    hspec.plot_virial_vel_vs_vel_width("Si", 2)
+    save_figure(path.join(outdir,out))
+    plt.clf()
 
 def plot_mass_vs_mm(sim, snap):
     """Plot mass vs mm and fedge"""

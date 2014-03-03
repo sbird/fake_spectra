@@ -54,6 +54,8 @@ class Spectra:
         self.light = 2.99e10
         #proton mass in g
         self.protonmass=1.67262178e-24
+        #Newton's constant in cm^3/g/s^2
+        self.gravcgs = 6.674e-8
         self.num = num
         self.base = base
         #Empty dictionary to add results to
@@ -950,13 +952,12 @@ class Spectra:
             vels = np.histogram(vel_width,v_table, density=True)[0]
         return (vbin, vels)
 
-    def mass_hist(self, dm=0.1, min_mass=9,max_mass=13):
+    def mass_hist(self, dm=0.1):
         """
         Compute a histogram of the host halo mass of each DLA spectrum.
 
         Parameters:
             dm - bin spacing
-            min_mass - Minimum halo mass to assign spectrum to
 
         Returns:
             (mbins, pdf) - Mass (binned in log) and corresponding PDF.
@@ -965,11 +966,31 @@ class Spectra:
         f_ind = np.where(halos != -1)
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
-        m_table = 10**np.arange(min_mass, max_mass, dm)
+        virial = self.virial_vel(halos[f_ind])
+        m_table = 10**np.arange(np.log10(np.min(virial)), np.log10(np.max(virial)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
-        pdf = np.histogram(np.log10(self.sub_mass[halos[f_ind]]),np.log10(m_table), density=True)[0]
+        pdf = np.histogram(np.log10(virial),np.log10(m_table), density=True)[0]
         print "Field DLAs: ",np.size(halos)-np.size(f_ind)
         return (mbin, pdf)
+
+    def virial_vel(self, halos=None):
+        """Get the virial velocities of the selected halos in km/s"""
+        if halos != None:
+            mm = self.sub_mass[halos]
+            rr = self.sub_radii[halos]
+        else:
+            mm = self.sub_mass
+            rr = self.sub_radii
+        #physical cm from comoving kpc/h
+        cminkpch = self.UnitLength_in_cm/self.hubble/(1+self.red)
+        # Conversion factor from M_sun/kpc/h to g/cm
+        conv = self.UnitMass_in_g/1e10/cminkpch
+        #Units: grav is in cm^3 /g/s^-2
+        virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
+        #Define zero radius, zero mass halos as having zero virial velocity.
+        zind = np.where(rr == 0.)
+        virial[zind] = 0.
+        return virial
 
     def get_col_density(self, elem, ion):
         """Get the column density in each pixel for a given species"""
@@ -1144,22 +1165,19 @@ class Spectra:
         min_mass = target_mass * minpart
         return min_mass
 
-    def find_nearest_halo(self, min_mass = 0, mult=1.):
+    def find_nearest_halo(self, mult=1.):
         """
         Assign a DLA (defined as the position along the sightline with highest column density)
         to the largest halo whose virial radius it is within.
         """
-        if min_mass == 0 and mult == 1.:
+        if mult == 1.:
             try:
                 return (self.spectra_halos, self.spectra_dists)
             except AttributeError:
                 pass
-        if min_mass == None:
-            min_mass = self.min_halo_mass()*1e10
         nbins = self.nbins
         dists = np.empty(self.NumLos)
         halos = np.empty(self.NumLos,dtype=np.int)
-        m_ind = np.where(self.sub_mass > min_mass)
         #X axis first
         col_den = self.get_col_density("H",1)
         axes = [0,1,2]
@@ -1183,16 +1201,19 @@ class Spectra:
             #Is this within the virial radius of any halo?
             cofm = self.sub_cofm
             dd = ne.evaluate("sum((cofm - proj_pos)**2,axis=1)")
-            ind = np.where(dd[m_ind] < (mult*self.sub_radii[m_ind])**2)
+            ind = np.where(dd < (mult*self.sub_radii)**2)
             #Field DLA
             if np.size(ind) == 0:
                 halos[ii] = -1.
                 dists[ii] = 0.
+            elif np.size(ind) == 1:
+                halos[ii] =  ind[0][0]
+                dists[ii] = np.sqrt(dd[ind][0])
             #Most massive halo
             else:
-                mmass = self.sub_mass[m_ind][ind]
+                mmass = self.sub_mass[ind]
                 mm_ind = np.where(mmass == np.max(mmass))
-                dists[ii] = dd[m_ind][ind][mm_ind]
+                dists[ii] = dd[ind][mm_ind]
                 halos[ii] = int(np.where(dists[ii] == dd)[0][0])
                 dists[ii] = np.sqrt(dists[ii])
         self.spectra_halos = halos

@@ -191,13 +191,13 @@ class PlottingSpectra(spectra.Spectra):
         self._plot_xx_vs_mass(vel, "vel",color,color2)
 
     def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", log=True):
-        """Helper function to plot something against halo mass"""
+        """Helper function to plot something against virial velocity"""
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
         halo = halo[ind]
         xx = xx[ind]
-        mass = self.sub_mass[halo]
-        self._plot_2d_contour(mass, xx, 10, name+" mass", color, color2, ylog=log)
+        virial = self.virial_vel(halo)
+        self._plot_2d_contour(virial, xx, 10, name+" virial velocity", color, color2, ylog=log)
 
     def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue", ylog=True, xlog=True):
         """Helper function to make a 2D contour map of a correlation, as well as the best-fit linear fit"""
@@ -233,33 +233,7 @@ class PlottingSpectra(spectra.Spectra):
         data = np.array([np.log10(Zdata), np.log10(veldata)]).T
         return ks.ks_2d_2samp(data,data2)
 
-    def plot_radius_vs_vel_width(self, elem="Si", ion=2, color="blue"):
-        """Plot the velocity width vs the virial velocity of the hosting halo"""
-        ind = self.get_filt(elem,ion)
-        vel = self.vel_width(elem, ion)[ind]
-        (halos, dists) = self.find_nearest_halo()
-        radius = self.sub_radii[halos][ind]
-        mass = self.sub_mass[halos][ind]
-        ind2 = np.where(vel > 15)
-        vel = vel[ind2]
-        fromc = (dists[ind][ind2]/2.0/radius[ind2])**2
-        fromc[np.where(fromc >= 0.95)] = 0.95
-        virial = np.sqrt(4.302e-3*mass[ind2]/radius[ind2]/1000)
-        plt.plot(virial, vel,'x',color=color)
-        (intercept, slope, var) = lsq.leastsq(np.log10(virial),np.log10(vel))
-        print "sim corr: ",intercept, slope, np.sqrt(var)
-        print "sim correlation: ",lsq.pearson(np.log10(virial), np.log10(vel),intercept, slope)
-        print "sim kstest: ",lsq.kstest(np.log10(virial), np.log10(vel),intercept, slope)
-        xx = np.logspace(np.min(np.log10(virial)), np.max(np.log10(virial)),15)
-        plt.loglog( xx,10**intercept*xx**slope, color=color)
-
-        #(intercept, slope, var) = lsq.leastsq(virial,vel)
-        #print "sim corr: ",intercept, slope, np.sqrt(var)
-        #print "sim correlation: ",lsq.pearson(virial, vel,intercept, slope)
-        #xx = np.linspace(np.min(virial), np.max(virial),15)
-        #plt.loglog( xx,intercept+xx*slope, color=color)
-
-    def plot_virial_vel_vs_vel_width(self,elem="Si", ion=2):
+    def plot_virial_vel_vs_vel_width(self,elem, ion):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
         ind = self.get_filt(elem,ion)
         vel = self.vel_width(elem, ion)[ind]
@@ -267,7 +241,7 @@ class PlottingSpectra(spectra.Spectra):
         vel = vel[ind2]
         (halos, _) = self.find_nearest_halo()
         #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
-        virial = np.sqrt(4.302e-3*self.sub_mass[halos][ind][ind2]/self.sub_radii[halos][ind][ind2]/1000)
+        virial = self.virial_vel(halos)
         ind2 = np.where(vel < 300)
         (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
         print "median v/vir: ",np.median(vel/virial)
