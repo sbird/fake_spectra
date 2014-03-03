@@ -237,14 +237,12 @@ class PlottingSpectra(spectra.Spectra):
         """Plot a histogram of the velocity widths vs the halo virial velocity"""
         ind = self.get_filt(elem,ion)
         vel = self.vel_width(elem, ion)[ind]
-        ind2 = np.where(vel > 15)
-        vel = vel[ind2]
         (halos, _) = self.find_nearest_halo()
         #Grav constant 4.302e-3 parsec / solar mass (km/s)^2
-        virial = self.virial_vel(halos)
+        virial = self.virial_vel(halos[ind])
         ind2 = np.where(vel < 300)
         (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
-        print "median v/vir: ",np.median(vel/virial)
+        print "median v/vir: ",np.median(vel[ind2]/virial[ind2])
         plt.semilogx(10**xedges[:-1], H, color="red")
         ind2 = np.where(vel > 300)
         (H, xedges) = np.histogram(np.log10(vel[ind2]/virial[ind2]), bins=20,normed=True)
