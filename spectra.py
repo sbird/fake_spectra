@@ -1165,61 +1165,6 @@ class Spectra:
         min_mass = target_mass * minpart
         return min_mass
 
-    def find_nearest_halo(self, mult=1.):
-        """
-        Assign a DLA (defined as the position along the sightline with highest column density)
-        to the largest halo whose virial radius it is within.
-        """
-        if mult == 1.:
-            try:
-                return (self.spectra_halos, self.spectra_dists)
-            except AttributeError:
-                pass
-        nbins = self.nbins
-        dists = np.empty(self.NumLos)
-        halos = np.empty(self.NumLos,dtype=np.int)
-        #X axis first
-        col_den = self.get_col_density("H",1)
-        axes = [0,1,2]
-        for ii in xrange(self.NumLos):
-            proj_pos = np.zeros(3)
-            #Get two coordinates given by axis label
-            sax = list(axes)
-            ax = self.axis[ii]-1
-            sax.remove(ax)
-            proj_pos[sax] = self.cofm[ii,sax]
-            #Third coordinate given by HI mass-weighted depth along sightline
-            #If width is wider than the box, simply sum over the whole sightline
-            lcolden = col_den[ii,:]
-            nn = np.arange(nbins)
-            zpos = ne.evaluate("sum(lcolden*nn)")
-            summ = ne.evaluate("sum(lcolden)")
-            #Otherwise sum the periodic wrapped bits separately
-            zpos = (zpos / summ) % nbins
-            #Make sure it refers to a valid position
-            proj_pos[ax] = zpos*1.*self.box/self.nbins
-            #Is this within the virial radius of any halo?
-            cofm = self.sub_cofm
-            dd = ne.evaluate("sum((cofm - proj_pos)**2,axis=1)")
-            ind = np.where(dd < (mult*self.sub_radii)**2)
-            #Field DLA
-            if np.size(ind) == 0:
-                halos[ii] = -1.
-                dists[ii] = 0.
-            elif np.size(ind) == 1:
-                halos[ii] =  ind[0][0]
-                dists[ii] = np.sqrt(dd[ind][0])
-            #Most massive halo
-            else:
-                mmass = self.sub_mass[ind]
-                mm_ind = np.where(mmass == np.max(mmass))
-                dists[ii] = dd[ind][mm_ind]
-                halos[ii] = int(np.where(dists[ii] == dd)[0][0])
-                dists[ii] = np.sqrt(dists[ii])
-        self.spectra_halos = halos
-        self.spectra_dists = dists
-        return (halos, dists)
-
     def load_halo(self):
         """Load a halo catalogue: note this will return some halos with zero radius.
            These are empty FoF groups and should not be a problem."""
@@ -1235,6 +1180,59 @@ class Spectra:
             #self.sub_vel = subs.GroupVel
         except IOError:
             pass
+
+    def find_nearest_halo(self, mult=1.):
+        """
+        Assign a DLA (defined as the position along the sightline with highest column density)
+        to the largest halo whose virial radius it is within.
+        """
+        if mult == 1.:
+            try:
+                return (self.spectra_halos, self.spectra_dists)
+            except AttributeError:
+                pass
+        #X axis first
+        col_den = self.get_col_density("H",1)
+        zpos = np.zeros(self.NumLos)
+        for ii in xrange(self.NumLos):
+            #Third coordinate given by HI mass-weighted depth along sightline
+            lcolden = col_den[ii,:]
+            nn = np.arange(self.nbins)
+            lzpos = ne.evaluate("sum(lcolden*nn)")
+            summ = ne.evaluate("sum(lcolden)")
+            #Make sure it refers to a valid position
+            lzpos = (lzpos / summ) % self.nbins
+            zpos[ii] = lzpos*1.*self.box/self.nbins
+        (self.spectra_halos, self.spectra_dists) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
+        return (self.spectra_halos, self.spectra_dists)
+
+    def assign_to_halo(self, zpos, halo_radii, halo_cofm):
+        """
+        Assign a list of lists of positions to halos, by finding the unique halo
+        within whose virial radius each position is.
+        """
+        dists = np.zeros(self.NumLos)
+        halos = np.zeros(self.NumLos,dtype=np.int)-1
+        multiple = 0
+        #X axis first
+        for ii in xrange(self.NumLos):
+            proj_pos = np.array(self.cofm[ii,:])
+            ax = self.axis[ii]-1
+            proj_pos[ax] = zpos[ii]
+            #Is this within the virial radius of any halo?
+            dd = ne.evaluate("sum((halo_cofm - proj_pos)**2,axis=1)")
+            ind = np.where(dd < halo_radii**2)
+            #Should not be multiple close halos
+            #  assert(np.size(ind) < 2)
+            #Very rarely, in 2/5000 cases,
+            #something hits the edge of more than one halo
+            if np.size(ind) > 1:
+                multiple +=1
+            if np.size(ind) >= 1:
+                halos[ii] =  ind[0][0]
+                dists[ii] = np.sqrt(dd[ind][0])
+        print "multiple halos: ",multiple
+        return (halos, dists)
 
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
