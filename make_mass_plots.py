@@ -41,6 +41,14 @@ def plot_mass_hists(sim, snap):
     hspec = get_hspec(sim,snap)
     (mbins, pdf) = hspec.mass_hist()
     plt.semilogx(mbins,pdf,color=colors[sim], ls=lss[sim],label=labels[sim])
+    plt.xlim(10,300)
+
+def plot_vvir(sim, snap):
+    """Plot histogram of velocity width by virial velocity"""
+    #Load from a save file only
+    hspec = get_hspec(sim,snap)
+    (mbins, pdf) = hspec.mass_hist()
+    hspec.plot_virial_vel_vs_vel_width("Si", 2, color=colors[sim], ls=lss[sim], label=labels[sim])
 
 def plot_mass_vs(sim, snap):
     """Plot mass vs metallicity and vel width"""
@@ -48,14 +56,16 @@ def plot_mass_vs(sim, snap):
     #Load from a save file only
     hspec = get_hspec(sim,snap)
     hspec.plot_Z_vs_mass(color=colors[sim], color2=colors2[sim])
+    plt.ylabel(r"$Z (Z_\odot) $")
+    plt.xlabel(r"$v_\mathrm{vir}$")
     save_figure(path.join(outdir,out))
     plt.clf()
     out = "cosmo"+str(sim)+"_vel_mass_z"+str(snap)
     hspec.plot_vel_vs_mass("Si",2, color=colors[sim], color2=colors2[sim])
-    save_figure(path.join(outdir,out))
-    plt.clf()
-    out = "cosmo"+str(sim)+"_vel_vir_z"+str(snap)
-    hspec.plot_virial_vel_vs_vel_width("Si", 2)
+    plt.ylabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
+    plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
+    plt.xlim(10,300)
+    plt.ylim(10,1000)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -66,44 +76,61 @@ def plot_mass_vs_mm(sim, snap):
     hspec = get_hspec(sim,snap)
     fmm = hspec.vel_mean_median("Si",2)
     hspec._plot_xx_vs_mass(fmm, name = "fmm", color=colors[sim], color2=colors2[sim], log=False)
+    plt.ylabel(r"$f_\mathrm{mm}$")
+    plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
     save_figure(path.join(outdir,out))
     plt.clf()
     out = "cosmo"+str(sim)+"_fedge_mass_z"+str(snap)
     fpk = hspec.vel_peak("Si",2)
     hspec._plot_xx_vs_mass(fpk, name = "fedge", color=colors[sim], color2=colors2[sim], log=False)
+    plt.ylabel(r"$f_\mathrm{edge}$")
+    plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
+    plt.xlim(10,300)
     save_figure(path.join(outdir,out))
     plt.clf()
 
 def plot_mm_vs_vel(sim, snap):
     """Plot vel width vs mm and fedge"""
     hspec = get_hspec(sim,snap)
-    out = "cosmo"+str(sim)+"_fmm_vel_z"+str(snap)
+#     out = "cosmo"+str(sim)+"_fmm_vel_z"+str(snap)
     ind = hspec.get_filt("Si", 2)
     vel = hspec.vel_width("Si", 2)[ind]
     fmm = hspec.vel_mean_median("Si",2)[ind]
     fpk = hspec.vel_peak("Si",2)[ind]
-    hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim], ylog=False)
+#     hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim], ylog=False)
 #     plt.xlim(10,2e3)
-    save_figure(path.join(outdir,out))
-    plt.clf()
+#     save_figure(path.join(outdir,out))
+#     plt.clf()
     out = "cosmo"+str(sim)+"_fedge_vel_z"+str(snap)
     hspec._plot_2d_contour(vel, fpk, 10, "fpk vel", color=colors[sim], color2=colors2[sim], ylog=False)
+    plt.ylabel(r"$f_\mathrm{edge}$")
+    plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
+    plt.xlim(10,300)
     save_figure(path.join(outdir,out))
     plt.clf()
-    out = "cosmo"+str(sim)+"_fedge_fmm_z"+str(snap)
-    hspec._plot_2d_contour(fmm, fpk, 10, "fpk fmm", color=colors[sim], color2=colors2[sim], ylog=False, xlog=False)
-    save_figure(path.join(outdir,out))
-    plt.clf()
+#     out = "cosmo"+str(sim)+"_fedge_fmm_z"+str(snap)
+#     hspec._plot_2d_contour(fmm, fpk, 10, "fpk fmm", color=colors[sim], color2=colors2[sim], ylog=False, xlog=False)
+#     save_figure(path.join(outdir,out))
+#     plt.clf()
 
 if __name__ == "__main__":
-    for ss in (0,1,3,7):  #range(8):
+
+    simlist = (0,1,3,7)  #range(8)
+    for ss in simlist:
         plot_mass_hists(ss, 3)
     save_figure(path.join(outdir,"cosmo_halos_feedback_z3"))
     plt.clf()
 
+    for ss in simlist:
+        plot_vvir(ss, 3)
+    plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
+    plt.xlim(0.05, 30)
+    save_figure(path.join(outdir,"cosmo_vw_vel_vir_z3"))
+    plt.clf()
+
     for zz in (1,3,5):
-        for ss in range(8):
+        for ss in simlist:
             plot_mass_vs(ss, zz)
-            plot_mass_vs_mm(ss, zz)
+#             plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)
 
