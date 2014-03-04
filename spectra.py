@@ -1210,9 +1210,6 @@ class Spectra:
                 if np.size(ind) >= 1:
                     halos[ii].append(ind[0][0])
                     dists[ii].append(np.sqrt(dd[ind][0]))
-                else:
-                    halos[ii].append(-1)
-                    dists[ii].append(0)
         return (halos, dists)
 
     def get_contiguous_regions(self, elem="H", ion = 1, thresh = 2e20, relthresh = 1e-3):
@@ -1245,44 +1242,37 @@ class Spectra:
         return contig
 
     def find_nearest_halo(self):
-        """Find halos and subhalos associated with absorption near a sightline"""
-        try:
-            return (self.spectra_halos, 0)
-        except AttributeError:
-            pass
-        zpos = self.get_contiguous_regions(thresh = 1e18, relthresh = 1e-2)
-        (halos, _) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
-        #Merge absorption features inside the same halo
-#         for ii in xrange(self.NumLos):
-#             if len(set(halos[ii])) != len(halos[ii]):
-                #Do something?
-#             for jj in xrange(len(halos[ii])):
-#                 if halos[ii][jj] == halos[ii][jj+1]:
-#         halos =
-        multsub = 0
-        multhalo = 0
-        nsubs = 0
+        """Find the single most massive halos associated with absorption near a sightline, possibly via a subhalo."""
+        (halos, subhalos) = self.find_nearby_halos()
         outhalos = np.zeros(self.NumLos,dtype=int)-1
         for ii in xrange(self.NumLos):
-            lhalo = np.array(halos[ii])
-            ind = np.where(lhalo > 0)
-            if np.size(ind) > 1 and len(set(lhalo[ind])) > 1:
-                multhalo +=1
-            if np.size(ind) > 0:
-                outhalos[ii] = np.min(lhalo[ind])
+            if len(halos[ii]) > 0:
+                outhalos[ii] = np.min(halos[ii])
             else:
-                (ss, _) = self.assign_to_halo([zpos[ii],], self.sub_sub_radii, self.sub_sub_cofm)
-                subhalos = np.array(ss[0])
-                ind2 = np.where(subhalos > 0)
-                if np.size(ind2) > 1:
-                    multsub +=1
-                if np.size(ind2) > 0:
-                    outhalos[ii] = self.sub_sub_index[np.min(subhalos[ind2])]
-                    nsubs +=1
-        print "mult halos: ",multhalo," mult subhalos: ",multsub, " single subs ",nsubs
-        self.spectra_halos = outhalos
+                if len(subhalos[ii]) > 0:
+                    outhalos[ii] = self.sub_sub_index[np.min(subhalos[ii])]
+                else:
+                    outhalos[ii] = -1
         return (outhalos, 0)
 
+    def find_nearby_halos(self):
+        """Find halos and subhalos associated with absorption near a sightline"""
+        try:
+            return (self.spectra_halos, self.spectra_subhalos)
+        except AttributeError:
+            pass
+        zpos = self.get_contiguous_regions(thresh = 1e19, relthresh = 1e-2)
+        (halos, _) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
+        (subhalos, _) = self.assign_to_halo(zpos, self.sub_sub_radii, self.sub_sub_cofm)
+        #Merge absorption features inside the same halo
+        for ii in xrange(self.NumLos):
+            halos[ii] = list(set(halos[ii]))
+            subhalos[ii] = list(set(subhalos[ii]))
+        print "no. halos: ",sum([len(hh) for hh in halos])," mult halos: ",sum([len(hh) > 1 for hh in halos])
+        print "no. subhalos: ",sum([len(hh) for hh in subhalos])," mult subhalos: ",sum([len(hh) > 1 for hh in subhalos])
+        self.spectra_halos = halos
+        self.spectra_subhalos = subhalos
+        return (halos, subhalos)
 
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
