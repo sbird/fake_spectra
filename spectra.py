@@ -1178,61 +1178,111 @@ class Spectra:
             #r200 in kpc/h (comoving).
             self.sub_radii = subs.Group_R_Crit200
             #self.sub_vel = subs.GroupVel
+            self.sub_sub_radii =  subs.SubhaloHalfmassRad
+            self.sub_sub_cofm =  subs.SubhaloPos
+            self.sub_sub_index = subs.SubhaloGrNr
         except IOError:
             pass
-
-    def find_nearest_halo(self, mult=1.):
-        """
-        Assign a DLA (defined as the position along the sightline with highest column density)
-        to the largest halo whose virial radius it is within.
-        """
-        if mult == 1.:
-            try:
-                return (self.spectra_halos, self.spectra_dists)
-            except AttributeError:
-                pass
-        #X axis first
-        col_den = self.get_col_density("H",1)
-        zpos = np.zeros(self.NumLos)
-        for ii in xrange(self.NumLos):
-            #Third coordinate given by HI mass-weighted depth along sightline
-            lcolden = col_den[ii,:]
-            nn = np.arange(self.nbins)
-            lzpos = ne.evaluate("sum(lcolden*nn)")
-            summ = ne.evaluate("sum(lcolden)")
-            #Make sure it refers to a valid position
-            lzpos = (lzpos / summ) % self.nbins
-            zpos[ii] = lzpos*1.*self.box/self.nbins
-        (self.spectra_halos, self.spectra_dists) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
-        return (self.spectra_halos, self.spectra_dists)
 
     def assign_to_halo(self, zpos, halo_radii, halo_cofm):
         """
         Assign a list of lists of positions to halos, by finding the unique halo
         within whose virial radius each position is.
         """
-        dists = np.zeros(self.NumLos)
-        halos = np.zeros(self.NumLos,dtype=np.int)-1
-        multiple = 0
+        dists = []
+        halos = []
         #X axis first
-        for ii in xrange(self.NumLos):
+        for ii in xrange(len(zpos)):
             proj_pos = np.array(self.cofm[ii,:])
             ax = self.axis[ii]-1
-            proj_pos[ax] = zpos[ii]
-            #Is this within the virial radius of any halo?
-            dd = ne.evaluate("sum((halo_cofm - proj_pos)**2,axis=1)")
-            ind = np.where(dd < halo_radii**2)
-            #Should not be multiple close halos
-            #  assert(np.size(ind) < 2)
-            #Very rarely, in 2/5000 cases,
-            #something hits the edge of more than one halo
-            if np.size(ind) > 1:
-                multiple +=1
-            if np.size(ind) >= 1:
-                halos[ii] =  ind[0][0]
-                dists[ii] = np.sqrt(dd[ind][0])
-        print "multiple halos: ",multiple
+            dists.append([])
+            halos.append([])
+            for zzp in zpos[ii]:
+                proj_pos[ax] = zzp
+                #Is this within the virial radius of any halo?
+                dd = ne.evaluate("sum((halo_cofm - proj_pos)**2,axis=1)")
+                ind = np.where(dd < halo_radii**2)
+                #Should not be multiple close halos
+                # assert(np.size(ind) < 2)
+                #Very rarely, in 2/5000 cases,
+                #something hits the edge of more than one halo
+                #This is so rare we don't worry about it.
+                if np.size(ind) >= 1:
+                    halos[ii].append(ind[0][0])
+                    dists[ii].append(np.sqrt(dd[ind][0]))
+                else:
+                    halos[ii].append(-1)
+                    dists[ii].append(0)
         return (halos, dists)
+
+    def get_contiguous_regions(self, elem="H", ion = 1, thresh = 2e20, relthresh = 1e-3):
+        """
+        Find the weighted z position of all contiguous DLA-hosting regions in each spectrum.
+        Returns a list of lists. Each element in the outer list corresponds to a spectrum.
+        Each inner list is the list of weighted z positions of DLA-hosting regions.
+        """
+        col_den = self.get_col_density(elem, ion)
+        contig = []
+        for ii in xrange(self.NumLos):
+            lcolden = col_den[ii,:]
+            # Get first and last indices of separate regions in list
+            if np.max(lcolden) > thresh:
+                seps = combine_regions(lcolden > thresh)
+            else:
+                seps = combine_regions(lcolden > relthresh*np.max(lcolden))
+            # Find weighted z position for each one
+            zposes = []
+            for jj in xrange(np.shape(seps)[0]):
+                nn = np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]
+                llcolden = lcolden[seps[jj,0]:seps[jj,1]]
+                zpos = ne.evaluate("sum(llcolden*nn)")
+                summ = ne.evaluate("sum(llcolden)")
+                #Make sure it refers to a valid position
+                zpos = (zpos / summ) % self.nbins
+                zpos *= 1.*self.box/self.nbins
+                zposes.append(zpos)
+            contig.append(zposes)
+        return contig
+
+    def find_nearest_halo(self):
+        """Find halos and subhalos associated with absorption near a sightline"""
+        try:
+            return (self.spectra_halos, 0)
+        except AttributeError:
+            pass
+        zpos = self.get_contiguous_regions(thresh = 1e18, relthresh = 1e-2)
+        (halos, _) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
+        #Merge absorption features inside the same halo
+#         for ii in xrange(self.NumLos):
+#             if len(set(halos[ii])) != len(halos[ii]):
+                #Do something?
+#             for jj in xrange(len(halos[ii])):
+#                 if halos[ii][jj] == halos[ii][jj+1]:
+#         halos =
+        multsub = 0
+        multhalo = 0
+        nsubs = 0
+        outhalos = np.zeros(self.NumLos,dtype=int)-1
+        for ii in xrange(self.NumLos):
+            lhalo = np.array(halos[ii])
+            ind = np.where(lhalo > 0)
+            if np.size(ind) > 1 and len(set(lhalo[ind])) > 1:
+                multhalo +=1
+            if np.size(ind) > 0:
+                outhalos[ii] = np.min(lhalo[ind])
+            else:
+                (ss, _) = self.assign_to_halo([zpos[ii],], self.sub_sub_radii, self.sub_sub_cofm)
+                subhalos = np.array(ss[0])
+                ind2 = np.where(subhalos > 0)
+                if np.size(ind2) > 1:
+                    multsub +=1
+                if np.size(ind2) > 0:
+                    outhalos[ii] = self.sub_sub_index[np.min(subhalos[ind2])]
+                    nsubs +=1
+        print "mult halos: ",multhalo," mult subhalos: ",multsub, " single subs ",nsubs
+        self.spectra_halos = outhalos
+        return (outhalos, 0)
+
 
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
