@@ -1246,13 +1246,14 @@ class Spectra:
         (halos, subhalos) = self.find_nearby_halos()
         outhalos = np.zeros(self.NumLos,dtype=int)-1
         for ii in xrange(self.NumLos):
-            if len(halos[ii]) > 0:
-                outhalos[ii] = np.min(halos[ii])
+            subhalo_parent = list(self.sub_sub_index[subhalos[ii]])
+            all = list(set(subhalo_parent+halos[ii]))
+            if len(all) > 0:
+                vir_vel = self.virial_vel(all)
+                ind = np.where(vir_vel == np.max(vir_vel))
+                outhalos[ii] = all[ind[0][0]]
             else:
-                if len(subhalos[ii]) > 0:
-                    outhalos[ii] = self.sub_sub_index[np.min(subhalos[ii])]
-                else:
-                    outhalos[ii] = -1
+                outhalos[ii] = -1
         return (outhalos, 0)
 
     def find_nearby_halos(self):
