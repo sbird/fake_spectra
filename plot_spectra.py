@@ -130,6 +130,34 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
 
+    def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", color2 = "red", ls="-"):
+        """
+        Plots the fraction of spectra in each velocity width bin which are separated.
+        Threshold is as a percentage of the maximum value.
+        mindist is in km/s
+        """
+        #Find velocity width
+        (halos, subhalos) = self.find_nearby_halos()
+        vels = self.vel_width(elem, ion)
+        #Find virial velocity
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo > 0)
+        virial = np.ones_like(halo, dtype=np.double)
+        virial[ind] = self.virial_vel(halo[ind])
+        vwvir = vels[ind]/virial[ind]
+        #Make bins
+        v_table = 10**np.arange(np.min(np.log10(vwvir)),np.max(np.log10(vwvir)) , dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        #Histogram of vel width / virial vel
+        hist1 = np.histogram(vwvir, v_table)
+        hist1[0][np.where(hist1[0] == 0)] = 1
+        #Find places with multiple halos
+        subhalo_parent = [list(self.sub_sub_index[ss]) for ss in subhalos]
+        all = np.array([list(set(subhalo_parent[ii] + halos[ii])) for ii in xrange(self.NumLos)])
+        indmult = np.where([len(aa) > 1 for aa in all[ind]])
+        histmult = np.histogram(vwvir[indmult],v_table)
+        plt.semilogx(vbin, histmult[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
+
     def _plot_metallicity(self, met, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities"""
         bins=np.linspace(-3,0,nbins)

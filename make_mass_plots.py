@@ -113,6 +113,11 @@ def plot_mm_vs_vel(sim, snap):
 #     save_figure(path.join(outdir,out))
 #     plt.clf()
 
+def plot_mult_frac(sim, snap):
+    """Plot fraction of lines from separated halos"""
+    hspec = get_hspec(sim, snap)
+    hspec.plot_mult_halo_frac(color=colors[sim], color2 = colors2[sim], ls=lss[sim])
+
 if __name__ == "__main__":
 
     simlist = (0,1,3,7)  #range(8)
