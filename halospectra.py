@@ -11,7 +11,7 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra.hdf5", savedir=None):
+    def __init__(self,num, base, repeat = 1, minpart = 3000, res = 1., savefile="halo_spectra.hdf5", savedir=None):
         if savedir == None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
@@ -55,15 +55,15 @@ class HaloSpectra(spectra.Spectra):
         cofm = np.repeat(self.sub_cofm,self.repeat,axis=0)
         #Perturb the sightlines within a sphere of the virial radius.
         #We want a representative sample of DLAs.
-        maxr = self.sub_radii
+        #maxr = self.sub_radii
         #Generate random sphericals
-        theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
-        phi = 2*math.pi*np.random.random_sample(self.NumLos)
-        rr = np.repeat(maxr,self.repeat)*np.random.random_sample(self.NumLos)
+        #theta = 2*math.pi*np.random.random_sample(self.NumLos)-math.pi
+        #phi = 2*math.pi*np.random.random_sample(self.NumLos)
+        #rr = np.repeat(maxr,self.repeat)*np.random.random_sample(self.NumLos)
         #Add them to halo centers
-        cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
-        cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
-        cofm[:,2]+=rr*np.cos(theta)
+        #cofm[:,0]+=rr*np.sin(theta)*np.cos(phi)
+        #cofm[:,1]+=rr*np.sin(theta)*np.sin(phi)
+        #cofm[:,2]+=rr*np.cos(theta)
         return cofm
 
     def save_file(self):
@@ -114,4 +114,8 @@ class HaloSpectra(spectra.Spectra):
 
     def load_halo(self):
         """Do nothing - halos already loaded"""
+        return
+
+    def replace_not_DLA(self):
+        """Do nothing"""
         return
