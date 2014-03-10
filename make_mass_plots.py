@@ -127,6 +127,12 @@ if __name__ == "__main__":
     plt.clf()
 
     for ss in simlist:
+        plot_mult_frac(ss,3)
+#     plt.legend(loc=2,ncol=3)
+    save_figure(path.join(outdir,"cosmo_mult_frac_z3"))
+    plt.clf()
+
+    for ss in simlist:
         plot_vvir(ss, 3)
     plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
     plt.xlim(0.05, 30)

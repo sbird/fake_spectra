@@ -54,15 +54,15 @@ def plot_spectrum(sim, snap, num, subdir=""):
     (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=0)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_spectrum"))
+    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
     plt.clf()
     tau = hspec.get_tau("Si", 2,1260)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_1260_spectrum"))
+    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
 
-def plot_colden(sim, snap, num, subdir=""):
+def plot_colden(sim, snap, num, subdir="", xlim=100):
     """Plot column density"""
     hspec = get_hspec(sim, snap)
     ind = hspec.get_filt("Si", 2)
@@ -71,16 +71,16 @@ def plot_colden(sim, snap, num, subdir=""):
     ind_m = np.where(col_den[num] == mcol)[0][0]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
-    plt.xlim(-100, +100)
+    plt.xlim(-1*xlim, xlim)
     plt.ylim(ymin=1e7)
-    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_Si_"+str(num)+"_colden"))
+    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
     col_den = hspec.get_col_density("H", 1)[ind]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
-    plt.xlim(-100, +100)
+    plt.xlim(-1*xlim, xlim)
     plt.ylim(ymin=1e15)
-    save_figure(path.join(outdir,"spectra/"+subdir+"cosmo"+str(sim)+"_H_"+str(num)+"_colden"))
+    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
 def plot_spectrum_max(sim, snap):
@@ -88,11 +88,14 @@ def plot_spectrum_max(sim, snap):
     hspec = get_hspec(sim, snap)
     vels = hspec.vel_width("Si",2)
     ind = hspec.get_filt("Si", 2)
+    subdir = "max/cosmo"+str(sim)+"/"
     num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
-    plot_spectrum(sim, snap, num, "max/")
-    num = np.where(vels[ind] > 500)[0]
+    plot_spectrum(sim, snap, num, subdir)
+    plot_colden(sim, snap, num, subdir, vels[ind][num])
+    num = np.where(vels[ind] > 350)[0]
     for nn in num:
-        plot_spectrum(sim, snap, nn, "max/")
+        plot_spectrum(sim, snap, nn, subdir)
+        plot_colden(sim, snap, nn, subdir,vels[ind][nn])
 
 
 def plot_spectrum_density_velocity(sim, snap, num):
