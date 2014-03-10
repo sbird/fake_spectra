@@ -1127,7 +1127,12 @@ class Spectra:
         """
         dist = int(mindist/self.dvbin)
         rho = self.get_col_density(elem, ion)
-        seps = np.array([(np.shape(combine_regions(rho[ii,:] > thresh*np.max(rho[ii,:]), dist))[0] > 1) for ii in xrange(np.shape(rho)[0])])
+        (low, high, offset) = self.find_absorber_width(elem, ion)
+        seps = np.zeros(self.NumLos, dtype=np.bool)
+        #deal with periodicity by making sure the deepest point is in the middle
+        for ll in xrange(self.NumLos):
+            rho_l = np.roll(rho[ll,:],offset[ll])[low[ll]:high[ll]]
+            seps[ll] = (np.shape(combine_regions(rho_l > thresh*np.max(rho_l), dist))[0] > 1)
         return seps
 
     def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):
