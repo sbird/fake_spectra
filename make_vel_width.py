@@ -91,11 +91,11 @@ def plot_spectrum_max(sim, snap):
     subdir = "max/cosmo"+str(sim)+"/"
     num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
     plot_spectrum(sim, snap, num, subdir)
-    plot_colden(sim, snap, num, subdir, vels[ind][num])
+    plot_colden(sim, snap, num, subdir, 500)
     num = np.where(vels[ind] > 350)[0]
     for nn in num:
         plot_spectrum(sim, snap, nn, subdir)
-        plot_colden(sim, snap, nn, subdir,vels[ind][nn])
+        plot_colden(sim, snap, nn, subdir,500)
 
 
 def plot_spectrum_density_velocity(sim, snap, num):
