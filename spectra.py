@@ -516,8 +516,8 @@ class Spectra:
                     break
         #Minimum
         if minwidth > 0:
-            low[np.where(low > self.nbins/2-minwidth)] = self.nbins/2-minwidth
-            high[np.where(high < self.nbins/2+minwidth)] = self.nbins/2+minwidth
+            low[np.where(low > self.nbins/2-self.dvbin*minwidth)] = self.nbins/2-minwidth*self.dvbin
+            high[np.where(high < self.nbins/2+self.dvbin*minwidth)] = self.nbins/2+minwidth*self.dvbin
         self.absorber_width[(elem, ion, minwidth)] = (low, high, offset)
         return (low, high, offset)
 
@@ -696,7 +696,7 @@ class Spectra:
 
     def _get_rolled_spectra(self,tau):
         """
-        Cycle the array in tau so that the deepest absorption is at the middle.
+        Cycle the array tau so that the peak is at the middle.
         """
         tau_out = np.zeros(np.shape(tau))
         roll = np.zeros(np.shape(tau[:,0]), dtype=int)
@@ -1224,8 +1224,16 @@ class Spectra:
         """
         col_den = self.get_col_density(elem, ion)
         contig = []
+        seps = np.zeros(self.NumLos, dtype=np.bool)
+        (roll, colden) = self._get_rolled_spectra(col_den)
+        #deal with periodicity by making sure the deepest point is in the middle
         for ii in xrange(self.NumLos):
-            lcolden = col_den[ii,:]
+            # This is column density, not absorption, so we cannot
+            # use the line width to find the peak region.
+            # Instead, just search a constant velocity offset from the peak,
+            #to roughly match the velocity width calculation.
+            lcolden = colden[ii,self.nbins/2-1000*self.dvbin:self.nbins/2+1000*self.dvbin]
+            offset = self.nbins/2-1000*self.dvbin - roll[ii]
             # Get first and last indices of separate regions in list
             if np.max(lcolden) > thresh:
                 seps = combine_regions(lcolden > thresh)
@@ -1234,7 +1242,7 @@ class Spectra:
             # Find weighted z position for each one
             zposes = []
             for jj in xrange(np.shape(seps)[0]):
-                nn = np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]
+                nn = offset+np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]
                 llcolden = lcolden[seps[jj,0]:seps[jj,1]]
                 zpos = ne.evaluate("sum(llcolden*nn)")
                 summ = ne.evaluate("sum(llcolden)")

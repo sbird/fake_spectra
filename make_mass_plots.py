@@ -43,6 +43,16 @@ def plot_mass_hists(sim, snap):
     plt.semilogx(mbins,pdf,color=colors[sim], ls=lss[sim],label=labels[sim])
     plt.xlim(10,300)
 
+def plot_vir_vsmass(sim, snap):
+    """Plot mass histogram"""
+    #Load from a save file only
+    hspec = get_hspec(sim,snap)
+    (halos, _) = hspec.find_nearest_halo()
+    hspec._plot_xx_vs_mass(hspec.sub_mass[halos], name = "Mass", color=colors[sim], color2=colors2[sim], log=True)
+    out = "cosmo"+str(sim)+"_vir_mass_z"+str(snap)
+    save_figure(path.join(outdir,out))
+    plt.clf()
+
 def plot_vvir(sim, snap):
     """Plot histogram of velocity width by virial velocity"""
     #Load from a save file only
@@ -62,6 +72,7 @@ def plot_mass_vs(sim, snap):
     plt.clf()
     out = "cosmo"+str(sim)+"_vel_mass_z"+str(snap)
     hspec.plot_vel_vs_mass("Si",2, color=colors[sim], color2=colors2[sim])
+    plt.loglog(np.logspace(5,2000), np.logspace(5,2000), ls="-", color="black")
     plt.ylabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
     plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
     plt.xlim(10,300)
