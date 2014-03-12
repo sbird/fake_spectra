@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import plot_spectra as ps
 import os.path as path
 import myname
+import numpy as np
 from save_figure import save_figure
 
 outdir = path.join(myname.base, "plots/mass/")
@@ -19,7 +20,7 @@ zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
 colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
-labels = {0:"REF",1:"HVEL", 2:"HVNA",3:"NOSN", 4:"NAWW", 5:"MVEL",6:"METAL",7:"TUV"}
+labels = {0:"REF",1:"HVEL", 2:"HVNA",3:"NOSN", 4:"NAWW", 5:"MVEL",6:"METAL",7:"2xUV"}
 
 hspec_cache = {}
 
@@ -72,11 +73,11 @@ def plot_mass_vs(sim, snap):
     plt.clf()
     out = "cosmo"+str(sim)+"_vel_mass_z"+str(snap)
     hspec.plot_vel_vs_mass("Si",2, color=colors[sim], color2=colors2[sim])
-    plt.loglog(np.logspace(5,2000), np.logspace(5,2000), ls="-", color="black")
+    plt.loglog(np.logspace(0.5,3.5), np.logspace(0.5,3.5), ls="-", color="black")
     plt.ylabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
     plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
     plt.xlim(10,300)
-    plt.ylim(10,1000)
+    plt.ylim(10,500)
     save_figure(path.join(outdir,out))
     plt.clf()
 
@@ -132,27 +133,30 @@ def plot_mult_frac(sim, snap):
 if __name__ == "__main__":
 
     simlist = (0,1,3,7)  #range(8)
-    for ss in simlist:
-        plot_mass_hists(ss, 3)
-    save_figure(path.join(outdir,"cosmo_halos_feedback_z3"))
-    plt.clf()
+    for zz in (1,3,5):
+        for ss in simlist:
+            plot_mass_hists(ss, zz)
+        save_figure(path.join(outdir,"cosmo_halos_feedback_z"+str(zz)))
+        plt.clf()
 
-    for ss in simlist:
-        plot_mult_frac(ss,3)
-#     plt.legend(loc=2,ncol=3)
-    save_figure(path.join(outdir,"cosmo_mult_frac_z3"))
-    plt.clf()
+    for zz in (1,3,5):
+        for ss in simlist:
+            plot_mult_frac(ss,zz)
+        plt.legend(loc=2,ncol=3)
+        save_figure(path.join(outdir,"cosmo_mult_frac_z"+str(zz)))
+        plt.clf()
 
-    for ss in simlist:
-        plot_vvir(ss, 3)
-    plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
-    plt.xlim(0.05, 30)
-    save_figure(path.join(outdir,"cosmo_vw_vel_vir_z3"))
-    plt.clf()
+    for zz in (1,3,5):
+        for ss in simlist:
+            plot_vvir(ss, zz)
+        plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
+        plt.xlim(0.05, 30)
+        save_figure(path.join(outdir,"cosmo_vw_vel_vir_z"+str(zz)))
+        plt.clf()
 
     for zz in (1,3,5):
         for ss in simlist:
             plot_mass_vs(ss, zz)
-#             plot_mass_vs_mm(ss, zz)
+            plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)
 
