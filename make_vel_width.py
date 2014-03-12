@@ -132,7 +132,7 @@ def plot_met_corr(sims,snap):
 
 def plot_vel_width_sims(sims, snap, log=False):
     """Plot velocity widths for a series of simulations"""
-    vel_data.plot_prochaska_2008_data(zrange[snap])
+    vel_data.plot_prochaska_2008_data()
     for sss in sims:
         #Make abs. plot
         hspec = get_hspec(sss, snap)
@@ -229,11 +229,11 @@ def plot_vel_redshift_evo(sim):
         (vbin, vels[snap]) = hspec0.vel_width_hist("Si", 2)
     mm = np.min([np.size(vel) for vel in vels.values()])
     #Normalised by z=3
-    plt.semilogx(vbin[:mm], vels[3][:mm]/vels[5][:mm], color="black",ls="--")
-    plt.semilogx(vbin[:mm], vels[1][:mm]/vels[5][:mm], color="grey",ls="-")
-    plt.xlim(1, 1000)
-    plt.ylim(0,2)
-    save_figure(path.join(outdir,"cosmo_"+str(sim)+"_zz_evol"))
+    plt.semilogx(vbin[:mm], vels[5][:mm]/vels[3][:mm], color="black",ls="--")
+    plt.semilogx(vbin[:mm], vels[1][:mm]/vels[3][:mm], color="grey",ls="-")
+    plt.xlim(10, 1000)
+    plt.ylim(0.5,1.5)
+    save_figure(path.join(outdir,"cosmo"+str(sim)+"_zz_evol"))
     plt.clf()
 
 if __name__ == "__main__":

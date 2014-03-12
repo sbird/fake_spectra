@@ -142,9 +142,9 @@ class PlottingSpectra(spectra.Spectra):
         #Find virial velocity
         (halo, _) = self.find_nearest_halo()
         ind = np.where(halo > 0)
-        virial = np.ones_like(halo, dtype=np.double)
-        virial[ind] = self.virial_vel(halo[ind])
-        vwvir = vels[ind]/virial[ind]
+#         virial = np.ones_like(halo, dtype=np.double)
+#         virial[ind] = self.virial_vel(halo[ind])
+        vwvir = vels[ind]  #/virial[ind]
         #Make bins
         v_table = 10**np.arange(np.min(np.log10(vwvir)),np.max(np.log10(vwvir)) , dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
