@@ -485,12 +485,11 @@ class Spectra:
            cross-section, ie, greatest lambda * fosc.
            elem, ion - ion to look at
            thresh - threshold above which absorption is considered significant. For a spectrum with
-           S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06. This may be a little low.
-           Returns the low and high indices of absorption
-           Also imposes a minimum absorber width, which is +-minwidth from the peak.
+           S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06.
+           Returns the low and high indices of absorption, and the offset for the maximal absorption.
         """
         try:
-            return self.absorber_width[(elem, ion)]
+            return self.absorber_width[(elem, ion, minwidth)]
         except KeyError:
             pass
         high = self.nbins*np.ones(self.NumLos)
@@ -519,7 +518,7 @@ class Spectra:
         if minwidth > 0:
             low[np.where(low > self.nbins/2-minwidth)] = self.nbins/2-minwidth
             high[np.where(high < self.nbins/2+minwidth)] = self.nbins/2+minwidth
-        self.absorber_width[(elem, ion)] = (low, high, offset)
+        self.absorber_width[(elem, ion, minwidth)] = (low, high, offset)
         return (low, high, offset)
 
     def _eq_width_from_colden(self, col_den, elem = "H", ion = 1, line = 1215):
