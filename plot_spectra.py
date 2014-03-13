@@ -73,13 +73,15 @@ class PlottingSpectra(spectra.Spectra):
             tpos = high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
+        plt.xlabel(r"v (km s$^{-1}$)")
         return (low, high)
 
     def plot_col_density(self, colden):
         """Plot the column density of a line across the absorber"""
-        phys = self.dvbin/self.vmax*self.box
+        phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
         plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,colden+1)
+        plt.xlabel(r"x (kpc h$^{-1}$)")
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
         """Plot the spectrum of a line, centered on the deepest point,

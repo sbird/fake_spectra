@@ -100,10 +100,12 @@ class Spectra:
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
-        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to cm
+        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to physical cm
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
-        self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
-        self.vmax = self.box * self.Hz /1000. # box size (physical kms^-1)
+        Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
+        #Convert comoving kpc/h to physical km/s
+        self.velfac = self.hubble * self.atime * Hz/1000
+        self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         try:
             # velocity bin size (kms^-1)
@@ -341,9 +343,8 @@ class Spectra:
 
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
-        velfac = self.vmax/self.box
         #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
