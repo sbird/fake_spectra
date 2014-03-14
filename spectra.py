@@ -104,7 +104,7 @@ class Spectra:
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Convert comoving kpc/h to physical km/s
-        self.velfac = self.hubble * self.atime * Hz/1000
+        self.velfac = self.atime / self.hubble * Hz/1000
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         try:

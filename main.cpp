@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     /*Setup the los tables*/
     populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
-    const double velfac = h100*atime*Hz/1e3;
+    const double velfac = atime/h100*Hz/1e3;
     ParticleInterp pint(NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos);
   if(!(output=fopen(outname.c_str(),"w")))
   {
