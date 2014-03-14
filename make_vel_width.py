@@ -71,14 +71,16 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     ind_m = np.where(col_den[num] == mcol)[0][0]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
+    plt.ylabel(r"N$_\mathrm{SiII}$ cm$^{-2}$")
     plt.xlim(-1*xlim, xlim)
-    plt.ylim(ymin=1e7)
+    plt.ylim(ymin=1e9)
     save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
     col_den = hspec.get_col_density("H", 1)[ind]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
     plt.xlim(-1*xlim, xlim)
+    plt.ylabel(r"N$_\mathrm{HI}$ cm$^{-2}$")
     plt.ylim(ymin=1e15)
     save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
@@ -145,6 +147,7 @@ def plot_vel_width_sims(sims, snap, log=False):
         outstr+="_log"
     else:
         plt.ylim(1e-2,2)
+    plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
     plt.xlim(10,1000)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,outstr))

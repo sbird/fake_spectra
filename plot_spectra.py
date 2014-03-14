@@ -49,6 +49,7 @@ class PlottingSpectra(spectra.Spectra):
         """
         (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
+        plt.xlabel(r"$f_\mathrm{mm}$")
 
     def plot_f_peak(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
         """
@@ -57,6 +58,7 @@ class PlottingSpectra(spectra.Spectra):
         """
         (vbin, vels) = self.f_peak_hist(elem, ion, dv, met_cut=met_cut)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
+        plt.xlabel(r"$f_\mathrm{edg}$")
 
     def plot_spectrum(self, tau):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -74,6 +76,7 @@ class PlottingSpectra(spectra.Spectra):
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
         plt.xlabel(r"v (km s$^{-1}$)")
+        plt.ylabel(r"$\mathcal{F}$")
         return (low, high)
 
     def plot_col_density(self, colden):
@@ -82,6 +85,7 @@ class PlottingSpectra(spectra.Spectra):
         #Add one to avoid zeros on the log plot
         plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,colden+1)
         plt.xlabel(r"x (kpc h$^{-1}$)")
+        plt.ylabel(r"N cm$^{-2}$")
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -201,6 +205,8 @@ class PlottingSpectra(spectra.Spectra):
         vel = vel[ind2]
         self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2)
         plt.xlim(10,2e3)
+        plt.ylabel(r"$\mathrm{Z} / \mathrm{Z}_\odot$")
+        plt.xlabel(r"$v_\mathrm{90}$ km s$^{-1}$")
 
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
