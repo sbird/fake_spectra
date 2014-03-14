@@ -599,7 +599,7 @@ class Spectra:
             except KeyError:
                 pass
         #Compute tau for each line
-        nlines = np.size(self.lines[(elem,ion)])
+        nlines = len(self.lines[(elem,ion)])
         tau = np.empty([nlines, self.NumLos,self.nbins])
         pos = {}
         vel = {}
