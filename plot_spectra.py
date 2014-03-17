@@ -62,19 +62,23 @@ class PlottingSpectra(spectra.Spectra):
 
     def plot_spectrum(self, tau):
         """Plot the spectrum of a line, centered on the deepest point,
-           and marking the 90% velocity width."""
+           and marking the 90% velocity width.
+           offset: offset in km/s for the x-axis labels"""
         tot_tau = np.sum(tau)
-        plt.plot(np.arange(0,np.size(tau))*self.dvbin,np.exp(-tau))
         (low, high) = self._vel_width_bound(tau, tot_tau)
+        xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
+        plt.plot(xaxis,np.exp(-tau))
         if high - low > 0:
-            plt.plot([low,low],[0,1])
-            plt.plot([high,high],[0,1])
+            plt.plot([xaxis[0]+low,xaxis[0]+low],[0,1])
+            plt.plot([xaxis[0]+high,xaxis[0]+high],[0,1])
         if high - low > 150:
-            tpos = low + 15
+            tpos = xaxis[0]+low + 15
         else:
-            tpos = high+15
+            tpos = xaxis[0]+high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         plt.ylim(-0.05,1.05)
+        #It should probably do this automatically, but doesn't
+        plt.xlim(np.max((xaxis[0],xaxis[0]+low-200)),np.min((xaxis[-1],xaxis[0]+high+200)))
         plt.xlabel(r"v (km s$^{-1}$)")
         plt.ylabel(r"$\mathcal{F}$")
         return (low, high)

@@ -46,12 +46,12 @@ def plot_sep_frac(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_sep_frac(color=colors[sim], ls=lss[sim])
 
-def plot_spectrum(sim, snap, num, subdir=""):
+def plot_spectrum(sim, snap, num, subdir="", minwidth=0):
     """Plot a spectrum"""
     hspec = get_hspec(sim, snap)
     tau = hspec.get_observer_tau("Si", 2)
     ind = hspec.get_filt("Si", 2)
-    (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=0)
+    (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
@@ -92,11 +92,11 @@ def plot_spectrum_max(sim, snap):
     ind = hspec.get_filt("Si", 2)
     subdir = "max/cosmo"+str(sim)+"/"
     num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
-    plot_spectrum(sim, snap, num, subdir)
+    plot_spectrum(sim, snap, num, subdir, minwidth=500)
     plot_colden(sim, snap, num, subdir, 500)
-    num = np.where(vels[ind] > 350)[0]
+    num = np.where(vels[ind] > 450)[0]
     for nn in num:
-        plot_spectrum(sim, snap, nn, subdir)
+        plot_spectrum(sim, snap, nn, subdir, minwidth=500)
         plot_colden(sim, snap, nn, subdir,500)
 
 
