@@ -478,7 +478,7 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, thresh=0.1, minwidth=500.):
+    def find_absorber_width(self, elem, ion, thresh=0.03, chunk = 25, minwidth=500.):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
@@ -486,7 +486,7 @@ class Spectra:
            cross-section, ie, greatest lambda * fosc.
            elem, ion - ion to look at
            thresh - threshold above which absorption is considered significant. For a spectrum with
-           S/N ~ 30, one can detect tau ~ 0.03. So use a thresh of 0.06.
+           S/N ~ 30, one can detect tau ~ 0.03.
            Returns the low and high indices of absorption, and the offset for the maximal absorption.
         """
         try:
@@ -503,22 +503,21 @@ class Spectra:
         #Absorption in a strong line: eg, SiII1260.
         strong = self.get_tau(elem, ion, strlam)
         (offset, roll) = self._get_rolled_spectra(strong)
-        chsz = 50
+        #Minimum
+        if minwidth > 0:
+            low  = int(self.nbins/2-minwidth*self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+            high = int(self.nbins/2+minwidth*self.dvbin)*np.ones(self.NumLos, dtype=np.int)
         for ii in xrange(self.NumLos):
             #Where is there no absorption leftwards of the peak?
-            for i in xrange(self.nbins/2,0,-chsz):
-                if np.all(roll[ii,i:(i+chsz)] < thresh):
+            for i in xrange(low[ii],0,-chunk):
+                if np.all(roll[ii,i:(i+chunk)] < thresh):
                     low[ii] = i
                     break
             #Where is there no absorption rightwards of the peak?
-            for i in xrange(self.nbins/2,self.nbins,chsz):
-                if np.all(roll[ii,i:(i+chsz)] < thresh):
-                    high[ii] = i+chsz
+            for i in xrange(high[ii],self.nbins,chunk):
+                if np.all(roll[ii,i:(i+chunk)] < thresh):
+                    high[ii] = i+chunk
                     break
-        #Minimum
-        if minwidth > 0:
-            low[np.where(low > self.nbins/2-self.dvbin*minwidth)] = self.nbins/2-minwidth*self.dvbin
-            high[np.where(high < self.nbins/2+self.dvbin*minwidth)] = self.nbins/2+minwidth*self.dvbin
         self.absorber_width[(elem, ion, minwidth)] = (low, high, offset)
         return (low, high, offset)
 
