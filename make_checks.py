@@ -143,6 +143,11 @@ def plot_check(hspec, hspec2, ofile, snap=3):
     vel_data.plot_prochaska_2008_correlation(zrange[snap])
     save_figure(path.join(outdir,"cosmo_correlation_"+ofile+"_z"+str(snap)))
     plt.clf()
+    hspec.plot_eq_width("Si", 2, 1526, color="red")
+    hspec2.plot_eq_width("Si", 2, 1526, color="blue")
+    vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
+    save_figure(path.join(outdir,"cosmo_eqwidth_"+ofile+"_z"+str(snap)))
+    plt.clf()
 
 def test_tescari_halos(sim, snap):
     """Plot velocity width for spectra through the center of halos, like in Tescari 2009"""
