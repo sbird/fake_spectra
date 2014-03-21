@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 import plot_spectra as ps
 import vel_data
+import leastsq as ls
 import os.path as path
 import numpy as np
 import myname
@@ -120,17 +121,15 @@ def plot_metallicity(sims, snap):
     plt.clf()
 
 def plot_met_corr(sims,snap):
-    """Plot metallicity velwidth correlations"""
+    """Plot metallicity vel width correlations"""
     for sim in sims:
-        print "Met vel corr. Simulation ",sim
         out = "cosmo"+str(sim)+"_correlation_z"+str(snap)
         hspec = get_hspec(sim, snap)
         hspec.plot_Z_vs_vel_width(color=colors[sim], color2=colors2[sim])
         vel_data.plot_prochaska_2008_correlation(zrange[snap])
+        plt.xlim(10, 500)
         save_figure(path.join(outdir,out))
         plt.clf()
-        (_, met, vels) = vel_data.load_data()
-        print "KS test is : ",hspec.kstest(10**met, vels)
 
 def plot_vel_width_sims(sims, snap, log=False):
     """Plot velocity widths for a series of simulations"""
@@ -186,7 +185,7 @@ def plot_mean_median(sims, snap):
     for sss in sims:
         hspec = get_hspec(sss, snap)
         hspec.plot_f_meanmedian("Si", 2, color=colors[sss], ls=lss[sss])
-    vel_data.plot_extra_stat_hist(False,zrange[snap])
+    vel_data.plot_extra_stat_hist(False)
     plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
@@ -198,7 +197,7 @@ def plot_f_peak(sims, snap):
         hspec = get_hspec(sss, snap)
         hspec.plot_f_peak("Si", 2, color=colors[sss], ls=lss[sss])
     plt.legend(loc=2,ncol=3)
-    vel_data.plot_extra_stat_hist(True,zrange[snap])
+    vel_data.plot_extra_stat_hist(True)
     plt.ylim(0,3)
     save_figure(path.join(outdir,"cosmo_peak_z"+str(snap)))
     plt.clf()
@@ -239,8 +238,49 @@ def plot_vel_redshift_evo(sim):
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_zz_evol"))
     plt.clf()
 
+def do_statistics(sim, snap):
+    """Compute statistics"""
+    #Get Observational data
+    (_, met, vel) = vel_data.load_data(zrange[snap])
+    vel = np.log10(vel)
+    #Get Simulated data
+    halo = myname.get_name(sim, True)
+    hspec = ps.PlottingSpectra(snap, halo)
+    svel = hspec.vel_width("Si", 2)
+    smet = hspec.get_metallicity()
+    #Ignore objects too faint to be seen
+    ind2 = np.where(smet > 1e-4)
+    smet = np.log10(smet[ind2])
+    svel = np.log10(svel[ind2])
+    #Fit to both datasets
+    (obs_intercept, obs_slope, obs_var) = ls.leastsq(vel,met)
+    (s_intercept, s_slope, s_var) = ls.leastsq(svel,smet)
+    print "obs fit: ",obs_intercept, obs_slope, np.sqrt(obs_var)
+    print "sim fit: ",s_intercept, s_slope, np.sqrt(s_var)
+    #Find correlations
+    print "obs pearson r: ",ls.pearson(vel, met,obs_intercept, obs_slope)
+    print "sim pearson r: ",ls.pearson(svel, smet,s_intercept, s_slope)
+    print "obs kstest: ",ls.kstest(vel, met,obs_intercept, obs_slope)
+    print "sim kstest: ",ls.kstest(svel, smet,s_intercept, s_slope)
+    #Now test whether they come from the same population
+    kss = hspec.kstest(10**met, 10**vel)
+    print "KS test between simulated and observed samples: ",kss
+    #Do 200 trials and see how many times the KS test is worse
+    ntrials = 50
+    count = 0
+    for i in xrange(ntrials):
+        rand = np.random.randint(0,np.size(svel), np.size(vel))
+        if kss <= hspec.kstest(10**smet[rand], 10**svel[rand]):
+             count+=1
+    print "Prob KS test between simulated samples was larger: ",count*1./ntrials
+
 if __name__ == "__main__":
 #     plot_vel_widths_cloudy()
+
+    for zz in (1,3,5):
+        do_statistics(7,zz)
+    for ss in (1,3):
+        do_statistics(ss,3)
 
     simlist = (1,3,7) #range(8)
     for ss in simlist:
@@ -251,7 +291,7 @@ if __name__ == "__main__":
 
     plot_vel_width_sims(simlist, 3, log=True)
     for zz in (1,3,5):
-        plot_met_corr(range(8),zz)
+        plot_met_corr(simlist,zz)
         hspec_cache = {}
 
     for zz in (1, 3, 5):

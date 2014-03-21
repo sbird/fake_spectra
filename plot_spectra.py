@@ -207,7 +207,7 @@ class PlottingSpectra(spectra.Spectra):
         ind2 = np.where(met > 1e-4)
         met = met[ind2]
         vel = vel[ind2]
-        self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2)
+        self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2, fit=True)
         plt.xlim(10,2e3)
         plt.ylabel(r"$\mathrm{Z} / \mathrm{Z}_\odot$")
         plt.xlabel(r"$v_\mathrm{90}$ km s$^{-1}$")
@@ -239,19 +239,17 @@ class PlottingSpectra(spectra.Spectra):
         virial = self.virial_vel(halo)
         self._plot_2d_contour(virial, xx, 10, name+" virial velocity", color, color2, ylog=log)
 
-    def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue", ylog=True, xlog=True):
+    def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue", ylog=True, xlog=True, fit=False, sample=40.):
         """Helper function to make a 2D contour map of a correlation, as well as the best-fit linear fit"""
         if ylog:
             yvals = np.log10(yvals)
         if xlog:
             xvals = np.log10(xvals)
-        (intercept, slope, var) = lsq.leastsq(yvals,xvals)
-        print name+" corr: ",intercept, slope, np.sqrt(var)
-        print name+" correlation: ",lsq.pearson(yvals,xvals,intercept, slope)
-        print name+" kstest: ",lsq.kstest(yvals, xvals,intercept, slope)
-        (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins,normed=True)
+        (intercept, slope, var) = lsq.leastsq(xvals,yvals)
+        (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins)
         xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
         ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
+        xx = np.logspace(np.min(xbins), np.max(xbins),15)
         ax = plt.gca()
         if ylog:
             ybins = 10**ybins
@@ -259,12 +257,13 @@ class PlottingSpectra(spectra.Spectra):
         if xlog:
             xbins = 10**xbins
             ax.set_xscale('log')
-        plt.contourf(xbins,ybins,H.T,[0.1,0.5,10],colors=(color,color2,"black"),alpha=0.5)
-#         xx = np.logspace(np.min(yvals), np.max(yvals),15)
-#         plt.loglog(10**intercept*xx**slope, xx, color="black",label=self.label)
+        plt.contourf(xbins,ybins,H.T,(self.NumLos/sample)*np.array([0.3,1,10]),colors=(color,color2,"black"),alpha=0.5)
+        if fit:
+            plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")
 
     def kstest(self, Zdata, veldata, elem="Si", ion=2):
-        """Find the 2D KS test value of the Vel width and log metallicity with respect to an external dataset, veldata and Z data"""
+        """Find the 2D KS test value of the vel width and log metallicity
+           with respect to an external dataset, veldata and Z data"""
         met = self.get_metallicity()
         ind = self.get_filt(elem, ion)
         met = np.log10(met[ind])
