@@ -104,15 +104,21 @@ def plot_mass_vs_mm(sim, snap):
 def plot_mm_vs_vel(sim, snap):
     """Plot vel width vs mm and fedge"""
     hspec = get_hspec(sim,snap)
-#     out = "cosmo"+str(sim)+"_fmm_vel_z"+str(snap)
-    ind = hspec.get_filt("Si", 2)
-    vel = hspec.vel_width("Si", 2)[ind]
-    fmm = hspec.vel_mean_median("Si",2)[ind]
-    fpk = hspec.vel_peak("Si",2)[ind]
-#     hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim], ylog=False)
-#     plt.xlim(10,2e3)
-#     save_figure(path.join(outdir,out))
-#     plt.clf()
+    out = "cosmo"+str(sim)+"_fmm_vel_z"+str(snap)
+    vel = hspec.vel_width("Si", 2)
+    fmm = hspec.vel_mean_median("Si",2)
+    fpk = hspec.vel_peak("Si",2)
+#     (halo, _) = hspec.find_nearest_halo()
+#     ind2 = np.where(halo > 0)
+#     halo = halo[ind2]
+#     vel = vel[ind2]
+#     fpk = fpk[ind2]
+#     fmm = fmm[ind2]
+#     virial = hspec.virial_vel(halo)
+    hspec._plot_2d_contour(vel, fmm, 10, "fmm vel", color=colors[sim], color2=colors2[sim], ylog=False)
+    plt.xlim(10,2e3)
+    save_figure(path.join(outdir,out))
+    plt.clf()
     out = "cosmo"+str(sim)+"_fedge_vel_z"+str(snap)
     hspec._plot_2d_contour(vel, fpk, 10, "fpk vel", color=colors[sim], color2=colors2[sim], ylog=False)
     plt.ylabel(r"$f_\mathrm{edge}$")
@@ -156,6 +162,7 @@ if __name__ == "__main__":
 
     for zz in (1,3,5):
         for ss in simlist:
+#             plot_vir_vsmass(ss,zz)
             plot_mass_vs(ss, zz)
             plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)
