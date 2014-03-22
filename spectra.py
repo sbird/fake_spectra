@@ -622,8 +622,8 @@ class Spectra:
         ntau = np.empty([self.NumLos, self.nbins])
         #Use the maximum unsaturated optical depth
         for ii in xrange(self.NumLos):
-            # we want unsaturated lines, defined as those with F > 0.1
-            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.1)
+            # we want unsaturated lines, defined as those with F > 0.01
+            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.01)
             if np.size(ind) == 0:
                 line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
             else:
@@ -716,20 +716,9 @@ class Spectra:
         cum_tau = np.cumsum(tau)
         #Use spline interpolation to find the edge of the bins.
         tdiff = cum_tau - 0.95*tot_tau
-        x = np.arange(0,np.size(cum_tau))
-        spl = UnivariateSpline(x, tdiff, s=0)
-        high = spl.roots()
-        if np.size(high) > 1:
-            high = self._check_actual_root(high,tdiff)
+        high = np.where(tdiff >= 0)[0][0]
         tdiff = cum_tau - 0.05*tot_tau
-        spl = UnivariateSpline(x, tdiff, s=0)
-        low = spl.roots()
-        if np.size(low) > 1:
-            low = self._check_actual_root(low,tdiff)
-        if np.size(low) == 0:
-            low = 0
-        if np.size(high) == 0:
-            high = np.size(cum_tau)-1
+        low = np.where(tdiff >= 0)[0][0]
         return (low, high)
 
     def _vel_median(self, tau, tot_tau):
@@ -737,16 +726,7 @@ class Spectra:
         cum_tau = np.cumsum(tau)
         #Use spline interpolation to find the edge of the bins.
         tdiff = cum_tau - 0.5*tot_tau
-        x = np.arange(0,np.size(cum_tau))
-        spl = UnivariateSpline(x, tdiff, s=0)
-        high = spl.roots()
-        if np.size(high) > 1:
-            return self._check_actual_root(high,tdiff)
-        if np.size(high) == 0:
-            if cum_tau[0] > 0:
-                high = 0
-            else:
-                high = np.size(cum_tau)-1
+        high = np.where(tdiff >= 0)[0][0]
         return high
 
     def _check_actual_root(self,roots,array):
@@ -794,7 +774,7 @@ class Spectra:
             tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
             tot_tau = np.sum(tau_l)
             (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
-            vmax = np.where(tau_l == np.max(tau_l))
+            vmax = np.where(tau_l == np.max(tau_l))[0][0]
             vmean = (nnlow+nnhigh)/2.
             peak[ll] = np.abs(vmax - vmean)/((nnhigh-nnlow)/2.)
         #Return the width
