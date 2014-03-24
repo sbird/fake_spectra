@@ -217,17 +217,20 @@ class Spectra:
         else:
             raise ValueError("Not supported")
         f.close()
-        if self.snr > 0 and (array_name == "tau_obs" or array_name == "tau"):
-            array[key] = self.res_corr(self.add_noise(self.snr, array[key]), 8)
+        if array_name == "tau_obs" or array_name == "tau":
+            if self.snr > 0:
+                array[key] = self.res_corr(self.add_noise(self.snr, array[key]), 8)
+            else:
+                array[key] = self.res_corr(array[key], 8)
 
     def add_noise(self, snr, tau):
         """Add Gaussian noise to flux, as computed from optical depth"""
         flux = np.exp(-tau)
-        vars = np.var(1-flux, axis=1)
+        varnce = np.var(1-flux, axis=1)
         for ll in xrange(np.shape(tau)[0]):
             #SNR = Variance of signal/variance of noise
-            if vars[ll] > 0:
-                flux[ll,:]+=np.random.normal(0, np.sqrt(vars[ll]*snr), np.shape(flux[ll,:]))
+            if varnce[ll] > 0:
+                flux[ll,:]+=np.random.normal(0, np.sqrt(varnce[ll]*snr), np.shape(flux[ll,:]))
         #Make sure we don't have negative flux
         tau[np.where(flux > 0)] = -np.log(flux[np.where(flux > 0)])
         assert(np.all(np.logical_not(np.isnan(tau))))
