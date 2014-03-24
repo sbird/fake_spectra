@@ -215,6 +215,21 @@ class Spectra:
         else:
             raise ValueError("Not supported")
         f.close()
+        if array_name == "tau_obs" or array_name == "tau":
+            array[key] = self.res_corr(self.add_noise(1./20, array[key]), 8)
+
+    def add_noise(self, snr, tau):
+        """Add Gaussian noise to flux, as computed from optical depth"""
+        flux = np.exp(-tau)
+        vars = np.var(1-flux, axis=1)
+        for ll in xrange(np.shape(tau)[0]):
+            #SNR = Variance of signal/variance of noise
+            if vars[ll] > 0:
+                flux[ll,:]+=np.random.normal(0, np.sqrt(vars[ll]*snr), np.shape(flux[ll,:]))
+        #Make sure we don't have negative flux
+        flux[np.where(flux < 0)] = np.exp(-tau[np.where(flux < 0)])
+        assert(np.all(np.logical_not(np.isnan(-np.log(flux)))))
+        return -np.log(flux)
 
     def load_savefile(self,savefile=None):
         """Load data from a file"""
@@ -632,7 +647,6 @@ class Spectra:
                 line = (line[0][0],)
             ntau[ii,:] = tau[line,ii,:]
         # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
-        ntau = self.res_corr(ntau)
         self.tau_obs[(elem, ion)] = ntau
         if number >= 0:
             return ntau[number,:]
