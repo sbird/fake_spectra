@@ -637,8 +637,8 @@ class Spectra:
         ntau = np.empty([self.NumLos, self.nbins])
         #Use the maximum unsaturated optical depth
         for ii in xrange(self.NumLos):
-            # we want unsaturated lines, defined as those with F > 0.01
-            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.01)
+            # we want unsaturated lines, defined as those with F > 0.1
+            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.1)
             if np.size(ind) == 0:
                 line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
             else:
