@@ -71,6 +71,8 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart = 512**3
+        #If greater than zero, will add noise to spectra when they are loaded.
+        self.snr = 1/20.
         try:
             self.files = hdfsim.get_all_files(num, base)
             self.files.reverse()
@@ -215,8 +217,8 @@ class Spectra:
         else:
             raise ValueError("Not supported")
         f.close()
-        if array_name == "tau_obs" or array_name == "tau":
-            array[key] = self.res_corr(self.add_noise(1./20, array[key]), 8)
+        if self.snr > 0 and (array_name == "tau_obs" or array_name == "tau"):
+            array[key] = self.res_corr(self.add_noise(self.snr, array[key]), 8)
 
     def add_noise(self, snr, tau):
         """Add Gaussian noise to flux, as computed from optical depth"""
@@ -227,9 +229,9 @@ class Spectra:
             if vars[ll] > 0:
                 flux[ll,:]+=np.random.normal(0, np.sqrt(vars[ll]*snr), np.shape(flux[ll,:]))
         #Make sure we don't have negative flux
-        flux[np.where(flux < 0)] = np.exp(-tau[np.where(flux < 0)])
-        assert(np.all(np.logical_not(np.isnan(-np.log(flux)))))
-        return -np.log(flux)
+        tau[np.where(flux > 0)] = -np.log(flux[np.where(flux > 0)])
+        assert(np.all(np.logical_not(np.isnan(tau))))
+        return tau
 
     def load_savefile(self,savefile=None):
         """Load data from a file"""
@@ -638,7 +640,7 @@ class Spectra:
         #Use the maximum unsaturated optical depth
         for ii in xrange(self.NumLos):
             # we want unsaturated lines, defined as those with F > 0.1
-            ind = np.where(np.exp(-maxtaus[:,ii]) > 0.1)
+            ind = np.where(-maxtaus[:,ii] > np.log(0.1))
             if np.size(ind) == 0:
                 line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
             else:
