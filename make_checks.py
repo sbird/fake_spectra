@@ -72,7 +72,6 @@ def plot_vel_width_SiII(sim, snap, ff=False):
 
 def test_spec_resolution():
     """Plot the velocity widths for different spectral resolutions"""
-    #Do spectral resolution test
     halo = myname.get_name(7)
     #Higher resolution spectrum
     hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
@@ -81,7 +80,6 @@ def test_spec_resolution():
 
 def test_pecvel():
     """Plot the velocity widths with and without peculiar velocities"""
-    #Do spectral resolution test
     halo = myname.get_name(7)
     #Higher resolution spectrum
     hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
@@ -90,7 +88,6 @@ def test_pecvel():
 
 def test_tophat():
     """Plot the velocity widths with and with top hat vs SPH"""
-    #Do spectral resolution test
     halo = myname.get_name(7)
     #Higher resolution spectrum
     hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
@@ -99,7 +96,6 @@ def test_tophat():
 
 def test_box_resolution():
     """Plot the velocity widths for different size boxes"""
-    #Do spectral resolution test
     halo = myname.get_name(5)
     halo10 = myname.get_name(5,box=10)
     for zz in (1,3,5):
@@ -108,12 +104,19 @@ def test_box_resolution():
         plot_check(hspec,hspec2,"box", zz)
 
 def test_atten():
-    """Plot the velocity widths for different size boxes"""
-    #Do spectral resolution test
+    """Plot the effect of the self-shielding correction"""
     halo = myname.get_name(7)
     hspec = ps.PlottingSpectra(3, halo)
     hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5")
     plot_check(hspec,hspec2,"no_atten")
+
+def test_noise():
+    """Plot the effect of noise on the spectrum"""
+    halo = myname.get_name(7)
+    hspec = ps.PlottingSpectra(3, halo)
+    hspec2 = ps.PlottingSpectra(3, halo)
+    hspec2.snr = False
+    plot_check(hspec,hspec2,"noise")
 
     #Higher resolution spectrum
 def plot_check(hspec, hspec2, ofile, snap=3):
@@ -161,6 +164,7 @@ def test_tescari_halos(sim, snap):
 
 if __name__ == "__main__":
     test_tescari_halos(7,3)
+    test_noise()
     test_atten()
     test_spec_resolution()
     test_box_resolution()
