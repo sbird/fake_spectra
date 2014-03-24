@@ -15,48 +15,42 @@ class PlottingSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
         self.label=label
 
-    def plot_vel_width(self, elem, ion, dv=0.1, met_cut = 1e13, color="red", ls="-"):
+    def plot_vel_width(self, elem, ion, dv=0.1, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
             ion - ionisation state: 1 is neutral.
             dv - bin spacing
-            met_cut - Discard spectra whose maximal metal column density is below this level.
-                      Removes unobservable systems.
-
         """
-        (vbin, vels) = self.vel_width_hist(elem, ion, dv, met_cut=met_cut)
+        (vbin, vels) = self.vel_width_hist(elem, ion, dv)
         plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.02, color="red", ls="-"):
+    def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.002, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
         Parameters:
             elem - element to use
             ion - ionisation state: 1 is neutral.
             line - line number to use
             dv - bin spacing
-            met_cut - Discard spectra whose maximal metal column density is below this level.
-                      Removes unobservable systems.
-
         """
         (bin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
         plt.plot(bin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_f_meanmedian(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
+    def plot_f_meanmedian(self, elem, ion, dv=0.03, color="red", ls="-"):
         """
         Plot an f_mean_median histogram
         For args see plot_vel_width
         """
-        (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv, met_cut=met_cut)
+        (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{mm}$")
 
-    def plot_f_peak(self, elem, ion, dv=0.03, met_cut = 1e13, color="red", ls="-"):
+    def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):
         """
         Plot an f_peak histogram
         For args see plot_vel_width
         """
-        (vbin, vels) = self.f_peak_hist(elem, ion, dv, met_cut=met_cut)
+        (vbin, vels) = self.f_peak_hist(elem, ion, dv)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{edg}$")
 
@@ -179,14 +173,12 @@ class PlottingSpectra(spectra.Spectra):
     def plot_metallicity(self, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities"""
         met = self.get_metallicity()
-        ind = self.get_filt("Z", -1, None)
-        self._plot_metallicity(met[ind],nbins,color,ls)
+        self._plot_metallicity(met,nbins,color,ls)
 
     def plot_species_metallicity(self, species, ion, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities from an ionic species"""
         met = self.get_ion_metallicity(species,ion)
-        ind = self.get_filt(species, ion, None)
-        self._plot_metallicity(met[ind],nbins,color,ls)
+        self._plot_metallicity(met,nbins,color,ls)
 
     def plot_ion_corr(self, species, ion, nbins=80,color="blue",ls="-"):
         """Plot the difference between the single-species ionisation and the metallicity from GFM_Metallicity"""

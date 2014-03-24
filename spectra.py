@@ -659,13 +659,16 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, line, met_cut = 1e13):
+    def get_filt(self, elem, ion, f_min = 0.999):
         """
-        Get an index list of spectra with metal column density above a certain value
+        Get an index list to exclude certain spectra where the metal lines are not observable.
+        This should not be a huge fraction of the total spectra, as few metal-poor DLAs are observed.
         """
         #Remember this is not in log...
-        rho = self.get_col_density(elem,line)
-        ind = np.where((np.max(rho,axis=1) > met_cut))
+        #This is about 8% of spectra, which is a little high,
+        #but it is hard to know exactly how many sightlines don't have metals.
+        rho = self.get_observer_tau(elem, ion)
+        ind = np.where(np.max(rho,axis=1) > -np.log(f_min))
         return ind
 
     def vel_width(self, elem, ion):
@@ -850,7 +853,7 @@ class Spectra:
         return eq_width
 
 
-    def vel_width_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
+    def vel_width_hist(self, elem, ion, dv=0.1):
         """
         Compute a histogram of the velocity widths of our spectra, with the purpose of
         comparing to the data of Prochaska 2008.
@@ -871,9 +874,9 @@ class Spectra:
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_width, log=True)
+        return self._vel_stat_hist(elem, ion, dv, self.vel_width, log=True)
 
-    def f_meanmedian_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
+    def f_meanmedian_hist(self, elem, ion, dv=0.1):
         """
         Compute a histogram of the mean median statistic of our spectra, the difference in
         units of the velocity width between the mean velocity and median velocity of
@@ -881,9 +884,9 @@ class Spectra:
 
         For arguments see vel_width_hist.
         """
-        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_mean_median, log=False)
+        return self._vel_stat_hist(elem, ion, dv, self.vel_mean_median, log=False)
 
-    def f_peak_hist(self, elem, ion, dv=0.1, met_cut = 1e13):
+    def f_peak_hist(self, elem, ion, dv=0.1):
         """
         Compute a histogram of the peak statistic of our spectra, the difference in
         units of the velocity width between the largest peak velocity and the mean velocity of
@@ -891,7 +894,7 @@ class Spectra:
 
         For arguments see vel_width_hist.
         """
-        return self._vel_stat_hist(elem, ion, dv, met_cut, self.vel_peak, log=False)
+        return self._vel_stat_hist(elem, ion, dv, self.vel_peak, log=False)
 
     def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
         """
@@ -911,13 +914,13 @@ class Spectra:
         eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
         return (vbin, eqws)
 
-    def _vel_stat_hist(self, elem, ion, dv, met_cut, func, log=True):
+    def _vel_stat_hist(self, elem, ion, dv, func, log=True):
         """
            Internal function that finds the histogram in velocity space of
            the values of a statistic for a particular ion.
         """
         #Filter small number of spectra without metals
-        ind = self.get_filt(elem, ion, met_cut)
+        ind = self.get_filt(elem, ion)
         vel_width = func(elem, ion)
         vel_width = vel_width[ind]
         if log:
