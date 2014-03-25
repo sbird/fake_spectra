@@ -525,8 +525,12 @@ class Spectra:
         (offset, roll) = self._get_rolled_spectra(strong)
         #Minimum
         if minwidth > 0:
-            low  = int((self.nbins/2-minwidth)*self.dvbin)*np.ones(self.NumLos, dtype=np.int)
-            high = int((self.nbins/2+minwidth)*self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+            if minwidth < self.nbins/2:
+                low  = int(self.nbins/2-minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+                high = int(self.nbins/2+minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+            else:
+                low = np.zeros(self.NumLos, dtype=np.int)
+                high = self.nbins*np.ones(self.NumLos, dtype=np.int)
         for ii in xrange(self.NumLos):
             #Where is there no absorption leftwards of the peak?
             for i in xrange(low[ii],0,-chunk):
