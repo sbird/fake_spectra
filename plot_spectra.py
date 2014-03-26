@@ -143,12 +143,13 @@ class PlottingSpectra(spectra.Spectra):
         #Find velocity width
         (halos, subhalos) = self.find_nearby_halos()
         vels = self.vel_width(elem, ion)
+        ii = self.get_filt(elem, ion)
         #Find virial velocity
         (halo, _) = self.find_nearest_halo()
-        ind = np.where(halo > 0)
+        ind = np.where(halo[ii] > 0)
 #         virial = np.ones_like(halo, dtype=np.double)
 #         virial[ind] = self.virial_vel(halo[ind])
-        vwvir = vels[ind]  #/virial[ind]
+        vwvir = vels[ii][ind]  #/virial[ind]
         #Make bins
         v_table = 10**np.arange(np.min(np.log10(vwvir)),np.max(np.log10(vwvir)) , dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
@@ -214,7 +215,7 @@ class PlottingSpectra(spectra.Spectra):
         mass = self.sub_mass[halo]
         mass = mass[mind]
         met = met[mind]
-        self._plot_2d_contour(mass, met, 10, "Z mass", color, color2)
+        self._plot_2d_contour(mass+0.1, met, 10, "Z mass", color, color2)
         plt.ylim(1e-4,1)
 
     def plot_vel_vs_mass(self,elem, ion, color="blue",color2="darkblue"):
@@ -225,10 +226,11 @@ class PlottingSpectra(spectra.Spectra):
     def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", log=True):
         """Helper function to plot something against virial velocity"""
         (halo, _) = self.find_nearest_halo()
-        ind = np.where(halo > 0)
-        halo = halo[ind]
-        xx = xx[ind]
-        virial = self.virial_vel(halo)
+        ii = self.get_filt("Si",2)
+        ind = np.where(halo[ii] > 0)
+        halo = halo[ii][ind]
+        xx = xx[ii][ind]
+        virial = self.virial_vel(halo)+0.1
         self._plot_2d_contour(virial, xx, 10, name+" virial velocity", color, color2, ylog=log)
 
     def _plot_2d_contour(self, xvals, yvals, nbins, name="x y", color="blue", color2="darkblue", ylog=True, xlog=True, fit=False, sample=40.):
@@ -270,7 +272,7 @@ class PlottingSpectra(spectra.Spectra):
         ind = self.get_filt(elem,ion)
         f_ind = np.where(halos[ind] != -1)
         vel = self.vel_width(elem, ion)[ind][f_ind]
-        virial = self.virial_vel(halos[ind][f_ind])
+        virial = self.virial_vel(halos[ind][f_ind])+0.1
         vvvir = vel/virial
         m_table = 10**np.arange(np.log10(np.min(vvvir)), np.log10(np.max(vvvir)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])

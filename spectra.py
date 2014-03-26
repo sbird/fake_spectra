@@ -972,7 +972,7 @@ class Spectra:
         #nlos = np.shape(vel_width)[0]
         #print 'nlos = ',nlos
         virial = self.virial_vel(halos[f_ind])
-        m_table = 10**np.arange(np.log10(np.min(virial)), np.log10(np.max(virial)), dm)
+        m_table = 10**np.arange(np.log10(np.min(virial)+0.1), np.log10(np.max(virial)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
         pdf = np.histogram(np.log10(virial),np.log10(m_table), density=True)[0]
         print "Field DLAs: ",np.size(halos)-np.size(f_ind)
