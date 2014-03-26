@@ -17,10 +17,10 @@ print "Plots at: ",outdir
 
 zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
-colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
-colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey"}
-lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
-labels = {0:"REF",1:"HVEL", 2:"HVNA",3:"NOSN", 4:"NAWW", 5:"MVEL",6:"METAL",7:"2xUV"}
+colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 9:"pink"}
+colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey", 9:"darkred"}
+lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 9:"--"}
+labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 9:"FAST"}
 
 hspec_cache = {}
 
@@ -147,21 +147,22 @@ def plot_mult_frac(sim, snap):
 
 if __name__ == "__main__":
 
-    simlist = (0,1,3,7)  #range(8)
-    for zz in (1,3,5):
+    simlist = (1,3,7,9)  #range(8)
+    zzz = (1,3,5)
+    for zz in zzz:
         for ss in simlist:
             plot_mass_hists(ss, zz)
         save_figure(path.join(outdir,"cosmo_halos_feedback_z"+str(zz)))
         plt.clf()
 
-    for zz in (1,3,5):
+    for zz in zzz:
         for ss in simlist:
             plot_mult_frac(ss,zz)
         plt.legend(loc=2,ncol=3)
         save_figure(path.join(outdir,"cosmo_mult_frac_z"+str(zz)))
         plt.clf()
 
-    for zz in (1,3,5):
+    for zz in zzz:
         for ss in simlist:
             plot_vvir(ss, zz)
         plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         save_figure(path.join(outdir,"cosmo_vw_vel_vir_z"+str(zz)))
         plt.clf()
 
-    for zz in (1,3,5):
+    for zz in zzz:
         for ss in simlist:
 #             plot_vir_vsmass(ss,zz)
             plot_mass_vs(ss, zz)
