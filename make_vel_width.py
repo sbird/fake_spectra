@@ -19,10 +19,10 @@ outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
 zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
 #Colors and linestyles for the simulations
-colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey"}
-colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey"}
-lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-"}
-labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV"}
+colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 9:"pink"}
+colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey", 9:"darkred"}
+lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 9:"--"}
+labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 9:"FAST"}
 
 hspec_cache = {}
 
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     for ss in (1,3):
         do_statistics(ss,3)
 
-    simlist = (1,3,7) #range(8)
+    simlist = (1,3,7,9) #range(8)
     for ss in simlist:
         for nn in (272,350,457,1030,1496,2030,3333):
             plot_spectrum(ss,3, nn)

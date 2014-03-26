@@ -37,8 +37,8 @@ def plot_vel_width_metcol(sim, snap):
     halo = myname.get_name(sim)
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo)
-    hspec.plot_vel_width("Si", 2, met_cut = None)
-    hspec.plot_vel_width("Si", 2, met_cut = 1e13, color="blue")
+    hspec.plot_vel_width("Si", 2)
+    hspec.plot_vel_width("Si", 2, color="blue")
     vel_data.plot_prochaska_2008_data()
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_z"+str(snap)))
     plt.clf()
@@ -75,7 +75,7 @@ def test_spec_resolution():
     halo = myname.get_name(7)
     #Higher resolution spectrum
     hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
-    hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_res.hdf5")
+    hspec2 = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA_res.hdf5")
     plot_check(hspec,hspec2,"specres")
 
 def test_pecvel():
@@ -168,10 +168,10 @@ if __name__ == "__main__":
     test_atten()
     test_spec_resolution()
     test_box_resolution()
-    test_pecvel()
+#     test_pecvel()
     test_tophat()
 
 #     plot_vel_width_SiII(0, 3)
 
-    plot_vel_width_metcol(0,3)
+#     plot_vel_width_metcol(0,3)
     plot_metal_ion_corr(0,3)
