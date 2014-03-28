@@ -43,8 +43,10 @@ class Spectra:
             cofm - table of los positions, as [n, 3] shape array.
             axis - axis along which to put the sightline
             res (optional) - Spectra pixel resolution in km/s
+            snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
+            spec_res - Resolution of the spectrograph. The spectra will be convolved with a Gaussian of this FWHM on loading from disc.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8):
         #Various physical constants
         #Internal gadget mass unit: 1e10 M_sun/h in g/h
         self.UnitMass_in_g=1.989e43
@@ -72,7 +74,8 @@ class Spectra:
         self.discarded=0
         self.npart = 512**3
         #If greater than zero, will add noise to spectra when they are loaded.
-        self.snr = 1/20.
+        self.snr = snr
+        self.spec_res = spec_res
         try:
             self.files = hdfsim.get_all_files(num, base)
             self.files.reverse()
@@ -219,9 +222,9 @@ class Spectra:
         f.close()
         if array_name == "tau_obs" or array_name == "tau":
             if self.snr > 0:
-                array[key] = self.res_corr(self.add_noise(self.snr, array[key]), 8)
+                array[key] = self.res_corr(self.add_noise(self.snr, array[key]), self.spec_res)
             else:
-                array[key] = self.res_corr(array[key], 8)
+                array[key] = self.res_corr(array[key], self.spec_res)
 
     def add_noise(self, snr, tau):
         """Add Gaussian noise to flux, as computed from optical depth"""

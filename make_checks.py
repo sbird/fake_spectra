@@ -113,9 +113,8 @@ def test_atten():
 def test_noise():
     """Plot the effect of noise on the spectrum"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo)
-    hspec2 = ps.PlottingSpectra(3, halo)
-    hspec2.snr = False
+    hspec = ps.PlottingSpectra(3, halo, snr=0.05)
+    hspec2 = ps.PlottingSpectra(3, halo, snr = 0.)
     plot_check(hspec,hspec2,"noise")
 
     #Higher resolution spectrum
