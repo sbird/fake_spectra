@@ -29,7 +29,7 @@ snapnum=3
 sim=7
 
 #Box
-base=path.expanduser("~/data/Cosmo/Cosmo"+str(sim)+"_V6/L10n512/output")
+base=path.expanduser("~/data/Cosmo/Cosmo5_V6/L10n512/output")
 halo = gs.GridSpectra(snapnum, base, numlos=5000)
 
 make_stuff(halo)

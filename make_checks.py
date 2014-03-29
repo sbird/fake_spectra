@@ -49,26 +49,16 @@ def plot_vel_width_metcol(sim, snap):
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_rel_z"+str(snap)))
     plt.clf()
 
-def plot_vel_width_SiII(sim, snap, ff=False):
+def plot_vel_width_SiII(sim, snap):
     """
        Plot the change in velocity widths between the full calculation and
        setting n(Si+)/n(Si) = n(HI)/n(H)
     """
-    halo = myname.get_name(sim, ff)
+    halo = myname.get_name(sim)
     #Load from a save file only
-    hspec = ps.PlotHaloSpectra(snap, halo)
-    hspec.plot_vel_width("Si", 2)
-    hspecSi = ps.PlotHaloSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
-    hspecSi.plot_vel_width("Si", 2, color="blue")
-    vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_SiHI_z"+str(snap)))
-    plt.clf()
-    (vbin, vels1) = hspec.vel_width_hist("Si", 2)
-    (vbin, vels2) = hspecSi.vel_width_hist("Si", 2)
-    mm = np.min((np.size(vels2), np.size(vels1)))
-    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_SiHI_rel_z"+str(snap)))
-    plt.clf()
+    hspec = ps.PlottingSpectra(snap, halo)
+    hspecSi = ps.PlottingSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
+    plot_check(hspec, hspecSi,"SiHI")
 
 def test_spec_resolution():
     """Plot the velocity widths for different spectral resolutions"""
@@ -170,7 +160,7 @@ if __name__ == "__main__":
 #     test_pecvel()
     test_tophat()
 
-#     plot_vel_width_SiII(0, 3)
+    plot_vel_width_SiII(7, 3)
 
 #     plot_vel_width_metcol(0,3)
-    plot_metal_ion_corr(0,3)
+    plot_metal_ion_corr(7,3)
