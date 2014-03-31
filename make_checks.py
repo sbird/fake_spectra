@@ -93,6 +93,14 @@ def test_box_resolution():
         hspec2 = ps.PlottingSpectra(zz, halo10, label="MVELS")
         plot_check(hspec,hspec2,"box", zz)
 
+def test_big_box():
+    """Plot the velocity widths for different size boxes"""
+    halo = myname.get_name(0)
+    halobig = path.expanduser("~/data/Illustris")
+    hspec = ps.PlottingSpectra(3, halo, label="DEF")
+    hspec2 = ps.PlottingSpectra(59, halobig, label="ILLUS")
+    plot_check(hspec,hspec2,"bigbox")
+
 def test_atten():
     """Plot the effect of the self-shielding correction"""
     halo = myname.get_name(7)
@@ -156,6 +164,7 @@ if __name__ == "__main__":
     test_noise()
     test_atten()
     test_spec_resolution()
+    test_big_box()
     test_box_resolution()
 #     test_pecvel()
     test_tophat()
