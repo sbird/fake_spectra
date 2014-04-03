@@ -58,3 +58,17 @@ make_stuff(halo)
 
 halo = hs.HaloSpectra(snapnum, base, minpart=3000, savefile="halo_spectra.hdf5")
 make_stuff(halo)
+
+#Tescari self-shielding condition:
+#add to spectra.py:
+#
+#            ind3 = np.where(den > 0.1)
+#            elem_den = elem_den[ind3]
+#            temp = temp[ind3]
+#            pos = pos[ind3]
+#            hh = hh[ind3]
+#            if get_tau:
+#                vel = vel[ind3]
+# halo = gs.GridSpectra(snapnum, base, numlos=1000, savefile="grid_spectra_DLA_noshield.hdf5")
+# make_stuff(halo)
+

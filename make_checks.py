@@ -108,6 +108,13 @@ def test_atten():
     hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5")
     plot_check(hspec,hspec2,"no_atten")
 
+def test_shield():
+    """Plot velocity width for spectra using self-shielding like in Tescari 2009"""
+    halo = myname.get_name(7)
+    hspec = ps.PlottingSpectra(3, halo)
+    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_noshield.hdf5")
+    plot_check(hspec,hspec2,"no_shield")
+
 def test_noise():
     """Plot the effect of noise on the spectrum"""
     halo = myname.get_name(7)
@@ -160,6 +167,7 @@ def test_tescari_halos(sim, snap):
 
 
 if __name__ == "__main__":
+#     test_shield()
     test_tescari_halos(7,3)
     test_noise()
     test_atten()
