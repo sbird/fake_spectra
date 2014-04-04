@@ -12,7 +12,8 @@ import myname
 import numpy as np
 from save_figure import save_figure
 
-outdir = path.join(myname.base, "plots/mass/")
+outdir = path.join(myname.base, "plots/mass/2d/")
+topdir = path.join(myname.base, "plots/mass/")
 print "Plots at: ",outdir
 
 zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
@@ -150,28 +151,28 @@ def plot_vw_break(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_vel_width_breakdown()
     out = "cosmo"+str(sim)+"_vw_break_z"+str(snap)
-    save_figure(path.join(outdir,out))
+    save_figure(path.join(topdir,out))
     plt.clf()
     hspec.plot_f_peak_breakdown()
     out = "cosmo"+str(sim)+"_fedge_break_z"+str(snap)
-    save_figure(path.join(outdir,out))
+    save_figure(path.join(topdir,out))
     plt.clf()
 
 if __name__ == "__main__":
 
     simlist = (1,3,7,9)  #range(8)
-    zzz = (1,3,5)
+    zzz = (3,5,1)
     for zz in zzz:
         for ss in simlist:
             plot_mass_hists(ss, zz)
-        save_figure(path.join(outdir,"cosmo_halos_feedback_z"+str(zz)))
+        save_figure(path.join(topdir,"cosmo_halos_feedback_z"+str(zz)))
         plt.clf()
 
     for zz in zzz:
         for ss in simlist:
             plot_mult_frac(ss,zz)
         plt.legend(loc=2,ncol=3)
-        save_figure(path.join(outdir,"cosmo_mult_frac_z"+str(zz)))
+        save_figure(path.join(topdir,"cosmo_mult_frac_z"+str(zz)))
         plt.clf()
 
     for zz in zzz:
@@ -179,12 +180,12 @@ if __name__ == "__main__":
             plot_vvir(ss, zz)
         plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
         plt.xlim(0.05, 30)
-        save_figure(path.join(outdir,"cosmo_vw_vel_vir_z"+str(zz)))
+        save_figure(path.join(topdir,"cosmo_vw_vel_vir_z"+str(zz)))
         plt.clf()
 
     for zz in zzz:
         for ss in simlist:
-#             plot_vir_vsmass(ss,zz)
+            plot_vir_vsmass(ss,zz)
             plot_vw_break(ss,zz)
             plot_mass_vs(ss, zz)
             plot_mass_vs_mm(ss, zz)
