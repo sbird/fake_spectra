@@ -10,5 +10,5 @@ def get_name(sim, ff=True, box=25):
     if ff:
         halo=path.join(halo,"L"+str(box)+"n512/output")
     else:
-        halo=path.join(halo,"L"+str(box)+"256")
+        halo=path.join(halo,"L"+str(box)+"n256")
     return path.join(base, halo)
