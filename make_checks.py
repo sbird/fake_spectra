@@ -84,6 +84,15 @@ def test_tophat():
     hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_tophat.hdf5")
     plot_check(hspec,hspec2,"tophat")
 
+def test_lowres():
+    """Plot the velocity widths with and with top hat vs SPH"""
+    halo = myname.get_name(0)
+    halolow = myname.get_name(0, ff=False)
+    #Higher resolution spectrum
+    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.PlottingSpectra(60, halolow, None, None, savefile="rand_spectra_DLA.hdf5")
+    plot_check(hspec,hspec2,"lowres")
+
 def test_box_resolution():
     """Plot the velocity widths for different size boxes"""
     halo = myname.get_name(5)
@@ -172,6 +181,7 @@ if __name__ == "__main__":
     test_noise()
     test_atten()
     test_spec_resolution()
+    test_lowres()
     test_big_box()
     test_box_resolution()
 #     test_pecvel()
