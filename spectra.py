@@ -242,7 +242,10 @@ class Spectra:
     def load_savefile(self,savefile=None):
         """Load data from a file"""
         #Name of savefile
-        f=h5py.File(savefile,'r')
+        try:
+            f=h5py.File(savefile,'r')
+        except IOError:
+            raise IOError("Could not open file: "+savefile)
         grid_file=f["Header"]
         self.red=grid_file.attrs["redshift"]
         self.atime = 1./(1+self.red)
