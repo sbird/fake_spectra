@@ -145,6 +145,18 @@ def plot_mult_frac(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_mult_halo_frac(color=colors[sim], color2 = colors2[sim], ls=lss[sim])
 
+def plot_vw_break(sim, snap):
+    """Plot breakdown of velocity width by halo mass"""
+    hspec = get_hspec(sim, snap)
+    hspec.plot_vel_width_breakdown()
+    out = "cosmo"+str(sim)+"_vw_break_z"+str(snap)
+    save_figure(path.join(outdir,out))
+    plt.clf()
+    hspec.plot_f_peak_breakdown()
+    out = "cosmo"+str(sim)+"_fedge_break_z"+str(snap)
+    save_figure(path.join(outdir,out))
+    plt.clf()
+
 if __name__ == "__main__":
 
     simlist = (1,3,7,9)  #range(8)
@@ -173,6 +185,7 @@ if __name__ == "__main__":
     for zz in zzz:
         for ss in simlist:
 #             plot_vir_vsmass(ss,zz)
+            plot_vw_break(ss,zz)
             plot_mass_vs(ss, zz)
             plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)

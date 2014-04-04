@@ -134,6 +134,69 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
 
+    def plot_vel_width_breakdown(self, elem = "Si", ion = 2, dv = 0.1):
+        """
+        Plots the fraction of the total velocity width histogram in a series of virial velocity bins
+        """
+        #Find velocity width
+        vels = self.vel_width(elem, ion)
+        ii = self.get_filt(elem, ion)
+        self._plot_breakdown(vels,ii, dv)
+        plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
+        plt.ylabel(r"Fraction")
+        plt.ylim(0,1)
+        plt.xlim(10,500)
+        plt.legend(loc=1,ncol=2)
+
+
+    def plot_f_peak_breakdown(self, elem = "Si", ion = 2, dv = 0.05):
+        """
+        Plots the fraction of the total fedge histogram in a series of virial velocity bins
+        """
+        #Find velocity width
+        vels = self.vel_peak(elem, ion)
+        ii = self.get_filt(elem, ion)
+        self._plot_breakdown(vels,ii, dv, False)
+        plt.xlabel(r"$f_\mathrm{edg}$")
+        plt.ylabel(r"Fraction")
+        plt.ylim(0,1)
+        plt.xlim(0,1)
+        plt.legend(loc=1,ncol=2)
+
+    def _plot_breakdown(self, array, filt, dv, log=True):
+        """
+        Helper function to plot something broken down by halo mass
+        """
+        #Find virial velocity
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo[filt] > 0)
+        virial = self.virial_vel(halo[filt][ind])
+        array = array[filt]
+        #Make bins
+        if log:
+            func = plt.semilogx
+            v_table = 10**np.arange(np.min(np.log10(array)),np.max(np.log10(array)) , dv)
+        else:
+            func = plt.plot
+            v_table = np.arange(np.min(array),np.max(array) , dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        #Histogram of vel width
+        vhist = np.histogram(array, v_table)[0]
+        vhist[np.where(vhist == 0)] = 1
+        #Histogram of vel width for all halos in given virial velocity bin
+        vind = np.where(virial < 60)
+        vhist2 = np.histogram(array[ind][vind], v_table)[0]
+        func(vbin, vhist2/(1.*vhist), color="red", ls="--", label="<60")
+        vind = np.where((virial > 60)*(virial < 120))
+        vhist2 = np.histogram(array[ind][vind], v_table)[0]
+        func(vbin, vhist2/(1.*vhist), color="purple", ls=":", label="60-120")
+        vind = np.where(virial > 120)
+        vhist2 = np.histogram(array[ind][vind], v_table)[0]
+        func(vbin, vhist2/(1.*vhist), color="cyan", ls="-", label=">120")
+        vind = np.where(halo[filt] < 0)
+        vhist2 = np.histogram(array[vind], v_table)[0]
+        func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
+
     def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", color2 = "red", ls="-"):
         """
         Plots the fraction of spectra in each velocity width bin which are separated.
