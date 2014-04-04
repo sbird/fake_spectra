@@ -7,13 +7,12 @@ Transitions are various.
 """
 
 import re
-from os.path import expanduser
 
 class LineData:
     """Class to aggregate a number of lines from VPFIT tables. Reads from atom.dat,
     to get the results call get_line(species, ion), where ion is the transition number.
     At the moment only lowest level transition in each sequence is read."""
-    def __init__(self, vpdat = expanduser("~/codes/vpfit/atom.dat")):
+    def __init__(self, vpdat = "atom.dat"):
         self.species = ('H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe')
         #Put in the masses by hand for simplicity
         self.masses = {'H': 1.00794,'He': 4.002602,'C': 12.011,'N': 14.00674,'O': 15.9994,'Ne': 20.18,'Mg': 24.3050,'Si': 28.0855,'Fe': 55.847 }
