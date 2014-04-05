@@ -1,0 +1,77 @@
+= Flux extractor =
+
+This is a small code for generating and analyzing simulated spectra from
+Arepo/Gadget HDF5 simulation output. It is fast, parallel and written in C++ and Python.
+It really has two parts: 
+1) a C++/python code which generates and analyses arbitrary spectra
+2) A (slightly) maintained C++ command line program, extract, that generates 
+Lyman-alpha spectra and outputs them to a binary file.
+
+If you are reading these instructions, I will assume you are using the first part:
+the second program is for compatibility with older spectral extraction codes, 
+of which this is a rewrite, and so anyone who wants it should already know 
+how to use it.
+
+== Installation ==
+
+Required Python libraries:
+- numpy
+- h5py
+- matplotlib
+- spb_common (small python routines I use in a number of my projects)
+- cloudy_tables (scripts for finding an ionisation fraction from a cloudy table)
+
+All these libraries should be in your $PYTHONPATH
+
+To make the C module, type:
+"make"
+On some systems you may have to set PYINC in the Makefile 
+to the location of your python include headers.
+
+== Usage ==
+The main spectral generation routines are used can be called with:
+
+import spectra
+spectra.Spectra(...)
+
+However, this requires you to specify the positions of each sightline.
+I have created a number of convenient wrappers for common configurations.
+Two of these are:
+
+randspectra.py - Generate spectra at random locations. Can optionally discard spectra that
+do not meet an HI column density threshold.
+halospectra.py - Generate spectra through the center of halos.
+
+Spectral generation routines take two arguments, base and num, which
+specify where they should look for snapshot output. They will search:
+$(base)/snapdir_$(num)/snap_$(num).hdf5
+Note that num is padded with zeros to three characters, so passing '40' will result in '040'.
+
+Column densities can be generated for arbitrary ions with the method get_col_density(elem, ion)
+For neutral gas, pass ion 1. For the sum of all ionic species, pass ion -1.
+
+Optical depths can be generated for arbitrary lines with the method get_tau(elem, ion, line)
+Line data is loaded from a copy of atom.dat taken from VPFIT.
+
+Thus, to generate randomly positioned Lyman-series spectra and associated HI column densities, 
+one would use this script:
+
+from randspectra import RandSpectra
+
+rr = RandSpectra(5, "MySim", thresh=0.)
+rr.get_tau("H",1,1)
+#Lyman-beta
+rr.get_tau("H",1,2)
+rr.get_col_density("H",1)
+#Save spectra to file
+rr.save_file()
+
+Generated spectra will be saved into HDF5 files, for ease of later analysis.
+Each spectral generation routine saves spectra to a differently named file.
+
+To load them again, use the PlottingSpectra routines:
+
+from plot_spectra import PlottingSpectra
+
+ps = PlottingSpectra(5,"MySim", savefile="mysavefile.hdf5")
+ps.plot_cddf("H",1)
