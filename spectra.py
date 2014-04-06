@@ -1186,7 +1186,7 @@ class Spectra:
            These are empty FoF groups and should not be a problem."""
         SolarMass_in_g=1.989e33
         try:
-            subs=subfindhdf.SubFindHDF(self.base, self.num)
+            subs=subfindhdf.SubFindHDF5(self.base, self.num)
             #Get particle center of mass, use group catalogue.
             self.sub_cofm=subs.get_grp("GroupPos")
             #halo masses in M_sun/h: use M_200
