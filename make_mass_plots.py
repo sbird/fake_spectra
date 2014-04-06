@@ -18,7 +18,7 @@ print "Plots at: ",outdir
 
 zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 #Colors and linestyles for the simulations
-colors = {0:"red", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 9:"pink"}
+colors = {0:"pink", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 9:"red"}
 colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey", 9:"darkred"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 9:"--"}
 labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 9:"FAST"}
@@ -43,7 +43,6 @@ def plot_mass_hists(sim, snap):
     hspec = get_hspec(sim,snap)
     (mbins, pdf) = hspec.mass_hist()
     plt.semilogx(mbins,pdf,color=colors[sim], ls=lss[sim],label=labels[sim])
-    plt.xlim(10,300)
 
 def plot_vir_vsmass(sim, snap):
     """Plot mass histogram"""
@@ -151,6 +150,9 @@ def plot_vw_break(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_vel_width_breakdown()
     out = "cosmo"+str(sim)+"_vw_break_z"+str(snap)
+    plt.legend(loc=1,ncol=2)
+    plt.xlim(8,700)
+    plt.xticks((10, 40, 100, 400), ("10","40","100","400"))
     save_figure(path.join(topdir,out))
     plt.clf()
     hspec.plot_f_peak_breakdown()
@@ -161,10 +163,15 @@ def plot_vw_break(sim, snap):
 if __name__ == "__main__":
 
     simlist = (1,3,7,9)  #range(8)
-    zzz = (3,5,1)
+    zzz = (1,3,5)
     for zz in zzz:
         for ss in simlist:
             plot_mass_hists(ss, zz)
+        plt.legend(loc=1,ncol=2)
+        plt.ylim(0,2)
+        plt.xlim(10,400)
+        plt.xlabel(r"$v_\mathrm{vir}$ (km s$^{-1}$)")
+        plt.xticks((10, 40, 100, 400), ("10","40","100","400"))
         save_figure(path.join(topdir,"cosmo_halos_feedback_z"+str(zz)))
         plt.clf()
 
@@ -180,12 +187,15 @@ if __name__ == "__main__":
             plot_vvir(ss, zz)
         plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
         plt.xlim(0.05, 30)
+        plt.legend(loc=1,ncol=2)
+        plt.ylim(0,2)
+        plt.xticks((0.1, 1, 10), ("0.1","1","10"))
         save_figure(path.join(topdir,"cosmo_vw_vel_vir_z"+str(zz)))
         plt.clf()
 
     for zz in zzz:
         for ss in simlist:
-            plot_vir_vsmass(ss,zz)
+#             plot_vir_vsmass(ss,zz)
             plot_vw_break(ss,zz)
             plot_mass_vs(ss, zz)
             plot_mass_vs_mm(ss, zz)

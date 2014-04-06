@@ -143,10 +143,7 @@ class PlottingSpectra(spectra.Spectra):
         ii = self.get_filt(elem, ion)
         self._plot_breakdown(vels,ii, dv)
         plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
-        plt.ylabel(r"Fraction")
         plt.ylim(0,1)
-        plt.xlim(10,500)
-        plt.legend(loc=1,ncol=2)
 
 
     def plot_f_peak_breakdown(self, elem = "Si", ion = 2, dv = 0.05):
@@ -158,7 +155,6 @@ class PlottingSpectra(spectra.Spectra):
         ii = self.get_filt(elem, ion)
         self._plot_breakdown(vels,ii, dv, False)
         plt.xlabel(r"$f_\mathrm{edg}$")
-        plt.ylabel(r"Fraction")
         plt.ylim(0,1)
         plt.xlim(0,1)
         plt.legend(loc=1,ncol=2)
