@@ -31,7 +31,7 @@ from scipy.integrate import cumtrapz
 from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
-import readsubfHDF5
+import subfindhdf
 import numexpr as ne
 from _spectra_priv import _Particle_Interpolate, _near_lines
 
@@ -1186,17 +1186,17 @@ class Spectra:
            These are empty FoF groups and should not be a problem."""
         SolarMass_in_g=1.989e33
         try:
-            subs=readsubfHDF5.subfind_catalog(self.base, self.num,long_ids=True)
+            subs=subfindhdf.SubFindHDF(self.base, self.num)
             #Get particle center of mass, use group catalogue.
-            self.sub_cofm=subs.GroupPos
+            self.sub_cofm=subs.get_grp("GroupPos")
             #halo masses in M_sun/h: use M_200
-            self.sub_mass=subs.Group_M_Crit200*self.UnitMass_in_g/SolarMass_in_g
+            self.sub_mass=subs.get_grp("Group_M_Crit200")*self.UnitMass_in_g/SolarMass_in_g
             #r200 in kpc/h (comoving).
-            self.sub_radii = subs.Group_R_Crit200
+            self.sub_radii = subs.get_grp("Group_R_Crit200")
             #self.sub_vel = subs.GroupVel
-            self.sub_sub_radii =  subs.SubhaloHalfmassRad
-            self.sub_sub_cofm =  subs.SubhaloPos
-            self.sub_sub_index = subs.SubhaloGrNr
+            self.sub_sub_radii =  subs.get_sub("SubhaloHalfmassRad")
+            self.sub_sub_cofm =  subs.get_sub("SubhaloPos")
+            self.sub_sub_index = subs.get_sub("SubhaloGrNr")
         except IOError:
             pass
 
