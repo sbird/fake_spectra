@@ -29,7 +29,7 @@ class HaloSpectra(spectra.Spectra):
             min_mass = self.min_halo_mass(minpart)
             f.close()
             (_, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
-            self.sub_cofm = cofm
+            self.sub_cofm = np.array(cofm, dtype=np.float64)
             self.NumLos = np.size(self.sub_mass)
             #All through y axis
             axis = np.ones(self.NumLos)
