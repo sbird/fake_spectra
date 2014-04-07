@@ -168,7 +168,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
 def test_tescari_halos(sim, snap):
     """Plot velocity width for spectra through the center of halos, like in Tescari 2009"""
     halo = myname.get_name(sim)
-    hspec = ps.PlottingSpectra(snap, halo, savefile="halo_spectra.hdf5")
+    hspec = ps.PlottingSpectra(snap, halo, savefile="halo_spectra_2.hdf5")
     hspec.plot_vel_width("Si", 2, color="red")
     vel_data.plot_prochaska_2008_data()
     save_figure(path.join(outdir,"cosmo_tescari_halos"))
