@@ -283,11 +283,7 @@ class Spectra:
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,get_tau)
         if amumass == False:
-            ret = np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-            if get_tau:
-                return (ret,np.array(0.0))
-            else:
-                return(np.array(0.0),ret)
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
             line = self.lines[(elem,ion)][ll]
         else:
@@ -350,6 +346,8 @@ class Spectra:
             temp = temp[ind2]
             pos = pos[ind2]
             hh = hh[ind2]
+            if np.size(ind2) == 0:
+                return (False, False, False, False,False,False)
             if get_tau:
                 vel = vel[ind2]
             if np.max(temp) > 10**8.6:
