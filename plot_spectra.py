@@ -141,7 +141,7 @@ class PlottingSpectra(spectra.Spectra):
         #Find velocity width
         vels = self.vel_width(elem, ion)
         ii = self.get_filt(elem, ion)
-        self._plot_breakdown(vels,ii, dv)
+        self._plot_breakdown(vels,ii,(0, 60, 120), (60, 120, 900), ("< 60", "60-120", "> 120"),dv)
         plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
         plt.ylim(0,1)
 
@@ -153,13 +153,13 @@ class PlottingSpectra(spectra.Spectra):
         #Find velocity width
         vels = self.vel_peak(elem, ion)
         ii = self.get_filt(elem, ion)
-        self._plot_breakdown(vels,ii, dv, False)
+        self._plot_breakdown(vels,ii,(0, 50), (50, 900), ("< 50", "> 50"),dv, False)
         plt.xlabel(r"$f_\mathrm{edg}$")
         plt.ylim(0,1)
         plt.xlim(0,1)
         plt.legend(loc=1,ncol=2)
 
-    def _plot_breakdown(self, array, filt, dv, log=True):
+    def _plot_breakdown(self, array, filt, low, high, labels, dv, log=True):
         """
         Helper function to plot something broken down by halo mass
         """
@@ -179,16 +179,13 @@ class PlottingSpectra(spectra.Spectra):
         #Histogram of vel width
         vhist = np.histogram(array, v_table)[0]
         vhist[np.where(vhist == 0)] = 1
+        colors = ("red", "purple", "cyan")
+        lss = ("--", ":", "-")
         #Histogram of vel width for all halos in given virial velocity bin
-        vind = np.where(virial < 60)
-        vhist2 = np.histogram(array[ind][vind], v_table)[0]
-        func(vbin, vhist2/(1.*vhist), color="red", ls="--", label="<60")
-        vind = np.where((virial > 60)*(virial < 120))
-        vhist2 = np.histogram(array[ind][vind], v_table)[0]
-        func(vbin, vhist2/(1.*vhist), color="purple", ls=":", label="60-120")
-        vind = np.where(virial > 120)
-        vhist2 = np.histogram(array[ind][vind], v_table)[0]
-        func(vbin, vhist2/(1.*vhist), color="cyan", ls="-", label=">120")
+        for ii in xrange(len(low)):
+            vind = np.where((virial > low[ii])*(virial < high[ii]))
+            vhist2 = np.histogram(array[ind][vind], v_table)[0]
+            func(vbin, vhist2/(1.*vhist), color=colors[ii], ls=lss[ii], label=labels[ii])
         vind = np.where(halo[filt] < 0)
         vhist2 = np.histogram(array[vind], v_table)[0]
         func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
