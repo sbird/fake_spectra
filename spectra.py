@@ -1058,16 +1058,18 @@ class Spectra:
             self._really_load_array((elem, ion), self.velocity, "velocity")
             velocity = self.velocity[(elem, ion)]
         except KeyError:
-            result =  self._vel_single_file(self.files[0], elem, ion)
+            velocity =  self._vel_single_file(self.files[0], elem, ion)
             #Do remaining files
             for fn in self.files[1:]:
                 tresult =  self._vel_single_file(fn, elem, ion)
                 #Add new file
-                result += tresult
+                velocity += tresult
                 del tresult
             col_den = self.get_col_density(elem, ion)
             col_den[np.where(col_den == 0.)] = 1
-            velocity = result / col_den
+            #Broadcasting can't handle this
+            for ax in (0,1,2):
+                velocity[:,:,ax] /= col_den
             self.velocity[(elem, ion)] = velocity
         if parallel:
             #-1 because axis is 1 indexed
