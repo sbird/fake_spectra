@@ -1045,7 +1045,7 @@ class Spectra:
         else:
             line = self.lines[("H",1)][1215]
             if par:
-                weight = vel[:,self.axis]
+                weight = vel[:,axis]
             else:
                 weight = np.sqrt(vel[:,(axis-1)%3]**2 + vel[:,(axis+1)%3]**2)
             return self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
