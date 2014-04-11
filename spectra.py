@@ -145,7 +145,10 @@ class Spectra:
         self._load_all_multihash(self.tau_obs, "tau_obs")
         self._load_all_multihash(self.tau, "tau")
         self._load_all_multihash(self.colden, "colden")
-        self._load_all_multihash(self.colden, "velocity")
+        try:
+            self._load_all_multihash(self.colden, "velocity")
+        except IOError:
+            pass
         try:
             if path.exists(self.savefile):
                 shutil.move(self.savefile,self.savefile+".backup")
@@ -275,11 +278,14 @@ class Spectra:
             for ion in grp[elem].keys():
                 for line in grp[elem][ion].keys():
                     self.tau[(elem, int(ion),int(line))] = np.array([0])
-        grp = f["velocity"]
-        for elem in grp.keys():
-            for ion in grp[elem].keys():
-                for axis in grp[elem][ion].keys():
-                    self.velocity[(elem, int(ion), int(axis))] = np.array([0])
+        try:
+            grp = f["velocity"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    for axis in grp[elem][ion].keys():
+                        self.velocity[(elem, int(ion), int(axis))] = np.array([0])
+        except KeyError:
+            pass
         grp = f["num_important"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
