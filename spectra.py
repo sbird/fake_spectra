@@ -1045,9 +1045,9 @@ class Spectra:
         else:
             line = self.lines[("H",1)][1215]
             if par:
-                weight = vel[:,axis]
+                weight = vel[:,axis]*np.sqrt(self.atime)
             else:
-                weight = np.sqrt(vel[:,(axis-1)%3]**2 + vel[:,(axis+1)%3]**2)
+                weight = np.sqrt(vel[:,(axis-1)%3]**2 + vel[:,(axis+1)%3]**2)*np.sqrt(self.atime)
             return self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
 
     def get_velocity(self, elem, ion, axis=0, parallel=True):
@@ -1066,6 +1066,7 @@ class Spectra:
                 result += tresult
                 del tresult
             col_den = self.get_col_density(elem, ion)
+            col_den[np.where(col_den == 0.)] = 1
             velocity = result / col_den
             self.velocity[(elem, ion, 2*axis + int(parallel))] = velocity
             return velocity
