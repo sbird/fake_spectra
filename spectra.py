@@ -66,6 +66,7 @@ class Spectra:
         self.vel_widths = {}
         self.absorber_width = {}
         self.colden = {}
+        self.velocity = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
@@ -144,6 +145,7 @@ class Spectra:
         self._load_all_multihash(self.tau_obs, "tau_obs")
         self._load_all_multihash(self.tau, "tau")
         self._load_all_multihash(self.colden, "colden")
+        self._load_all_multihash(self.colden, "velocity")
         try:
             if path.exists(self.savefile):
                 shutil.move(self.savefile,self.savefile+".backup")
@@ -175,6 +177,9 @@ class Spectra:
         #Column density
         grp_grid = f.create_group("colden")
         self._save_multihash(self.colden, grp_grid)
+        #Velocity
+        grp_grid = f.create_group("velocity")
+        self._save_multihash(self.velocity, grp_grid)
         #Number of particles important for each spectrum
         grp_grid = f.create_group("num_important")
         self._save_multihash(self.num_important, grp_grid)
@@ -236,7 +241,7 @@ class Spectra:
                 flux[ll,:]+=np.random.normal(0, np.sqrt(varnce[ll]*snr), np.shape(flux[ll,:]))
         #Make sure we don't have negative flux
         tau[np.where(flux > 0)] = -np.log(flux[np.where(flux > 0)])
-        assert(np.all(np.logical_not(np.isnan(tau))))
+        assert np.all(np.logical_not(np.isnan(tau)))
         return tau
 
     def load_savefile(self,savefile=None):
@@ -270,6 +275,11 @@ class Spectra:
             for ion in grp[elem].keys():
                 for line in grp[elem][ion].keys():
                     self.tau[(elem, int(ion),int(line))] = np.array([0])
+        grp = f["velocity"]
+        for elem in grp.keys():
+            for ion in grp[elem].keys():
+                for axis in grp[elem][ion].keys():
+                    self.velocity[(elem, int(ion), int(axis))] = np.array([0])
         grp = f["num_important"]
         for elem in grp.keys():
             for ion in grp[elem].keys():
@@ -1021,6 +1031,39 @@ class Spectra:
             self.tau[(elem, ion,line)] = tau
             return tau
 
+    def _vel_single_file(self,fn, elem, ion, par):
+        """Get the column density weighted interpolated velocity field for a single file"""
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
+        if amumass == False:
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        else:
+            line = self.lines[("H",1)][1215]
+            if par:
+                weight = vel[:,self.axis]
+            else:
+                weight = np.sqrt(vel[:,(self.axis-1)%3]**2 + vel[:,(self.axis+1)%3]**2)
+            return self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
+
+    def get_velocity(self, elem, ion, parallel=True):
+        """Get the column density in each pixel for a given species.
+        If parallel = True, get column density weighted velocity along los.
+        If False, get perpendicular to los."""
+        try:
+            self._really_load_array((elem, ion, int(parallel)), self.velocity, "velocity")
+            return self.velocity[(elem, ion, int(parallel))]
+        except KeyError:
+            result =  self._vel_single_file(self.files[0], elem, ion, parallel)
+            #Do remaining files
+            for fn in self.files[1:]:
+                tresult =  self._vel_single_file(fn, elem, ion, parallel)
+                #Add new file
+                result += tresult
+                del tresult
+            col_den = self.get_col_density(elem, ion)
+            velocity = result / col_den
+            self.velocity[(elem, ion, int(parallel))] = velocity
+            return velocity
+
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
         This computes the DLA column density function, which is the number
@@ -1269,11 +1312,11 @@ class Spectra:
         outhalos = np.zeros(self.NumLos,dtype=int)-1
         for ii in xrange(self.NumLos):
             subhalo_parent = list(self.sub_sub_index[subhalos[ii]])
-            all = list(set(subhalo_parent+halos[ii]))
-            if len(all) > 0:
-                vir_vel = self.virial_vel(all)
+            both = list(set(subhalo_parent+halos[ii]))
+            if len(both) > 0:
+                vir_vel = self.virial_vel(both)
                 ind = np.where(vir_vel == np.max(vir_vel))
-                outhalos[ii] = all[ind[0][0]]
+                outhalos[ii] = both[ind[0][0]]
             else:
                 outhalos[ii] = -1
         return (outhalos, 0)
