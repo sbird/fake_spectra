@@ -283,7 +283,7 @@ class Spectra:
             for elem in grp.keys():
                 for ion in grp[elem].keys():
                     for axis in grp[elem][ion].keys():
-                        self.velocity[(elem, int(ion), int(axis))] = np.array([0])
+                        self.velocity[(elem, int(ion))] = np.array([0])
         except KeyError:
             pass
         grp = f["num_important"]
@@ -1037,39 +1037,46 @@ class Spectra:
             self.tau[(elem, ion,line)] = tau
             return tau
 
-    def _vel_single_file(self,fn, elem, ion, axis, par):
+    def _vel_single_file(self,fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
         if amumass == False:
-            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+            return np.zeros([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
         else:
             line = self.lines[("H",1)][1215]
-            if par:
-                weight = vel[:,axis]*np.sqrt(self.atime)
-            else:
-                weight = np.sqrt(vel[:,(axis-1)%3]**2 + vel[:,(axis+1)%3]**2)*np.sqrt(self.atime)
-            return self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
+            vv =  np.empty([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
+            for ax in (0,1,2):
+                weight = vel[:,ax]*np.sqrt(self.atime)
+                vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
+            return vv
 
-    def get_velocity(self, elem, ion, axis=0, parallel=True):
+    def get_velocity(self, elem, ion, parallel=True):
         """Get the column density in each pixel for a given species.
         If parallel = True, get column density weighted velocity along los.
         If False, get perpendicular to los."""
         try:
-            self._really_load_array((elem, ion, 2*axis + int(parallel)), self.velocity, "velocity")
-            return self.velocity[(elem, ion, 2*axis + int(parallel))]
+            self._really_load_array((elem, ion), self.velocity, "velocity")
+            velocity = self.velocity[(elem, ion)]
         except KeyError:
-            result =  self._vel_single_file(self.files[0], elem, ion, axis, parallel)
+            result =  self._vel_single_file(self.files[0], elem, ion)
             #Do remaining files
             for fn in self.files[1:]:
-                tresult =  self._vel_single_file(fn, elem, ion, axis, parallel)
+                tresult =  self._vel_single_file(fn, elem, ion)
                 #Add new file
                 result += tresult
                 del tresult
             col_den = self.get_col_density(elem, ion)
             col_den[np.where(col_den == 0.)] = 1
             velocity = result / col_den
-            self.velocity[(elem, ion, 2*axis + int(parallel))] = velocity
-            return velocity
+            self.velocity[(elem, ion)] = velocity
+        if parallel:
+            #-1 because axis is 1 indexed
+            vel = np.array([velocity[i,:,self.axis[i]-1] for i in xrange(np.size(self.axis))])
+        else:
+            velocity1 = np.array([velocity[i,:,(self.axis[i]-2)%3] for i in xrange(np.size(self.axis))])
+            velocity2 = np.array([velocity[i,:,(self.axis[i])%3] for i in xrange(np.size(self.axis))])
+            vel = np.sqrt(velocity1**2 + velocity2**2)
+        return vel
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
