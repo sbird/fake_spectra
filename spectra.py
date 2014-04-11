@@ -241,7 +241,7 @@ class Spectra:
                 flux[ll,:]+=np.random.normal(0, np.sqrt(varnce[ll]*snr), np.shape(flux[ll,:]))
         #Make sure we don't have negative flux
         tau[np.where(flux > 0)] = -np.log(flux[np.where(flux > 0)])
-        assert(np.all(np.logical_not(np.isnan(tau))))
+        assert np.all(np.logical_not(np.isnan(tau)))
         return tau
 
     def load_savefile(self,savefile=None):
@@ -1312,11 +1312,11 @@ class Spectra:
         outhalos = np.zeros(self.NumLos,dtype=int)-1
         for ii in xrange(self.NumLos):
             subhalo_parent = list(self.sub_sub_index[subhalos[ii]])
-            all = list(set(subhalo_parent+halos[ii]))
-            if len(all) > 0:
-                vir_vel = self.virial_vel(all)
+            both = list(set(subhalo_parent+halos[ii]))
+            if len(both) > 0:
+                vir_vel = self.virial_vel(both)
                 ind = np.where(vir_vel == np.max(vir_vel))
-                outhalos[ii] = all[ind[0][0]]
+                outhalos[ii] = both[ind[0][0]]
             else:
                 outhalos[ii] = -1
         return (outhalos, 0)
