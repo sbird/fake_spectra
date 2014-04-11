@@ -1037,7 +1037,7 @@ class Spectra:
             self.tau[(elem, ion,line)] = tau
             return tau
 
-    def _vel_single_file(self,fn, elem, ion, par):
+    def _vel_single_file(self,fn, elem, ion, axis, par):
         """Get the column density weighted interpolated velocity field for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
         if amumass == False:
@@ -1047,27 +1047,27 @@ class Spectra:
             if par:
                 weight = vel[:,self.axis]
             else:
-                weight = np.sqrt(vel[:,(self.axis-1)%3]**2 + vel[:,(self.axis+1)%3]**2)
+                weight = np.sqrt(vel[:,(axis-1)%3]**2 + vel[:,(axis+1)%3]**2)
             return self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
 
-    def get_velocity(self, elem, ion, parallel=True):
+    def get_velocity(self, elem, ion, axis=0, parallel=True):
         """Get the column density in each pixel for a given species.
         If parallel = True, get column density weighted velocity along los.
         If False, get perpendicular to los."""
         try:
-            self._really_load_array((elem, ion, int(parallel)), self.velocity, "velocity")
-            return self.velocity[(elem, ion, int(parallel))]
+            self._really_load_array((elem, ion, 2*axis + int(parallel)), self.velocity, "velocity")
+            return self.velocity[(elem, ion, 2*axis + int(parallel))]
         except KeyError:
-            result =  self._vel_single_file(self.files[0], elem, ion, parallel)
+            result =  self._vel_single_file(self.files[0], elem, ion, axis, parallel)
             #Do remaining files
             for fn in self.files[1:]:
-                tresult =  self._vel_single_file(fn, elem, ion, parallel)
+                tresult =  self._vel_single_file(fn, elem, ion, axis, parallel)
                 #Add new file
                 result += tresult
                 del tresult
             col_den = self.get_col_density(elem, ion)
             velocity = result / col_den
-            self.velocity[(elem, ion, int(parallel))] = velocity
+            self.velocity[(elem, ion, 2*axis + int(parallel))] = velocity
             return velocity
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
