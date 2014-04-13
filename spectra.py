@@ -282,8 +282,7 @@ class Spectra:
             grp = f["velocity"]
             for elem in grp.keys():
                 for ion in grp[elem].keys():
-                    for axis in grp[elem][ion].keys():
-                        self.velocity[(elem, int(ion))] = np.array([0])
+                    self.velocity[(elem, int(ion))] = np.array([0])
         except KeyError:
             pass
         grp = f["num_important"]
