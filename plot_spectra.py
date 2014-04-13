@@ -33,8 +33,8 @@ class PlottingSpectra(spectra.Spectra):
             line - line number to use
             dv - bin spacing
         """
-        (bin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
-        plt.plot(bin, eqw, color=color, lw=3, ls=ls,label=self.label)
+        (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
+        plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_f_meanmedian(self, elem, ion, dv=0.03, color="red", ls="-"):
         """
@@ -44,6 +44,38 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv)
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{mm}$")
+
+    def _get_vpar(self, elem, ion, thresh=10**17):
+        """Get the velocity parallel to the los for all LLS pixels"""
+        vpar = self.get_velocity(elem, ion, True)
+        colden = self.get_col_density(elem, ion)
+        mvpar = np.empty(self.NumLos)
+        for ii in xrange(self.NumLos):
+            ind = np.where(colden[ii,:] >= thresh)
+            mvpar[ii] = np.median(np.abs(vpar[ii,ind]))
+        return mvpar
+
+    def _get_vperp(self, elem, ion, thresh=10**17):
+        """Get the ratio of the velocity parallel and perpendicular to the los for all LLS pixels"""
+        vpar = self.get_velocity(elem, ion, True)
+        vperp = self.get_velocity(elem, ion, False)
+        colden = self.get_col_density(elem, ion)
+        mvrat = np.empty(self.NumLos)
+        for ii in xrange(self.NumLos):
+            ind = np.where(colden[ii,:] >= thresh)
+            mvrat[ii] = np.median(np.abs(vpar[ii,ind])/vperp[ii,ind])
+        return mvrat
+
+    def plot_velocity_par(self,elem, ion):
+        """Plot a histogram of the absolute peculiar velocity along the line of sight."""
+        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vpar, log=True)
+        plt.semilogx(vbin, vels)
+
+    def plot_velocity_perp(self,elem, ion):
+        """Plot a histogram of the ratio between the absolute peculiar velocity along the line of sight and the velocity
+        perpendicular to the line of sight."""
+        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vperp, log=True)
+        plt.semilogx(vbin, vels)
 
     def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):
         """
@@ -214,8 +246,8 @@ class PlottingSpectra(spectra.Spectra):
         hist1[0][np.where(hist1[0] == 0)] = 1
         #Find places with multiple halos
         subhalo_parent = [list(self.sub_sub_index[ss]) for ss in subhalos]
-        all = np.array([list(set(subhalo_parent[ii] + halos[ii])) for ii in xrange(self.NumLos)])
-        indmult = np.where([len(aa) > 1 for aa in all[ind]])
+        allh = np.array([list(set(subhalo_parent[ii] + halos[ii])) for ii in xrange(self.NumLos)])
+        indmult = np.where([len(aa) > 1 for aa in allh[ind]])
         histmult = np.histogram(vwvir[indmult],v_table)
         plt.semilogx(vbin, histmult[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
 
@@ -295,7 +327,7 @@ class PlottingSpectra(spectra.Spectra):
             yvals = np.log10(yvals)
         if xlog:
             xvals = np.log10(xvals)
-        (intercept, slope, var) = lsq.leastsq(xvals,yvals)
+        (intercept, slope, _) = lsq.leastsq(xvals,yvals)
         (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins)
         xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
         ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
