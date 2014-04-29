@@ -707,10 +707,11 @@ class Spectra:
         This should not be a huge fraction of the total spectra, as few metal-poor DLAs are observed.
         """
         #Remember this is not in log...
-        #This is about 8% of spectra, which is a little high,
-        #but it is hard to know exactly how many sightlines don't have metals.
-        rho = self.get_observer_tau(elem, ion)
-        ind = np.where(np.max(rho,axis=1) > -np.log(f_min))
+        #This is about 5% of spectra, which is perhaps a little high,
+        #but I think a small fraction of spectra being metal-poor is not ruled out.
+        #This could also be a resolution effect.
+        met = self.get_metallicity()
+        ind = np.where(met > 1e-5)
         return ind
 
     def vel_width(self, elem, ion):
