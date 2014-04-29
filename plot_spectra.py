@@ -45,36 +45,41 @@ class PlottingSpectra(spectra.Spectra):
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{mm}$")
 
-    def _get_vpar(self, elem, ion, thresh=10**17):
-        """Get the velocity parallel to the los for all LLS pixels"""
-        vpar = self.get_velocity(elem, ion, True)
+    def _get_vtheta(self, elem, ion, thresh=10**17):
+        """Get theta, the angle between the velocity and the los for all LLS pixels."""
+        theta = self.get_velocity(elem, ion, True)
+        (low, high, offset) = self.find_absorber_width(elem, ion)
         colden = self.get_col_density(elem, ion)
-        mvpar = np.empty(self.NumLos)
+        mtheta = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
-            ind = np.where(colden[ii,:] >= thresh)
-            mvpar[ii] = np.median(np.abs(vpar[ii,ind]))
-        return mvpar
+            colden_l = np.roll(colden[ii,:],offset[ii])[low[ii]:high[ii]]
+            theta_l = np.roll(theta[ii,:],offset[ii])[low[ii]:high[ii]]
+            ind = np.where(colden_l >= thresh)
+            mtheta[ii] = np.median(np.abs(theta_l[ind]))
+        return mtheta
 
-    def _get_vperp(self, elem, ion, thresh=10**17):
+    def _get_vamp(self, elem, ion, thresh=10**17):
         """Get the ratio of the velocity parallel and perpendicular to the los for all LLS pixels"""
-        vpar = self.get_velocity(elem, ion, True)
-        vperp = self.get_velocity(elem, ion, False)
+        vamp = self.get_velocity(elem, ion, False)
+        (low, high, offset) = self.find_absorber_width(elem, ion)
         colden = self.get_col_density(elem, ion)
-        mvrat = np.empty(self.NumLos)
+        mvamp = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
-            ind = np.where(colden[ii,:] >= thresh)
-            mvrat[ii] = np.median(np.abs(vpar[ii,ind])/vperp[ii,ind])
-        return mvrat
+            colden_l = np.roll(colden[ii,:],offset[ii])[low[ii]:high[ii]]
+            vamp_l = np.roll(vamp[ii,:],offset[ii])[low[ii]:high[ii]]
+            ind = np.where(colden_l >= thresh)
+            mvamp[ii] = np.median(vamp_l[ind])
+        return mvamp
 
-    def plot_velocity_par(self,elem, ion):
+    def plot_velocity_theta(self,elem, ion):
         """Plot a histogram of the absolute peculiar velocity along the line of sight."""
-        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vpar, log=True)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vtheta, log=False)
         plt.semilogx(vbin, vels)
 
-    def plot_velocity_perp(self,elem, ion):
-        """Plot a histogram of the ratio between the absolute peculiar velocity along the line of sight and the velocity
-        perpendicular to the line of sight."""
-        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vperp, log=True)
+    def plot_velocity_amp(self,elem, ion):
+        """Plot a histogram of the amplitude of the velocity.
+        """
+        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vamp, log=True)
         plt.semilogx(vbin, vels)
 
     def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):

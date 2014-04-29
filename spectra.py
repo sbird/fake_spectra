@@ -1052,8 +1052,8 @@ class Spectra:
 
     def get_velocity(self, elem, ion, parallel=True):
         """Get the column density in each pixel for a given species.
-        If parallel = True, get column density weighted velocity along los.
-        If False, get perpendicular to los."""
+        If parallel = True, get angle between column density weighted velocity and line of sight.
+        If False, get amplitude of velocity."""
         try:
             self._really_load_array((elem, ion), self.velocity, "velocity")
             velocity = self.velocity[(elem, ion)]
@@ -1071,14 +1071,13 @@ class Spectra:
             for ax in (0,1,2):
                 velocity[:,:,ax] /= col_den
             self.velocity[(elem, ion)] = velocity
+        velamp = np.sqrt(np.sum(velocity**2, axis=2))
         if parallel:
             #-1 because axis is 1 indexed
-            vel = np.array([velocity[i,:,self.axis[i]-1] for i in xrange(np.size(self.axis))])
+            velpar = np.array([velocity[i,:,self.axis[i]-1] for i in xrange(np.size(self.axis))])
+            return velpar / velamp
         else:
-            velocity1 = np.array([velocity[i,:,(self.axis[i]-2)%3] for i in xrange(np.size(self.axis))])
-            velocity2 = np.array([velocity[i,:,(self.axis[i])%3] for i in xrange(np.size(self.axis))])
-            vel = np.sqrt(velocity1**2 + velocity2**2)
-        return vel
+            return velamp
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
