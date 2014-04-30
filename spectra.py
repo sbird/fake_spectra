@@ -966,7 +966,9 @@ class Spectra:
         ind = self.get_filt(elem, ion)
         vel_width = func(elem, ion)
         vel_width = vel_width[ind]
-        if log:
+        if np.size(dv) > 1:
+            v_table = dv
+        elif log:
             v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
         else:
             v_table = np.arange(0, 1, dv)
@@ -1242,7 +1244,7 @@ class Spectra:
             self.sub_mass=subs.get_grp("Group_M_Crit200")*self.UnitMass_in_g/SolarMass_in_g
             #r200 in kpc/h (comoving).
             self.sub_radii = subs.get_grp("Group_R_Crit200")
-            #self.sub_vel = subs.GroupVel
+            self.sub_vel = subs.get_grp("GroupVel")
             self.sub_sub_radii =  subs.get_sub("SubhaloHalfmassRad")
             self.sub_sub_cofm =  subs.get_sub("SubhaloPos")
             self.sub_sub_index = subs.get_sub("SubhaloGrNr")

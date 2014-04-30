@@ -5,6 +5,7 @@ import convert_cloudy
 import spectra
 import halospectra
 import numpy as np
+import math
 import leastsq as lsq
 import kstest as ks
 import matplotlib.pyplot as plt
@@ -49,47 +50,67 @@ class PlottingSpectra(spectra.Spectra):
         """Get theta, the angle between the velocity and the los for all LLS pixels."""
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
+        (halo, _) = self.find_nearest_halo()
+        vvir = self.virial_vel(halo)
+        angvir = vvir / self.sub_radii[halo]
         #Subtract velocity at peak density
-        for ii in xrange(self.NumLos):
-            maxvel = np.where(colden[ii,:] == np.max(colden[ii,:]))
-            velocity[ii, :,:] -= velocity[ii,maxvel,:]
-        velamp = np.sqrt(np.sum(velocity**2, axis=2))
-        velamp[np.where(velamp == 0.)] = 1
         mtheta = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
-            #-1 because axis is 1 indexed
-            velpar = np.array([velocity[i,:,self.axis[i]-1] for i in xrange(np.size(self.axis))])
-            theta = np.arccos(velpar / velamp)
-            #Get velocity at maximal column density
             ind = np.where(colden[ii,:] >= thresh)
-            mtheta[ii] = np.median(np.abs(theta[ii,ind]))
+            #Position of the point
+            proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
+            ax = self.axis[ii]-1
+            axpos = ind*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
+            lvel =  velocity[ii, :,:] - self.sub_vel[halo[ii]]
+            vamp = np.sqrt(np.sum(lvel[ind,:][0]**2,axis=1))
+            rdist = np.zeros_like(vamp)
+            for ee in xrange(np.size(ind[0])):
+                #For each point get vector to halo center
+                axpos = np.array(proj_pos)
+                axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
+                #Get v.r, where r is halo pos
+                hdist = np.sqrt(np.sum(axpos**2))
+                rdist[ee] = np.dot(lvel[ind,:][0][ee], axpos/hdist) / vamp[ee]
+            mtheta[ii] = np.median(rdist)
         return mtheta
 
     def _get_vamp(self, elem, ion, thresh=10**17):
         """Get the total amplitude of the velocity in the LLS pixels"""
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
+        (halo, _) = self.find_nearest_halo()
+        vvir = self.virial_vel(halo)
+        angvir = vvir / self.sub_radii[halo]
         #Subtract velocity at peak density
-        for ii in xrange(self.NumLos):
-            maxvel = np.where(colden[ii,:] == np.max(colden[ii,:]))
-            velocity[ii, :,:] -= velocity[ii,maxvel,:]
-        vamp = np.sqrt(np.sum(velocity**2, axis=2))
         mvamp = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
             ind = np.where(colden[ii,:] >= thresh)
-            mvamp[ii] = np.median(vamp[ii,ind])
+            #Position of the point
+            proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
+            ax = self.axis[ii]-1
+            axpos = ind*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
+            lvel =  velocity[ii, :,:] - self.sub_vel[halo[ii]]
+            vamp = np.sqrt(np.sum(lvel[ind,:][0]**2,axis=1))
+            rdist = np.zeros_like(vamp)
+            for ee in xrange(np.size(ind[0])):
+                axpos = np.array(proj_pos)
+                axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
+                vamp[ee] /= np.sqrt(np.sum(axpos**2))
+            mvamp[ii] = np.median(vamp)/angvir[ii]
         return mvamp
 
     def plot_velocity_theta(self,elem, ion, color="blue", ls="-"):
         """Plot a histogram of the absolute peculiar velocity along the line of sight."""
-        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.02, self._get_vtheta, log=False)
+        v_table = np.arange(-1, 1, 0.05)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vtheta, log=False)
         plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
-        plt.xlabel(r"$\cos \theta$")
+        plt.xlabel(r"$\theta$")
 
     def plot_velocity_amp(self,elem, ion, color="blue", ls="-"):
         """Plot a histogram of the amplitude of the velocity."""
-        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vamp, log=True)
-        plt.semilogx(vbin, vels, label=self.label, color=color, ls=ls)
+        v_table = np.arange(0, 10, 0.2)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vamp, log=False)
+        plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
         plt.xlabel(r"$|v|$ (km s$^{-1}$)")
 
     def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):
