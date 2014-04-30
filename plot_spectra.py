@@ -47,40 +47,50 @@ class PlottingSpectra(spectra.Spectra):
 
     def _get_vtheta(self, elem, ion, thresh=10**17):
         """Get theta, the angle between the velocity and the los for all LLS pixels."""
-        theta = self.get_velocity(elem, ion, True)
-        (low, high, offset) = self.find_absorber_width(elem, ion)
+        velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
+        #Subtract velocity at peak density
+        for ii in xrange(self.NumLos):
+            maxvel = np.where(colden[ii,:] == np.max(colden[ii,:]))
+            velocity[ii, :,:] -= velocity[ii,maxvel,:]
+        velamp = np.sqrt(np.sum(velocity**2, axis=2))
+        velamp[np.where(velamp == 0.)] = 1
         mtheta = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
-            colden_l = np.roll(colden[ii,:],offset[ii])[low[ii]:high[ii]]
-            theta_l = np.roll(theta[ii,:],offset[ii])[low[ii]:high[ii]]
-            ind = np.where(colden_l >= thresh)
-            mtheta[ii] = np.median(np.abs(theta_l[ind]))
+            #-1 because axis is 1 indexed
+            velpar = np.array([velocity[i,:,self.axis[i]-1] for i in xrange(np.size(self.axis))])
+            theta = np.arccos(velpar / velamp)
+            #Get velocity at maximal column density
+            ind = np.where(colden[ii,:] >= thresh)
+            mtheta[ii] = np.median(np.abs(theta[ii,ind]))
         return mtheta
 
     def _get_vamp(self, elem, ion, thresh=10**17):
-        """Get the ratio of the velocity parallel and perpendicular to the los for all LLS pixels"""
-        vamp = self.get_velocity(elem, ion, False)
-        (low, high, offset) = self.find_absorber_width(elem, ion)
+        """Get the total amplitude of the velocity in the LLS pixels"""
+        velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
+        #Subtract velocity at peak density
+        for ii in xrange(self.NumLos):
+            maxvel = np.where(colden[ii,:] == np.max(colden[ii,:]))
+            velocity[ii, :,:] -= velocity[ii,maxvel,:]
+        vamp = np.sqrt(np.sum(velocity**2, axis=2))
         mvamp = np.empty(self.NumLos)
         for ii in xrange(self.NumLos):
-            colden_l = np.roll(colden[ii,:],offset[ii])[low[ii]:high[ii]]
-            vamp_l = np.roll(vamp[ii,:],offset[ii])[low[ii]:high[ii]]
-            ind = np.where(colden_l >= thresh)
-            mvamp[ii] = np.median(vamp_l[ind])
+            ind = np.where(colden[ii,:] >= thresh)
+            mvamp[ii] = np.median(vamp[ii,ind])
         return mvamp
 
-    def plot_velocity_theta(self,elem, ion):
+    def plot_velocity_theta(self,elem, ion, color="blue", ls="-"):
         """Plot a histogram of the absolute peculiar velocity along the line of sight."""
-        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vtheta, log=False)
-        plt.semilogx(vbin, vels)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, 0.02, self._get_vtheta, log=False)
+        plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
+        plt.xlabel(r"$\cos \theta$")
 
-    def plot_velocity_amp(self,elem, ion):
-        """Plot a histogram of the amplitude of the velocity.
-        """
+    def plot_velocity_amp(self,elem, ion, color="blue", ls="-"):
+        """Plot a histogram of the amplitude of the velocity."""
         (vbin, vels) = self._vel_stat_hist(elem, ion, 0.2, self._get_vamp, log=True)
-        plt.semilogx(vbin, vels)
+        plt.semilogx(vbin, vels, label=self.label, color=color, ls=ls)
+        plt.xlabel(r"$|v|$ (km s$^{-1}$)")
 
     def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):
         """
