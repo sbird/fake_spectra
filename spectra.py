@@ -1004,20 +1004,18 @@ class Spectra:
         """Get the virial velocities of the selected halos in km/s"""
         if halos != None:
             mm = self.sub_mass[halos]
-            rr = self.sub_radii[halos]
+            rr = np.array(self.sub_radii[halos])
         else:
             mm = self.sub_mass
-            rr = self.sub_radii
+            rr = np.array(self.sub_radii)
         #physical cm from comoving kpc/h
         cminkpch = self.UnitLength_in_cm/self.hubble/(1+self.red)
         # Conversion factor from M_sun/kpc/h to g/cm
         conv = self.UnitMass_in_g/1e10/cminkpch
         #Units: grav is in cm^3 /g/s^-2
-        virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
         #Define zero radius, zero mass halos as having zero virial velocity.
-        if np.size(virial) > 1:
-            zind = np.where(rr == 0.)
-            virial[zind] = 0.
+        rr[np.where(rr == 0)] = 1
+        virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
         return virial
 
     def get_col_density(self, elem, ion):
