@@ -191,7 +191,7 @@ class PlottingSpectra(spectra.Spectra):
         if moment:
             plt.ylim(1e-4,1)
 
-    def plot_sep_frac(self,elem = "Si", ion = 2, thresh = 1e-2, mindist = 15, dv = 0.2, color="blue", ls="-"):
+    def plot_sep_frac(self,elem = "Si", ion = 2, thresh = 1e-1, mindist = 15, dv = 0.2, color="blue", ls="-"):
         """
         Plots the fraction of spectra in each velocity width bin which are separated.
         Threshold is as a percentage of the maximum value.
@@ -199,10 +199,11 @@ class PlottingSpectra(spectra.Spectra):
         """
         sep = self.get_separated(elem, ion, thresh,mindist)
         vels = self.vel_width(elem, ion)
+        ind = self.get_filt(elem, ion)
         v_table = 10**np.arange(1, 3, dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        hist1 = np.histogram(vels, v_table)
-        hist2 = np.histogram(vels[sep],v_table)
+        hist1 = np.histogram(vels[ind], v_table)
+        hist2 = np.histogram(vels[ind][sep],v_table)
         hist1[0][np.where(hist1[0] == 0)] = 1
         plt.semilogx(vbin, hist2[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
 

@@ -1181,19 +1181,39 @@ class Spectra:
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
         return frac/(self.absorption_distance()/self.nbins)
 
-    def get_separated(self, elem="Si", ion = 2, thresh = 1e-4, mindist=0):
-        """Find spectra with more than a single density peak.
+    def get_separated(self, elem="Si", ion = 2, thresh = 1e-1, mindist=0):
+        """
+        Find spectra with more than a single density peak.
         Threshold is as a percentage of the maximum value.
         mindist is in km/s
         """
         dist = int(mindist/self.dvbin)
-        rho = self.get_col_density(elem, ion)
-        (low, high, offset) = self.find_absorber_width(elem, ion)
-        seps = np.zeros(self.NumLos, dtype=np.bool)
+        ind = self.get_filt(elem, ion)
+        rho = self.get_col_density(elem, ion)[ind]
+        H1_col_den = self.get_col_density("H", 1)[ind]
+        seps = np.zeros(np.size(ind[0]), dtype=np.bool)
+        lls = 0
+        dla = 0
+        none = 0
         #deal with periodicity by making sure the deepest point is in the middle
-        for ll in xrange(self.NumLos):
-            rho_l = np.roll(rho[ll,:],offset[ll])[low[ll]:high[ll]]
-            seps[ll] = (np.shape(combine_regions(rho_l > thresh*np.max(rho_l), dist))[0] > 1)
+        for ll in xrange(np.size(ind[0])):
+            rho_l = rho[ll,:]
+            H1_l = H1_col_den[ll,:]
+            lsep = combine_regions(rho_l > thresh*np.max(rho_l), dist)
+            seps[ll] = (np.shape(lsep)[0] > 1)
+            if seps[ll] == False:
+                continue
+            m_H1_colden = np.array([np.sum(H1_l[lsep[jj,0]:lsep[jj,1]]) for jj in xrange(np.shape(lsep)[0])])
+            #All DLAs
+            if np.all(m_H1_colden > 10**(20.3)):
+                dla += 1
+            #Some LLS
+            elif np.all(m_H1_colden > 10**(17.)):
+                lls += 1
+            else:
+                none += 1
+        tot = dla + lls + none
+        print "Fraction DLA: ",1.*dla/tot," Fraction LLS: ",1.*lls/tot," fraction less: ",1.*none/tot
         return seps
 
     def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):
