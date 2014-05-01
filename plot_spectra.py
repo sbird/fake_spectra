@@ -51,11 +51,11 @@ class PlottingSpectra(spectra.Spectra):
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
         (halo, _) = self.find_nearest_halo()
-        vvir = self.virial_vel(halo)
-        angvir = vvir / self.sub_radii[halo]
         #Subtract velocity at peak density
-        mtheta = np.empty(self.NumLos)
+        mtheta = 2*np.ones(self.NumLos)
         for ii in xrange(self.NumLos):
+            if halo[ii] < 0:
+                continue
             ind = np.where(colden[ii,:] >= thresh)
             #Position of the point
             proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
@@ -79,11 +79,11 @@ class PlottingSpectra(spectra.Spectra):
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
         (halo, _) = self.find_nearest_halo()
-        vvir = self.virial_vel(halo)
-        angvir = vvir / self.sub_radii[halo]
         #Subtract velocity at peak density
-        mvamp = np.empty(self.NumLos)
+        mvamp = 100*np.ones(self.NumLos)
         for ii in xrange(self.NumLos):
+            if halo[ii] < 0:
+                continue
             ind = np.where(colden[ii,:] >= thresh)
             #Position of the point
             proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
@@ -96,7 +96,9 @@ class PlottingSpectra(spectra.Spectra):
                 axpos = np.array(proj_pos)
                 axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
                 vamp[ee] /= np.sqrt(np.sum(axpos**2))
-            mvamp[ii] = np.median(vamp)/angvir[ii]
+            vvir = self.virial_vel(halo[ii])
+            angvir = vvir / self.sub_radii[halo[ii]]
+            mvamp[ii] = np.median(vamp)/angvir
         return mvamp
 
     def plot_velocity_theta(self,elem, ion, color="blue", ls="-"):

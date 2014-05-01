@@ -1015,8 +1015,9 @@ class Spectra:
         #Units: grav is in cm^3 /g/s^-2
         virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
         #Define zero radius, zero mass halos as having zero virial velocity.
-        zind = np.where(rr == 0.)
-        virial[zind] = 0.
+        if np.size(virial) > 1:
+            zind = np.where(rr == 0.)
+            virial[zind] = 0.
         return virial
 
     def get_col_density(self, elem, ion):
