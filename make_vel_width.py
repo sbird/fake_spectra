@@ -19,10 +19,10 @@ outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
 zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
 #Colors and linestyles for the simulations
-colors = {0:"pink", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 9:"red"}
-colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey", 9:"darkred"}
-lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 9:"--"}
-labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 9:"FAST"}
+colors = {0:"pink", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 8:"pink", 9:"red", 'A':"grey"}
+colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey",8:"cyan", 9:"darkred",'A':"grey"}
+lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 8:"-",9:"--",'A':"--"}
+labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 8:"RICH",9:"FAST", 'A':"MOM"}
 
 hspec_cache = {}
 
@@ -191,6 +191,24 @@ def plot_mean_median(sims, snap):
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
 
+def plot_v_struct(sims, snap):
+    """Plot mean-median statistic for all sims on one plot"""
+    #Plot extra statistics
+    for sss in sims:
+        hspec = get_hspec(sss, snap)
+        plt.figure(1)
+        hspec.plot_velocity_amp("H",1, color=colors[sss], ls=lss[sss])
+        plt.figure(2)
+        hspec.plot_velocity_theta("H",1, color=colors[sss], ls=lss[sss])
+    plt.figure(1)
+    plt.legend(loc=2,ncol=3)
+    save_figure(path.join(outdir, "cosmo_amp_z"+str(snap)))
+    plt.clf()
+    plt.figure(2)
+    plt.legend(loc=2,ncol=3)
+    save_figure(path.join(outdir, "cosmo_theta_z"+str(snap)))
+    plt.clf()
+
 def plot_f_peak(sims, snap):
     """Plot peak statistic for all sims on one plot"""
     for sss in sims:
@@ -295,6 +313,7 @@ if __name__ == "__main__":
         hspec_cache = {}
 
     for zz in (1, 3, 5):
+        plot_v_struct(simlist, zz)
         plot_eq_width(simlist, zz)
         plot_metallicity(simlist, zz)
         plot_vel_width_sims(simlist, zz)
