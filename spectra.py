@@ -707,9 +707,7 @@ class Spectra:
         This should not be a huge fraction of the total spectra, as few metal-poor DLAs are observed.
         """
         #Remember this is not in log...
-        #This is about 5% of spectra, which is perhaps a little high,
-        #but I think a small fraction of spectra being metal-poor is not ruled out.
-        #This could also be a resolution effect.
+        #This is in practice 5/5000 = 0.1% of spectra, which is consistent with observations.
         met = self.get_metallicity()
         ind = np.where(met > 1e-5)
         return ind
