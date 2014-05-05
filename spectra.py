@@ -77,6 +77,8 @@ class Spectra:
         #If greater than zero, will add noise to spectra when they are loaded.
         self.snr = snr
         self.spec_res = spec_res
+        #Minimum length of spectra within which to look at metal absorption (in km/s)
+        self.minwidth = 500.
         try:
             self.files = hdfsim.get_all_files(num, base)
             self.files.reverse()
@@ -517,7 +519,7 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, thresh=0.03, chunk = 25, minwidth=500.):
+    def find_absorber_width(self, elem, ion, thresh=0.03, chunk = 25):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
@@ -528,6 +530,7 @@ class Spectra:
            S/N ~ 30, one can detect tau ~ 0.03.
            Returns the low and high indices of absorption, and the offset for the maximal absorption.
         """
+        minwidth = self.minwidth
         try:
             return self.absorber_width[(elem, ion, minwidth)]
         except KeyError:
