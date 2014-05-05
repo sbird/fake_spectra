@@ -46,7 +46,7 @@ class PlottingSpectra(spectra.Spectra):
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{mm}$")
 
-    def _get_vtheta(self, elem, ion, thresh=10**17):
+    def _get_vtheta(self, elem, ion, thresh=10**19):
         """Get theta, the angle between the velocity and the los for all LLS pixels."""
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
@@ -71,16 +71,16 @@ class PlottingSpectra(spectra.Spectra):
                 #Get v.r, where r is halo pos
                 hdist = np.sqrt(np.sum(axpos**2))
                 rdist[ee] = np.arccos(np.dot(lvel[ind,:][0][ee], axpos/hdist) / vamp[ee])
-            mtheta[ii] = np.median(rdist)
+            mtheta = np.append(mtheta, rdist)
         return mtheta
 
-    def _get_vamp(self, elem, ion, thresh=10**17):
+    def _get_vamp(self, elem, ion, thresh=10**19):
         """Get the total amplitude of the velocity in the LLS pixels"""
         velocity = self.get_velocity(elem, ion)
         colden = self.get_col_density(elem, ion)
         (halo, _) = self.find_nearest_halo()
         #Subtract velocity at peak density
-        mvamp = 100*np.ones(self.NumLos)
+        mvamp = []
         vvir = self.virial_vel(halo)
         for ii in xrange(self.NumLos):
             if halo[ii] < 0 or vvir[ii] == 0.:
@@ -98,13 +98,13 @@ class PlottingSpectra(spectra.Spectra):
                 axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
                 vamp[ee] /= np.sqrt(np.sum(axpos**2))
             angvir = vvir[ii] / self.sub_radii[halo[ii]]
-            mvamp[ii] = np.median(vamp)/angvir
+            mvamp = np.append(mvamp, vamp/angvir)
         return mvamp
 
     def plot_velocity_theta(self,elem, ion, color="blue", ls="-"):
         """Plot a histogram of the absolute peculiar velocity along the line of sight."""
         v_table = np.arange(0, math.pi, 0.05)
-        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vtheta, log=False)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vtheta, log=False, filt=False)
         plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
         plt.xlabel(r"$\theta$")
         plt.ylim(0,1)
@@ -112,7 +112,7 @@ class PlottingSpectra(spectra.Spectra):
     def plot_velocity_amp(self,elem, ion, color="blue", ls="-"):
         """Plot a histogram of the amplitude of the velocity."""
         v_table = np.arange(0, 10, 0.2)
-        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vamp, log=False)
+        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vamp, log=False, filt=False)
         plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
         plt.xlabel(r"$|v|$ (km s$^{-1}$)")
         plt.ylim(0,0.4)

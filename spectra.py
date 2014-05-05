@@ -958,15 +958,16 @@ class Spectra:
         eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
         return (vbin, eqws)
 
-    def _vel_stat_hist(self, elem, ion, dv, func, log=True):
+    def _vel_stat_hist(self, elem, ion, dv, func, log=True, filt=True):
         """
            Internal function that finds the histogram in velocity space of
            the values of a statistic for a particular ion.
         """
         #Filter small number of spectra without metals
-        ind = self.get_filt(elem, ion)
         vel_width = func(elem, ion)
-        vel_width = vel_width[ind]
+        if filt:
+            ind = self.get_filt(elem, ion)
+            vel_width = vel_width[ind]
         if np.size(dv) > 1:
             v_table = dv
         elif log:
