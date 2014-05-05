@@ -68,6 +68,15 @@ def test_spec_resolution():
     hspec2 = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA_res.hdf5")
     plot_check(hspec,hspec2,"specres")
 
+def test_vel_abswidth():
+    """Plot the velocity widths for different minimum absorber widths"""
+    halo = myname.get_name(7)
+    #Higher resolution spectrum
+    hspec = ps.PlottingSpectra(3, halo)
+    hspec2 = ps.PlottingSpectra(3, halo)
+    hspec2.minwidth = 300.
+    plot_check(hspec,hspec2,"abswidth")
+
 def test_pecvel():
     """Plot the velocity widths with and without peculiar velocities"""
     halo = myname.get_name(7)
@@ -174,9 +183,9 @@ def test_tescari_halos(sim, snap):
     save_figure(path.join(outdir,"cosmo_tescari_halos"))
     plt.clf()
 
-
 if __name__ == "__main__":
 #     test_shield()
+    test_vel_abswidth()
     test_tescari_halos(7,3)
     test_noise()
     test_atten()
