@@ -61,6 +61,24 @@ def plot_vvir(sim, snap):
     (mbins, pdf) = hspec.mass_hist()
     hspec.plot_virial_vel_vs_vel_width("Si", 2, color=colors[sim], ls=lss[sim], label=labels[sim])
 
+def plot_vvir_vs_mm(sim, snap):
+    out = "cosmo"+str(sim)+"_fedge_vvir_z"+str(snap)
+    #Load from a save file only
+    hspec = get_hspec(sim,snap)
+    (halos, _) = hspec.find_nearest_halo()
+    ind = hspec.get_filt("Si",2)
+    f_ind = np.where(halos[ind] != -1)
+    vel = hspec.vel_width("Si", 2)[ind][f_ind]
+    virial = hspec.virial_vel(halos[ind][f_ind])+0.1
+    vvvir = vel/virial
+    fpk = hspec.vel_peak("Si",2)
+    hspec._plot_2d_contour(vvvir, fpk[ind][f_ind], 10, "fedge vvir", color=colors[sim], color2=colors2[sim], ylog=False)
+    plt.ylabel(r"$f_\mathrm{edge}$")
+    plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$ (km s$^{-1}$)")
+    plt.xlim(0.1, 10)
+    save_figure(path.join(outdir,out))
+    plt.clf()
+
 def plot_mass_vs(sim, snap):
     """Plot mass vs metallicity and vel width"""
     out = "cosmo"+str(sim)+"_met_mass_z"+str(snap)
@@ -195,9 +213,10 @@ if __name__ == "__main__":
 
     for zz in zzz:
         for ss in simlist:
-#             plot_vir_vsmass(ss,zz)
+            plot_vir_vsmass(ss,zz)
             plot_vw_break(ss,zz)
             plot_mass_vs(ss, zz)
+            plot_vvir_vs_mm(ss, zz)
             plot_mass_vs_mm(ss, zz)
             plot_mm_vs_vel(ss, zz)
 
