@@ -297,7 +297,7 @@ class Spectra:
         try:
             self.spectra_halos = np.array(grp["halos"])
             self.spectra_subhalos = np.array(grp["subhalos"])
-        except AttributeError:
+        except KeyError:
             pass
         f.close()
 
