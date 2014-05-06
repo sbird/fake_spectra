@@ -31,7 +31,6 @@ halo.get_tau("H",1,1215)
 halo.get_col_density("Si",2)
 halo.get_col_density("Z",-1)
 halo.get_col_density("H",-1)
-halo.find_nearby_halos()
 halo.get_velocity("H",1)
 halo.save_file()
 
