@@ -173,6 +173,11 @@ class Spectra:
         grp = f.create_group("spectra")
         grp["cofm"]=self.cofm
         grp["axis"]=self.axis
+        try:
+            grp["halos"] = self.spectra_halos
+            grp["subhalos"] = self.spectra_subhalos
+        except AttributeError:
+            pass
         #Observer tau is the strongest unsaturated line
         grp_grid = f.create_group("tau_obs")
         self._save_multihash(self.tau_obs, grp_grid)
@@ -289,6 +294,11 @@ class Spectra:
         grp=f["spectra"]
         self.cofm = np.array(grp["cofm"])
         self.axis = np.array(grp["axis"])
+        try:
+            self.spectra_halos = np.array(grp["halos"])
+            self.spectra_subhalos = np.array(grp["subhalos"])
+        except AttributeError:
+            pass
         f.close()
 
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
