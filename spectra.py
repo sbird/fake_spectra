@@ -230,11 +230,6 @@ class Spectra:
         else:
             raise ValueError("Not supported")
         f.close()
-        if array_name == "tau_obs" or array_name == "tau":
-            if self.snr > 0:
-                array[key] = self.res_corr(self.add_noise(self.snr, array[key]), self.spec_res)
-            else:
-                array[key] = self.res_corr(array[key], self.spec_res)
 
     def add_noise(self, snr, tau):
         """Add Gaussian noise to flux, as computed from optical depth"""
@@ -638,51 +633,50 @@ class Spectra:
         if not force_recompute:
             try:
                 self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
-                if number >= 0:
-                    return self.tau_obs[(elem, ion)][number,:]
-                else:
-                    return self.tau_obs[(elem, ion)]
+                ntau = self.tau_obs[(elem, ion)]
             except KeyError:
-                pass
-        #Compute tau for each line
-        nlines = len(self.lines[(elem,ion)])
-        tau = np.empty([nlines, self.NumLos,self.nbins])
-        pos = {}
-        vel = {}
-        elem_den = {}
-        temp = {}
-        hh = {}
-        amumass = {}
-        for ff in self.files:
-            (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion,True)
+                #Compute tau for each line
+                nlines = len(self.lines[(elem,ion)])
+                tau = np.empty([nlines, self.NumLos,self.nbins])
+                pos = {}
+                vel = {}
+                elem_den = {}
+                temp = {}
+                hh = {}
+                amumass = {}
+                for ff in self.files:
+                    (pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff]) = self._read_particle_data(ff, elem, ion,True)
 
-        for ll in xrange(nlines):
-            line = (self.lines[(elem,ion)].values())[ll]
-            for ff in self.files:
-                if amumass[ff] != False:
-                    tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
-                    tau[ll,:,:] += tau_loc
-                    del tau_loc
-        #Maximum tau in each spectra with each line
-        maxtaus = np.max(tau, axis=-1)
-        #Array for line indices
-        ntau = np.empty([self.NumLos, self.nbins])
-        #Use the maximum unsaturated optical depth
-        for ii in xrange(self.NumLos):
-            # we want unsaturated lines, defined as those with F > 0.1
-            ind = np.where(-maxtaus[:,ii] > np.log(0.1))
-            if np.size(ind) == 0:
-                line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
+                for ll in xrange(nlines):
+                    line = (self.lines[(elem,ion)].values())[ll]
+                    for ff in self.files:
+                        if amumass[ff] != False:
+                            tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
+                            tau[ll,:,:] += tau_loc
+                            del tau_loc
+                #Maximum tau in each spectra with each line
+                maxtaus = np.max(tau, axis=-1)
+                #Array for line indices
+                ntau = np.empty([self.NumLos, self.nbins])
+                #Use the maximum unsaturated optical depth
+                for ii in xrange(self.NumLos):
+                    # we want unsaturated lines, defined as those with F > 0.1
+                    ind = np.where(-maxtaus[:,ii] > np.log(0.1))
+                    if np.size(ind) == 0:
+                        line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
+                    else:
+                        line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
+                    if np.size(line) > 1:
+                        line = (line[0][0],)
+                    ntau[ii,:] = tau[line,ii,:]
+                # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
+                self.tau_obs[(elem, ion)] = ntau
+            if number >= 0:
+                ntau = ntau[number,:]
+            if self.snr > 0:
+                ntau = self.res_corr(self.add_noise(self.snr, ntau), self.spec_res)
             else:
-                line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
-            if np.size(line) > 1:
-                line = (line[0][0],)
-            ntau[ii,:] = tau[line,ii,:]
-        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
-        self.tau_obs[(elem, ion)] = ntau
-        if number >= 0:
-            return ntau[number,:]
-        else:
+                ntau = self.res_corr(ntau, self.spec_res)
             return ntau
 
     def res_corr(self, flux, fwhm=8):
@@ -1035,11 +1029,15 @@ class Spectra:
         """Get the column density in each pixel for a given species"""
         try:
             self._really_load_array((elem, ion, line), self.tau, "tau")
-            return self.tau[(elem, ion,line)]
+            tau = self.tau[(elem, ion,line)]
         except KeyError:
             tau = self.compute_spectra(elem, ion, line,True)
             self.tau[(elem, ion,line)] = tau
-            return tau
+        if self.snr > 0:
+            tau = self.res_corr(self.add_noise(self.snr, tau), self.spec_res)
+        else:
+            tau = self.res_corr(tau, self.spec_res)
+        return tau
 
     def _vel_single_file(self,fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""
