@@ -125,8 +125,12 @@ class Spectra:
             self.nbins = int(self.vmax / self.dvbin)
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
-        #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.3).
-        self.solar = {"H":1, "He":0.1, "C":3.55e-4,"N":9.33e-4,"O":7.41e-5,"Ne":1.17e-4,"Mg":3.8e-5,"Si":3.55e-5,"Fe":3.24e-5}
+        #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
+        self.solar = {"H":1, "He":0.0851, "C":2.69e-4,"N":6.76e-5,"O":4.9e-4,"Ne":8.51e-5,"Mg":3.98e-5,"Si":3.24e-5,"Fe":3.16e-5}
+        # Total solar metallicity is from Asplund 2009 0909.0948
+        # Note the solar metallicity is the mass fraction of metals
+        # divided by the mass fraction of hydrogen
+        self.solarz = 0.0134/0.7381
         #Generate cloudy tables
         if cdir != None:
             self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
@@ -584,13 +588,13 @@ class Spectra:
         #Convert from cm/s to km/s
         return width/1e5
 
-    def get_metallicity(self, solar=0.0133):
+    def get_metallicity(self):
         """Return the metallicity, as M/H"""
         MM = self.get_col_density("Z",-1)
         HH = self.get_col_density("H",-1)
         mms = np.sum(MM, axis=1)
         hhs = np.sum(HH, axis=1)
-        return mms/hhs/solar
+        return mms/hhs/self.solarz
         #Use only DLA regions: tricky to preserve shape
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
         #data = np.array([np.mean(ma_HH, axis=1)])
