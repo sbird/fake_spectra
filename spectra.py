@@ -1016,9 +1016,11 @@ class Spectra:
         virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
         return virial
 
-    def get_col_density(self, elem, ion):
+    def get_col_density(self, elem, ion, force_recompute=False):
         """Get the column density in each pixel for a given species"""
         try:
+            if force_recompute:
+                raise KeyError
             self._really_load_array((elem, ion), self.colden, "colden")
             return self.colden[(elem, ion)]
         except KeyError:
