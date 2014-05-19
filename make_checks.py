@@ -26,10 +26,10 @@ def plot_metal_ion_corr(sim, snap,species="Si",ion=2):
     hspec.plot_metallicity(color="red", ls="-")
     hspec.plot_species_metallicity(species, ion, color="blue", ls="-")
     vel_data.plot_alpha_metal_data((3.5,2.5))
-    save_figure(path.join(outdir, "cosmo"+str(sim)+"_ion_corr"+str(snap)))
+    save_figure(path.join(outdir, "cosmo_metallicity"+str(sim)+"_ion_corr"+str(snap)))
     plt.clf()
     hspec.plot_ion_corr(species, ion)
-    save_figure(path.join(outdir, "cosmo"+str(sim)+"_rel_ion_corr"+str(snap)))
+    save_figure(path.join(outdir, "cosmo_metallicity"+str(sim)+"_rel_ion_corr"+str(snap)))
     plt.clf()
 
 def plot_vel_width_metcol(sim, snap):
@@ -59,6 +59,17 @@ def plot_vel_width_SiII(sim, snap):
     hspec = ps.PlottingSpectra(snap, halo)
     hspecSi = ps.PlottingSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
     plot_check(hspec, hspecSi,"SiHI")
+
+def plot_vel_width_SiII_keating(sim, snap):
+    """
+       Plot the change in velocity widths between the full calculation and
+       setting n(Si+)/n(Si) = n(HI)/n(H)
+    """
+    halo = myname.get_name(sim)
+    #Load from a save file only
+    hspec = ps.PlottingSpectra(snap, halo)
+    hspecSi2 = ps.PlottingSpectra(snap, halo,savefile="si_colden_spectra.hdf5")
+    plot_check(hspec, hspecSi2,"SiHI_keating")
 
 def test_spec_resolution():
     """Plot the velocity widths for different spectral resolutions"""
@@ -197,6 +208,8 @@ if __name__ == "__main__":
     test_tophat()
 
     plot_vel_width_SiII(7, 3)
+    plot_vel_width_SiII_keating(7, 3)
 
 #     plot_vel_width_metcol(0,3)
     plot_metal_ion_corr(7,3)
+    plot_metal_ion_corr(0,3)

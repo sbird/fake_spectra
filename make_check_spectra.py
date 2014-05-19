@@ -78,3 +78,23 @@ make_stuff(halo)
 # halo = gs.GridSpectra(snapnum, base, numlos=1000, savefile="grid_spectra_DLA_noshield.hdf5")
 # make_stuff(halo)
 
+# SiII fraction given by CLOUDY from the metallicity and column density.
+class ColdenSpectra(ss.Spectra):
+    """Spectra with the SiII fraction given by the metallicity and column density."""
+    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
+        """Get the density in an elemental species."""
+        zzz = self.get_mass_frac("Z", data, ind)[ind2]/0.76*self.solar[elem]/self.solarz
+        return zzz*star.get_reproc_HI(data)[ind][ind2]*np.float32(self.cloudy_table.ion(elem, ion, den, temp)/self.cloudy_table.ion("H", 1, den, temp))
+
+halo = ColdenSpectra(snapnum, base,None, None, savefile="si_colden_spectra.hdf5")
+make_stuff(halo)
+
+class SiHISpectra(ss.Spectra):
+    """Spectra with the SiII fraction given by n(SiII)/n(Si) = n(HI)/n(H)."""
+    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
+        """Get the density in an elemental species."""
+        zzz = self.get_mass_frac("Z", data, ind)[ind2]*self.solar[elem]/self.solarz
+        return star.get_reproc_HI(data)[ind][ind2]
+
+halo = SiHISpectra(snapnum, base,None, None, savefile="SiHI_spectra.hdf5")
+make_stuff(halo)
