@@ -15,12 +15,12 @@ np.seterr(under='warn')
 def make_stuff(halo):
     """Get the various arrays we want and save them"""
     halo.get_col_density("H",1)
-    halo.get_observer_tau("Si",2)
+    halo.get_observer_tau("Si",2, force_recompute=True)
     #SiII 1260
-    halo.get_tau("Si",2,1260)
-    halo.get_tau("Si",2,1526)
-    halo.get_tau("H",1,1215)
-    halo.get_col_density("Si",2)
+    halo.get_tau("Si",2,1260, force_recompute=True)
+    halo.get_tau("Si",2,1526, force_recompute=True)
+    halo.get_tau("H",1,1215, force_recompute=True)
+    halo.get_col_density("Si",2, force_recompute=True)
     halo.get_col_density("Z",-1)
     halo.get_col_density("H",-1)
     halo.save_file()
