@@ -539,8 +539,8 @@ class Spectra:
             return self.absorber_width[(elem, ion, minwidth)]
         except KeyError:
             pass
-        high = self.nbins*np.ones(self.NumLos)
-        low = np.zeros(self.NumLos)
+        high = self.nbins*np.ones(self.NumLos,dtype=np.int)
+        low = np.zeros(self.NumLos, dtype=np.int)
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines.values()]
         ind = np.where(strength == np.max(strength))[0][0]

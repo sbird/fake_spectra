@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label=""):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile)
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0.):
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr)
         self.label=label
 
     def plot_vel_width(self, elem, ion, dv=0.1, color="red", ls="-"):
@@ -126,14 +126,17 @@ class PlottingSpectra(spectra.Spectra):
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{edg}$")
 
-    def plot_spectrum(self, tau):
+    def plot_spectrum(self, tau, flux=True):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
         tot_tau = np.sum(tau)
         (low, high) = self._vel_width_bound(tau, tot_tau)
         xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
-        plt.plot(xaxis,np.exp(-tau))
+        if flux:
+            plt.plot(xaxis,np.exp(-tau))
+        else:
+            plt.plot(xaxis,tau)
         if high - low > 0:
             plt.plot([xaxis[0]+low,xaxis[0]+low],[0,1])
             plt.plot([xaxis[0]+high,xaxis[0]+high],[0,1])
