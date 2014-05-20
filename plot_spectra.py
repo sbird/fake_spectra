@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0.):
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=20.):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr)
         self.label=label
 
@@ -145,12 +145,15 @@ class PlottingSpectra(spectra.Spectra):
         else:
             tpos = xaxis[0]+high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
-        plt.ylim(-0.05,1.05)
         #It should probably do this automatically, but doesn't
-        plt.xlim(np.max((xaxis[0],xaxis[0]+low-200)),np.min((xaxis[-1],xaxis[0]+high+200)))
+        plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
         plt.xlabel(r"v (km s$^{-1}$)")
-        plt.ylabel(r"$\mathcal{F}$")
-        return (low, high)
+        if flux:
+            plt.ylabel(r"$\mathcal{F}$")
+            plt.ylim(-0.05,1.05)
+        else:
+            plt.ylabel(r"$\tau$")
+        return (xaxis[0]+low, xaxis[0]+high)
 
     def plot_col_density(self, colden):
         """Plot the column density of a line across the absorber"""

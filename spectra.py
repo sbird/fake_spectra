@@ -46,7 +46,7 @@ class Spectra:
             snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
             spec_res - Resolution of the spectrograph. The spectra will be convolved with a Gaussian of this FWHM on loading from disc.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 20., spec_res = 8):
         #Various physical constants
         #Internal gadget mass unit: 1e10 M_sun/h in g/h
         self.UnitMass_in_g=1.989e43
