@@ -663,18 +663,29 @@ class Spectra:
                         tau_loc = self._do_interpolation_work(pos[ff], vel[ff], elem_den[ff], temp[ff], hh[ff], amumass[ff], line, True)
                         tau[ll,:,:] += tau_loc
                         del tau_loc
-            #Maximum tau in each spectra with each line
-            maxtaus = np.max(tau, axis=-1)
+            #Maximum tau in each spectra with each line,
+            #after convolving with a Gaussian for instrumental broadening.
+            maxtaus = np.max(self.res_corr(tau,self.spec_res), axis=-1)
             #Array for line indices
             ntau = np.empty([self.NumLos, self.nbins])
             #Use the maximum unsaturated optical depth
             for ii in xrange(self.NumLos):
-                # we want unsaturated lines, defined as those with F > 0.1
-                ind = np.where(-maxtaus[:,ii] > np.log(0.1))
-                if np.size(ind) == 0:
-                    line = np.where(maxtaus[:,ii] == np.min(maxtaus[:,ii]))
-                else:
+                # we want unsaturated lines, defined as those with tau < 3
+                #which is the maximum tau in the sample of Neeleman 2013
+                #Also use lines with some absorption: tau > 0.05, roughly the noise level.
+                ind = np.where(np.logical_and(maxtaus[:,ii] < 3, maxtaus[:,ii] > 0.05))
+                if np.size(ind) > 0:
                     line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
+                else:
+                    #We have no lines in the desired region: here use something slightly saturated.
+                    #In reality the observers will use a different ion
+                    ind2 = np.where(maxtaus[:,ii] > 0.05)
+                    if np.size(ind2) > 0:
+                        line = np.where(maxtaus[:,ii] == np.min(maxtaus[ind2,ii]))
+                    else:
+                        #We have no observable lines: this spectra are metal-poor
+                        #and will be filtered anyway.
+                        line = np.where(maxtaus[:,ii] == np.max(maxtaus[:,ii]))
                 if np.size(line) > 1:
                     line = (line[0][0],)
                 ntau[ii,:] = tau[line,ii,:]
@@ -682,10 +693,9 @@ class Spectra:
             self.tau_obs[(elem, ion)] = ntau
         if number >= 0:
             ntau = ntau[number,:]
+        ntau = self.res_corr(ntau, self.spec_res)
         if self.snr > 0:
-            ntau = self.res_corr(self.add_noise(self.snr, ntau), self.spec_res)
-        else:
-            ntau = self.res_corr(ntau, self.spec_res)
+            ntau = self.add_noise(self.snr, ntau)
         return ntau
 
     def res_corr(self, flux, fwhm=8):
