@@ -155,7 +155,7 @@ def test_noise():
 def plot_check(hspec, hspec2, ofile, snap=3):
     """Plot velocity widths for two halos both absolutely and relatively"""
     hspec.plot_vel_width("Si",2, color="red")
-    hspec2.plot_vel_width("Si", 2, color="blue")
+    hspec2.plot_vel_width("Si", 2, color="blue", ls="--")
     vel_data.plot_prochaska_2008_data()
     plt.xlim(1, 1000)
     save_figure(path.join(outdir,"cosmo_vel_width_"+ofile+"_z"+str(snap)))
@@ -170,7 +170,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
     save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
     hspec.plot_f_peak("Si", 2, color="red")
-    hspec2.plot_f_peak("Si", 2, color="blue")
+    hspec2.plot_f_peak("Si", 2, color="blue", ls="--")
     vel_data.plot_extra_stat_hist(True)
     save_figure(path.join(outdir,"cosmo_fpeak_"+ofile))
     plt.clf()
@@ -180,7 +180,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
     save_figure(path.join(outdir,"cosmo_correlation_"+ofile+"_z"+str(snap)))
     plt.clf()
     hspec.plot_eq_width("Si", 2, 1526, color="red")
-    hspec2.plot_eq_width("Si", 2, 1526, color="blue")
+    hspec2.plot_eq_width("Si", 2, 1526, color="blue", ls="--")
     vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
     save_figure(path.join(outdir,"cosmo_eqwidth_"+ofile+"_z"+str(snap)))
     plt.clf()
