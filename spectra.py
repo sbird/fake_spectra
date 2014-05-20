@@ -242,7 +242,7 @@ class Spectra:
         for ll in xrange(np.shape(tau)[0]):
             #SNR = Variance of signal/variance of noise
             if varnce[ll] > 0:
-                flux[ll,:]+=np.random.normal(0, np.sqrt(varnce[ll]*snr), np.shape(flux[ll,:]))
+                flux[ll,:]+=np.random.normal(0, np.sqrt(varnce[ll]/snr), np.shape(flux[ll,:]))
         #Make sure we don't have negative flux
         tau[np.where(flux > 0)] = -np.log(flux[np.where(flux > 0)])
         assert np.all(np.logical_not(np.isnan(tau)))
