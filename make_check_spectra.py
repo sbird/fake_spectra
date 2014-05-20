@@ -83,8 +83,13 @@ class ColdenSpectra(ss.Spectra):
     """Spectra with the SiII fraction given by the metallicity and column density."""
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species."""
-        zzz = self.get_mass_frac("Z", data, ind)[ind2]/0.76*self.solar[elem]/self.solarz
-        return zzz*star.get_reproc_HI(data)[ind][ind2]*np.float32(self.cloudy_table.ion(elem, ion, den, temp)/self.cloudy_table.ion("H", 1, den, temp))
+        return star.get_reproc_HI(data)[ind][ind2]*np.float32(self.cloudy_table.ion(elem, ion, den, temp)/self.cloudy_table.ion("H", 1, den, temp))
+
+    def get_mass_frac(self, elem, data, ind):
+        """Get the mass fraction in an elemental species."""
+        zzz = ss.Spectra.get_mass_frac(self, "Z", data, ind)/self.solarz*self.solar[elem]/0.76
+        return zzz
+
 
 halo = ColdenSpectra(snapnum, base,None, None, savefile="si_colden_spectra.hdf5")
 make_stuff(halo)
