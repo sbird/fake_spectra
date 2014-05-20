@@ -54,6 +54,9 @@ def plot_spectrum(sim, snap, num, subdir="", minwidth=0):
     ind = hspec.get_filt("Si", 2)
     (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     tau_l = np.roll(tau[ind][num], offset[ind][num])
+    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]], flux=False)
+    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_tau"))
+    plt.clf()
     hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
     save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
     plt.clf()
@@ -303,7 +306,7 @@ if __name__ == "__main__":
     simlist = (1,3,7,9) #range(8)
     for ss in simlist:
         for nn in (272,350,457,1030,1496,2030,3333):
-            plot_spectrum(ss,3, nn)
+            plot_spectrum(ss,3, nn, subdir = "cosmo"+str(ss)+"/")
             plot_colden(ss,3,nn)
         plot_spectrum_max(ss,3)
 
