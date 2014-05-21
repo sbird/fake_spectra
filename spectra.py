@@ -669,14 +669,14 @@ class Spectra:
             for ii in xrange(self.NumLos):
                 # we want unsaturated lines, defined as those with tau < 3
                 #which is the maximum tau in the sample of Neeleman 2013
-                #Also use lines with some absorption: tau > 0.05, roughly the noise level.
-                ind = np.where(np.logical_and(maxtaus[:,ii] < 3, maxtaus[:,ii] > 0.05))
+                #Also use lines with some absorption: tau > 0.1, roughly twice noise level.
+                ind = np.where(np.logical_and(maxtaus[:,ii] < 3, maxtaus[:,ii] > 0.1))
                 if np.size(ind) > 0:
                     line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
                 else:
                     #We have no lines in the desired region: here use something slightly saturated.
                     #In reality the observers will use a different ion
-                    ind2 = np.where(maxtaus[:,ii] > 0.05)
+                    ind2 = np.where(maxtaus[:,ii] > 0.1)
                     if np.size(ind2) > 0:
                         line = np.where(maxtaus[:,ii] == np.min(maxtaus[ind2,ii]))
                     else:
