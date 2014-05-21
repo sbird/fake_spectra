@@ -133,26 +133,30 @@ class PlottingSpectra(spectra.Spectra):
         tot_tau = np.sum(tau)
         (low, high) = self._vel_width_bound(tau, tot_tau)
         xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
+        #Make sure we were handed a single spectrum
+        assert np.size(np.shape(tau)) == 1
         if flux:
             plt.plot(xaxis,np.exp(-tau))
         else:
             plt.plot(xaxis,tau)
         if high - low > 0:
-            plt.plot([xaxis[0]+low,xaxis[0]+low],[0,1])
-            plt.plot([xaxis[0]+high,xaxis[0]+high],[0,1])
+            plt.plot([xaxis[0]+low,xaxis[0]+low],[-1,20])
+            plt.plot([xaxis[0]+high,xaxis[0]+high],[-1,20])
         if high - low > 150:
             tpos = xaxis[0]+low + 15
         else:
             tpos = xaxis[0]+high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
         #It should probably do this automatically, but doesn't
-        plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
+#         plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
+        plt.xlim(xaxis[0],xaxis[-1])
         plt.xlabel(r"v (km s$^{-1}$)")
         if flux:
             plt.ylabel(r"$\mathcal{F}$")
             plt.ylim(-0.05,1.05)
         else:
             plt.ylabel(r"$\tau$")
+            plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
         return (xaxis[0]+low, xaxis[0]+high)
 
     def plot_col_density(self, colden):

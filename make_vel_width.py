@@ -11,6 +11,7 @@ import plot_spectra as ps
 import vel_data
 import leastsq as ls
 import os.path as path
+import os
 import numpy as np
 import myname
 from save_figure import save_figure
@@ -26,14 +27,14 @@ labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"MET
 
 hspec_cache = {}
 
-def get_hspec(sim, snap):
+def get_hspec(sim, snap, snr=0.):
     """Get a spectra object, possibly from the cache"""
     halo = myname.get_name(sim, True)
     #Load from a save file only
     try:
         hspec = hspec_cache[(sim, snap)]
     except KeyError:
-        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim])
+        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim], snr=snr)
         hspec_cache[(sim, snap)] = hspec
     return hspec
 
@@ -47,30 +48,31 @@ def plot_sep_frac(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_sep_frac(color=colors[sim], ls=lss[sim])
 
-def plot_spectrum(sim, snap, num, subdir="", minwidth=0):
+def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     """Plot a spectrum"""
-    hspec = get_hspec(sim, snap)
-    tau = hspec.get_observer_tau("Si", 2)
-    ind = hspec.get_filt("Si", 2)
-    (low,high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
-    tau_l = np.roll(tau[ind][num], offset[ind][num])
-    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]], flux=False)
-    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_tau"))
+    hspec = get_hspec(sim, snap, snr=20.)
+    tau = hspec.get_observer_tau("Si", 2, num)
+    sdir = path.join(outdir,"spectra/"+subdir)
+    if not path.exists(sdir):
+        os.mkdir(sdir)
+    tau_l = np.roll(tau, offset)
+    assert np.max(tau) > 0.1
+    hspec.plot_spectrum(tau_l[low:high], flux=False)
+    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
-    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
+    hspec.plot_spectrum(tau_l[low:high])
+    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
     plt.clf()
-    tau = hspec.get_tau("Si", 2,1260)
-    tau_l = np.roll(tau[ind][num], offset[ind][num])
-    hspec.plot_spectrum(tau_l[low[ind][num]:high[ind][num]])
-    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
+    tau = hspec.get_tau("Si", 2,1260, num)
+    tau_l = np.roll(tau, offset)
+    hspec.plot_spectrum(tau_l[low:high])
+    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
 
 def plot_colden(sim, snap, num, subdir="", xlim=100):
     """Plot column density"""
-    hspec = get_hspec(sim, snap)
-    ind = hspec.get_filt("Si", 2)
-    col_den = hspec.get_col_density("Si", 2)[ind]
+    hspec = get_hspec(sim, snap, snr=20.)
+    col_den = hspec.get_col_density("Si", 2)
     mcol = np.max(col_den[num])
     ind_m = np.where(col_den[num] == mcol)[0][0]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
@@ -80,28 +82,31 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     plt.ylim(ymin=1e9)
     save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
-    col_den = hspec.get_col_density("H", 1)[ind]
+    col_den = hspec.get_col_density("H", 1)
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
     plt.xlim(-1*xlim, xlim)
     plt.ylabel(r"N$_\mathrm{HI}$ cm$^{-2}$")
     plt.ylim(ymin=1e15)
-    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_H_colden"))
+    sdir = path.join(outdir,"spectra/"+subdir)
+    if not path.exists(sdir):
+        os.mkdir(sdir)
+    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
-def plot_spectrum_max(sim, snap):
+def plot_spectrum_max(sim, snap, velbin, velwidth, num):
     """Plot spectrum with max vel width"""
-    hspec = get_hspec(sim, snap)
+    hspec = get_hspec(sim, snap, snr=20.)
     vels = hspec.vel_width("Si",2)
     ind = hspec.get_filt("Si", 2)
-    subdir = "max/cosmo"+str(sim)+"/"
-    num = np.where(vels[ind] == np.max(vels[ind]))[0][0]
-    plot_spectrum(sim, snap, num, subdir, minwidth=500)
-    plot_colden(sim, snap, num, subdir, 500)
-    num = np.where(vels[ind] > 450)[0]
-    for nn in num:
-        plot_spectrum(sim, snap, nn, subdir, minwidth=500)
-        plot_colden(sim, snap, nn, subdir,500)
+    subdir = path.join("cosmo"+str(sim),str(velbin))
+    band = np.intersect1d(ind[0], np.where(np.logical_and(vels > velbin-velwidth, vels < velbin+velwidth))[0])
+    np.random.seed(2323)
+    index = np.random.randint(0, np.size(band), num)
+    (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=velbin/2.)
+    for nn in band[index]:
+        plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
+        plot_colden(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
 
 
 def plot_spectrum_density_velocity(sim, snap, num):
