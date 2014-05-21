@@ -539,8 +539,6 @@ class Spectra:
             return self.absorber_width[(elem, ion, minwidth)]
         except KeyError:
             pass
-        high = self.nbins*np.ones(self.NumLos,dtype=np.int)
-        low = np.zeros(self.NumLos, dtype=np.int)
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines.values()]
         ind = np.where(strength == np.max(strength))[0][0]
@@ -550,13 +548,12 @@ class Spectra:
         strong = self.get_tau(elem, ion, strlam)
         (offset, roll) = self._get_rolled_spectra(strong)
         #Minimum
-        if minwidth > 0:
-            if minwidth < self.nbins/2:
-                low  = int(self.nbins/2-minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
-                high = int(self.nbins/2+minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
-            else:
-                low = np.zeros(self.NumLos, dtype=np.int)
-                high = self.nbins*np.ones(self.NumLos, dtype=np.int)
+        if minwidth > 0 and minwidth < self.nbins/2:
+            low  = int(self.nbins/2-minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+            high = int(self.nbins/2+minwidth/self.dvbin)*np.ones(self.NumLos, dtype=np.int)
+        else:
+            low = np.zeros(self.NumLos, dtype=np.int)
+            high = self.nbins*np.ones(self.NumLos, dtype=np.int)
         for ii in xrange(self.NumLos):
             #Where is there no absorption leftwards of the peak?
             for i in xrange(low[ii],0,-chunk):
