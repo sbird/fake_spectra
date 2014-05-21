@@ -548,7 +548,7 @@ class Spectra:
         except KeyError:
             pass
         if self.snr > 0:
-            thresh = - 3. * np.log((1-np.exp(-3))/self.snr)
+            thresh = - 3. * np.log(1-(1-np.exp(-3))/self.snr)
         else:
             thresh = 0.09
         lines = self.lines[(elem,ion)]
@@ -728,15 +728,18 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, f_min = 0.999):
+    def get_filt(self, elem, ion, thresh = 1e9):
         """
-        Get an index list to exclude certain spectra where the metal lines are not observable.
-        This should not be a huge fraction of the total spectra, as few metal-poor DLAs are observed.
+        Get an index list to exclude spectra where the ion is not observable.
+        For DLAs this should not be a huge fraction of the total spectra,
+        as few metal-poor DLAs are observed.
+
+        thresh - observable column density threshold
         """
         #Remember this is not in log...
-        #This is in practice 5/5000 = 0.1% of spectra, which is consistent with observations.
-        met = self.get_metallicity()
-        ind = np.where(met > 1e-5)
+        #This is in practice ~100/5000 ~ 2% of spectra, which seems fine.
+        met = np.max(self.get_col_density(elem, ion), axis=1)
+        ind = np.where(met > thresh)
         return ind
 
     def vel_width(self, elem, ion):
