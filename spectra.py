@@ -526,15 +526,19 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, thresh=0.03, chunk = 25, minwidth=None):
+    def find_absorber_width(self, elem, ion, chunk = 10, minwidth=None):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
            absorption in the strongest line for this ion, where strongest is the line with the largest
            cross-section, ie, greatest lambda * fosc.
            elem, ion - ion to look at
-           thresh - threshold above which absorption is considered significant. For a spectrum with
-           S/N ~ 30, one can detect tau ~ 0.03.
+           The threshold above which absorption is considered significant is
+           tau = - sigma log(1-F(-3)/SNR).
+           Probability of a spurious detection from Gaussian noise is N(sigma)**chunk.
+           We use N(3) = 0.99, so there is a 0.9 probability the detection is real.
+           If SNR = 0, use 0.06 (for an assumed SNR of 30).
+
            Returns the low and high indices of absorption, and the offset for the maximal absorption.
         """
         if minwidth == None:
@@ -543,6 +547,10 @@ class Spectra:
             return self.absorber_width[(elem, ion, minwidth)]
         except KeyError:
             pass
+        if self.snr > 0:
+            thresh = - 3. * np.log((1-np.exp(-3))/self.snr)
+        else:
+            thresh = 0.09
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines.values()]
         ind = np.where(strength == np.max(strength))[0][0]
@@ -690,11 +698,12 @@ class Spectra:
                 if np.size(line) > 1:
                     line = (line[0][0],)
                 ntau[ii,:] = tau[line,ii,:]
-            # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
             self.tau_obs[(elem, ion)] = ntau
         if number >= 0:
             ntau = ntau[number,:]
+        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
         ntau = self.res_corr(ntau, self.spec_res)
+        #Add noise
         if self.snr > 0:
             ntau = self.add_noise(self.snr, ntau)
         return ntau
