@@ -1056,7 +1056,7 @@ class Spectra:
             self.colden[(elem, ion)] = colden
             return colden
 
-    def get_tau(self, elem, ion,line, force_recompute=False):
+    def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
         """Get the column density in each pixel for a given species"""
         try:
             if force_recompute:
@@ -1066,10 +1066,11 @@ class Spectra:
         except KeyError:
             tau = self.compute_spectra(elem, ion, line,True)
             self.tau[(elem, ion,line)] = tau
+        if number >= 0:
+            tau = tau[number,:]
+        tau = self.res_corr(tau, self.spec_res)
         if self.snr > 0:
-            tau = self.res_corr(self.add_noise(self.snr, tau), self.spec_res)
-        else:
-            tau = self.res_corr(tau, self.spec_res)
+            tau = self.add_noise(self.snr, tau)
         return tau
 
     def _vel_single_file(self,fn, elem, ion):
