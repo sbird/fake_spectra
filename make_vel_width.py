@@ -60,9 +60,9 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     hspec.plot_spectrum(tau_l[low:high], flux=False)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
-    hspec.plot_spectrum(tau_l[low:high])
-    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
-    plt.clf()
+#     hspec.plot_spectrum(tau_l[low:high])
+#     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
+#     plt.clf()
     tau = hspec.get_tau("Si", 2,1260, num)
     tau_l = np.roll(tau, offset)
     hspec.plot_spectrum(tau_l[low:high])
@@ -103,7 +103,8 @@ def plot_spectrum_max(sim, snap, velbin, velwidth, num):
     band = np.intersect1d(ind[0], np.where(np.logical_and(vels > velbin-velwidth, vels < velbin+velwidth))[0])
     np.random.seed(2323)
     index = np.random.randint(0, np.size(band), num)
-    (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=velbin/2.)
+#     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=1.2*velbin/2.)
+    (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=1.1*(velbin+velwidth))
     for nn in band[index]:
         plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
         plot_colden(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
@@ -310,10 +311,9 @@ if __name__ == "__main__":
 
     simlist = (1,3,7,9) #range(8)
     for ss in simlist:
-        for nn in (272,350,457,1030,1496,2030,3333):
-            plot_spectrum(ss,3, nn, subdir = "cosmo"+str(ss)+"/")
-            plot_colden(ss,3,nn)
-        plot_spectrum_max(ss,3)
+        plot_spectrum_max(ss,3, 60, 20, 15)
+        plot_spectrum_max(ss,3, 200, 35, 15)
+        plot_spectrum_max(ss,3, 400, 50, 15)
 
     plot_vel_width_sims(simlist, 3, log=True)
     for zz in (1,3,5):

@@ -147,9 +147,8 @@ class PlottingSpectra(spectra.Spectra):
         else:
             tpos = xaxis[0]+high+15
         plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
-        #It should probably do this automatically, but doesn't
-#         plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
-        plt.xlim(xaxis[0],xaxis[-1])
+        plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
+#         plt.xlim(xaxis[0],xaxis[-1])
         plt.xlabel(r"v (km s$^{-1}$)")
         if flux:
             plt.ylabel(r"$\mathcal{F}$")
