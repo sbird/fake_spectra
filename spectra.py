@@ -245,7 +245,7 @@ class Spectra:
         if np.size(varnce) == 1:
             flux += np.random.normal(0, np.sqrt(varnce/snr), self.nbins)
         else:
-            flux += np.array([np.random.normal(0, np.sqrt(vv/snr), self.nbins) if vv > 0 else 0 for vv in varnce])
+            flux += np.array([np.random.normal(0, np.sqrt(vv/snr), self.nbins) if vv > 0 else np.zeros(self.nbins) for vv in varnce])
         #Make sure we don't have negative flux
         ind = np.where(flux > 0)
         tau[ind] = -np.log(flux[ind])
