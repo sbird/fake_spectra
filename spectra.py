@@ -728,7 +728,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, thresh = 1e9):
+    def get_filt(self, elem, ion, thresh = 2e11):
         """
         Get an index list to exclude spectra where the ion is not observable.
         For DLAs this should not be a huge fraction of the total spectra,
@@ -737,7 +737,8 @@ class Spectra:
         thresh - observable column density threshold
         """
         #Remember this is not in log...
-        #This is in practice ~100/5000 ~ 2% of spectra, which seems fine.
+        #This is in practice for SiII ~200/5000 ~ 4% of spectra, which is a little large.
+        #Oddly it is less for metallicity
         met = np.max(self.get_col_density(elem, ion), axis=1)
         ind = np.where(met > thresh)
         return ind
