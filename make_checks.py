@@ -85,7 +85,7 @@ def test_vel_abswidth():
     #Higher resolution spectrum
     hspec = ps.PlottingSpectra(3, halo)
     hspec2 = ps.PlottingSpectra(3, halo)
-    hspec2.minwidth = 300.
+    hspec2.minwidth = 250.
     plot_check(hspec,hspec2,"abswidth")
 
 def test_pecvel():
@@ -129,6 +129,17 @@ def test_big_box():
     hspec = ps.PlottingSpectra(3, halo, label="DEF")
     hspec2 = ps.PlottingSpectra(59, halobig, label="ILLUS")
     plot_check(hspec,hspec2,"bigbox")
+
+def test_gfm_shield():
+    """Plot the velocity widths for dynamical self-shielding vs post-processed self-shielding."""
+    halo = myname.get_name(7)
+    halo2 = myname.get_name('B')
+    hspec = ps.PlottingSpectra(3, halo, label="2xUV")
+    hspec2 = ps.PlottingSpectra(3, halo2, label="NOSHIELD")
+    plot_check(hspec,hspec2,"gfm_shield")
+    hspec = ps.PlottingSpectra(5, halo, label="2xUV")
+    hspec2 = ps.PlottingSpectra(5, halo2, label="NOSHIELD")
+    plot_check(hspec,hspec2,"gfm_shield", snap=5)
 
 def test_atten():
     """Plot the effect of the self-shielding correction"""
@@ -197,6 +208,7 @@ def test_tescari_halos(sim, snap):
 if __name__ == "__main__":
 #     test_shield()
     test_vel_abswidth()
+    test_gfm_shield()
     test_tescari_halos(7,3)
     test_noise()
     test_atten()
