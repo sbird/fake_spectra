@@ -144,8 +144,8 @@ def test_gfm_shield():
 def test_atten():
     """Plot the effect of the self-shielding correction"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo)
-    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5")
+    hspec = ps.PlottingSpectra(3, halo, label="ATTEN")
+    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5",label="NOATTEN")
     plot_check(hspec,hspec2,"no_atten")
 
 def test_shield():
@@ -158,8 +158,8 @@ def test_shield():
 def test_noise():
     """Plot the effect of noise on the spectrum"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo, snr=0.05)
-    hspec2 = ps.PlottingSpectra(3, halo, snr = 0.)
+    hspec = ps.PlottingSpectra(3, halo, snr=0.,label="No Noise")
+    hspec2 = ps.PlottingSpectra(3, halo, snr = 20.,label="Noise")
     plot_check(hspec,hspec2,"noise")
 
     #Higher resolution spectrum
@@ -167,8 +167,9 @@ def plot_check(hspec, hspec2, ofile, snap=3):
     """Plot velocity widths for two halos both absolutely and relatively"""
     hspec.plot_vel_width("Si",2, color="red")
     hspec2.plot_vel_width("Si", 2, color="blue", ls="--")
+    plt.legend()
     vel_data.plot_prochaska_2008_data()
-    plt.xlim(1, 1000)
+    plt.xlim(10, 1000)
     save_figure(path.join(outdir,"cosmo_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
     (vbin,one) = hspec.vel_width_hist("Si",2)
@@ -178,21 +179,25 @@ def plot_check(hspec, hspec2, ofile, snap=3):
         plt.semilogx(vbin[:maxx],one[:maxx]/two[:maxx])
     else:
         plt.semilogx(vbin,one/two)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_rel_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
     hspec.plot_f_peak("Si", 2, color="red")
     hspec2.plot_f_peak("Si", 2, color="blue", ls="--")
     vel_data.plot_extra_stat_hist(True)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_fpeak_"+ofile))
     plt.clf()
     hspec.plot_Z_vs_vel_width(color="red", color2="darkred")
     hspec2.plot_Z_vs_vel_width(color="blue", color2="purple")
     vel_data.plot_prochaska_2008_correlation(zrange[snap])
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_correlation_"+ofile+"_z"+str(snap)))
     plt.clf()
     hspec.plot_eq_width("Si", 2, 1526, color="red")
     hspec2.plot_eq_width("Si", 2, 1526, color="blue", ls="--")
     vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
+    plt.legend()
     save_figure(path.join(outdir,"cosmo_eqwidth_"+ofile+"_z"+str(snap)))
     plt.clf()
 

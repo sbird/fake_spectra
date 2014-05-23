@@ -27,15 +27,15 @@ labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"MET
 
 hspec_cache = {}
 
-def get_hspec(sim, snap, snr=0.):
+def get_hspec(sim, snap, snr=0., box = 25):
     """Get a spectra object, possibly from the cache"""
-    halo = myname.get_name(sim, True)
+    halo = myname.get_name(sim, True, box=box)
     #Load from a save file only
     try:
-        hspec = hspec_cache[(sim, snap)]
+        hspec = hspec_cache[halo]
     except KeyError:
         hspec = ps.PlottingSpectra(snap, halo, label=labels[sim], snr=snr)
-        hspec_cache[(sim, snap)] = hspec
+        hspec_cache[halo] = hspec
     return hspec
 
 def plot_vel_width_sim(sim, snap, color="red", HI_cut = None):
@@ -50,7 +50,7 @@ def plot_sep_frac(sim, snap):
 
 def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     """Plot a spectrum"""
-    hspec = get_hspec(sim, snap, snr=20.)
+    hspec = get_hspec(sim, snap, snr=20., box=10)
     tau = hspec.get_observer_tau("Si", 2, num)
     sdir = path.join(outdir,"spectra/"+subdir)
     if not path.exists(sdir):
@@ -71,7 +71,7 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
 
 def plot_colden(sim, snap, num, subdir="", xlim=100):
     """Plot column density"""
-    hspec = get_hspec(sim, snap, snr=20.)
+    hspec = get_hspec(sim, snap, snr=20., box=10)
     col_den = hspec.get_col_density("Si", 2)
     mcol = np.max(col_den[num])
     ind_m = np.where(col_den[num] == mcol)[0][0]
@@ -80,7 +80,10 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     plt.ylabel(r"N$_\mathrm{SiII}$ cm$^{-2}$")
     plt.xlim(-1*xlim, xlim)
     plt.ylim(ymin=1e9)
-    save_figure(path.join(outdir,"spectra/"+subdir+str(num)+"_cosmo"+str(sim)+"_Si_colden"))
+    sdir = path.join(outdir,"spectra/"+subdir)
+    if not path.exists(sdir):
+        os.mkdir(sdir)
+    save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
     col_den = hspec.get_col_density("H", 1)
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
@@ -88,18 +91,15 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     plt.xlim(-1*xlim, xlim)
     plt.ylabel(r"N$_\mathrm{HI}$ cm$^{-2}$")
     plt.ylim(ymin=1e15)
-    sdir = path.join(outdir,"spectra/"+subdir)
-    if not path.exists(sdir):
-        os.mkdir(sdir)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
 def plot_spectrum_max(sim, snap, velbin, velwidth, num):
     """Plot spectrum with max vel width"""
-    hspec = get_hspec(sim, snap, snr=20.)
+    hspec = get_hspec(sim, snap, snr=20., box=10)
     vels = hspec.vel_width("Si",2)
     ind = hspec.get_filt("Si", 2)
-    subdir = path.join("cosmo"+str(sim),str(velbin))
+    subdir = path.join("cosmo"+str(sim)+"-10",str(velbin))
     band = np.intersect1d(ind[0], np.where(np.logical_and(vels > velbin-velwidth, vels < velbin+velwidth))[0])
     np.random.seed(2323)
     index = np.random.randint(0, np.size(band), num)
@@ -108,14 +108,6 @@ def plot_spectrum_max(sim, snap, velbin, velwidth, num):
     for nn in band[index]:
         plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
         plot_colden(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
-
-
-def plot_spectrum_density_velocity(sim, snap, num):
-    """Plot a spectrum"""
-    hspec = get_hspec(sim, snap)
-    hspec.plot_spectrum_density_velocity("Si",2, num)
-    save_figure(path.join(outdir,"spectra/cosmo"+str(sim)+"_tdv_Si_spectrum"))
-    plt.clf()
 
 def plot_metallicity(sims, snap):
     """Plot metallicity, vel width, their correlation and the extra statistics"""
@@ -309,12 +301,18 @@ if __name__ == "__main__":
     for ss in (1,3,9):
         do_statistics(ss,3)
 
+    plot_spectrum_max(5,3, 60, 20, 15)
+    plot_spectrum_max(5,3, 100, 20, 15)
+    plot_spectrum_max(5,3, 200, 35, 15)
+    plot_spectrum_max(5,3, 400, 50, 15)
     simlist = (1,3,7,9) #range(8)
-    for ss in simlist:
-        plot_spectrum_max(ss,3, 60, 20, 15)
-        plot_spectrum_max(ss,3, 200, 35, 15)
-        plot_spectrum_max(ss,3, 400, 50, 15)
+#     for ss in simlist:
+#         plot_spectrum_max(ss,3, 60, 20, 15)
+#         plot_spectrum_max(ss,3, 200, 35, 15)
+#         plot_spectrum_max(ss,3, 400, 50, 15)
 
+#     plot_spectrum_max(7,3, 100, 20, 15)
+#     plot_spectrum_max(7,3, 140, 20, 15)
     plot_vel_width_sims(simlist, 3, log=True)
     for zz in (1,3,5):
         plot_met_corr(simlist,zz)
