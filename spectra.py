@@ -1005,7 +1005,7 @@ class Spectra:
         if np.size(dv) > 1:
             v_table = dv
         elif log:
-            v_table = 10**np.arange(0, np.log10(np.max(vel_width)), dv)
+            v_table = 10**np.arange(0, np.min((50,np.log10(np.max(vel_width)))), dv)
         else:
             v_table = np.arange(0, 1, dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
@@ -1036,14 +1036,22 @@ class Spectra:
         print "Field DLAs: ",np.size(halos)-np.size(f_ind)
         return (mbin, pdf)
 
-    def virial_vel(self, halos=None):
+    def virial_vel(self, halos=None, subhalo=False):
         """Get the virial velocities of the selected halos in km/s"""
-        if halos != None:
-            mm = self.sub_mass[halos]
-            rr = np.array(self.sub_radii[halos])
+        if subhalo:
+            if halos != None:
+                mm = self.sub_sub_mass[halos]
+                rr = np.array(self.sub_sub_radii[halos])
+            else:
+                mm = self.sub_sub_mass
+                rr = np.array(self.sub_sub_radii)
         else:
-            mm = self.sub_mass
-            rr = np.array(self.sub_radii)
+            if halos != None:
+                mm = self.sub_mass[halos]
+                rr = np.array(self.sub_radii[halos])
+            else:
+                mm = self.sub_mass
+                rr = np.array(self.sub_radii)
         #physical cm from comoving kpc/h
         cminkpch = self.UnitLength_in_cm/self.hubble/(1+self.red)
         # Conversion factor from M_sun/kpc/h to g/cm
@@ -1311,7 +1319,9 @@ class Spectra:
             self.sub_vel = subs.get_grp("GroupVel")
             self.sub_sub_radii =  subs.get_sub("SubhaloHalfmassRad")
             self.sub_sub_cofm =  subs.get_sub("SubhaloPos")
+            self.sub_sub_mass =  subs.get_sub("SubhaloMass")
             self.sub_sub_index = subs.get_sub("SubhaloGrNr")
+            self.sub_sub_vel = subs.get_sub("SubhaloVel")
         except IOError:
             pass
 
