@@ -360,7 +360,7 @@ class Spectra:
             elem_den *= star.get_reproc_HI(data)[ind]
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
-            ind2 = np.where(elem_den > 0)
+            ind2 = self._filter_particles(elem_den, pos, vel, den)
             if np.size(ind2) == 0:
                 return (False, False, False, False,False,False)
             #Shrink arrays: we don't want to interpolate particles
@@ -379,6 +379,11 @@ class Spectra:
         elem_den/=amumass
         #Do interpolation.
         return (pos, vel, elem_den, temp, hh, amumass)
+
+    def _filter_particles(self, elem_den, pos, velocity, den):
+        """Get a filtered list of particles to add to the sightlines"""
+        ind2 = np.where(elem_den > 0)
+        return ind2
 
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
