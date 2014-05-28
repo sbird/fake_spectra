@@ -14,6 +14,7 @@ import os.path as path
 import os
 import numpy as np
 import myname
+import math
 from save_figure import save_figure
 
 outdir = path.join(myname.base, "plots/")
@@ -32,10 +33,10 @@ def get_hspec(sim, snap, snr=0., box = 25):
     halo = myname.get_name(sim, True, box=box)
     #Load from a save file only
     try:
-        hspec = hspec_cache[halo]
+        hspec = hspec_cache[(halo, snap)]
     except KeyError:
         hspec = ps.PlottingSpectra(snap, halo, label=labels[sim], snr=snr)
-        hspec_cache[halo] = hspec
+        hspec_cache[(halo, snap)] = hspec
     return hspec
 
 def plot_vel_width_sim(sim, snap, color="red", HI_cut = None):
@@ -256,6 +257,49 @@ def plot_vel_redshift_evo(sim):
     plt.ylim(0.5,1.5)
     save_figure(path.join(outdir,"cosmo"+str(sim)+"_zz_evol"))
     plt.clf()
+
+def disc_distrib(phi, iota, scale=0.1):
+    """
+    Get the velocity width from an iota and phi.
+    Arguments: phi - azimuthal angle
+              iota - inclination angle
+              scale - ratio of disc scale length to scale height, h / R_d.
+    """
+    return 2 * np.sin(phi) / (1 + np.tan(iota) / np.cos(phi) / scale)
+
+def make_disc_model(nsample = 50000, scale=0.1,color="red", label="Disc"):
+    """Plot the distribution of velocity width by virial velocity that would result from a rotating disc"""
+    iota = math.pi/2.*np.random.random_sample(nsample)
+    phi = 2.*math.pi*np.random.random_sample(nsample)
+    v90 = disc_distrib(phi, iota,scale)
+    v_table = 10**np.arange(-3, np.log10(np.max(v90)), 0.1)
+    vels = np.histogram(np.log10(v90), np.log10(v_table),density=True)[0]
+    vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+    plt.semilogx(vbin, vels, color=color, lw=3, ls="--",label=label)
+
+def read_H_model():
+    """Read and plot the data from Haehnelt et al 1998"""
+    data = np.loadtxt("damp12_f.dat")
+    v90 = data[:,2]
+    vvir = data[:,10]
+    v_table = 10**np.arange(-2, np.log10(np.max(v90/vvir)), 0.1)
+    vels = np.histogram(np.log10(v90/vvir), np.log10(v_table),density=True)[0]
+    vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+    plt.semilogx(vbin, vels, color="purple", lw=3, ls=":",label="Haehnelt 98")
+
+def plot_vvir_models():
+    """Plot histogram of velocity width by virial velocity"""
+    #Load from a save file only
+    hspec = get_hspec(7,3)
+    hspec.plot_virial_vel_vs_vel_width("Si", 2, color=colors[7], ls=lss[7], label=labels[7])
+    hspec = get_hspec(3,3)
+    hspec.plot_virial_vel_vs_vel_width("Si", 2, color=colors[3], ls=lss[3], label=labels[3])
+    make_disc_model(scale=0.25,label="Disc")
+    read_H_model()
+    plt.legend(loc=2)
+    plt.xlim(0.01, 10)
+    plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
+    save_figure(path.join(outdir, "vvir90_model"))
 
 def do_statistics(sim, snap):
     """Compute statistics"""

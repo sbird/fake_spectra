@@ -58,7 +58,6 @@ def plot_vvir(sim, snap):
     """Plot histogram of velocity width by virial velocity"""
     #Load from a save file only
     hspec = get_hspec(sim,snap)
-    (mbins, pdf) = hspec.mass_hist()
     hspec.plot_virial_vel_vs_vel_width("Si", 2, color=colors[sim], ls=lss[sim], label=labels[sim])
 
 def plot_vvir_vs_mm(sim, snap):
