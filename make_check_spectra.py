@@ -83,7 +83,13 @@ class ColdenSpectra(ss.Spectra):
     """Spectra with the SiII fraction given by the metallicity and column density."""
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species."""
-        return star.get_reproc_HI(data)[ind][ind2]*np.float32(self.cloudy_table.ion(elem, ion, den, temp)/self.cloudy_table.ion("H", 1, den, temp))
+        #Make sure temperature doesn't overflow cloudy
+        if np.max(temp) > 10**8.6:
+            temp2 = np.array(temp)
+            temp2[np.where(temp2 > 10**8.6)] = 10**8.6
+        else:
+            temp2 = temp
+        return star.get_reproc_HI(data)[ind][ind2]*np.float32(self.cloudy_table.ion(elem, ion, den, temp2)/self.cloudy_table.ion("H", 1, den, temp2))
 
     def get_mass_frac(self, elem, data, ind):
         """Get the mass fraction in an elemental species."""

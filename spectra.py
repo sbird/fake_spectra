@@ -361,21 +361,16 @@ class Spectra:
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = np.where(elem_den > 0)
+            if np.size(ind2) == 0:
+                return (False, False, False, False,False,False)
             #Shrink arrays: we don't want to interpolate particles
             #with no mass in them
             temp = temp[ind2]
             pos = pos[ind2]
             hh = hh[ind2]
-            if np.size(ind2) == 0:
-                return (False, False, False, False,False,False)
             if get_tau:
                 vel = vel[ind2]
-            if np.max(temp) > 10**8.6:
-                temp2 = np.array(temp)
-                temp2[np.where(temp2 > 10**8.6)] = 10**8.6
-            else:
-                temp2 = temp
-            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp2, data, ind, ind2, star)
+            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, data, ind, ind2, star)
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
@@ -387,7 +382,13 @@ class Spectra:
 
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
-        return np.float32(self.cloudy_table.ion(elem, ion, den, temp))
+        #Make sure temperature doesn't overflow the cloudy table
+        if np.max(temp) > 10**8.6:
+            temp2 = np.array(temp)
+            temp2[np.where(temp2 > 10**8.6)] = 10**8.6
+        else:
+            temp2 = temp
+        return np.float32(self.cloudy_table.ion(elem, ion, den, temp2))
 
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
