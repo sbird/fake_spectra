@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Contains the plotting-specific functions for the spectrum analysis code."""
 
-import convert_cloudy
 import spectra
 import halospectra
 import numpy as np
@@ -52,7 +51,7 @@ class PlottingSpectra(spectra.Spectra):
         colden = self.get_col_density(elem, ion)
         (halo, _) = self.find_nearest_halo()
         #Subtract velocity at peak density
-        mtheta = 5*np.ones(self.NumLos)
+        mtheta = []
         for ii in xrange(self.NumLos):
             if halo[ii] < 0:
                 continue
@@ -60,7 +59,6 @@ class PlottingSpectra(spectra.Spectra):
             #Position of the point
             proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
             ax = self.axis[ii]-1
-            axpos = ind*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
             lvel =  velocity[ii, :,:] - self.sub_vel[halo[ii]]
             vamp = np.sqrt(np.sum(lvel[ind,:][0]**2,axis=1))
             rdist = np.zeros_like(vamp)
@@ -423,23 +421,26 @@ class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
     """Class to plot things connected with spectra."""
     def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra_DLA.hdf5"):
         halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, res, savefile)
+try:
+    import convert_cloudy
 
-class PlotIonDensity:
-    """Class to plot the ionisation fraction of elements as a function of density"""
-    def __init__(self, red):
-        self.cloudy_table = convert_cloudy.CloudyTable(red)
-        self.red = red
+    class PlotIonDensity:
+        """Class to plot the ionisation fraction of elements as a function of density"""
+        def __init__(self, red):
+            self.cloudy_table = convert_cloudy.CloudyTable(red)
+            self.red = red
 
-    def iondensity(self,elem,ion, metal = 0.1, den=(-2.,3)):
-        """Plot the ionisation fraction of an ionic species as a function of hydrogen density.
-        Arguments:
-             elem, ion - specify the species to plot
-             metal - metallicity as a fraction of solar for this species
-             den - range of densities to plot
-        """
-        #Bins in density
-        dens = 10**np.arange(den[0],den[1],0.2)
-        mass_frac = self.cloudy_table.get_solar(elem)*metal*np.ones(np.size(dens))
-        ionfrac = self.cloudy_table.ion(elem, ion, mass_frac, dens)
-        plt.loglog(dens,ionfrac)
-
+        def iondensity(self,elem,ion, metal = 0.1, den=(-2.,3)):
+            """Plot the ionisation fraction of an ionic species as a function of hydrogen density.
+            Arguments:
+                elem, ion - specify the species to plot
+                metal - metallicity as a fraction of solar for this species
+                den - range of densities to plot
+            """
+            #Bins in density
+            dens = 10**np.arange(den[0],den[1],0.2)
+            mass_frac = self.cloudy_table.get_solar(elem)*metal*np.ones(np.size(dens))
+            ionfrac = self.cloudy_table.ion(elem, ion, mass_frac, dens)
+            plt.loglog(dens,ionfrac)
+except ImportError:
+    pass
