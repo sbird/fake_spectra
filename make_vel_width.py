@@ -193,22 +193,94 @@ def plot_mean_median(sims, snap):
     save_figure(path.join(outdir,"cosmo_mean_median_z"+str(snap)))
     plt.clf()
 
+import numexpr as ne
+
+class RotationFiltered(ps.PlottingSpectra):
+    """Class to plot the velocity widths of only rotationally supported gas"""
+    def _filter_particles(self, elem_den, pos, velocity, den):
+        """Filtered list of particles that are rotationally supported by a halo."""
+        #Filter particles that are non-dense, as they will not be in halos
+        ind2 = np.where(np.logical_and(den > 3e-4, elem_den > 0))
+        halo_cofm = self.sub_cofm
+        sub_cofm = self.sub_sub_cofm
+        ind3 = []
+        frachigh = 1.5
+        fraclow = 0.7
+        non_rot = 0
+        for ii in ind2[0]:
+            #Is this within the virial radius of any halo?
+            ppos = pos[ii,:]
+            dd = ne.evaluate("sum((halo_cofm - ppos)**2,axis=1)")
+            ind = np.where(dd < self.sub_radii**2)
+            #Check subhalos
+            if np.size(ind) < 1:
+                dd = ne.evaluate("sum((sub_cofm - ppos)**2,axis=1)")
+                ind = np.where(dd < self.sub_sub_radii**2)
+                if np.size(ind) < 1:
+                    continue
+                ind = ind[0][0]
+                hvel = self.sub_sub_vel[ind,:]
+                hcofm = self.sub_sub_cofm[ind,:]
+                hrad = self.sub_sub_radii[ind]
+                vvir = self.virial_vel([ind,], subhalo=True)[0]
+            else:
+                ind = ind[0][0]
+                hvel = self.sub_vel[ind,:]
+                hcofm = self.sub_cofm[ind,:]
+                hrad = self.sub_radii[ind]
+                vvir = self.virial_vel([ind,])[0]
+            #It is! What is the perpendicular velocity wrt this halo?
+            lvel =  velocity[ii, :] - hvel
+            #Radial vector from halo
+            lpos = ppos - hcofm
+            ldist = np.sqrt(np.sum(lpos**2))
+            #Find parallel by dotting with unit vector
+            vpar = np.dot(lvel, lpos/ldist)
+            vperp = np.sqrt(np.sum(lvel**2) - vpar)
+            #Rotational velocity assuming NFW concentration 10 (like MW).
+            vhalo = vvir * np.sqrt(5*ldist) / (1+ 10 * ldist / hrad)
+            #Are we rotation supported?
+            #Also, the angular vector should dominate over the radial
+            if np.abs(vpar / vperp) > 0.3 or vperp / vhalo >  frachigh or vperp / vhalo < fraclow:
+                non_rot += 1
+                continue
+            #If we are, add to the list
+            ind3+= [ii,]
+        print "Filtered ",np.size(ind2[0])," particles to ",np.size(ind3)
+        print "Non-rotating ",non_rot
+        return ind3
+
+    def get_filt(self, elem, ion, thresh = 2e11):
+        """
+        Get an index list to exclude spectra where the ion is not observable.
+        For DLAs this should not be a huge fraction of the total spectra,
+        as few metal-poor DLAs are observed.
+
+        thresh - observable column density threshold
+        """
+        #Remember this is not in log...
+        #This is in practice for SiII ~200/5000 ~ 4% of spectra, which is a little large.
+        #Oddly it is less for metallicity
+        met = np.max(self.get_col_density(elem, ion), axis=1)
+        ind = np.where(np.logical_and(met > thresh, np.max(self.get_observer_tau(elem, ion), axis=1) > 0.1))
+        print "Sightlines with rotating absorption: ",np.size(ind)
+        return ind
+
 def plot_v_struct(sims, snap):
     """Plot mean-median statistic for all sims on one plot"""
     #Plot extra statistics
     for sss in sims:
-        hspec = get_hspec(sss, snap)
-        plt.figure(1)
-        hspec.plot_velocity_amp("H",1, color=colors[sss], ls=lss[sss])
-        plt.figure(2)
-        hspec.plot_velocity_theta("H",1, color=colors[sss], ls=lss[sss])
-    plt.figure(1)
+        halo = myname.get_name(sss, True)
+        #Load from a save file only
+        hspec = RotationFiltered(snap, halo, label=labels[sss], spec_res = 0.1)
+        hspec.get_observer_tau("Si",2,force_recompute=True)
+        hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
+    vel_data.plot_prochaska_2008_data()
     plt.legend(loc=2,ncol=3)
-    save_figure(path.join(outdir, "cosmo_amp_z"+str(snap)))
-    plt.clf()
-    plt.figure(2)
-    plt.legend(loc=2,ncol=3)
-    save_figure(path.join(outdir, "cosmo_theta_z"+str(snap)))
+    plt.xlabel(r"$v_\mathrm{90}$ km s$^{-1}$")
+    plt.xlim(2, 1000)
+    plt.ylim(0,2)
+    save_figure(path.join(outdir, "cosmo_rot_z"+str(snap)))
     plt.clf()
 
 def plot_f_peak(sims, snap):
