@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0.):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr)
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8.):
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res)
         self.label=label
 
     def plot_vel_width(self, elem, ion, dv=0.1, color="red", ls="-"):
