@@ -24,7 +24,7 @@ zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
 colors = {0:"pink", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 8:"pink", 9:"red", 'A':"grey"}
 colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey",8:"cyan", 9:"darkred",'A':"grey"}
 lss = {0:"--",1:":", 2:":",3:"-.", 4:"--", 5:"-",6:"--",7:"-", 8:"-",9:"--",'A':"--"}
-labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"2xUV", 8:"RICH",9:"FAST", 'A':"MOM"}
+labels = {0:"ILLUS",1:"HVEL", 2:"HVNOAGN",3:"NOSN", 4:"WMNOAGN", 5:"MVEL",6:"METAL",7:"DEF", 8:"RICH",9:"FAST", 'A':"MOM"}
 
 hspec_cache = {}
 
@@ -403,10 +403,10 @@ def do_statistics(sim, snap):
     #Do 200 trials and see how many times the KS test is worse
     ntrials = 50
     count = 0
-    for i in xrange(ntrials):
+    for _ in xrange(ntrials):
         rand = np.random.randint(0,np.size(svel), np.size(vel))
         if kss <= hspec.kstest(10**smet[rand], 10**svel[rand]):
-             count+=1
+            count+=1
     print "Prob KS test between simulated samples was larger: ",count*1./ntrials
 
 if __name__ == "__main__":
@@ -422,6 +422,7 @@ if __name__ == "__main__":
     plot_spectrum_max(5,3, 200, 35, 15)
     plot_spectrum_max(5,3, 400, 50, 15)
     simlist = (1,3,7,9) #range(8)
+
 #     for ss in simlist:
 #         plot_spectrum_max(ss,3, 60, 20, 15)
 #         plot_spectrum_max(ss,3, 200, 35, 15)
@@ -435,7 +436,7 @@ if __name__ == "__main__":
         hspec_cache = {}
 
     for zz in (1, 3, 5):
-        plot_v_struct(simlist, zz)
+#         plot_v_struct(simlist, zz)
         plot_eq_width(simlist, zz)
         plot_metallicity(simlist, zz)
         plot_vel_width_sims(simlist, zz)
