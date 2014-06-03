@@ -144,7 +144,7 @@ def plot_vel_width_sims(sims, snap, log=False):
     if log:
         ax = plt.gca()
         ax.set_yscale('log')
-        plt.ylim(1e-2,10)
+        plt.ylim(5e-2,10)
         outstr+="_log"
     else:
         plt.ylim(1e-2,2)
@@ -241,7 +241,7 @@ class RotationFiltered(ps.PlottingSpectra):
             vhalo = vvir * np.sqrt(5*ldist) / (1+ 10 * ldist / hrad)
             #Are we rotation supported?
             #Also, the angular vector should dominate over the radial
-            if np.abs(vpar / vperp) > 0.3 or vperp / vhalo >  frachigh or vperp / vhalo < fraclow:
+            if np.abs(vperp / (vpar+0.1)) < 2 or vperp / vhalo >  frachigh or vperp / vhalo < fraclow:
                 non_rot += 1
                 continue
             #If we are, add to the list
