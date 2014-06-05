@@ -56,27 +56,22 @@ make_stuff(halo)
 
 #Tescari halos
 
-halo = hs.HaloSpectra(snapnum, base, minpart=3000, savefile="halo_spectra_2.hdf5")
-make_stuff(halo)
+class TescariSpectra(hs.HaloSpectra):
+    """Spectra with the SiII fraction given by n(SiII)/n(Si) = n(HI)/n(H)."""
+    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
+        """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
+        #Make sure temperature doesn't overflow the cloudy table
+        if np.max(temp) > 10**8.6:
+            temp2 = np.array(temp)
+            temp2[np.where(temp2 > 10**8.6)] = 10**8.6
+        else:
+            temp2 = temp
+        ions = np.ones_like(den)
+        ind3 = np.where(den < 0.1)
+        ions[ind3] = np.float32(self.cloudy_table.ion(elem, ion, den[ind3], temp2[ind3]))
 
-#Tescari self-shielding condition:
-#add to _read_particle_data in spectra.py:
-#        #Special case H1:
-#        if elem == 'H' and ion == 1:
-#            # Neutral hydrogen mass frac
-#            elem_den *= star.get_reproc_HI(data)[ind]
-#            ind3 = np.where(den > 0.1)
-#            elem_den = elem_den[ind3]
-#            pos = pos[ind3]
-#            hh = hh[ind3]
-#            if get_tau:
-#                temp = temp[ind3]
-#                vel = vel[ind3]
-#        elif ion != -1:
-#            #Cloudy density in physical H atoms / cm^3
-#            ind2 = np.where((elem_den > 0)*(den > 0.1))
-# halo = gs.GridSpectra(snapnum, base, numlos=1000, savefile="grid_spectra_DLA_noshield.hdf5")
-# make_stuff(halo)
+halo = TescariSpectra(snapnum, base, minpart=3000, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
+make_stuff(halo)
 
 # SiII fraction given by CLOUDY from the metallicity and column density.
 class ColdenSpectra(ss.Spectra):
