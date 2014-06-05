@@ -48,6 +48,7 @@ def plot_sep_frac(sim, snap):
     """Plot fraction of lines from separated halos"""
     hspec = get_hspec(sim, snap)
     hspec.plot_sep_frac(color=colors[sim], ls=lss[sim])
+    plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
 
 def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     """Plot a spectrum"""
@@ -162,6 +163,7 @@ def plot_eq_width(sims, snap):
         hspec.plot_eq_width("Si", 2, 1526, color=colors[sss], ls=lss[sss])
     outstr = "cosmo_eq_width_z"+str(snap)
     vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
+    plt.xlabel("log $(W_\mathrm{1526} / \AA )$")
     plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,outstr))
@@ -277,7 +279,7 @@ def plot_v_struct(sims, snap):
         hspec.plot_vel_width("Si", 2, color=colors[sss], ls=lss[sss])
     vel_data.plot_prochaska_2008_data()
     plt.legend(loc=2,ncol=3)
-    plt.xlabel(r"$v_\mathrm{90}$ km s$^{-1}$")
+    plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
     plt.xlim(2, 1000)
     plt.ylim(0,2)
     save_figure(path.join(outdir, "cosmo_rot_z"+str(snap)))
@@ -449,5 +451,5 @@ if __name__ == "__main__":
     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
     plt.clf()
 
-    for ss in simlist:
-        plot_vel_redshift_evo(ss)
+#     for ss in simlist:
+#         plot_vel_redshift_evo(ss)

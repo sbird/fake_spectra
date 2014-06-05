@@ -169,6 +169,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
     hspec2.plot_vel_width("Si", 2, color="blue", ls="--")
     plt.legend()
     vel_data.plot_prochaska_2008_data()
+    plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
     plt.xlim(10, 1000)
     save_figure(path.join(outdir,"cosmo_vel_width_"+ofile+"_z"+str(snap)))
     plt.clf()
@@ -204,7 +205,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
 def test_tescari_halos(sim, snap):
     """Plot velocity width for spectra through the center of halos, like in Tescari 2009"""
     halo = myname.get_name(sim, box=10)
-    hspec = ps.PlottingSpectra(snap, halo, savefile="halo_spectra_2.hdf5")
+    hspec = ps.PlottingSpectra(snap, halo, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
     hspec.plot_vel_width("Si", 2, color="red")
     vel_data.plot_prochaska_2008_data()
     save_figure(path.join(outdir,"cosmo_tescari_halos"))
@@ -214,7 +215,7 @@ if __name__ == "__main__":
 #     test_shield()
     test_vel_abswidth()
     test_gfm_shield()
-    test_tescari_halos(7,3)
+    test_tescari_halos(5,3)
     test_noise()
     test_atten()
     test_spec_resolution()

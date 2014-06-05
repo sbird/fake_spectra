@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8.):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res)
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8., cdir=None):
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir)
         self.label=label
 
     def plot_vel_width(self, elem, ion, dv=0.1, color="red", ls="-"):
@@ -304,7 +304,7 @@ class PlottingSpectra(spectra.Spectra):
         self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2, fit=True)
         plt.xlim(10,2e3)
         plt.ylabel(r"$\mathrm{Z} / \mathrm{Z}_\odot$")
-        plt.xlabel(r"$v_\mathrm{90}$ km s$^{-1}$")
+        plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
 
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
