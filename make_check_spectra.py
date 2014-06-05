@@ -29,8 +29,8 @@ snapnum=3
 sim=7
 
 #Box
-base=path.expanduser("~/data/Cosmo/Cosmo5_V6/L10n512/output")
-halo = gs.GridSpectra(snapnum, base, numlos=5000)
+base10=path.expanduser("~/data/Cosmo/Cosmo5_V6/L10n512/output")
+halo = gs.GridSpectra(snapnum, base10, numlos=5000)
 
 make_stuff(halo)
 
@@ -69,8 +69,10 @@ class TescariSpectra(hs.HaloSpectra):
         ions = np.ones_like(den)
         ind3 = np.where(den < 0.1)
         ions[ind3] = np.float32(self.cloudy_table.ion(elem, ion, den[ind3], temp2[ind3]))
+        return ions
 
-halo = TescariSpectra(snapnum, base, minpart=3000, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
+#Use a 10 Mpc box for better comparison
+halo = TescariSpectra(snapnum, base10, minpart=3000, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
 make_stuff(halo)
 
 # SiII fraction given by CLOUDY from the metallicity and column density.

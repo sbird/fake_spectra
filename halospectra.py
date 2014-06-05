@@ -11,7 +11,7 @@ import spectra
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, repeat = 1, minpart = 3000, res = 1., savefile="halo_spectra.hdf5", savedir=None):
+    def __init__(self,num, base, repeat = 1, minpart = 3000, res = 1., savefile="halo_spectra.hdf5", savedir=None, cdir=None):
         if savedir == None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
@@ -42,7 +42,7 @@ class HaloSpectra(spectra.Spectra):
             np.random.seed(23)
             cofm = self.get_cofm()
 
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir,reload_file=True)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir,reload_file=True, cdir=cdir)
 
         #If we did not load from a snapshot
         if cofm != None:
