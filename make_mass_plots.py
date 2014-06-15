@@ -49,7 +49,7 @@ def plot_vir_vsmass(sim, snap):
     #Load from a save file only
     hspec = get_hspec(sim,snap)
     (halos, _) = hspec.find_nearest_halo()
-    hspec._plot_xx_vs_mass(hspec.sub_mass[halos], name = "Mass", color=colors[sim], color2=colors2[sim], log=True)
+    hspec._plot_xx_vs_mass(hspec.sub_mass[halos]+1, name = "Mass", color=colors[sim], color2=colors2[sim], log=True)
     out = "cosmo"+str(sim)+"_vir_mass_z"+str(snap)
     save_figure(path.join(outdir,out))
     plt.clf()
