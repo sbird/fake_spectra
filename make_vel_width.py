@@ -57,17 +57,19 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     sdir = path.join(outdir,"spectra/"+subdir)
     if not path.exists(sdir):
         os.mkdir(sdir)
-    tau_l = np.roll(tau, offset)
-    assert np.max(tau) > 0.1
-    hspec.plot_spectrum(tau_l[low:high], flux=False)
+    tau_l = np.roll(tau, offset)[low:high]
+    assert np.max(tau_l) > 0.1
+    hspec.plot_spectrum(tau_l, flux=False)
+    peak = hspec._vel_peak_tau(tau_l)
+    plt.text(-10,0.5,r"$f_\mathrm{edg} = "+str(peak)+"$")
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
 #     hspec.plot_spectrum(tau_l[low:high])
 #     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
 #     plt.clf()
     tau = hspec.get_tau("Si", 2,1260, num)
-    tau_l = np.roll(tau, offset)
-    hspec.plot_spectrum(tau_l[low:high])
+    tau_l = np.roll(tau, offset)[low:high]
+    hspec.plot_spectrum(tau_l)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
 
@@ -96,17 +98,23 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
-def plot_spectrum_max(sim, snap, velbin, velwidth, num):
+def plot_spectrum_max(sim, snap, velbin, velwidth, num, filter="vel_width"):
     """Plot spectrum with max vel width"""
     hspec = get_hspec(sim, snap, snr=20., box=10)
-    vels = hspec.vel_width("Si",2)
+    if filter == "vel_width":
+        vels = hspec.vel_width("Si",2)
+        minwidth = 1.1*(velbin+velwidth)
+    elif filter == "vel_peak":
+        vels = hspec.vel_peak("Si",2)
+        minwidth = 500.
+    else:
+        raise RuntimeError("Filter not implemented")
     ind = hspec.get_filt("Si", 2)
     subdir = path.join("cosmo"+str(sim)+"-10",str(velbin))
     band = np.intersect1d(ind[0], np.where(np.logical_and(vels > velbin-velwidth, vels < velbin+velwidth))[0])
     np.random.seed(2323)
     index = np.random.randint(0, np.size(band), num)
-#     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=1.2*velbin/2.)
-    (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=1.1*(velbin+velwidth))
+    (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     for nn in band[index]:
         plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
         plot_colden(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
@@ -419,6 +427,7 @@ if __name__ == "__main__":
     for ss in (1,3,9):
         do_statistics(ss,3)
 
+    plot_spectrum_max(5,3, 0.9, 0.025, 15, filter="vel_peak")
     plot_spectrum_max(5,3, 60, 20, 15)
     plot_spectrum_max(5,3, 100, 20, 15)
     plot_spectrum_max(5,3, 200, 35, 15)
