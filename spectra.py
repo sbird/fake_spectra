@@ -235,17 +235,21 @@ class Spectra:
             raise ValueError("Not supported")
         f.close()
 
-    def add_noise(self, snr, tau):
+    def add_noise(self, snr, tau, seed):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         flux = np.exp(-tau)
         varnce = np.var(1-flux, axis=-1)
-        #This ensures that we always get the same noise for the same spectrum
-        np.random.seed(int(np.sum(tau)))
         #This is to get around the type rules.
         if np.size(varnce) == 1:
+            #This ensures that we always get the same noise for the same spectrum
+            np.random.seed(seed)
             flux += np.random.normal(0, np.sqrt(varnce/snr), self.nbins)
         else:
-            flux += np.array([np.random.normal(0, np.sqrt(vv/snr), self.nbins) if vv > 0 else np.zeros(self.nbins) for vv in varnce])
+#             flux += np.array([np.random.normal(0, np.sqrt(vv/snr), self.nbins) if vv > 0 else np.zeros(self.nbins) for vv in varnce])
+            for ii in xrange(np.size(varnce)):
+                np.random.seed(ii)
+                if varnce[ii] > 0:
+                    flux[ii]+=np.random.normal(0,np.sqrt(varnce[ii]/snr), self.nbins)
         #Make sure we don't have negative flux
         ind = np.where(flux > 0)
         tau[ind] = -np.log(flux[ind])
@@ -711,7 +715,7 @@ class Spectra:
         ntau = self.res_corr(ntau, self.spec_res)
         #Add noise
         if self.snr > 0:
-            ntau = self.add_noise(self.snr, ntau)
+            ntau = self.add_noise(self.snr, ntau, number)
         return ntau
 
     def res_corr(self, flux, fwhm=8):
@@ -853,12 +857,17 @@ class Spectra:
         #Deal with periodicity by making sure the deepest point is in the middle
         for ll in xrange(np.shape(tau)[0]):
             tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
-            tot_tau = np.sum(tau_l)
-            (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
-            vmax = np.where(tau_l == np.max(tau_l))[0][0]
-            vmean = (nnlow+nnhigh)/2.
-            peak[ll] = np.abs(vmax - vmean)/((nnhigh-nnlow)/2.)
+            peak[ll] = self._vel_peak_tau(tau_l)
         #Return the width
+        return peak
+
+    def _vel_peak_tau(self,tau_l):
+        """Helper function for a single spectrum to compute v_peak"""
+        tot_tau = np.sum(tau_l)
+        (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+        vmax = np.where(tau_l == np.max(tau_l))[0][0]
+        vmean = (nnlow+nnhigh)/2.
+        peak = np.abs(vmax - vmean)/((nnhigh-nnlow)/2.)
         return peak
 
     def vel_2nd_peak(self, tau):
@@ -1088,7 +1097,7 @@ class Spectra:
             tau = tau[number,:]
         tau = self.res_corr(tau, self.spec_res)
         if self.snr > 0:
-            tau = self.add_noise(self.snr, tau)
+            tau = self.add_noise(self.snr, tau, number)
         return tau
 
     def _vel_single_file(self,fn, elem, ion):
