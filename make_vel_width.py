@@ -81,9 +81,9 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     ind_m = np.where(col_den[num] == mcol)[0][0]
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
-    plt.ylabel(r"N$_\mathrm{SiII}$ cm$^{-2}$")
+    plt.ylabel(r"n$_\mathrm{SiII}$ cm$^{-3}$")
     plt.xlim(-1*xlim, xlim)
-    plt.ylim(ymin=1e9)
+    plt.ylim(ymin=1e-9)
     sdir = path.join(outdir,"spectra/"+subdir)
     if not path.exists(sdir):
         os.mkdir(sdir)
@@ -93,8 +93,8 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
     col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
     hspec.plot_col_density(col_den)
     plt.xlim(-1*xlim, xlim)
-    plt.ylabel(r"N$_\mathrm{HI}$ cm$^{-2}$")
-    plt.ylim(ymin=1e15)
+    plt.ylabel(r"n$_\mathrm{HI}$ cm$^{-3}$")
+    plt.ylim(ymin=1e-6)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 

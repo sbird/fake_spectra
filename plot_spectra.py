@@ -125,7 +125,7 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the column density of a line across the absorber"""
         phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
-        plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,colden+1)
+        plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,(colden+1)/(phys*self.rscale))
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"N cm$^{-2}$")
 
