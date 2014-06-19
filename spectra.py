@@ -67,6 +67,7 @@ class Spectra:
         self.absorber_width = {}
         self.colden = {}
         self.velocity = {}
+        self.temp = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
@@ -189,6 +190,9 @@ class Spectra:
         #Velocity
         grp_grid = f.create_group("velocity")
         self._save_multihash(self.velocity, grp_grid)
+        #Temperature
+        grp_grid = f.create_group("temperature")
+        self._save_multihash(self.temp, grp_grid)
         #Number of particles important for each spectrum
         grp_grid = f.create_group("num_important")
         self._save_multihash(self.num_important, grp_grid)
@@ -292,6 +296,13 @@ class Spectra:
             for elem in grp.keys():
                 for ion in grp[elem].keys():
                     self.velocity[(elem, int(ion))] = np.array([0])
+        except KeyError:
+            pass
+        try:
+            grp = f["temperature"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.temp[(elem, int(ion))] = np.array([0])
         except KeyError:
             pass
         grp = f["num_important"]
@@ -1140,6 +1151,36 @@ class Spectra:
                 velocity[:,:,ax] /= col_den
             self.velocity[(elem, ion)] = velocity
             return velocity
+
+    def _temp_single_file(self,fn, elem, ion):
+        """Get the density weighted interpolated temperature field for a single file"""
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
+        if amumass == False:
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        else:
+            line = self.lines[("H",1)][1215]
+            temp = self._do_interpolation_work(pos, vel, elem_den*temp, temp, hh, amumass, line, False)
+            return temp
+
+    def get_temp(self, elem, ion):
+        """Get the density weighted temperature in each pixel for a given species.
+        """
+        try:
+            self._really_load_array((elem, ion), self.temp, "velocity")
+            return self.temp[(elem, ion)]
+        except KeyError:
+            temp =  self._temp_single_file(self.files[0], elem, ion)
+            #Do remaining files
+            for fn in self.files[1:]:
+                tresult =  self._temp_single_file(fn, elem, ion)
+                #Add new file
+                temp += tresult
+                del tresult
+            col_den = self.get_col_density(elem, ion)
+            col_den[np.where(col_den == 0.)] = 1
+            temp /= col_den
+            self.temp[(elem, ion)] = temp
+            return temp
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
