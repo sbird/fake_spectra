@@ -127,7 +127,21 @@ class PlottingSpectra(spectra.Spectra):
         #Add one to avoid zeros on the log plot
         plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,(colden+1)/(phys*self.rscale))
         plt.xlabel(r"x (kpc h$^{-1}$)")
-        plt.ylabel(r"N cm$^{-2}$")
+        plt.ylabel(r"n cm$^{-3}$")
+
+    def plot_temp(self, elem, ion):
+        """Make a contour plot for the density weighted temperature for each spectrum"""
+        temp = self.get_temp(elem, ion)
+        col_den = self.get_col_density(elem, ion)
+        ind = np.where(col_den < 1e16)
+        col_den[ind] = 0.
+        temps = np.sum(temp*col_den, axis=1)/np.sum(col_den, axis=1)
+        ind2 = np.where(temps < 1e5)
+        print np.median(temps)," filt: ", np.median(temps[ind2])
+        self._plot_2d_contour(np.sum(col_den,axis=1)[ind2], temps[ind2], 40, name="Temp Density", color="blue", color2="darkblue", ylog=False, xlog=True, fit=False, sample = 300)
+        plt.xlabel(r"n (cm$^{-3}$)")
+        plt.ylabel(r"T (K)")
+        plt.ylim(0,2e4)
 
     def plot_spectrum_density_velocity(self, elem, ion, i):
         """Plot the spectrum of a line, centered on the deepest point,
@@ -340,7 +354,6 @@ class PlottingSpectra(spectra.Spectra):
             yvals = np.log10(yvals)
         if xlog:
             xvals = np.log10(xvals)
-        (intercept, slope, _) = lsq.leastsq(xvals,yvals)
         (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins)
         xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
         ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
@@ -354,6 +367,7 @@ class PlottingSpectra(spectra.Spectra):
             ax.set_xscale('log')
         plt.contourf(xbins,ybins,H.T,(self.NumLos/sample)*np.array([0.3,1,10]),colors=(color,color2,"black"),alpha=0.5)
         if fit:
+            (intercept, slope, _) = lsq.leastsq(xvals,yvals)
             plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")
 
     def kstest(self, Zdata, veldata, elem="Si", ion=2):
