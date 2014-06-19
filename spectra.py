@@ -1166,7 +1166,7 @@ class Spectra:
         """Get the density weighted temperature in each pixel for a given species.
         """
         try:
-            self._really_load_array((elem, ion), self.temp, "velocity")
+            self._really_load_array((elem, ion), self.temp, "temperature")
             return self.temp[(elem, ion)]
         except KeyError:
             temp =  self._temp_single_file(self.files[0], elem, ion)
