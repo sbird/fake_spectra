@@ -536,18 +536,19 @@ class Spectra:
         ind = np.where(np.sum(col_den,axis=1) > thresh)
         return ind
 
-    def find_absorber_width(self, elem, ion, chunk = 10, minwidth=None):
+    def find_absorber_width(self, elem, ion, chunk = 20, minwidth=None):
         """
            Find the region in velocity space considered to be an absorber for each spectrum.
            This is defined to be the maximum of 1000 km/s and the region over which there is "significant"
            absorption in the strongest line for this ion, where strongest is the line with the largest
            cross-section, ie, greatest lambda * fosc.
            elem, ion - ion to look at
+
            The threshold above which absorption is considered significant is
-           tau = - sigma log(1-F(-3)/SNR).
+           tau = - sigma log(1-F(-3)/SNR). [where F(x) = 1-exp(-x)]
            Probability of a spurious detection from Gaussian noise is N(sigma)**chunk.
-           We use N(3) = 0.99, so there is a 0.9 probability the detection is real.
-           If SNR = 0, use 0.06 (for an assumed SNR of 30).
+           We use N(4) = 1-3e-5, so there is a 0.9994 probability the detection is real for chunk =20.
+           If SNR = 0, use 0.2 (for an assumed SNR of 20).
 
            Returns the low and high indices of absorption, and the offset for the maximal absorption.
         """
@@ -558,9 +559,9 @@ class Spectra:
         except KeyError:
             pass
         if self.snr > 0:
-            thresh = - 3. * np.log(1-(1-np.exp(-3))/self.snr)
+            thresh = - 4. * np.log(1-(1-np.exp(-3))/self.snr)
         else:
-            thresh = 0.09
+            thresh = 0.2
         lines = self.lines[(elem,ion)]
         strength = [ll.fosc_X*ll.lambda_X for ll in lines.values()]
         ind = np.where(strength == np.max(strength))[0][0]
@@ -577,16 +578,21 @@ class Spectra:
             low = np.zeros(self.NumLos, dtype=np.int)
             high = self.nbins*np.ones(self.NumLos, dtype=np.int)
         for ii in xrange(self.NumLos):
-            #Where is there no absorption leftwards of the peak?
+            #First expand the search area in case there is absorption at the edges.
             for i in xrange(low[ii],0,-chunk):
-                if np.all(roll[ii,i:(i+chunk)] < thresh):
+                if np.any(roll[ii,i:(i+chunk)] > thresh):
                     low[ii] = i
                     break
             #Where is there no absorption rightwards of the peak?
             for i in xrange(high[ii],self.nbins,chunk):
-                if np.all(roll[ii,i:(i+chunk)] < thresh):
+                if np.any(roll[ii,i:(i+chunk)] > thresh):
                     high[ii] = i+chunk
                     break
+            #Shrink to width which has some absorption
+            ind = np.where(roll[ii][low[ii]:high[ii]] > thresh)[0]
+            if np.size(ind) != 0:
+                low[ii] = np.max((ind[0]+low[ii]-chunk,0))
+                high[ii] = np.min((ind[-1]+low[ii]+chunk,self.nbins))
         self.absorber_width[(elem, ion, minwidth)] = (low, high, offset)
         return (low, high, offset)
 
