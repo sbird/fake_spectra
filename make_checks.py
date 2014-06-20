@@ -143,13 +143,13 @@ def test_gfm_shield():
 
 class NoFilt(ps.PlottingSpectra):
     def get_filt(self, elem, ion):
-        return ps.PlottingSpectra.get_filt(elem, ion, 100)
+        return ps.PlottingSpectra.get_filt(self, elem, ion, 100)
 
 def test_filt():
     """Plot impact of filtering low-metallicity systems."""
     halo = myname.get_name(7)
     hspec = ps.PlottingSpectra(3, halo, label="FILT")
-    hspec2 = NoFilt(3, halo2, label="NOFILT")
+    hspec2 = NoFilt(3, halo, label="NOFILT")
     plot_check(hspec,hspec2,"filtering")
 
 def test_atten():
