@@ -755,7 +755,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, thresh = 2e11):
+    def get_filt(self, elem, ion, thresh = 100):
         """
         Get an index list to exclude spectra where the ion is not observable.
         For DLAs this should not be a huge fraction of the total spectra,
