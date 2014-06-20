@@ -591,12 +591,12 @@ class Spectra:
         for ii in xrange(self.NumLos):
             #First expand the search area in case there is absorption at the edges.
             for i in xrange(low[ii],0,-chunk):
-                if np.any(roll[ii,i:(i+chunk)] > thresh):
+                if not np.any(roll[ii,i:(i+chunk)] > thresh):
                     low[ii] = i
                     break
             #Where is there no absorption rightwards of the peak?
             for i in xrange(high[ii],self.nbins,chunk):
-                if np.any(roll[ii,i:(i+chunk)] > thresh):
+                if not np.any(roll[ii,i:(i+chunk)] > thresh):
                     high[ii] = i+chunk
                     break
             #Shrink to width which has some absorption
