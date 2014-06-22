@@ -20,6 +20,7 @@ from save_figure import save_figure
 outdir = path.join(myname.base, "plots/")
 print "Plots at: ",outdir
 zrange = {1:(7,3.5), 3:(3.5,2.5), 5:(2.5,0)}
+zzz = {1:4, 3:3, 5:2}
 #Colors and linestyles for the simulations
 colors = {0:"pink", 1:"purple", 2:"cyan", 3:"green", 4:"gold", 5:"orange", 7:"blue", 6:"grey", 8:"pink", 9:"red", 'A':"grey"}
 colors2 = {0:"darkred", 1:"indigo", 2:"cyan", 3:"darkgreen", 4:"gold", 5:"orange", 7:"darkblue", 6:"grey",8:"cyan", 9:"darkred",'A':"grey"}
@@ -139,6 +140,8 @@ def plot_met_corr(sims,snap):
         hspec.plot_Z_vs_vel_width(color=colors[sim], color2=colors2[sim])
         vel_data.plot_prochaska_2008_correlation(zrange[snap])
         plt.xlim(10, 500)
+        if sim == 7:
+            plt.text(12,0.3,"z="+str(zzz[snap]))
         save_figure(path.join(outdir,out))
         plt.clf()
 
