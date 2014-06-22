@@ -365,7 +365,7 @@ class PlottingSpectra(spectra.Spectra):
         if xlog:
             xbins = 10**xbins
             ax.set_xscale('log')
-        plt.contourf(xbins,ybins,H.T,(self.NumLos/sample)*np.array([0.3,1,10]),colors=(color,color2,"black"),alpha=0.5)
+        plt.contourf(xbins,ybins,H.T,(self.NumLos/sample)*np.array([0.15,1,10]),colors=(color,color2,"black"),alpha=0.5)
         if fit:
             (intercept, slope, _) = lsq.leastsq(xvals,yvals)
             plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")

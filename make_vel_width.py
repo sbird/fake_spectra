@@ -140,8 +140,9 @@ def plot_met_corr(sims,snap):
         hspec.plot_Z_vs_vel_width(color=colors[sim], color2=colors2[sim])
         vel_data.plot_prochaska_2008_correlation(zrange[snap])
         plt.xlim(10, 500)
+        plt.ylim(5e-4, 1.5)
         if sim == 7:
-            plt.text(12,0.3,"z="+str(zzz[snap]))
+            plt.text(12,0.4,"z="+str(zzz[snap]), size=22)
         save_figure(path.join(outdir,out))
         plt.clf()
 
@@ -444,7 +445,7 @@ if __name__ == "__main__":
 
 #     plot_spectrum_max(7,3, 100, 20, 15)
 #     plot_spectrum_max(7,3, 140, 20, 15)
-    plot_vel_width_sims(simlist, 3, log=True)
+#     plot_vel_width_sims(simlist, 4, log=True)
     for zz in (1,3,5):
         plot_met_corr(simlist,zz)
         hspec_cache = {}
