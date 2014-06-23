@@ -755,7 +755,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, thresh = 1e-20):
+    def get_filt(self, elem, ion, thresh = 100):
         """
         Get an index list to exclude spectra where the ion is too small, usually the result of
         unresolved star formation.
@@ -764,7 +764,8 @@ class Spectra:
         """
         #Remember this is not in log.
         met = np.max(self.get_density(elem, ion), axis=1)
-        ind = np.where(met > thresh)
+        phys = self.dvbin/self.velfac*self.rscale
+        ind = np.where(met > thresh/phys)
         return ind
 
     def vel_width(self, elem, ion):
