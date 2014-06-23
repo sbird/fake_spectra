@@ -63,7 +63,6 @@ class PlottingSpectra(spectra.Spectra):
             axpos = ind*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
             lvel =  velocity[ii, :,:] - self.sub_vel[halo[ii]]
             vamp = np.sqrt(np.sum(lvel[ind,:][0]**2,axis=1))
-            rdist = np.zeros_like(vamp)
             for ee in xrange(np.size(ind[0])):
                 axpos = np.array(proj_pos)
                 axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
@@ -121,48 +120,35 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
         return (xaxis[0]+low, xaxis[0]+high)
 
-    def plot_col_density(self, colden):
-        """Plot the column density of a line across the absorber"""
+    def plot_density(self, elem, ion, num):
+        """Plot the density of an ion along a sightline"""
+        den = self.get_density(elem, ion)
+        mcol = np.max(den[num])
+        ind_m = np.where(den[num] == mcol)[0][0]
+        den = np.roll(den[num], np.size(den[num])/2 - ind_m)
         phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
-        plt.semilogy(np.arange(0,np.size(colden))*phys-np.size(colden)/2*phys,(colden+1)/(phys*self.rscale))
+        plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30)
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n cm$^{-3}$")
+
+    def plot_den_to_tau(self, elem, ion):
+        """Make a plot connecting density to optical depth"""
+        raise RuntimeError("Not implemented")
 
     def plot_temp(self, elem, ion):
         """Make a contour plot for the density weighted temperature for each spectrum"""
         temp = self.get_temp(elem, ion)
-        col_den = self.get_col_density(elem, ion)
-        ind = np.where(col_den < 1e16)
-        col_den[ind] = 0.
-        temps = np.sum(temp*col_den, axis=1)/np.sum(col_den, axis=1)
+        den = self.get_density(elem, ion)
+        ind = np.where(den < 1e-6)
+        den[ind] = 0.
+        temps = np.sum(temp*den, axis=1)/np.sum(den, axis=1)
         ind2 = np.where(temps < 1e5)
         print np.median(temps)," filt: ", np.median(temps[ind2])
-        self._plot_2d_contour(np.sum(col_den,axis=1)[ind2], temps[ind2], 40, name="Temp Density", color="blue", color2="darkblue", ylog=False, xlog=True, fit=False, sample = 300)
+        self._plot_2d_contour(np.sum(den,axis=1)[ind2], temps[ind2], 40, name="Temp Density", color="blue", color2="darkblue", ylog=False, xlog=True, fit=False, sample = 300)
         plt.xlabel(r"n (cm$^{-3}$)")
         plt.ylabel(r"T (K)")
         plt.ylim(0,2e4)
-
-    def plot_spectrum_density_velocity(self, elem, ion, i):
-        """Plot the spectrum of a line, centered on the deepest point,
-           and marking the 90% velocity width."""
-        #  Size of a single velocity bin
-        tau = self.get_observer_tau(elem, ion,i)
-        col_den = self.get_col_density(elem, ion)[i,:]
-        #Deal with periodicity by making sure the deepest point is in the middle
-        tau_l = np.ravel(tau)
-        tmax = np.max(tau_l)
-        ind_m = np.where(tau_l == tmax)[0][0]
-        tau_l = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-        col_den = np.roll(col_den, np.size(tau_l)/2- ind_m)
-        plt.subplot(211)
-        (low, high) = self.plot_spectrum(tau)
-        plt.xlim(low-50,high+50)
-        plt.subplot(212)
-        ind = np.where(col_den > 1)
-        plt.semilogy(np.arange(0,np.size(tau_l))[ind]*self.dvbin,col_den[ind])
-        plt.xlim(low-50,high+50)
-        plt.yticks(np.array([1e10, 1e15,1e20]))
 
     def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue", moment=False):
         """Plots the column density distribution function. """
@@ -249,7 +235,7 @@ class PlottingSpectra(spectra.Spectra):
         vhist2 = np.histogram(array[vind], v_table)[0]
         func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
 
-    def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", color2 = "red", ls="-"):
+    def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", ls="-"):
         """
         Plots the fraction of spectra in each velocity width bin which are separated.
         Threshold is as a percentage of the maximum value.

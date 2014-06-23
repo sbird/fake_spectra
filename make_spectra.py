@@ -23,15 +23,15 @@ elif len(sys.argv) > 3:
 else:
     halo = gs.GridSpectra(snapnum, base, numlos=5000)
 
-halo.get_col_density("H",1)
+halo.get_density("H",1)
 halo.get_observer_tau("Si",2, force_recompute=True)
 #SiII 1260
 halo.get_tau("Si",2,1260, force_recompute=True)
 halo.get_tau("Si",2,1526, force_recompute=True)
 halo.get_tau("H",1,1215 , force_recompute=True)
-halo.get_col_density("Si",2)
-halo.get_col_density("Z",-1)
-halo.get_col_density("H",-1)
+halo.get_density("Si",2)
+halo.get_density("Z",-1)
+halo.get_density("H",-1)
 halo.get_velocity("H",1)
 halo.save_file()
 

@@ -466,7 +466,7 @@ class Spectra:
             minmass - Minimum mass cutoff of particles considered.
         """
         num_important = np.zeros_like(self.axis)
-        col_den = self.get_col_density(elem, ion)
+        den = self.get_density(elem, ion)
         for fn in self.files:
             ff = h5py.File(fn, "r")
             data = ff["PartType0"]
@@ -485,7 +485,7 @@ class Spectra:
                 #Largest col. den region
                 if np.size(ind) == 0:
                     continue
-                maxx = np.where(np.max(col_den[spec,:])==col_den[spec,:])[0][0]
+                maxx = np.where(np.max(den[spec,:])==den[spec,:])[0][0]
                 #Region resolution wide around this zone
                 region = self.box/self.nbins*np.array(( maxx-res/(2.*self.dvbin), maxx+res/(2.*self.dvbin) ))
                 #Need pos. along axis in this region
@@ -630,8 +630,8 @@ class Spectra:
 
     def get_metallicity(self):
         """Return the metallicity, as M/H"""
-        MM = self.get_col_density("Z",-1)
-        HH = self.get_col_density("H",-1)
+        MM = self.get_density("Z",-1)
+        HH = self.get_density("H",-1)
         mms = np.sum(MM, axis=1)
         hhs = np.sum(HH, axis=1)
         return mms/hhs/self.solarz
@@ -642,8 +642,8 @@ class Spectra:
 
     def get_ion_metallicity(self, species,ion):
         """Get the metallicity derived from an ionic species"""
-        MM = self.get_col_density(species,ion)
-        HH = self.get_col_density("H",1)
+        MM = self.get_density(species,ion)
+        HH = self.get_density("H",1)
         mms = np.sum(MM, axis=1)
         hhs = np.sum(HH, axis=1)
         return mms/hhs/self.solar[species]
@@ -755,18 +755,15 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, thresh = 100):
+    def get_filt(self, elem, ion, thresh = 1e-20):
         """
-        Get an index list to exclude spectra where the ion is not observable.
-        For DLAs this should not be a huge fraction of the total spectra,
-        as few metal-poor DLAs are observed.
+        Get an index list to exclude spectra where the ion is too small, usually the result of
+        unresolved star formation.
 
-        thresh - observable column density threshold
+        thresh - observable density threshold
         """
-        #Remember this is not in log...
-        #This is in practice for SiII ~200/5000 ~ 4% of spectra, which is a little large.
-        #Oddly it is less for metallicity
-        met = np.max(self.get_col_density(elem, ion), axis=1)
+        #Remember this is not in log.
+        met = np.max(self.get_density(elem, ion), axis=1)
         ind = np.where(met > thresh)
         return ind
 
@@ -1089,7 +1086,7 @@ class Spectra:
         return virial
 
     def get_col_density(self, elem, ion, force_recompute=False):
-        """Get the column density in each pixel for a given species"""
+        """get the column density in each pixel for a given species"""
         try:
             if force_recompute:
                 raise KeyError
@@ -1099,6 +1096,12 @@ class Spectra:
             colden = self.compute_spectra(elem, ion, 0,False)
             self.colden[(elem, ion)] = colden
             return colden
+
+    def get_density(self, elem, ion, force_recompute=False):
+        """Get the density in each pixel for a given species"""
+        colden = self.get_col_density(elem, ion, force_recompute)
+        phys = self.dvbin/self.velfac*self.rscale
+        return colden/phys
 
     def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
         """Get the column density in each pixel for a given species"""
@@ -1125,9 +1128,10 @@ class Spectra:
         else:
             line = self.lines[("H",1)][1215]
             vv =  np.empty([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
+            phys = self.dvbin/self.velfac*self.rscale
             for ax in (0,1,2):
                 weight = vel[:,ax]*np.sqrt(self.atime)
-                vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight, temp, hh, amumass, line, False)
+                vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight/phys, temp, hh, amumass, line, False)
             return vv
 
     def get_velocity(self, elem, ion):
@@ -1144,11 +1148,11 @@ class Spectra:
                 #Add new file
                 velocity += tresult
                 del tresult
-            col_den = self.get_col_density(elem, ion)
-            col_den[np.where(col_den == 0.)] = 1
+            den = self.get_density(elem, ion)
+            den[np.where(den == 0.)] = 1
             #Broadcasting can't handle this
             for ax in (0,1,2):
-                velocity[:,:,ax] /= col_den
+                velocity[:,:,ax] /= den
             self.velocity[(elem, ion)] = velocity
             return velocity
 
@@ -1159,7 +1163,8 @@ class Spectra:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         else:
             line = self.lines[("H",1)][1215]
-            temp = self._do_interpolation_work(pos, vel, elem_den*temp, temp, hh, amumass, line, False)
+            phys = self.dvbin/self.velfac*self.rscale
+            temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
             return temp
 
     def get_temp(self, elem, ion):
@@ -1176,9 +1181,9 @@ class Spectra:
                 #Add new file
                 temp += tresult
                 del tresult
-            col_den = self.get_col_density(elem, ion)
-            col_den[np.where(col_den == 0.)] = 1
-            temp /= col_den
+            den = self.get_density(elem, ion)
+            den[np.where(den == 0.)] = 1
+            temp /= den
             self.temp[(elem, ion)] = temp
             return temp
 
@@ -1211,7 +1216,7 @@ class Spectra:
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
         dX=self.absorption_distance()/self.nbins
-        #Col density of each sightline
+        #Col density of each pixel: makes more sense for lower column densities
         rho = np.ravel(self.get_col_density(elem, ion))
         tot_cells = np.size(rho)
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
@@ -1298,8 +1303,8 @@ class Spectra:
         """
         dist = int(mindist/self.dvbin)
         ind = self.get_filt(elem, ion)
-        rho = self.get_col_density(elem, ion)[ind]
-        H1_col_den = self.get_col_density("H", 1)[ind]
+        rho = self.get_density(elem, ion)[ind]
+        H1_den = self.get_density("H", 1)[ind]
         seps = np.zeros(np.size(ind[0]), dtype=np.bool)
         lls = 0
         dla = 0
@@ -1307,7 +1312,7 @@ class Spectra:
         #deal with periodicity by making sure the deepest point is in the middle
         for ll in xrange(np.size(ind[0])):
             rho_l = rho[ll,:]
-            H1_l = H1_col_den[ll,:]
+            H1_l = H1_den[ll,:]
             lsep = combine_regions(rho_l > thresh*np.max(rho_l), dist)
             seps[ll] = (np.shape(lsep)[0] > 1)
             if seps[ll] == False:
@@ -1324,13 +1329,6 @@ class Spectra:
         tot = dla + lls + none
         print "Fraction DLA: ",1.*dla/tot," Fraction LLS: ",1.*lls/tot," fraction less: ",1.*none/tot
         return seps
-
-    def get_overden(self, thresh = 10**20.3, elem = "H", ion= 1):
-        """
-        Get an array of spectral pixels which is True where there is a DLA, False otherwise
-        """
-        col_den = self.get_col_density(elem, ion)
-        return np.greater(col_den, thresh)
 
     def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
@@ -1415,10 +1413,10 @@ class Spectra:
         Returns a list of lists. Each element in the outer list corresponds to a spectrum.
         Each inner list is the list of weighted z positions of DLA-hosting regions.
         """
-        col_den = self.get_col_density(elem, ion)
+        den = self.get_density(elem, ion)
         contig = []
         seps = np.zeros(self.NumLos, dtype=np.bool)
-        (roll, colden) = self._get_rolled_spectra(col_den)
+        (roll, colden) = self._get_rolled_spectra(den)
         #deal with periodicity by making sure the deepest point is in the middle
         for ii in xrange(self.NumLos):
             # This is column density, not absorption, so we cannot

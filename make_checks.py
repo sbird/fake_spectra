@@ -1,6 +1,6 @@
+"""Make some plots of the velocity widths from the cosmo runs"""
 #!/usr/bin env python
 # -*- coding: utf-8 -*-
-"""Make some plots of the velocity widths from the cosmo runs"""
 
 import matplotlib
 matplotlib.use('PDF')
@@ -30,23 +30,6 @@ def plot_metal_ion_corr(sim, snap,species="Si",ion=2):
     plt.clf()
     hspec.plot_ion_corr(species, ion)
     save_figure(path.join(outdir, "cosmo_metallicity"+str(sim)+"_rel_ion_corr"+str(snap)))
-    plt.clf()
-
-def plot_vel_width_metcol(sim, snap):
-    """Load a simulation and plot its velocity width"""
-    halo = myname.get_name(sim)
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
-    hspec.plot_vel_width("Si", 2)
-    hspec.plot_vel_width("Si", 2, color="blue")
-    vel_data.plot_prochaska_2008_data()
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_z"+str(snap)))
-    plt.clf()
-    (vbin, vels1) = hspec.vel_width_hist("Si", 2, met_cut = None)
-    (vbin, vels2) = hspec.vel_width_hist("Si", 2, met_cut = 1e13)
-    mm = np.min((np.size(vels2), np.size(vels1)))
-    plt.semilogx(vbin[:mm], vels2[:mm]/vels1[:mm], color="black")
-    save_figure(path.join(outdir,"cosmo"+str(sim)+"_low_metals_rel_z"+str(snap)))
     plt.clf()
 
 def plot_vel_width_SiII(sim, snap):

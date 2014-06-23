@@ -61,7 +61,7 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     tau_l = np.roll(tau, offset)[low:high]
     assert np.max(tau_l) > 0.1
     hspec.plot_spectrum(tau_l, flux=False)
-    peak = hspec._vel_peak_tau(tau_l)
+#     peak = hspec._vel_peak_tau(tau_l)
 #     plt.text(-10,0.5,r"$f_\mathrm{edg} = "+str(peak)+"$")
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
@@ -74,14 +74,10 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
 
-def plot_colden(sim, snap, num, subdir="", xlim=100):
-    """Plot column density"""
+def plot_den(sim, snap, num, subdir="", xlim=100):
+    """Plot density"""
     hspec = get_hspec(sim, snap, snr=20., box=10)
-    col_den = hspec.get_col_density("Si", 2)
-    mcol = np.max(col_den[num])
-    ind_m = np.where(col_den[num] == mcol)[0][0]
-    col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
-    hspec.plot_col_density(col_den)
+    hspec.plot_density("Si",2, num)
     plt.ylabel(r"n$_\mathrm{SiII}$ cm$^{-3}$")
     plt.xlim(-1*xlim, xlim)
     plt.ylim(ymin=1e-9)
@@ -90,22 +86,20 @@ def plot_colden(sim, snap, num, subdir="", xlim=100):
         os.mkdir(sdir)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
-    col_den = hspec.get_col_density("H", 1)
-    col_den = np.roll(col_den[num], np.size(col_den[num])/2 - ind_m)
-    hspec.plot_col_density(col_den)
+    hspec.plot_density("H",1,num)
     plt.xlim(-1*xlim, xlim)
     plt.ylabel(r"n$_\mathrm{HI}$ cm$^{-3}$")
     plt.ylim(ymin=1e-6)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
-def plot_spectrum_max(sim, snap, velbin, velwidth, num, filter="vel_width"):
+def plot_spectrum_max(sim, snap, velbin, velwidth, num, ffilter="vel_width"):
     """Plot spectrum with max vel width"""
     hspec = get_hspec(sim, snap, snr=20., box=10)
-    if filter == "vel_width":
+    if ffilter == "vel_width":
         vels = hspec.vel_width("Si",2)
         minwidth = 1.1*(velbin+velwidth)
-    elif filter == "vel_peak":
+    elif ffilter == "vel_peak":
         vels = hspec.vel_peak("Si",2)
         minwidth = 500.
     else:
@@ -118,7 +112,7 @@ def plot_spectrum_max(sim, snap, velbin, velwidth, num, filter="vel_width"):
     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     for nn in band[index]:
         plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
-        plot_colden(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
+        plot_den(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
 
 def plot_metallicity(sims, snap):
     """Plot metallicity, vel width, their correlation and the extra statistics"""
@@ -175,7 +169,7 @@ def plot_eq_width(sims, snap):
         hspec.plot_eq_width("Si", 2, 1526, color=colors[sss], ls=lss[sss])
     outstr = "cosmo_eq_width_z"+str(snap)
     vel_data.plot_si1526_eqw(zrange[snap], nv_table=7)
-    plt.xlabel("log $(W_\mathrm{1526} / \AA )$")
+    plt.xlabel(r"log $(W_\mathrm{1526} / \AA )$")
     plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
     save_figure(path.join(outdir,outstr))
@@ -264,18 +258,15 @@ class RotationFiltered(ps.PlottingSpectra):
         print "Non-rotating ",non_rot
         return ind3
 
-    def get_filt(self, elem, ion, thresh = 2e11):
+    def get_filt(self, elem, ion, thresh = 1e-20):
         """
-        Get an index list to exclude spectra where the ion is not observable.
-        For DLAs this should not be a huge fraction of the total spectra,
-        as few metal-poor DLAs are observed.
+        Get an index list to exclude spectra where the ion is not observable
+        or is not rotated
 
         thresh - observable column density threshold
         """
         #Remember this is not in log...
-        #This is in practice for SiII ~200/5000 ~ 4% of spectra, which is a little large.
-        #Oddly it is less for metallicity
-        met = np.max(self.get_col_density(elem, ion), axis=1)
+        met = np.max(self.get_density(elem, ion), axis=1)
         ind = np.where(np.logical_and(met > thresh, np.max(self.get_observer_tau(elem, ion), axis=1) > 0.1))
         print "Sightlines with rotating absorption: ",np.size(ind)
         return ind
@@ -431,7 +422,7 @@ if __name__ == "__main__":
 #     for ss in (1,3,9):
 #         do_statistics(ss,3)
 
-    plot_spectrum_max(5,3, 0.9, 0.025, 15, filter="vel_peak")
+    plot_spectrum_max(5,3, 0.9, 0.025, 15, ffilter="vel_peak")
     plot_spectrum_max(5,3, 60, 20, 15)
     plot_spectrum_max(5,3, 100, 20, 15)
     plot_spectrum_max(5,3, 200, 35, 15)

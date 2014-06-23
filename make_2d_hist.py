@@ -16,39 +16,26 @@ import myname
 outdir = path.join(myname.base, "plots/2d_hist/")
 print "Plots at: ",outdir
 
-def plot_max_col_den(sim, snap, ff=True):
-    """Load a simulation and plot the metal column density vs the HI column density"""
+def plot_max_den(sim, snap, ff=True):
+    """Load a simulation and plot the max metal density vs the max HI density"""
     halo = myname.get_name(sim,ff)
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo, None, None)
-    metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
-    HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
-    ind = np.where(metal_col_den > 1e12)
-    (H, xedges, yedges) = np.histogram2d(np.log10(metal_col_den[ind]), np.log10(HI_col_den[ind]), bins=30,normed=True)
+    metal_den = np.max(hspec.get_density("Si", 2),axis=1)
+    HI_den = np.max(hspec.get_density("H", 1),axis=1)
+    ind = hspec.get_filt("Si",2)
+    (H, xedges, yedges) = np.histogram2d(np.log10(metal_den[ind]), np.log10(HI_den[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto", vmax = 0.15)
     plt.colorbar()
 
-def plot_vel_col_den(sim, snap, ff=True):
-    """Load a simulation and plot the metal column density vs the HI column density"""
-    halo = myname.get_name(sim, ff)
-    #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
-    metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
-    vel= hspec.vel_width("Si",2)
-    ind = np.where(metal_col_den > 1e12)
-    (H, xedges, yedges) = np.histogram2d(np.log10(metal_col_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
-    extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
-    plt.imshow(H, extent=extent, aspect="auto")
-    plt.colorbar()
-
 def plot_vel_den(sim, snap, ff=True):
-    """Load a simulation and plot the metal column density vs the HI column density"""
+    """Load a simulation and plot the metal density vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo, None, None)
     vel = hspec.vel_width("Si",2)
-    den = hspec.get_col_density("Si", 2)
+    den = hspec.get_density("Si", 2)
     ind = hspec.get_filt("Si",2)
     (H, xedges, yedges) = np.histogram2d(np.log10(den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
@@ -56,15 +43,14 @@ def plot_vel_den(sim, snap, ff=True):
     plt.colorbar()
 
 def plot_vel_HI_col_den(sim, snap, ff=True):
-    """Load a simulation and plot the metal column density vs the HI column density"""
+    """Load a simulation and plot the HI column density vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo, None, None)
-    metal_col_den = np.max(hspec.get_col_density("Si", 2),axis=1)
-    HI_col_den = np.max(hspec.get_col_density("H", 1),axis=1)
+    HI_den = np.sum(hspec.get_col_density("H", 1),axis=1)
     vel= hspec.vel_width("Si",2)
-    ind = np.where(metal_col_den > 1e12)
-    (H, xedges, yedges) = np.histogram2d(np.log10(HI_col_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
+    ind = hspec.get_filt("Si",2)
+    (H, xedges, yedges) = np.histogram2d(np.log10(HI_den[ind]), np.log10(vel[ind]), bins=30,normed=True)
     extent = [yedges[0], yedges[-1], xedges[-1], xedges[0]]
     plt.imshow(H, extent=extent, aspect="auto")
     plt.colorbar()
@@ -115,8 +101,8 @@ def plot_Si_metals(sim, snap, ff=True):
     #Load from a save file only
     hspec = ps.PlottingSpectra(snap, halo)
     met = hspec.get_metallicity()
-    MM = hspec.get_col_density("Si",2)
-    HH = hspec.get_col_density("H",-1)
+    MM = hspec.get_density("Si",2)
+    HH = hspec.get_density("H",-1)
     mms = np.sum(MM, axis=1)
     hhs = np.sum(HH, axis=1)
     Simet = mms/hhs/0.0133
@@ -146,7 +132,7 @@ for ii in (0,1,2,3):
 
 for ii in (0,1,2,3):
     #Plot col_density of metals vs HI
-    plot_max_col_den(ii, 3)
+    plot_max_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"z3_coldens"))
     plt.clf()
 
@@ -154,13 +140,6 @@ for ii in (0,1,2,3):
     #Plot metal col. den vs vel width
     plot_vel_den(ii, 3)
     save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_den_z3"))
-    plt.clf()
-
-
-for ii in (0,1,2,3):
-    #Plot metal col. den vs vel width
-    plot_vel_col_den(ii, 3)
-    save_figure(path.join(outdir,"cosmo"+str(ii)+"_vel_col_z3"))
     plt.clf()
 
 for ii in (0,1,2,3):

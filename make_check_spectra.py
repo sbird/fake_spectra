@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """Generate some velocity widths through DLAs for the checking script"""
 import gridspectra as gs
-import randspectra as rs
 import spectra as ss
-import sys
 import os.path as path
 import numpy as np
 import halospectra as hs
@@ -14,15 +12,15 @@ np.seterr(under='warn')
 
 def make_stuff(halo):
     """Get the various arrays we want and save them"""
-    halo.get_col_density("H",1)
+    halo.get_density("H",1)
     halo.get_observer_tau("Si",2, force_recompute=True)
     #SiII 1260
     halo.get_tau("Si",2,1260, force_recompute=True)
     halo.get_tau("Si",2,1526, force_recompute=True)
     halo.get_tau("H",1,1215, force_recompute=True)
-    halo.get_col_density("Si",2, force_recompute=True)
-    halo.get_col_density("Z",-1)
-    halo.get_col_density("H",-1)
+    halo.get_density("Si",2, force_recompute=True)
+    halo.get_density("Z",-1)
+    halo.get_density("H",-1)
     halo.save_file()
 
 snapnum=3
@@ -101,7 +99,6 @@ class SiHISpectra(ss.Spectra):
     """Spectra with the SiII fraction given by n(SiII)/n(Si) = n(HI)/n(H)."""
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species."""
-        zzz = self.get_mass_frac("Z", data, ind)[ind2]*self.solar[elem]/self.solarz
         return star.get_reproc_HI(data)[ind][ind2]
 
 halo = SiHISpectra(snapnum, base,None, None, savefile="SiHI_spectra.hdf5")
