@@ -132,9 +132,38 @@ class PlottingSpectra(spectra.Spectra):
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n cm$^{-3}$")
 
-    def plot_den_to_tau(self, elem, ion):
+    def plot_den_to_tau(self, elem, ion, num, thresh = 1e-20):
         """Make a plot connecting density to optical depth"""
-        raise RuntimeError("Not implemented")
+        #Number of points to draw for each line
+        npix = 10
+        den = self.get_density(elem, ion)[num]
+        ind = np.where(den > thresh)
+        #Get peculiar velocity along sightline
+        ax = self.axis[num]-1
+        vel = self.get_velocity(elem, ion)[num, :, ax]
+        imax = np.where(den == np.max(den))[0][0]
+        #Convert pixel coordinates to offsets from peak
+        ind = np.ravel(ind)
+        coord = (ind - imax)*self.dvbin
+        coord[np.where(coord > self.nbins/2)] = coord - self.nbins
+        coord[np.where(coord < -self.nbins/2)] = coord + self.nbins
+        #For each pixel
+        print np.size(coord)
+        minn = np.min(coord-vel[ind])
+        maxx = np.max(coord+vel[ind])
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax2 = ax1.twiny()
+        for (cc, ii) in zip(coord, ind):
+            x = cc+np.linspace(0,vel[ii], npix)
+            y = np.linspace(0,1,npix)
+            ax2.plot(x,y,ls="-", color="black")
+            ax1.plot(x/self.velfac,y,ls="-", color="black")
+        ax2.set_xlabel(r"km s$^{-1}$")
+        ax1.set_xlabel(r"kpc h$^{-1}$")
+        plt.xlim(minn-10, maxx+10)
+        plt.ylim(0,1)
+        plt.yticks(())
 
     def plot_temp(self, elem, ion):
         """Make a contour plot for the density weighted temperature for each spectrum"""
