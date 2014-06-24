@@ -1304,8 +1304,8 @@ class Spectra:
         """
         dist = int(mindist/self.dvbin)
         ind = self.get_filt(elem, ion)
-        rho = self.get_density(elem, ion)[ind]
-        H1_den = self.get_density("H", 1)[ind]
+        rho = self.get_col_density(elem, ion)[ind]
+        H1_den = self.get_col_density("H", 1)[ind]
         seps = np.zeros(np.size(ind[0]), dtype=np.bool)
         lls = 0
         dla = 0
