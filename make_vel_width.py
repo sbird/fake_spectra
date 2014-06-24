@@ -60,7 +60,9 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
         os.mkdir(sdir)
     tau_l = np.roll(tau, offset)[low:high]
     assert np.max(tau_l) > 0.1
-    hspec.plot_spectrum(tau_l, flux=False)
+    xoff = hspec.plot_spectrum(tau_l, flux=False)
+    #Offset of the peak from the zero point
+    voff = hspec.dvbin*np.where(tau_l == np.max(tau_l))[0][0]+xoff
 #     peak = hspec._vel_peak_tau(tau_l)
 #     plt.text(-10,0.5,r"$f_\mathrm{edg} = "+str(peak)+"$")
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
@@ -73,6 +75,7 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     hspec.plot_spectrum(tau_l)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
+    return voff
 
 def plot_den(sim, snap, num, subdir="", xlim=100):
     """Plot density"""
@@ -96,23 +99,29 @@ def plot_den(sim, snap, num, subdir="", xlim=100):
 def plot_spectrum_max(sim, snap, velbin, velwidth, num, ffilter="vel_width"):
     """Plot spectrum with max vel width"""
     hspec = get_hspec(sim, snap, snr=20., box=10)
+    vels = hspec.vel_width("Si",2)
     if ffilter == "vel_width":
-        vels = hspec.vel_width("Si",2)
+        bins = vels
         minwidth = 1.1*(velbin+velwidth)
     elif ffilter == "vel_peak":
-        vels = hspec.vel_peak("Si",2)
+        bins = hspec.vel_peak("Si",2)
         minwidth = 500.
     else:
         raise RuntimeError("Filter not implemented")
     ind = hspec.get_filt("Si", 2)
     subdir = path.join("cosmo"+str(sim)+"-10",str(velbin))
-    band = np.intersect1d(ind[0], np.where(np.logical_and(vels > velbin-velwidth, vels < velbin+velwidth))[0])
+    band = np.intersect1d(ind[0], np.where(np.logical_and(bins > velbin-velwidth, bins < velbin+velwidth))[0])
     np.random.seed(2323)
     index = np.random.randint(0, np.size(band), num)
     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     for nn in band[index]:
-        plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
+        voff = plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
         plot_den(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
+        hspec.plot_den_to_tau("Si",2, nn, thresh = 1e-9, xlim=1.2*vels[nn]/2.,voff=voff)
+        sdir = path.join(outdir,"spectra/"+subdir)
+        save_figure(path.join(sdir,str(nn)+"_cosmo"+str(sim)+"_lines"))
+        plt.clf()
+
 
 def plot_metallicity(sims, snap):
     """Plot metallicity, vel width, their correlation and the extra statistics"""

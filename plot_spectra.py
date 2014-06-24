@@ -118,7 +118,7 @@ class PlottingSpectra(spectra.Spectra):
         else:
             plt.ylabel(r"$\tau$")
             plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
-        return (xaxis[0]+low, xaxis[0]+high)
+        return xaxis[0] #(xaxis[0]+low, xaxis[0]+high)
 
     def plot_density(self, elem, ion, num):
         """Plot the density of an ion along a sightline"""
@@ -132,25 +132,31 @@ class PlottingSpectra(spectra.Spectra):
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n cm$^{-3}$")
 
-    def plot_den_to_tau(self, elem, ion, num, thresh = 1e-20):
-        """Make a plot connecting density to optical depth"""
+    def plot_den_to_tau(self, elem, ion, num, thresh = 1e-10,xlim=100, voff = 0.):
+        """Make a plot connecting density on the low x axis to optical depth on the high x axis.
+        Arguments:
+            elem, ion - ionic species to plot
+            num - index of spectrum shown
+            thresh - density threshold above with to track the pixels
+            xlim - width of shown plot in km/s
+            voff - constant value to shift the high x axis by."""
         #Number of points to draw for each line
         npix = 10
+        #Get densities above threshold
         den = self.get_density(elem, ion)[num]
+        imax = np.where(den == np.max(den))[0][0]
         ind = np.where(den > thresh)
         #Get peculiar velocity along sightline
         ax = self.axis[num]-1
         vel = self.get_velocity(elem, ion)[num, :, ax]
-        imax = np.where(den == np.max(den))[0][0]
+        #Adjust the axis offset.
+        vel -= vel[imax]-voff
         #Convert pixel coordinates to offsets from peak
         ind = np.ravel(ind)
         coord = (ind - imax)*self.dvbin
         coord[np.where(coord > self.nbins/2)] = coord - self.nbins
         coord[np.where(coord < -self.nbins/2)] = coord + self.nbins
         #For each pixel
-        print np.size(coord)
-        minn = np.min(coord-vel[ind])
-        maxx = np.max(coord+vel[ind])
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         ax2 = ax1.twiny()
@@ -158,12 +164,15 @@ class PlottingSpectra(spectra.Spectra):
             x = cc+np.linspace(0,vel[ii], npix)
             y = np.linspace(0,1,npix)
             ax2.plot(x,y,ls="-", color="black")
-            ax1.plot(x/self.velfac,y,ls="-", color="black")
+            ax1.plot(x/self.velfac,y,ls=".")
         ax2.set_xlabel(r"km s$^{-1}$")
         ax1.set_xlabel(r"kpc h$^{-1}$")
-        plt.xlim(minn-10, maxx+10)
+        #Very important to update both axes limits for this plot to make sense
+        ax2.set_xlim(-1.*xlim, xlim)
+        ax1.set_xlim(-1.*xlim/self.velfac, xlim/self.velfac)
         plt.ylim(0,1)
         plt.yticks(())
+        return (ax1, ax2)
 
     def plot_temp(self, elem, ion):
         """Make a contour plot for the density weighted temperature for each spectrum"""
