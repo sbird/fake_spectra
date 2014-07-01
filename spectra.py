@@ -242,18 +242,16 @@ class Spectra:
     def add_noise(self, snr, tau, seed):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         flux = np.exp(-tau)
-        varnce = np.var(1-flux, axis=-1)
+        lines = np.shape(flux)[0]
         #This is to get around the type rules.
-        if np.size(varnce) == 1:
+        if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
             np.random.seed(seed)
-            flux += np.random.normal(0, np.sqrt(varnce/snr), self.nbins)
+            flux += np.random.normal(0, 1./snr, self.nbins)
         else:
-#             flux += np.array([np.random.normal(0, np.sqrt(vv/snr), self.nbins) if vv > 0 else np.zeros(self.nbins) for vv in varnce])
-            for ii in xrange(np.size(varnce)):
+            for ii in xrange(lines):
                 np.random.seed(ii)
-                if varnce[ii] > 0:
-                    flux[ii]+=np.random.normal(0,np.sqrt(varnce[ii]/snr), self.nbins)
+                flux[ii]+=np.random.normal(0,1./snr, self.nbins)
         #Make sure we don't have negative flux
         ind = np.where(flux > 0)
         tau[ind] = -np.log(flux[ind])
