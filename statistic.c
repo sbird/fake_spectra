@@ -146,7 +146,7 @@ int main(int argc, char **argv)
       exit(1);
   }
 #endif
-  fseek(input,sizeof(double)*nbins*NumLos*4,SEEK_CUR);
+/*   fseek(input,sizeof(double)*nbins*NumLos*2,SEEK_CUR); */
   if(fread(tau_H1,sizeof(double),nbins*UsedLos,input) != nbins*UsedLos)     /* HI optical depth */
   {
           fprintf(stderr, "Could not read spectra!\n");
@@ -165,10 +165,22 @@ int main(int argc, char **argv)
   /*Calculate mean flux*/
   /*Changing mean flux by a factor of ten changes the P_F by a factor of three*/
 /*   tau_eff=tau_effs[(int)(redshift-2.2)*5]; */
+
   if(rescale)
   {
     scale=mean_flux(tau_H1, nbins*UsedLos,exp(-TAU_EFF),1e-5 );
     printf("scale=%g\n",scale);
+  }
+  else
+  {
+    double mean_flux = 0;
+    int i;
+    for(i=0; i< nbins*UsedLos; i++)
+    {
+        mean_flux+=exp(-tau_H1[i]);
+    }
+    mean_flux/=nbins*UsedLos;
+    printf("Mean flux is %g\n",mean_flux);
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic & 2){
