@@ -181,6 +181,7 @@ def plot_eq_width(sims, snap):
     plt.xlabel(r"log $(W_\mathrm{1526} / \AA )$")
     plt.ylim(0,3)
     plt.legend(loc=2,ncol=3)
+    plt.text(-1.3,2,"z="+str(zzz[snap]), size=22)
     save_figure(path.join(outdir,outstr))
     plt.clf()
 
@@ -384,8 +385,10 @@ def plot_vvir_models():
     read_H_model()
     plt.legend(loc=2)
     plt.xlim(0.01, 10)
+    plt.xticks((0.01, 0.1, 1, 10), ("0.01","0.1","1","10"))
     plt.xlabel(r"$v_\mathrm{90} / v_\mathrm{vir}$")
     save_figure(path.join(outdir, "vvir90_model"))
+    plt.clf()
 
 def do_statistics(sim, snap):
     """Compute statistics"""
@@ -446,6 +449,7 @@ if __name__ == "__main__":
 #     plot_spectrum_max(7,3, 100, 20, 15)
 #     plot_spectrum_max(7,3, 140, 20, 15)
 #     plot_vel_width_sims(simlist, 4, log=True)
+    plot_vvir_models()
     for zz in (1,3,5):
         plot_met_corr(simlist,zz)
         hspec_cache = {}
@@ -458,11 +462,11 @@ if __name__ == "__main__":
         plot_mean_median(simlist, zz)
         plot_f_peak(simlist, zz)
 
-    for ss in simlist:
-        plot_sep_frac(ss,3)
-    plt.legend(loc=2,ncol=3)
-    save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
-    plt.clf()
+#     for ss in simlist:
+#         plot_sep_frac(ss,3)
+#     plt.legend(loc=2,ncol=3)
+#     save_figure(path.join(outdir,"cosmo_sep_frac_z3"))
+#     plt.clf()
 
 #     for ss in simlist:
 #         plot_vel_redshift_evo(ss)

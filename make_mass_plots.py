@@ -167,7 +167,7 @@ def plot_vw_break(sim, snap):
     hspec = get_hspec(sim, snap)
     hspec.plot_vel_width_breakdown()
     out = "cosmo"+str(sim)+"_vw_break_z"+str(snap)
-    plt.legend(loc=1,ncol=2)
+    plt.legend(loc=1,ncol=3)
     plt.xlim(8,700)
     plt.xticks((10, 40, 100, 400), ("10","40","100","400"))
     save_figure(path.join(topdir,out))

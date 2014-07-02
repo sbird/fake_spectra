@@ -130,7 +130,7 @@ class PlottingSpectra(spectra.Spectra):
         #Add one to avoid zeros on the log plot
         plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30)
         plt.xlabel(r"x (kpc h$^{-1}$)")
-        plt.ylabel(r"n cm$^{-3}$")
+        plt.ylabel(r"n (cm$^{-3}$)")
 
     def plot_den_to_tau(self, elem, ion, num, thresh = 1e-10,xlim=100, voff = 0.):
         """Make a plot connecting density on the low x axis to optical depth on the high x axis.
@@ -269,9 +269,9 @@ class PlottingSpectra(spectra.Spectra):
             vind = np.where((virial > low[ii])*(virial < high[ii]))
             vhist2 = np.histogram(array[ind][vind], v_table)[0]
             func(vbin, vhist2/(1.*vhist), color=colors[ii], ls=lss[ii], label=labels[ii])
-        vind = np.where(halo[filt] < 0)
-        vhist2 = np.histogram(array[vind], v_table)[0]
-        func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
+#         vind = np.where(halo[filt] < 0)
+#         vhist2 = np.histogram(array[vind], v_table)[0]
+#         func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
 
     def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", ls="-"):
         """
