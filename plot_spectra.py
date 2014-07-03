@@ -168,22 +168,18 @@ class PlottingSpectra(spectra.Spectra):
         coord[np.where(coord > self.nbins/2)] = coord - self.nbins
         coord[np.where(coord < -self.nbins/2)] = coord + self.nbins
         #For each pixel
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        ax2 = ax1.twiny()
+        ax2 = plt.gca()
+        ax2.xaxis.set_label_position('top')
+        ax2.xaxis.tick_top()
         for (cc, ii) in zip(coord, ind):
             x = cc+np.linspace(0,vel[ii], npix)
             y = np.linspace(0,1,npix)
             ax2.plot(x,y,ls="-", color="black")
-            ax1.plot(x/self.velfac,y,ls=".")
-        ax2.set_xlabel(r"km s$^{-1}$")
-        ax1.set_xlabel(r"kpc h$^{-1}$")
-        #Very important to update both axes limits for this plot to make sense
+        ax2.set_xlabel(r"v (km s$^{-1}$)")
         ax2.set_xlim(-1.*xlim, xlim)
-        ax1.set_xlim(-1.*xlim/self.velfac, xlim/self.velfac)
         plt.ylim(0,1)
         plt.yticks(())
-        return (ax1, ax2)
+        return (ax2,)
 
     def plot_temp(self, elem, ion):
         """Make a contour plot for the density weighted temperature for each spectrum"""

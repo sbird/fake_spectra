@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import plot_spectra as ps
 import vel_data
@@ -74,12 +75,18 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
     plt.clf()
     return voff
 
-def plot_den(sim, snap, num, subdir="", xlim=100):
+def plot_den(sim, snap, num, subdir="", xlim=100, voff = 0):
     """Plot density"""
     hspec = get_hspec(sim, snap, snr=20., box=10)
+    gs = gridspec.GridSpec(5,1)
+    ax1 = plt.subplot(gs[0,:])
+    plt.sca(ax1)
+    hspec.plot_den_to_tau("Si",2, num, thresh = 1e-9, xlim=xlim,voff=voff)
+    ax2 = plt.subplot(gs[1:,:])
+    plt.sca(ax2)
     hspec.plot_density("Si",2, num)
-    plt.ylabel(r"n$_\mathrm{SiII}$ cm$^{-3}$")
-    plt.xlim(-1*xlim, xlim)
+    plt.ylabel(r"n$_\mathrm{SiII}$ (cm$^{-3}$)")
+    plt.xlim(-1*xlim/hspec.velfac, xlim/hspec.velfac)
     plt.ylim(ymin=1e-9)
     sdir = path.join(outdir,"spectra/"+subdir)
     if not path.exists(sdir):
@@ -87,8 +94,8 @@ def plot_den(sim, snap, num, subdir="", xlim=100):
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_colden"))
     plt.clf()
     hspec.plot_density("H",1,num)
-    plt.xlim(-1*xlim, xlim)
-    plt.ylabel(r"n$_\mathrm{HI}$ cm$^{-3}$")
+    plt.xlim(-1*xlim/hspec.velfac, xlim/hspec.velfac)
+    plt.ylabel(r"n$_\mathrm{HI}$ (cm$^{-3}$)")
     plt.ylim(ymin=1e-6)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
@@ -113,10 +120,7 @@ def plot_spectrum_max(sim, snap, velbin, velwidth, num, ffilter="vel_width"):
     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     for nn in band[index]:
         voff = plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
-        plot_den(sim, snap, nn, subdir, xlim=np.max((vels[nn]/2.,100)))
-        hspec.plot_den_to_tau("Si",2, nn, thresh = 1e-9, xlim=1.2*vels[nn]/2.,voff=voff)
-        sdir = path.join(outdir,"spectra/"+subdir)
-        save_figure(path.join(sdir,str(nn)+"_cosmo"+str(sim)+"_lines"))
+        plot_den(sim, snap, nn, subdir, xlim=1.1*vels[nn]/2., voff=voff)
         plt.clf()
 
 
