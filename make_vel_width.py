@@ -60,19 +60,16 @@ def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
         os.mkdir(sdir)
     tau_l = np.roll(tau, offset)[low:high]
     assert np.max(tau_l) > 0.1
-    xoff = hspec.plot_spectrum(tau_l, flux=False)
+    xoff = hspec.plot_spectrum_raw(tau_l, flux=False)
     #Offset of the peak from the zero point
     voff = hspec.dvbin*np.where(tau_l == np.max(tau_l))[0][0]+xoff
 #     peak = hspec._vel_peak_tau(tau_l)
 #     plt.text(-10,0.5,r"$f_\mathrm{edg} = "+str(peak)+"$")
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
-#     hspec.plot_spectrum(tau_l[low:high])
-#     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_spectrum"))
-#     plt.clf()
     tau = hspec.get_tau("Si", 2,1260, num)
     tau_l = np.roll(tau, offset)[low:high]
-    hspec.plot_spectrum(tau_l)
+    hspec.plot_spectrum_raw(tau_l)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
     return voff
@@ -441,13 +438,6 @@ if __name__ == "__main__":
     plot_spectrum_max(5,3, 400, 50, 15)
     simlist = (1,3,7,9) #range(8)
 
-#     for ss in simlist:
-#         plot_spectrum_max(ss,3, 60, 20, 15)
-#         plot_spectrum_max(ss,3, 200, 35, 15)
-#         plot_spectrum_max(ss,3, 400, 50, 15)
-
-#     plot_spectrum_max(7,3, 100, 20, 15)
-#     plot_spectrum_max(7,3, 140, 20, 15)
 #     plot_vel_width_sims(simlist, 4, log=True)
     plot_vvir_models()
     for zz in (1,3,5):

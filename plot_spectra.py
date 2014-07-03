@@ -88,8 +88,20 @@ class PlottingSpectra(spectra.Spectra):
         plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
         plt.xlabel(r"$f_\mathrm{edg}$")
 
-    def plot_spectrum(self, tau, flux=True):
-        """Plot the spectrum of a line, centered on the deepest point,
+    def plot_spectrum(self, elem, ion, line, num, flux=True):
+        """Plot an spectrum, centered on the maximum tau,
+           and marking the 90% velocity width.
+           offset: offset in km/s for the x-axis labels"""
+        if line == -1:
+            tau = self.get_observer_tau(elem, ion, num)
+        else:
+            tau = self.get_tau(elem, ion, line, num)
+        (low, high, offset) = self.find_absorber_width(elem, ion)
+        tau = np.roll(tau, offset[num])
+        return self.plot_spectrum_raw(tau[low[num]:high[num]], flux)
+
+    def plot_spectrum_raw(self, tau, flux=True):
+        """Plot an array of optical depths, centered on the largest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
         (low, high) = self._vel_width_bound(tau)
