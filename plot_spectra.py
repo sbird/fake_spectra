@@ -92,8 +92,7 @@ class PlottingSpectra(spectra.Spectra):
         """Plot the spectrum of a line, centered on the deepest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
-        tot_tau = np.sum(tau)
-        (low, high) = self._vel_width_bound(tau, tot_tau)
+        (low, high) = self._vel_width_bound(tau)
         xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
         #Make sure we were handed a single spectrum
         assert np.size(np.shape(tau)) == 1

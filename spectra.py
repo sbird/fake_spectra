@@ -242,7 +242,10 @@ class Spectra:
     def add_noise(self, snr, tau, seed):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         flux = np.exp(-tau)
-        lines = np.shape(flux)[0]
+        if np.size(np.shape(flux)) == 1:
+            lines = 1
+        else:
+            lines = np.shape(flux)[0]
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
@@ -783,8 +786,7 @@ class Spectra:
             #deal with periodicity by making sure the deepest point is in the middle
             for ll in np.arange(0, np.shape(tau)[0]):
                 tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
-                tot_tau = np.sum(tau_l)
-                (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+                (nnlow, nnhigh) = self._vel_width_bound(tau_l)
                 vel_width[ll] = self.dvbin*(nnhigh-nnlow)
             #Return the width
             self.vel_widths[(elem, ion)] = vel_width
@@ -807,21 +809,22 @@ class Spectra:
             roll[ll] = np.size(tau_l)/2 - ind_m
         return (roll, tau_out)
 
-    def _vel_width_bound(self, tau, tot_tau):
+    def _vel_width_bound(self, tau):
         """Find the 0.05 and 0.95 bounds of the integrated optical depth"""
+        #Zero everything less than 1 sigma significant
         cum_tau = np.cumsum(tau)
         #Use spline interpolation to find the edge of the bins.
-        tdiff = cum_tau - 0.95*tot_tau
+        tdiff = cum_tau - 0.95*cum_tau[-1]
         high = np.where(tdiff >= 0)[0][0]
-        tdiff = cum_tau - 0.05*tot_tau
+        tdiff = cum_tau - 0.05*cum_tau[-1]
         low = np.where(tdiff >= 0)[0][0]
         return (low, high)
 
-    def _vel_median(self, tau, tot_tau):
+    def _vel_median(self, tau):
         """Find the median point of the integrated optical depth"""
         cum_tau = np.cumsum(tau)
         #Use spline interpolation to find the edge of the bins.
-        tdiff = cum_tau - 0.5*tot_tau
+        tdiff = cum_tau - 0.5*cum_tau[-1]
         high = np.where(tdiff >= 0)[0][0]
         return high
 
@@ -849,9 +852,8 @@ class Spectra:
         #Deal with periodicity by making sure the deepest point is in the middle
         for ll in xrange(np.shape(tau)[0]):
             tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
-            tot_tau = np.sum(tau_l)
-            (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
-            vel_median = self._vel_median(tau_l,tot_tau)
+            (nnlow, nnhigh) = self._vel_width_bound(tau_l)
+            vel_median = self._vel_median(tau_l)
             vmean = (nnlow+nnhigh)/2.
             mean_median[ll] = np.abs(vmean - vel_median)/((nnhigh-nnlow)/2.)
         #Return the width
@@ -874,8 +876,7 @@ class Spectra:
 
     def _vel_peak_tau(self,tau_l):
         """Helper function for a single spectrum to compute v_peak"""
-        tot_tau = np.sum(tau_l)
-        (nnlow, nnhigh) = self._vel_width_bound(tau_l, tot_tau)
+        (nnlow, nnhigh) = self._vel_width_bound(tau_l)
         vmax = np.where(tau_l == np.max(tau_l))[0][0]
         vmean = (nnlow+nnhigh)/2.
         peak = np.abs(vmax - vmean)/((nnhigh-nnlow)/2.)
@@ -892,11 +893,10 @@ class Spectra:
            If there is no 2nd peak, return the mean minus the main peak
         """
         #  Size of a single velocity bin
-        tot_tau = np.sum(tau,axis = 1)
-        mean_median = np.zeros(np.shape(tot_tau))
+        mean_median = np.zeros(np.shape(tau)[0])
         tau = self._get_rolled_spectra(tau)
         for ll in np.arange(0, np.shape(tau)[0]):
-            (low, high) = self._vel_width_bound(tau[ll,:], tot_tau[ll])
+            (low, high) = self._vel_width_bound(tau[ll,:])
             vmean = low+(high-low)/2.
             #Find second peak
             tt = tau[ll,:][low:high]
