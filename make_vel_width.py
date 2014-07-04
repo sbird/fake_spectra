@@ -52,32 +52,30 @@ def plot_sep_frac(sim, snap):
     hspec.plot_sep_frac(color=colors[sim], ls=lss[sim])
     plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
 
-def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir=""):
+def plot_spectrum(sim, snap, num, low=0, high=-1, offset=0,subdir="", box=7.5):
     """Plot a spectrum"""
-    hspec = get_hspec(sim, snap, snr=20., box=10)
-    tau = hspec.get_observer_tau("Si", 2, num)
+    hspec = get_hspec(sim, snap, snr=20., box=box)
     sdir = path.join(outdir,"spectra/"+subdir)
     if not path.exists(sdir):
         os.mkdir(sdir)
-    tau_l = np.roll(tau, offset)[low:high]
-    assert np.max(tau_l) > 0.1
-    xoff = hspec.plot_spectrum_raw(tau_l, flux=False)
+    xoff = hspec.plot_spectrum("Si",2,-1,num, flux=False)
     #Offset of the peak from the zero point
-    voff = hspec.dvbin*np.where(tau_l == np.max(tau_l))[0][0]+xoff
 #     peak = hspec._vel_peak_tau(tau_l)
 #     plt.text(-10,0.5,r"$f_\mathrm{edg} = "+str(peak)+"$")
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_tau"))
     plt.clf()
-    tau = hspec.get_tau("Si", 2,1260, num)
-    tau_l = np.roll(tau, offset)[low:high]
-    hspec.plot_spectrum_raw(tau_l)
+    hspec.plot_spectrum("Si",2,1260,num, flux=False)
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_Si_1260_spectrum"))
     plt.clf()
+    tau = hspec.get_observer_tau("Si", 2, num)
+    tau_l = np.roll(tau, offset)[low:high]
+    assert np.max(tau_l) > 0.1
+    voff = hspec.dvbin*np.where(tau_l == np.max(tau_l))[0][0]+xoff
     return voff
 
-def plot_den(sim, snap, num, subdir="", xlim=100, voff = 0):
+def plot_den(sim, snap, num, subdir="", xlim=100, voff = 0, box=7.5):
     """Plot density"""
-    hspec = get_hspec(sim, snap, snr=20., box=10)
+    hspec = get_hspec(sim, snap, snr=20., box=box)
     gs = gridspec.GridSpec(5,1)
     ax1 = plt.subplot(gs[0,:])
     plt.sca(ax1)
@@ -100,9 +98,9 @@ def plot_den(sim, snap, num, subdir="", xlim=100, voff = 0):
     save_figure(path.join(sdir,str(num)+"_cosmo"+str(sim)+"_H_colden"))
     plt.clf()
 
-def plot_spectrum_max(sim, snap, velbin, velwidth, num, ffilter="vel_width"):
+def plot_spectrum_max(sim, snap, box, velbin, velwidth, num, ffilter="vel_width"):
     """Plot spectrum with max vel width"""
-    hspec = get_hspec(sim, snap, snr=20., box=10)
+    hspec = get_hspec(sim, snap, snr=20., box=box)
     vels = hspec.vel_width("Si",2)
     if ffilter == "vel_width":
         bins = vels
@@ -113,14 +111,14 @@ def plot_spectrum_max(sim, snap, velbin, velwidth, num, ffilter="vel_width"):
     else:
         raise RuntimeError("Filter not implemented")
     ind = hspec.get_filt("Si", 2)
-    subdir = path.join("cosmo"+str(sim)+"-10",str(velbin))
+    subdir = path.join("cosmo"+str(sim)+"-"+str(box),str(velbin))
     band = np.intersect1d(ind[0], np.where(np.logical_and(bins > velbin-velwidth, bins < velbin+velwidth))[0])
     np.random.seed(2323)
     index = np.random.randint(0, np.size(band), num)
     (low, high, offset) = hspec.find_absorber_width("Si",2, minwidth=minwidth)
     for nn in band[index]:
-        voff = plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir)
-        plot_den(sim, snap, nn, subdir, xlim=1.1*vels[nn]/2., voff=voff)
+        voff = plot_spectrum(sim, snap, nn, low[nn], high[nn], offset[nn], subdir=subdir, box=box)
+        plot_den(sim, snap, nn, subdir, xlim=1.1*vels[nn]/2., voff=voff,box=box)
         plt.clf()
 
 
@@ -435,11 +433,11 @@ if __name__ == "__main__":
 #     for ss in (1,3,9):
 #         do_statistics(ss,3)
 
-    plot_spectrum_max(5,3, 0.9, 0.025, 15, ffilter="vel_peak")
-    plot_spectrum_max(5,3, 60, 20, 15)
-    plot_spectrum_max(5,3, 100, 20, 15)
-    plot_spectrum_max(5,3, 200, 35, 15)
-    plot_spectrum_max(5,3, 400, 50, 15)
+    plot_spectrum_max(7,3, 7.5, 0.9, 0.025, 15, ffilter="vel_peak")
+    plot_spectrum_max(7,3, 7.5, 60, 20, 15)
+    plot_spectrum_max(7,3, 7.5, 100, 20, 15)
+    plot_spectrum_max(7,3, 7.5, 200, 35, 15)
+    plot_spectrum_max(7,3, 7.5, 400, 50, 15)
     simlist = (1,3,7,9) #range(8)
 
 #     plot_vel_width_sims(simlist, 4, log=True)

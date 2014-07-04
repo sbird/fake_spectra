@@ -98,12 +98,13 @@ def test_lowres():
 
 def test_box_resolution():
     """Plot the velocity widths for different size boxes"""
-    halo = myname.get_name(5)
-    halo10 = myname.get_name(5,box=10)
-    for zz in (1,3,5):
-        hspec = ps.PlottingSpectra(zz, halo, label="MVEL")
-        hspec2 = ps.PlottingSpectra(zz, halo10, label="MVELS")
-        plot_check(hspec,hspec2,"box", zz)
+    halo = myname.get_name(7)
+    halo10 = myname.get_name(7,box=7.5)
+#     for zz in (1,3,5):
+    zz = 3
+    hspec = ps.PlottingSpectra(zz, halo, label="DEF")
+    hspec2 = ps.PlottingSpectra(zz, halo10, label="SMALL")
+    plot_check(hspec,hspec2,"box", zz)
 
 def test_big_box():
     """Plot the velocity widths for different size boxes"""
