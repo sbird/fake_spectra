@@ -93,35 +93,28 @@ class PlottingSpectra(spectra.Spectra):
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
         if line == -1:
-            tau = self.get_observer_tau(elem, ion, num)
+            tau_no = self.get_observer_tau(elem, ion, num, noise=False)
+            tau = self.get_observer_tau(elem, ion, num, noise=True)
         else:
-            tau = self.get_tau(elem, ion, line, num)
+            tau_no = self.get_tau(elem, ion, line, num, noise=False)
+            tau = self.get_tau(elem, ion, line, num, noise=True)
         (low, high, offset) = self.find_absorber_width(elem, ion)
-        tau = np.roll(tau, offset[num])
-        return self.plot_spectrum_raw(tau[low[num]:high[num]], flux)
+        tau_l = np.roll(tau_no, offset[num])[low[num]:high[num]]
+        (xaxis, xlims) = self.plot_vbars(tau_l)
+        tau_l = np.roll(tau, offset[num])[low[num]:high[num]]
+        return self.plot_spectrum_raw(tau_l,xaxis, xlims, flux)
 
-    def plot_spectrum_raw(self, tau, flux=True):
+    def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True):
         """Plot an array of optical depths, centered on the largest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
-        (low, high) = self._vel_width_bound(tau)
-        xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
         #Make sure we were handed a single spectrum
         assert np.size(np.shape(tau)) == 1
         if flux:
-            plt.plot(xaxis,np.exp(-tau))
+            plt.plot(xaxis,np.exp(-tau), color="blue")
         else:
-            plt.plot(xaxis,tau)
-        if high - low > 0:
-            plt.plot([xaxis[0]+low,xaxis[0]+low],[-1,20])
-            plt.plot([xaxis[0]+high,xaxis[0]+high],[-1,20])
-        if high - low > 150:
-            tpos = xaxis[0]+low + 15
-        else:
-            tpos = xaxis[0]+high+15
-        plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
-        plt.xlim(np.max((xaxis[0],xaxis[0]+low-50)),np.min((xaxis[-1],xaxis[0]+high+50)))
-#         plt.xlim(xaxis[0],xaxis[-1])
+            plt.plot(xaxis,tau,color="blue")
+        plt.xlim(xlims)
         plt.xlabel(r"v (km s$^{-1}$)")
         if flux:
             plt.ylabel(r"$\mathcal{F}$")
@@ -129,7 +122,23 @@ class PlottingSpectra(spectra.Spectra):
         else:
             plt.ylabel(r"$\tau$")
             plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
-        return xaxis[0] #(xaxis[0]+low, xaxis[0]+high)
+        return xaxis[0]
+
+    def plot_vbars(self, tau):
+        """Plot the vertical bars marking the velocity widths"""
+        (low, high) = self._vel_width_bound(tau)
+        xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
+        if high - low > 0:
+            plt.plot([xaxis[0]+low,xaxis[0]+low],[-1,20], color="green")
+            plt.plot([xaxis[0]+high,xaxis[0]+high],[-1,20],color="red")
+        if high - low > 80:
+            tpos = xaxis[0]+low+15
+        else:
+            tpos = xaxis[0]+high+5
+        plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
+        xlims = (np.max((xaxis[0],xaxis[0]+low-20)),np.min((xaxis[-1],xaxis[0]+high+20)))
+        return (xaxis, xlims)
+
 
     def plot_density(self, elem, ion, num):
         """Plot the density of an ion along a sightline"""
