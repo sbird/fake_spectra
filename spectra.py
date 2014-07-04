@@ -668,7 +668,7 @@ class Spectra:
             del tresult
         return result
 
-    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
+    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
@@ -730,7 +730,7 @@ class Spectra:
         # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
         ntau = self.res_corr(ntau, self.spec_res)
         #Add noise
-        if self.snr > 0:
+        if noise and self.snr > 0:
             ntau = self.add_noise(self.snr, ntau, number)
         return ntau
 
@@ -1100,7 +1100,7 @@ class Spectra:
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
-    def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
+    def get_tau(self, elem, ion,line, number = -1, force_recompute=False, noise=True):
         """Get the column density in each pixel for a given species"""
         try:
             if force_recompute:
@@ -1113,7 +1113,7 @@ class Spectra:
         if number >= 0:
             tau = tau[number,:]
         tau = self.res_corr(tau, self.spec_res)
-        if self.snr > 0:
+        if noise and self.snr > 0:
             tau = self.add_noise(self.snr, tau, number)
         return tau
 
