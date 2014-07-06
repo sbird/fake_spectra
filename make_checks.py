@@ -7,7 +7,7 @@ matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
 
-import plot_spectra as ps
+import vw_plotspectra as ps
 import vel_data
 import os.path as path
 import numpy as np
@@ -22,7 +22,7 @@ zrange = {1:(7,3.5), 3:(7,0), 5:(2.5,0)}
 def plot_metal_ion_corr(sim, snap,species="Si",ion=2):
     """Plot metallicity from Z/H vs from a single species for computing ionisation corrections"""
     halo = myname.get_name(sim)
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     hspec.plot_metallicity(color="red", ls="-")
     hspec.plot_species_metallicity(species, ion, color="blue", ls="-")
     vel_data.plot_alpha_metal_data((3.5,2.5))
@@ -39,8 +39,8 @@ def plot_vel_width_SiII(sim, snap):
     """
     halo = myname.get_name(sim)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
-    hspecSi = ps.PlottingSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
+    hspec = ps.VWPlotSpectra(snap, halo)
+    hspecSi = ps.VWPlotSpectra(snap, halo,savefile="SiHI_spectra.hdf5")
     plot_check(hspec, hspecSi,"SiHI")
 
 def plot_vel_width_SiII_keating(sim, snap):
@@ -50,24 +50,24 @@ def plot_vel_width_SiII_keating(sim, snap):
     """
     halo = myname.get_name(sim)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
-    hspecSi2 = ps.PlottingSpectra(snap, halo,savefile="si_colden_spectra.hdf5")
+    hspec = ps.VWPlotSpectra(snap, halo)
+    hspecSi2 = ps.VWPlotSpectra(snap, halo,savefile="si_colden_spectra.hdf5")
     plot_check(hspec, hspecSi2,"SiHI_keating")
 
 def test_spec_resolution():
     """Plot the velocity widths for different spectral resolutions"""
     halo = myname.get_name(7)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
-    hspec2 = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA_res.hdf5")
+    hspec = ps.VWPlotSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.VWPlotSpectra(3, halo, savefile="grid_spectra_DLA_res.hdf5")
     plot_check(hspec,hspec2,"specres")
 
 def test_vel_abswidth():
     """Plot the velocity widths for different minimum absorber widths"""
     halo = myname.get_name(7)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(3, halo)
-    hspec2 = ps.PlottingSpectra(3, halo)
+    hspec = ps.VWPlotSpectra(3, halo)
+    hspec2 = ps.VWPlotSpectra(3, halo)
     hspec2.minwidth = 250.
     plot_check(hspec,hspec2,"abswidth")
 
@@ -75,16 +75,16 @@ def test_pecvel():
     """Plot the velocity widths with and without peculiar velocities"""
     halo = myname.get_name(7)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
-    hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_pecvel.hdf5")
+    hspec = ps.VWPlotSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.VWPlotSpectra(3, halo, None, None, savefile="grid_spectra_DLA_pecvel.hdf5")
     plot_check(hspec,hspec2,"pecvel")
 
 def test_tophat():
     """Plot the velocity widths with and with top hat vs SPH"""
     halo = myname.get_name(7)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
-    hspec2 = ps.PlottingSpectra(3, halo, None, None, savefile="grid_spectra_DLA_tophat.hdf5")
+    hspec = ps.VWPlotSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.VWPlotSpectra(3, halo, None, None, savefile="grid_spectra_DLA_tophat.hdf5")
     plot_check(hspec,hspec2,"tophat")
 
 def test_lowres():
@@ -92,8 +92,8 @@ def test_lowres():
     halo = myname.get_name(0)
     halolow = myname.get_name(0, ff=False)
     #Higher resolution spectrum
-    hspec = ps.PlottingSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
-    hspec2 = ps.PlottingSpectra(60, halolow, None, None, savefile="rand_spectra_DLA.hdf5")
+    hspec = ps.VWPlotSpectra(3, halo, savefile="grid_spectra_DLA.hdf5")
+    hspec2 = ps.VWPlotSpectra(60, halolow, None, None, savefile="rand_spectra_DLA.hdf5")
     plot_check(hspec,hspec2,"lowres")
 
 def test_box_resolution():
@@ -102,59 +102,59 @@ def test_box_resolution():
     halo10 = myname.get_name(7,box=7.5)
 #     for zz in (1,3,5):
     zz = 3
-    hspec = ps.PlottingSpectra(zz, halo, label="DEF")
-    hspec2 = ps.PlottingSpectra(zz, halo10, label="SMALL")
+    hspec = ps.VWPlotSpectra(zz, halo, label="DEF")
+    hspec2 = ps.VWPlotSpectra(zz, halo10, label="SMALL")
     plot_check(hspec,hspec2,"box", zz)
 
 def test_big_box():
     """Plot the velocity widths for different size boxes"""
     halo = myname.get_name(0)
     halobig = path.expanduser("~/data/Illustris")
-    hspec = ps.PlottingSpectra(3, halo, label="DEF")
-    hspec2 = ps.PlottingSpectra(59, halobig, label="ILLUS")
+    hspec = ps.VWPlotSpectra(3, halo, label="DEF")
+    hspec2 = ps.VWPlotSpectra(59, halobig, label="ILLUS")
     plot_check(hspec,hspec2,"bigbox")
 
 def test_gfm_shield():
     """Plot the velocity widths for dynamical self-shielding vs post-processed self-shielding."""
     halo = myname.get_name(7)
     halo2 = myname.get_name('B')
-    hspec = ps.PlottingSpectra(3, halo, label="2xUV")
-    hspec2 = ps.PlottingSpectra(3, halo2, label="NOSHIELD")
+    hspec = ps.VWPlotSpectra(3, halo, label="2xUV")
+    hspec2 = ps.VWPlotSpectra(3, halo2, label="NOSHIELD")
     plot_check(hspec,hspec2,"gfm_shield")
-    hspec = ps.PlottingSpectra(5, halo, label="2xUV")
-    hspec2 = ps.PlottingSpectra(5, halo2, label="NOSHIELD")
+    hspec = ps.VWPlotSpectra(5, halo, label="2xUV")
+    hspec2 = ps.VWPlotSpectra(5, halo2, label="NOSHIELD")
     plot_check(hspec,hspec2,"gfm_shield", snap=5)
 
-class NoFilt(ps.PlottingSpectra):
+class NoFilt(ps.VWPlotSpectra):
     def get_filt(self, elem, ion):
-        return ps.PlottingSpectra.get_filt(self, elem, ion, 100)
+        return ps.VWPlotSpectra.get_filt(self, elem, ion, 100)
 
 def test_filt():
     """Plot impact of filtering low-metallicity systems."""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo, label="FILT")
+    hspec = ps.VWPlotSpectra(3, halo, label="FILT")
     hspec2 = NoFilt(3, halo, label="NOFILT")
     plot_check(hspec,hspec2,"filtering")
 
 def test_atten():
     """Plot the effect of the self-shielding correction"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo, label="ATTEN")
-    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5",label="NOATTEN")
+    hspec = ps.VWPlotSpectra(3, halo, label="ATTEN")
+    hspec2 = ps.VWPlotSpectra(3, halo,savefile="grid_spectra_DLA_no_atten.hdf5",label="NOATTEN")
     plot_check(hspec,hspec2,"no_atten")
 
 def test_shield():
     """Plot velocity width for spectra using self-shielding like in Tescari 2009"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo)
-    hspec2 = ps.PlottingSpectra(3, halo,savefile="grid_spectra_DLA_noshield.hdf5")
+    hspec = ps.VWPlotSpectra(3, halo)
+    hspec2 = ps.VWPlotSpectra(3, halo,savefile="grid_spectra_DLA_noshield.hdf5")
     plot_check(hspec,hspec2,"no_shield")
 
 def test_noise():
     """Plot the effect of noise on the spectrum"""
     halo = myname.get_name(7)
-    hspec = ps.PlottingSpectra(3, halo, snr=0.,label="No Noise")
-    hspec2 = ps.PlottingSpectra(3, halo, snr = 20.,label="Noise")
+    hspec = ps.VWPlotSpectra(3, halo, snr=0.,label="No Noise")
+    hspec2 = ps.VWPlotSpectra(3, halo, snr = 20.,label="Noise")
     plot_check(hspec,hspec2,"noise")
 
     #Higher resolution spectrum
@@ -200,7 +200,7 @@ def plot_check(hspec, hspec2, ofile, snap=3):
 def test_tescari_halos(sim, snap):
     """Plot velocity width for spectra through the center of halos, like in Tescari 2009"""
     halo = myname.get_name(sim, box=10)
-    hspec = ps.PlottingSpectra(snap, halo, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
+    hspec = ps.VWPlotSpectra(snap, halo, savefile="halo_spectra_2.hdf5",cdir=path.expanduser("~/codes/cloudy_tables/ion_out_no_atten/"))
     hspec.plot_vel_width("Si", 2, color="red")
     vel_data.plot_prochaska_2008_data()
     save_figure(path.join(outdir,"cosmo_tescari_halos"))

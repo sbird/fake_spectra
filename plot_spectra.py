@@ -2,11 +2,8 @@
 """Contains the plotting-specific functions for the spectrum analysis code."""
 
 import spectra
-import halospectra
 import numpy as np
-import math
 import leastsq as lsq
-import kstest as ks
 import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
@@ -14,16 +11,6 @@ class PlottingSpectra(spectra.Spectra):
     def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8., cdir=None):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir)
         self.label=label
-
-    def plot_vel_width(self, elem, ion, dv=0.1, color="red", ls="-"):
-        """Plot the velocity widths of this snapshot
-        Parameters:
-            elem - element to use
-            ion - ionisation state: 1 is neutral.
-            dv - bin spacing
-        """
-        (vbin, vels) = self.vel_width_hist(elem, ion, dv)
-        plt.semilogx(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.002, color="red", ls="-"):
         """Plot the velocity widths of this snapshot
@@ -36,73 +23,15 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_f_meanmedian(self, elem, ion, dv=0.03, color="red", ls="-"):
-        """
-        Plot an f_mean_median histogram
-        For args see plot_vel_width
-        """
-        (vbin, vels) = self.f_meanmedian_hist(elem, ion, dv)
-        plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
-        plt.xlabel(r"$f_\mathrm{mm}$")
-
-    def _get_vamp(self, elem, ion, thresh=10**19):
-        """Get the total amplitude of the velocity in the LLS pixels"""
-        velocity = self.get_velocity(elem, ion)
-        colden = self.get_col_density(elem, ion)
-        (halo, _) = self.find_nearest_halo()
-        #Subtract velocity at peak density
-        mvamp = []
-        vvir = self.virial_vel(halo)
-        for ii in xrange(self.NumLos):
-            if halo[ii] < 0 or vvir[ii] == 0.:
-                continue
-            ind = np.where(colden[ii,:] >= thresh)
-            #Position of the point
-            proj_pos = self.cofm[ii,:] - self.sub_cofm[halo[ii]]
-            ax = self.axis[ii]-1
-            axpos = ind*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
-            lvel =  velocity[ii, :,:] - self.sub_vel[halo[ii]]
-            vamp = np.sqrt(np.sum(lvel[ind,:][0]**2,axis=1))
-            for ee in xrange(np.size(ind[0])):
-                axpos = np.array(proj_pos)
-                axpos[ax] = ind[0][ee]*self.box/self.nbins - self.sub_cofm[halo[ii]][ax]
-                vamp[ee] /= np.sqrt(np.sum(axpos**2))
-            angvir = vvir[ii] / self.sub_radii[halo[ii]]
-            mvamp = np.append(mvamp, vamp/angvir)
-        return mvamp
-
-    def plot_velocity_amp(self,elem, ion, color="blue", ls="-"):
-        """Plot a histogram of the amplitude of the velocity."""
-        v_table = np.arange(0, 10, 0.2)
-        (vbin, vels) = self._vel_stat_hist(elem, ion, v_table, self._get_vamp, log=False, filt=False)
-        plt.plot(vbin, vels, label=self.label, color=color, ls=ls)
-        plt.xlabel(r"$|v|$ (km s$^{-1}$)")
-        plt.ylim(0,0.4)
-
-    def plot_f_peak(self, elem, ion, dv=0.03, color="red", ls="-"):
-        """
-        Plot an f_peak histogram
-        For args see plot_vel_width
-        """
-        (vbin, vels) = self.f_peak_hist(elem, ion, dv)
-        plt.plot(vbin, vels, color=color, lw=3, ls=ls,label=self.label)
-        plt.xlabel(r"$f_\mathrm{edg}$")
-
     def plot_spectrum(self, elem, ion, line, num, flux=True):
         """Plot an spectrum, centered on the maximum tau,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
-        if line == -1:
-            tau_no = self.get_observer_tau(elem, ion, num, noise=False)
-            tau = self.get_observer_tau(elem, ion, num, noise=True)
-        else:
-            tau_no = self.get_tau(elem, ion, line, num, noise=False)
-            tau = self.get_tau(elem, ion, line, num, noise=True)
-        (low, high, offset) = self.find_absorber_width(elem, ion)
-        tau_l = np.roll(tau_no, offset[num])[low[num]:high[num]]
-        (xaxis, xlims) = self.plot_vbars(tau_l)
-        tau_l = np.roll(tau, offset[num])[low[num]:high[num]]
-        return self.plot_spectrum_raw(tau_l,xaxis, xlims, flux)
+        tau = self.get_tau(elem, ion, line, num, noise=True)
+        peak = np.where(tau == np.max(tau))[0]
+        tau_l = np.roll(tau, peak)
+        xaxis = np.arange(0,np.size(tau))*self.dvbin - peak
+        return self.plot_spectrum_raw(tau_l,xaxis, (-500,500), flux)
 
     def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True):
         """Plot an array of optical depths, centered on the largest point,
@@ -123,22 +52,6 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylabel(r"$\tau$")
             plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
         return xaxis[0]
-
-    def plot_vbars(self, tau):
-        """Plot the vertical bars marking the velocity widths"""
-        (low, high) = self._vel_width_bound(tau)
-        xaxis = np.arange(0,np.size(tau))*self.dvbin - (high+low)/2
-        if high - low > 0:
-            plt.plot([xaxis[0]+low,xaxis[0]+low],[-1,20], color="green")
-            plt.plot([xaxis[0]+high,xaxis[0]+high],[-1,20],color="red")
-        if high - low > 80:
-            tpos = xaxis[0]+low+15
-        else:
-            tpos = xaxis[0]+high+5
-        plt.text(tpos,0.5,r"$\delta v_{90} = "+str(np.round(high-low,1))+r"$")
-        xlims = (np.max((xaxis[0],xaxis[0]+low-20)),np.min((xaxis[-1],xaxis[0]+high+20)))
-        return (xaxis, xlims)
-
 
     def plot_density(self, elem, ion, num):
         """Plot the density of an ion along a sightline"""
@@ -217,47 +130,6 @@ class PlottingSpectra(spectra.Spectra):
         if moment:
             plt.ylim(1e-4,1)
 
-    def plot_sep_frac(self,elem = "Si", ion = 2, thresh = 1e-1, mindist = 15, dv = 0.2, color="blue", ls="-"):
-        """
-        Plots the fraction of spectra in each velocity width bin which are separated.
-        Threshold is as a percentage of the maximum value.
-        mindist is in km/s
-        """
-        sep = self.get_separated(elem, ion, thresh,mindist)
-        vels = self.vel_width(elem, ion)
-        ind = self.get_filt(elem, ion)
-        v_table = 10**np.arange(1, 3, dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        hist1 = np.histogram(vels[ind], v_table)
-        hist2 = np.histogram(vels[ind][sep],v_table)
-        hist1[0][np.where(hist1[0] == 0)] = 1
-        plt.semilogx(vbin, hist2[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
-
-    def plot_vel_width_breakdown(self, elem = "Si", ion = 2, dv = 0.1):
-        """
-        Plots the fraction of the total velocity width histogram in a series of virial velocity bins
-        """
-        #Find velocity width
-        vels = self.vel_width(elem, ion)
-        ii = self.get_filt(elem, ion)
-        self._plot_breakdown(vels,ii,(0, 60, 120), (60, 120, 900), ("< 60", "60-120", "> 120"),dv)
-        plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
-        plt.ylim(0,1)
-
-
-    def plot_f_peak_breakdown(self, elem = "Si", ion = 2, dv = 0.05):
-        """
-        Plots the fraction of the total fedge histogram in a series of virial velocity bins
-        """
-        #Find velocity width
-        vels = self.vel_peak(elem, ion)
-        ii = self.get_filt(elem, ion)
-        self._plot_breakdown(vels,ii,(0, 50), (50, 900), ("< 50", "> 50"),dv, False)
-        plt.xlabel(r"$f_\mathrm{edg}$")
-        plt.ylim(0,1)
-        plt.xlim(0,1)
-        plt.legend(loc=1,ncol=2)
-
     def _plot_breakdown(self, array, filt, low, high, labels, dv, log=True):
         """
         Helper function to plot something broken down by halo mass
@@ -289,35 +161,6 @@ class PlottingSpectra(spectra.Spectra):
 #         vhist2 = np.histogram(array[vind], v_table)[0]
 #         func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
 
-    def plot_mult_halo_frac(self,elem = "Si", ion = 2, dv = 0.2, color="blue", ls="-"):
-        """
-        Plots the fraction of spectra in each velocity width bin which are separated.
-        Threshold is as a percentage of the maximum value.
-        mindist is in km/s
-        """
-        #Find velocity width
-        (halos, subhalos) = self.find_nearby_halos()
-        vels = self.vel_width(elem, ion)
-        ii = self.get_filt(elem, ion)
-        #Find virial velocity
-        (halo, _) = self.find_nearest_halo()
-        ind = np.where(halo[ii] > 0)
-#         virial = np.ones_like(halo, dtype=np.double)
-#         virial[ind] = self.virial_vel(halo[ind])
-        vwvir = vels[ii][ind]  #/virial[ind]
-        #Make bins
-        v_table = 10**np.arange(np.min(np.log10(vwvir)),np.max(np.log10(vwvir)) , dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        #Histogram of vel width / virial vel
-        hist1 = np.histogram(vwvir, v_table)
-        hist1[0][np.where(hist1[0] == 0)] = 1
-        #Find places with multiple halos
-        subhalo_parent = [list(self.sub_sub_index[ss]) for ss in subhalos]
-        allh = np.array([list(set(subhalo_parent[ii] + halos[ii])) for ii in xrange(self.NumLos)])
-        indmult = np.where([len(aa) > 1 for aa in allh[ind]])
-        histmult = np.histogram(vwvir[indmult],v_table)
-        plt.semilogx(vbin, histmult[0]/(1.*hist1[0]), color=color, ls=ls, label=self.label)
-
     def _plot_metallicity(self, met, nbins=20,color="blue", ls="-"):
         """Plot the distribution of metallicities"""
         bins=np.linspace(-3,0,nbins)
@@ -347,19 +190,6 @@ class PlottingSpectra(spectra.Spectra):
         hist = np.histogram(np.log10(diff),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
 
-    def plot_Z_vs_vel_width(self,elem="Si", ion=2, color="blue",color2="darkblue"):
-        """Plot the correlation between metallicity and velocity width"""
-        vel = self.vel_width(elem, ion)
-        met = self.get_metallicity()
-        #Ignore objects too faint to be seen
-        ind2 = np.where(met > 1e-4)
-        met = met[ind2]
-        vel = vel[ind2]
-        self._plot_2d_contour(vel, met, 10, "Z vel sim", color, color2, fit=True)
-        plt.xlim(10,2e3)
-        plt.ylabel(r"$\mathrm{Z} / \mathrm{Z}_\odot$")
-        plt.xlabel(r"$v_\mathrm{90}$ (km s$^{-1}$)")
-
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
         (halo, _) = self.find_nearest_halo()
@@ -372,11 +202,6 @@ class PlottingSpectra(spectra.Spectra):
         met = met[mind]
         self._plot_2d_contour(mass+0.1, met, 10, "Z mass", color, color2)
         plt.ylim(1e-4,1)
-
-    def plot_vel_vs_mass(self,elem, ion, color="blue",color2="darkblue"):
-        """Plot the correlation between mass and metallicity, with a fit"""
-        vel = self.vel_width(elem, ion)
-        self._plot_xx_vs_mass(vel, "vel",color,color2)
 
     def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", log=True):
         """Helper function to plot something against virial velocity"""
@@ -409,57 +234,3 @@ class PlottingSpectra(spectra.Spectra):
         if fit:
             (intercept, slope, _) = lsq.leastsq(xvals,yvals)
             plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")
-
-    def kstest(self, Zdata, veldata, elem="Si", ion=2):
-        """Find the 2D KS test value of the vel width and log metallicity
-           with respect to an external dataset, veldata and Z data"""
-        met = self.get_metallicity()
-        ind = self.get_filt(elem, ion)
-        met = np.log10(met[ind])
-        vel = np.log10(self.vel_width(elem, ion)[ind])
-        data2 = np.array([met,vel]).T
-        data = np.array([np.log10(Zdata), np.log10(veldata)]).T
-        return ks.ks_2d_2samp(data,data2)
-
-    def plot_virial_vel_vs_vel_width(self,elem, ion,color="red", ls="-", label="", dm=0.1):
-        """Plot a histogram of the velocity widths vs the halo virial velocity"""
-        (halos, _) = self.find_nearest_halo()
-        ind = self.get_filt(elem,ion)
-        f_ind = np.where(halos[ind] != -1)
-        vel = self.vel_width(elem, ion)[ind][f_ind]
-        virial = self.virial_vel(halos[ind][f_ind])+0.1
-        vvvir = vel/virial
-        m_table = 10**np.arange(np.log10(np.min(vvvir)), np.log10(np.max(vvvir)), dm)
-        mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
-        pdf = np.histogram(np.log10(vvvir),np.log10(m_table), density=True)[0]
-        print "median v/vir: ",np.median(vvvir)
-        plt.semilogx(mbin, pdf, color=color, ls=ls, label=label)
-        return (mbin, pdf)
-
-class PlotHaloSpectra(halospectra.HaloSpectra, PlottingSpectra):
-    """Class to plot things connected with spectra."""
-    def __init__(self,num, base, repeat = 3, minpart = 400, res = 1., savefile="halo_spectra_DLA.hdf5"):
-        halospectra.HaloSpectra.__init__(self,num, base, repeat, minpart, res, savefile)
-try:
-    import convert_cloudy
-
-    class PlotIonDensity:
-        """Class to plot the ionisation fraction of elements as a function of density"""
-        def __init__(self, red):
-            self.cloudy_table = convert_cloudy.CloudyTable(red)
-            self.red = red
-
-        def iondensity(self,elem,ion, metal = 0.1, den=(-2.,3)):
-            """Plot the ionisation fraction of an ionic species as a function of hydrogen density.
-            Arguments:
-                elem, ion - specify the species to plot
-                metal - metallicity as a fraction of solar for this species
-                den - range of densities to plot
-            """
-            #Bins in density
-            dens = 10**np.arange(den[0],den[1],0.2)
-            mass_frac = self.cloudy_table.get_solar(elem)*metal*np.ones(np.size(dens))
-            ionfrac = self.cloudy_table.ion(elem, ion, mass_frac, dens)
-            plt.loglog(dens,ionfrac)
-except ImportError:
-    pass

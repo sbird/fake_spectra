@@ -8,7 +8,7 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import plot_spectra as ps
+import vw_plotspectra as ps
 import vel_data
 import leastsq as ls
 import os.path as path
@@ -37,7 +37,7 @@ def get_hspec(sim, snap, snr=0., box = 25):
     try:
         hspec = hspec_cache[(halo, snap)]
     except KeyError:
-        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim], snr=snr)
+        hspec = ps.VWPlotSpectra(snap, halo, label=labels[sim], snr=snr)
         hspec_cache[(halo, snap)] = hspec
     return hspec
 
@@ -212,7 +212,7 @@ def plot_mean_median(sims, snap):
 
 import numexpr as ne
 
-class RotationFiltered(ps.PlottingSpectra):
+class RotationFiltered(ps.VWPlotSpectra):
     """Class to plot the velocity widths of only rotationally supported gas"""
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Filtered list of particles that are rotationally supported by a halo."""
@@ -311,8 +311,8 @@ def plot_f_peak(sims, snap):
 def plot_vel_widths_cloudy():
     """Plot some velocity width data for different cloudy models"""
     #Load sims
-    hspec0 = ps.PlottingSpectra(3, myname.get_name(0, True))
-    hspec1 = ps.PlottingSpectra(3, myname.get_name(0,True), savefile="rand_spectra_DLA_fancy_atten.hdf5")
+    hspec0 = ps.VWPlotSpectra(3, myname.get_name(0, True))
+    hspec1 = ps.VWPlotSpectra(3, myname.get_name(0,True), savefile="rand_spectra_DLA_fancy_atten.hdf5")
     #Make abs. plot
     hspec0.plot_vel_width("Si", 2, color="blue", ls="--")
     hspec1.plot_vel_width("Si", 2, color="red", ls="-")
@@ -333,7 +333,7 @@ def plot_vel_redshift_evo(sim):
     halo = myname.get_name(sim, True)
     vels = {}
     for snap in (1,3,5):
-        hspec0 = ps.PlottingSpectra(snap, halo)
+        hspec0 = ps.VWPlotSpectra(snap, halo)
         (vbin, vels[snap]) = hspec0.vel_width_hist("Si", 2)
     mm = np.min([np.size(vel) for vel in vels.values()])
     #Normalised by z=3
@@ -396,7 +396,7 @@ def do_statistics(sim, snap):
     vel = np.log10(vel)
     #Get Simulated data
     halo = myname.get_name(sim, True)
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     svel = hspec.vel_width("Si", 2)
     smet = hspec.get_metallicity()
     #Ignore objects too faint to be seen

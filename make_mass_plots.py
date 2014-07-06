@@ -6,7 +6,7 @@ matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
 
-import plot_spectra as ps
+import vw_plotspectra as ps
 import os.path as path
 import myname
 import numpy as np
@@ -32,7 +32,7 @@ def get_hspec(sim, snap):
     try:
         hspec = hspec_cache[(sim, snap)]
     except KeyError:
-        hspec = ps.PlottingSpectra(snap, halo, label=labels[sim])
+        hspec = ps.VWPlotSpectra(snap, halo, label=labels[sim])
         hspec_cache[(sim, snap)] = hspec
     return hspec
 

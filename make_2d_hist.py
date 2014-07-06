@@ -7,7 +7,7 @@ matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
 
-import plot_spectra as ps
+import vw_plotspectra as ps
 import os.path as path
 import numpy as np
 from save_figure import save_figure
@@ -20,7 +20,7 @@ def plot_max_den(sim, snap, ff=True):
     """Load a simulation and plot the max metal density vs the max HI density"""
     halo = myname.get_name(sim,ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    hspec = ps.VWPlotSpectra(snap, halo, None, None)
     metal_den = np.max(hspec.get_density("Si", 2),axis=1)
     HI_den = np.max(hspec.get_density("H", 1),axis=1)
     ind = hspec.get_filt("Si",2)
@@ -33,7 +33,7 @@ def plot_vel_den(sim, snap, ff=True):
     """Load a simulation and plot the metal density vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    hspec = ps.VWPlotSpectra(snap, halo, None, None)
     vel = hspec.vel_width("Si",2)
     den = hspec.get_density("Si", 2)
     ind = hspec.get_filt("Si",2)
@@ -46,7 +46,7 @@ def plot_vel_HI_col_den(sim, snap, ff=True):
     """Load a simulation and plot the HI column density vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo, None, None)
+    hspec = ps.VWPlotSpectra(snap, halo, None, None)
     HI_den = np.sum(hspec.get_col_density("H", 1),axis=1)
     vel= hspec.vel_width("Si",2)
     ind = hspec.get_filt("Si",2)
@@ -59,7 +59,7 @@ def plot_vel_mass(sim, snap, ff=True):
     """Load a simulation and plot the halo mass vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     vel= hspec.vel_width("Si",2)[ind]
     (halos, _) = hspec.find_nearest_halo()
@@ -73,7 +73,7 @@ def plot_met_mass(sim, snap, ff=True):
     """Load a simulation and plot the halo mass vs the velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     ind = hspec.get_filt("Si",2)
     met = hspec.get_metallicity()[ind]
     (halos, _) = hspec.find_nearest_halo()
@@ -87,7 +87,7 @@ def plot_vel_metals(sim, snap, ff=True):
     """Plot the correlation between metallicity and velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     met = hspec.get_metallicity()
     vel = hspec.vel_width("Si",2)
     (H, xedges, yedges) = np.histogram2d(np.log10(met), np.log10(vel), bins=30,normed=True)
@@ -99,7 +99,7 @@ def plot_Si_metals(sim, snap, ff=True):
     """Plot the correlation between metallicity and velocity width"""
     halo = myname.get_name(sim, ff)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, halo)
+    hspec = ps.VWPlotSpectra(snap, halo)
     met = hspec.get_metallicity()
     MM = hspec.get_density("Si",2)
     HH = hspec.get_density("H",-1)

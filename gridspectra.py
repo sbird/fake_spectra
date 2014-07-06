@@ -4,10 +4,10 @@
 import numpy as np
 import hdfsim
 import h5py
-import spectra
+import vw_spectra
 import os.path as path
 
-class GridSpectra(spectra.Spectra):
+class GridSpectra(vw_spectra.VWSpectra):
     """Generate metal line spectra from simulation snapshot"""
     def __init__(self,num, base, numlos=5000, res = 1., cdir = None, dla=True, savefile="grid_spectra_DLA.hdf5", savedir=None, gridfile="boxhi_grid_H2.hdf5"):
         #Load halos to push lines through them

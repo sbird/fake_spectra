@@ -7,7 +7,7 @@ matplotlib.use('PDF')
 
 import matplotlib.pyplot as plt
 
-import plot_spectra as ps
+import vw_plotspectra as ps
 import vel_data
 import os.path as path
 from save_figure import save_figure
@@ -22,7 +22,7 @@ def plot_metallicity(sim, snap):
     halo = "modified_128_a"+str(sim)+"_b1"
     out = "cosmo"+str(sim)+"_metallicity_z"+str(snap)
     #Load from a save file only
-    hspec = ps.PlottingSpectra(snap, base+halo, None, None)
+    hspec = ps.VWPlotSpectra(snap, base+halo, None, None)
     hspec.plot_metallicity()
     vel_data.plot_alpha_metal_data(zrange[snap])
     save_figure(path.join(outdir,out))
@@ -38,9 +38,9 @@ def plot_vel_widths_sims(sim):
     """Plot some velocity width data at a particular redshift"""
     #Load sims
     halo = "modified_128_a"+str(sim)+"_b1"
-    hspec0 = ps.PlottingSpectra(17, base+halo)
-    hspec2 = ps.PlottingSpectra(25, base+halo)
-    hspec3 = ps.PlottingSpectra(36, base+halo)
+    hspec0 = ps.VWPlotSpectra(17, base+halo)
+    hspec2 = ps.VWPlotSpectra(25, base+halo)
+    hspec3 = ps.VWPlotSpectra(36, base+halo)
     #Make abs. plot
     hspec0.plot_vel_width("Si", 2, color="blue", ls="-")
     hspec2.plot_vel_width("Si", 2, color="orange", ls="--")
@@ -55,7 +55,7 @@ def plot_vel_widths_metal():
     colorss={1:"blue", 4:"purple", 3:"orange", 5:"red"}
     for sim in (1,4,5):
         halo = "modified_128_a"+str(sim)+"_b1"
-        hspec0 = ps.PlottingSpectra(25, base+halo)
+        hspec0 = ps.VWPlotSpectra(25, base+halo)
         #Make abs. plot
         hspec0.plot_vel_width("Si", 2, color=colorss[sim], ls="-")
     vel_data.plot_prochaska_2008_data()

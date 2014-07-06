@@ -4,7 +4,6 @@
 import numpy as np
 import hdfsim
 import h5py
-import math
 import halocat
 import os.path as path
 import spectra
