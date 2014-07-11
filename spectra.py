@@ -608,7 +608,7 @@ class Spectra:
         return oflux
 
 
-    def get_filt(self, elem, ion, thresh = 100):
+    def get_filt(self, elem, ion, thresh = 1):
         """
         Get an index list to exclude spectra where the ion is too small, usually the result of
         unresolved star formation.
@@ -665,7 +665,7 @@ class Spectra:
         print "For ",self.lines[(elem,ion)][line].lambda_X," Angstrom"
         eq_width = self.equivalent_width(elem, ion, line)
         #Filter small eq. widths as they would not be detected
-        ind = np.where(eq_width > eq_cut)
+        ind = self.get_filt(elem, ion)
         eq_width = eq_width[ind]
         v_table = np.arange(np.log10(np.min(eq_width)), np.log10(np.max(eq_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
@@ -685,7 +685,7 @@ class Spectra:
         if np.size(dv) > 1:
             v_table = dv
         elif log:
-            v_table = 10**np.arange(0, np.min((50,np.log10(np.max(vel_width)))), dv)
+            v_table = 10**np.arange(1, np.min((50,np.log10(np.max(vel_width)))), dv)
         else:
             v_table = np.arange(0, 1, dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
@@ -1035,7 +1035,7 @@ class Spectra:
         Returns a list of lists. Each element in the outer list corresponds to a spectrum.
         Each inner list is the list of weighted z positions of DLA-hosting regions.
         """
-        den = self.get_density(elem, ion)
+        den = self.get_col_density(elem, ion)
         contig = []
         seps = np.zeros(self.NumLos, dtype=np.bool)
         (roll, colden) = self._get_rolled_spectra(den)
@@ -1043,10 +1043,7 @@ class Spectra:
         for ii in xrange(self.NumLos):
             # This is column density, not absorption, so we cannot
             # use the line width to find the peak region.
-            # Instead, just search a constant velocity offset from the peak,
-            #to roughly match the velocity width calculation.
-            lcolden = colden[ii,self.nbins/2-1000*self.dvbin:self.nbins/2+1000*self.dvbin]
-            offset = self.nbins/2-1000*self.dvbin - roll[ii]
+            lcolden = colden[ii,:]
             # Get first and last indices of separate regions in list
             if np.max(lcolden) > thresh:
                 seps = combine_regions(lcolden > thresh)
@@ -1055,7 +1052,7 @@ class Spectra:
             # Find weighted z position for each one
             zposes = []
             for jj in xrange(np.shape(seps)[0]):
-                nn = offset+np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]
+                nn = np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]-roll[ii]
                 llcolden = lcolden[seps[jj,0]:seps[jj,1]]
                 zpos = ne.evaluate("sum(llcolden*nn)")
                 summ = ne.evaluate("sum(llcolden)")
