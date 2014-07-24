@@ -53,7 +53,7 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
         return xaxis[0]
 
-    def plot_density(self, elem, ion, num):
+    def plot_density(self, elem, ion, num, thresh=1e-9):
         """Plot the density of an ion along a sightline"""
         den = self.get_density(elem, ion)
         mcol = np.max(den[num])
@@ -64,8 +64,16 @@ class PlottingSpectra(spectra.Spectra):
         plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30)
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n (cm$^{-3}$)")
+        #Set limits
+        ind = np.where(den > thresh)
+        if np.size(ind) > 0:
+            dxlim = np.max(np.abs((ind[0][0]*phys-np.size(den)/2*phys-50, ind[0][-1]*phys-np.size(den)/2*phys+50)))
+            plt.xlim(-1.*dxlim,dxlim)
+        else:
+            dxlim = np.size(den)*phys
+        return dxlim
 
-    def plot_den_to_tau(self, elem, ion, num, thresh = 1e-10,xlim=100, voff = 0.):
+    def plot_den_to_tau(self, elem, ion, num, thresh = 1e-10,xlim=100, voff = 0., xscale=1):
         """Make a plot connecting density on the low x axis to optical depth on the high x axis.
         Arguments:
             elem, ion - ionic species to plot
@@ -89,19 +97,14 @@ class PlottingSpectra(spectra.Spectra):
         coord = (ind - imax)*self.dvbin
         coord[np.where(coord > self.nbins/2)] = coord - self.nbins
         coord[np.where(coord < -self.nbins/2)] = coord + self.nbins
-        #For each pixel
-        ax2 = plt.gca()
-        ax2.xaxis.set_label_position('top')
-        ax2.xaxis.tick_top()
         for (cc, ii) in zip(coord, ind):
-            x = cc+np.linspace(0,vel[ii], npix)
+            x = np.linspace(cc/xscale,cc+vel[ii], npix)
             y = np.linspace(0,1,npix)
-            ax2.plot(x,y,ls="-", color="black")
-        ax2.set_xlabel(r"v (km s$^{-1}$)")
-        ax2.set_xlim(-1.*xlim, xlim)
+            plt.plot(x,y,ls="-", color="black")
+        plt.xlabel(r"v (km s$^{-1}$)")
+        plt.xlim(-1.*xlim, xlim)
         plt.ylim(0,1)
         plt.yticks(())
-        return (ax2,)
 
     def plot_temp(self, elem, ion):
         """Make a contour plot for the density weighted temperature for each spectrum"""
