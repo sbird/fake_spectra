@@ -115,6 +115,6 @@ class HaloSpectra(spectra.Spectra):
         """Do nothing - halos already loaded"""
         return
 
-    def replace_not_DLA(self):
+    def replace_not_DLA(self, thresh=10**20.3):
         """Do nothing"""
         return
