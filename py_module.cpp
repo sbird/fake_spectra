@@ -32,6 +32,10 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
       return NULL;
 
+    if(2 > PyArray_NDIM(cofm) || 1 >  PyArray_NDIM(axis)){
+      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
+      return NULL;
+    }
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
 
