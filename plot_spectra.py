@@ -50,7 +50,7 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylim(-0.05,1.05)
         else:
             plt.ylabel(r"$\tau$")
-            plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
+            plt.ylim(-0.1,np.max(tau)+0.2)
         return xaxis[0]
 
     def plot_density(self, elem, ion, num, thresh=1e-9, color="blue"):
