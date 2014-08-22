@@ -23,15 +23,14 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_spectrum(self, elem, ion, line, num, flux=True, color="blue"):
-        """Plot an spectrum, centered on the maximum tau,
-           and marking the 90% velocity width.
-           offset: offset in km/s for the x-axis labels"""
+    def plot_spectrum(self, elem, ion, line, num, flux=True, xlims=(-500,500), color="blue"):
+        """Plot an spectrum, centered on the maximum tau"""
         tau = self.get_tau(elem, ion, line, num, noise=True)
         peak = np.where(tau == np.max(tau))[0]
         tau_l = np.roll(tau, peak)
-        xaxis = np.arange(0,np.size(tau))*self.dvbin - peak
-        return self.plot_spectrum_raw(tau_l,xaxis, (-500,500), flux, color=color)
+        xaxis = np.arange(-np.size(tau)/2,np.size(tau)/2)*self.dvbin
+        self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color)
+        return peak
 
     def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True, color="blue"):
         """Plot an array of optical depths, centered on the largest point,
@@ -61,7 +60,7 @@ class PlottingSpectra(spectra.Spectra):
         den = np.roll(den[num], np.size(den[num])/2 - ind_m)
         phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
-        plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30, color="blue")
+        plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30, color=color)
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n (cm$^{-3}$)")
         #Set limits
