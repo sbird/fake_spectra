@@ -23,26 +23,25 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_spectrum(self, elem, ion, line, num, flux=True):
-        """Plot an spectrum, centered on the maximum tau,
-           and marking the 90% velocity width.
-           offset: offset in km/s for the x-axis labels"""
+    def plot_spectrum(self, elem, ion, line, num, flux=True, xlims=(-500,500), color="blue"):
+        """Plot an spectrum, centered on the maximum tau"""
         tau = self.get_tau(elem, ion, line, num, noise=True)
         peak = np.where(tau == np.max(tau))[0]
         tau_l = np.roll(tau, peak)
-        xaxis = np.arange(0,np.size(tau))*self.dvbin - peak
-        return self.plot_spectrum_raw(tau_l,xaxis, (-500,500), flux)
+        xaxis = np.arange(-np.size(tau)/2,np.size(tau)/2)*self.dvbin
+        self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color)
+        return peak
 
-    def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True):
+    def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True, color="blue"):
         """Plot an array of optical depths, centered on the largest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
         #Make sure we were handed a single spectrum
         assert np.size(np.shape(tau)) == 1
         if flux:
-            plt.plot(xaxis,np.exp(-tau), color="blue")
+            plt.plot(xaxis,np.exp(-tau), color=color)
         else:
-            plt.plot(xaxis,tau,color="blue")
+            plt.plot(xaxis,tau,color=color)
         plt.xlim(xlims)
         plt.xlabel(r"v (km s$^{-1}$)")
         if flux:
@@ -50,10 +49,10 @@ class PlottingSpectra(spectra.Spectra):
             plt.ylim(-0.05,1.05)
         else:
             plt.ylabel(r"$\tau$")
-            plt.ylim(-0.1,np.min((np.max(tau)+0.2,10)))
+            plt.ylim(-0.1,np.max(tau)+0.2)
         return xaxis[0]
 
-    def plot_density(self, elem, ion, num, thresh=1e-9):
+    def plot_density(self, elem, ion, num, thresh=1e-9, color="blue"):
         """Plot the density of an ion along a sightline"""
         den = self.get_density(elem, ion)
         mcol = np.max(den[num])
@@ -61,7 +60,7 @@ class PlottingSpectra(spectra.Spectra):
         den = np.roll(den[num], np.size(den[num])/2 - ind_m)
         phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
-        plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30)
+        plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30, color=color)
         plt.xlabel(r"x (kpc h$^{-1}$)")
         plt.ylabel(r"n (cm$^{-3}$)")
         #Set limits
