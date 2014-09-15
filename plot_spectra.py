@@ -26,8 +26,8 @@ class PlottingSpectra(spectra.Spectra):
     def plot_spectrum(self, elem, ion, line, num, flux=True, xlims=(-500,500), color="blue"):
         """Plot an spectrum, centered on the maximum tau"""
         tau = self.get_tau(elem, ion, line, num, noise=True)
-        peak = np.where(tau == np.max(tau))[0]
-        tau_l = np.roll(tau, peak)
+        peak = np.where(tau == np.max(tau))[0][0]
+        tau_l = np.roll(tau, np.size(tau)/2 - peak)
         xaxis = np.arange(-np.size(tau)/2,np.size(tau)/2)*self.dvbin
         self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color)
         return peak
