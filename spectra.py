@@ -164,6 +164,10 @@ class Spectra:
                 f=h5py.File(self.savefile,'w')
             except IOError:
                 raise IOError("Could not open ",self.savefile," for writing")
+        self._save_file(f)
+
+    def _save_file(self, f):
+        """Saves to an open file handle, so it can be called by child classes which may want to save extra data."""
         grp = f.create_group("Header")
         grp.attrs["redshift"]=self.red
         grp.attrs["nbins"]=self.nbins
