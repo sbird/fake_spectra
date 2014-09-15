@@ -331,7 +331,11 @@ class Spectra:
 
     def _read_particle_data(self,fn, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
-        ff = h5py.File(fn, "r")
+        try:
+            ff = h5py.File(fn, "r")
+        except IOError:
+            print "Unable to open ",fn
+            ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
         hh = hsml.get_smooth_length(data)
@@ -347,6 +351,7 @@ class Spectra:
             ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
+            ff.close()
             return (False, False, False, False,False,False)
         pos = pos[ind,:]
         hh = hh[ind]
@@ -381,6 +386,7 @@ class Spectra:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
             if np.size(ind2) == 0:
+                ff.close()
                 return (False, False, False, False,False,False)
             #Shrink arrays: we don't want to interpolate particles
             #with no mass in them
