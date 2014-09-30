@@ -324,7 +324,18 @@ class Spectra(object):
         if amumass == False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
-            line = self.lines[(elem,ion)][ll]
+            #Allow us to compute absorption profiles assuming all
+            #of one element is in the absorbing state
+            if ion == -1:
+                #Slight hack: try every ion in turn until we find the one with this line
+                for ii in xrange(8):
+                    try:
+                        line = self.lines[(elem, ii)][ll]
+                    except KeyError:
+                        continue
+                    break
+            else:
+                line = self.lines[(elem,ion)][ll]
         else:
             line = self.lines[("H",1)][1215]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
