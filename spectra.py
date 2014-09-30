@@ -34,7 +34,7 @@ import subfindhdf
 import numexpr as ne
 from _spectra_priv import _Particle_Interpolate, _near_lines
 
-class Spectra:
+class Spectra(object):
     """Class to interpolate particle densities along a line of sight and calculate their absorption
         Arguments:
             num - Snapshot number
