@@ -666,11 +666,9 @@ class Spectra(object):
         #λ here is the rest wavelength of the line.
         #speed of light in km /s
         light = self.light / 1e5
-        #Line data
-        line = self.lines[(elem,ion)][line]
         #lambda in Angstroms, dvbin in km/s,
         #so dl is in Angstrom
-        dl = self.dvbin / light * line.lambda_X
+        dl = self.dvbin / light * line
         eq_width = cumtrapz(1-np.exp(-tau),dx=dl, axis=1)[:,-1]
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
@@ -683,7 +681,7 @@ class Spectra(object):
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        print "For ",self.lines[(elem,ion)][line].lambda_X," Angstrom"
+        print "For ",line," Angstrom"
         eq_width = self.equivalent_width(elem, ion, line)
         #Filter small eq. widths as they would not be detected
         ind = self.get_filt(elem, ion)
