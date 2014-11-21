@@ -972,6 +972,18 @@ class Spectra(object):
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
         return frac/(self.absorption_distance()/self.nbins)
 
+    def line_density_eq_w(self, thresh=0.4, elem = "H", ion = 1, line=1216):
+        """Compute the line density with an equivalent width threshold.
+        This is the total no. of sightlines above the threshold divided by the total number of sightlines,
+        multiplied by d L / dX. This is dN/dX = l(z)
+        """
+        eq_width = self.equivalent_width(elem, ion, line)
+        #Average fraction of pixels containing a DLA
+        frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
+        #Divide by abs. distance per sightline
+        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded*self.nbins)
+        return frac/(self.absorption_distance()/self.nbins)
+
     def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
         if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
