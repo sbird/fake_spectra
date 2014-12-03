@@ -5,7 +5,7 @@ GREAD=no
 #Change this to where you installed GadgetReader
 GREAD=${CURDIR}/../GadgetReader
 #Python include path
-PYINC=-I/usr/include/python2.6 -I/usr/include/python2.6
+PYINC=`pkg-config --cflags python2`
 
 GCCV:=$(shell gcc --version | head -1)
 ifeq (4.8,$(findstring 4.8,${GCCV}))
