@@ -920,8 +920,8 @@ class Spectra(object):
         rho_crit=3*h100**2/(8*math.pi*grav)
         return rho_crit
 
-    def _rho_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
-        """Compute rho_DLA, the sum of the mass in DLAs,
+    def _rho_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+        """Compute rho_abs, the sum of the mass in an absorber,
            divided by the volume of the spectra in g/cm^3 (comoving).
             ρ_DLA = m_p * avg. column density / (1+z)^2 / length of column
             Note: If we want the neutral gas density rather than the
@@ -929,8 +929,8 @@ class Spectra(object):
         """
         #Column density of HI in atoms cm^-2 (physical)
         col_den = self.get_col_density(elem, ion)
-        if thresh > 0:
-            HIden = np.sum(col_den[np.where(col_den > thresh)])/np.size(col_den)
+        if thresh > 0 or upthresh < 10**40:
+            HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
         HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
@@ -946,29 +946,42 @@ class Spectra(object):
            Units are 10^8 M_sun / Mpc^3 (comoving), like 0811.2003
         """
         #Avg density in g/cm^3 (comoving)
-        rho_DLA = self._rho_DLA(thresh)
+        rho_DLA = self._rho_abs(thresh)
         # 1e8 M_sun/Mpc^3 in g/cm^3
         conv = 0.01 * self.UnitMass_in_g / self.UnitLength_in_cm**3
         return rho_DLA / conv
 
-    def omega_DLA(self, thresh=10**20.3, elem = "H", ion = 1):
-        """Compute Omega_DLA, the sum of the mass in DLAs, divided by the volume of the spectra, divided by the critical density.
-            Ω_DLA = m_p * avg. column density / (1+z)^2 / length of column / rho_c
+    def omega_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+        """Compute Omega_abs, the sum of the mass in a given absorber,
+            divided by the volume of the spectra, divided by the critical density.
+            Ω_abs = m_p * avg. column density / (1+z)^2 / length of column / rho_c
             Note: If we want the neutral gas density rather than the neutral hydrogen density, divide by 0.76,
             the hydrogen mass fraction.
         """
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
-        omega_DLA=self._rho_DLA(thresh, elem, ion)/self.rho_crit()
+        omega_DLA=self._rho_abs(thresh, upthresh, elem=elem, ion=ion)/self.rho_crit()
         return omega_DLA
 
-    def line_density(self, thresh=10**20.3, elem = "H", ion = 1):
+    def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
         """Compute the line density, the total no. of DLA sightlines divided by the total number of sightlines, multiplied by d L / dX. This is dN/dX = l_DLA(z)
         """
         col_den = self.get_col_density(elem, ion)
         #Average fraction of pixels containing a DLA
-        frac = 1.*np.size(col_den[np.where(col_den > thresh)])/np.size(col_den)
+        frac = 1.*np.size(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         #Divide by abs. distance per sightline
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
+        return frac/(self.absorption_distance()/self.nbins)
+
+    def line_density_eq_w(self, thresh=0.4, elem = "H", ion = 1, line=1216):
+        """Compute the line density with an equivalent width threshold.
+        This is the total no. of sightlines above the threshold divided by the total number of sightlines,
+        multiplied by d L / dX. This is dN/dX = l(z)
+        """
+        eq_width = self.equivalent_width(elem, ion, line)
+        #Average fraction of pixels containing a DLA
+        frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
+        #Divide by abs. distance per sightline
+        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded*self.nbins)
         return frac/(self.absorption_distance()/self.nbins)
 
     def get_spectra_proj_pos(self, cofm=None):
