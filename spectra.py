@@ -438,9 +438,9 @@ class Spectra(object):
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
-        if axis == None:
+        if axis is None:
             axis = self.axis
-        if cofm == None:
+        if cofm is None:
             cofm = self.cofm
         ind = _near_lines(self.box, pos, hh, axis, cofm)
         return ind
