@@ -129,8 +129,8 @@ class PlottingSpectra(spectra.Spectra):
         ax.set_xlabel(r"$N_\mathrm{HI} (\mathrm{cm}^{-2})$")
         ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
         plt.xlim(10**minN, 10**maxN)
-        if moment:
-            plt.ylim(1e-4,1)
+#         if moment:
+#             plt.ylim(1e-4,1)
 
     def _plot_breakdown(self, array, filt, low, high, labels, dv, log=True):
         """

@@ -424,12 +424,24 @@ class Spectra(object):
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
         #Make sure temperature doesn't overflow the cloudy table
-        if np.max(temp) > 10**8.6:
+        #High temperatures are unlikely to be in ionisation equilibrium anyway.
+        #Low temperatures can be neglected because we don't follow cooling processes that far anyway.
+        tmplimits = self.cloudy_table.get_temp_bounds()
+        if np.max(temp) > tmplimits[1] or np.min(temp) < tmplimits[0]:
             temp2 = np.array(temp)
-            temp2[np.where(temp2 > 10**8.6)] = 10**8.6
+            temp2[np.where(temp2 > tmplimits[1])] = tmplimits[1]
+            temp2[np.where(temp2 < tmplimits[0])] = tmplimits[0]
         else:
             temp2 = temp
-        return np.float32(self.cloudy_table.ion(elem, ion, den, temp2))
+        #Ditto density: high densities are not followed correctly and low densities contain no stuff.
+        denslimits = self.cloudy_table.get_dens_bounds()
+        if np.max(den) > denslimits[1] or np.min(den) < denslimits[0]:
+            den2 = np.array(den)
+            den2[np.where(den2 > denslimits[1])] = denslimits[1]
+            den2[np.where(den2 < denslimits[0])] = denslimits[0]
+        else:
+            den2 = den
+        return np.float32(self.cloudy_table.ion(elem, ion, den2, temp2))
 
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""

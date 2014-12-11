@@ -23,7 +23,7 @@ class RandSpectra(spectra.Spectra):
 
         if thresh > 0:
             self.replace_not_DLA(thresh)
-        print "Found DLAs"
+            print "Found objects over threshold"
 
 
     def get_cofm(self, num = None):
