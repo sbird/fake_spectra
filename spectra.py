@@ -140,7 +140,11 @@ class Spectra(object):
         self.lines = line_data.LineData()
         print self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red
         #Try to load a halo catalogue
-        self.load_halo()
+        try:
+            self.load_halo()
+        except IndexError:
+            #This occurs when the FoF halos don't exist
+            pass
 
     def save_file(self):
         """
@@ -993,8 +997,7 @@ class Spectra(object):
         #Average fraction of pixels containing a DLA
         frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
         #Divide by abs. distance per sightline
-        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded*self.nbins)
-        return frac/(self.absorption_distance()/self.nbins)
+        return frac/self.absorption_distance()
 
     def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
