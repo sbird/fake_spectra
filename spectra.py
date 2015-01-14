@@ -918,8 +918,8 @@ class Spectra(object):
            divided by the volume of the spectra in g/cm^3 (comoving).
             Omega_DLA = m_p * avg. column density / (1+z)^2 / length of column
         """
-        #Column density of HI in atoms cm^-2 (physical)
-        col_den = self.get_col_density(elem, ion)
+        #Column density of ion in atoms cm^-2 (physical)
+        col_den = np.sum(self.get_col_density(elem, ion), axis=1)
         if thresh > 0 or upthresh < 10**40:
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
@@ -928,7 +928,7 @@ class Spectra(object):
         #Avg. Column density in g cm^-2 (comoving)
         HIden = self.lines.get_mass(elem) * self.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.UnitLength_in_cm/self.hubble)/self.nbins/(1+self.red)
+        length = (self.box*self.UnitLength_in_cm/self.hubble)/(1+self.red)
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
