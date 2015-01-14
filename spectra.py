@@ -501,6 +501,7 @@ class Spectra(object):
             elem, ion - species to check
             res - spectral resolution, width of region
             minmass - Minimum mass cutoff of particles considered.
+        THIS METHOD IS LARGELY UNTESTED
         """
         num_important = np.zeros_like(self.axis)
         den = self.get_density(elem, ion)
@@ -647,15 +648,15 @@ class Spectra(object):
 
     def get_filt(self, elem, ion, thresh = 1):
         """
-        Get an index list to exclude spectra where the ion is too small, usually the result of
-        unresolved star formation.
+        Get an index list to exclude spectra where the ion is wildly unphysically too small.
+        With default threshold will do nothing.
 
-        thresh - observable density threshold
+        thresh - observable density threshold in column density.
         """
         #Remember this is not in log.
-        met = np.max(self.get_density(elem, ion), axis=1)
+        dens = np.max(self.get_density(elem, ion), axis=1)
         phys = self.dvbin/self.velfac*self.rscale
-        ind = np.where(met > thresh/phys)
+        ind = np.where(dens > thresh/phys)
         return ind
 
     def _get_rolled_spectra(self,tau):
@@ -691,8 +692,7 @@ class Spectra(object):
 
     def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
         """
-        Compute a histogram of the equivalent width distribution of our spectra, with the purpose of
-        comparing to the data of Neeleman 2013.
+        Compute a histogram of the equivalent width distribution of our spectra.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
@@ -939,9 +939,7 @@ class Spectra(object):
     def _rho_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
         """Compute rho_abs, the sum of the mass in an absorber,
            divided by the volume of the spectra in g/cm^3 (comoving).
-            ρ_DLA = m_p * avg. column density / (1+z)^2 / length of column
-            Note: If we want the neutral gas density rather than the
-            neutral hydrogen density, divide by 0.76, the hydrogen mass fraction.
+            Omega_DLA = m_p * avg. column density / (1+z)^2 / length of column
         """
         #Column density of HI in atoms cm^-2 (physical)
         col_den = self.get_col_density(elem, ion)
