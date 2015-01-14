@@ -124,9 +124,9 @@ class PlottingSpectra(spectra.Spectra):
         (NHI,f_N)=self.column_density_function(elem, ion, dlogN,minN-1,maxN+1)
         if moment:
             f_N *= NHI
-        plt.loglog(NHI,f_N,color=color, lw = 3)
+        plt.loglog(NHI,f_N,color=color, label=self.label)
         ax=plt.gca()
-        ax.set_xlabel(r"$N_\mathrm{HI} (\mathrm{cm}^{-2})$")
+        ax.set_xlabel(r"$N (\mathrm{cm}^{-2})$")
         ax.set_ylabel(r"$f(N) (\mathrm{cm}^2)$")
         plt.xlim(10**minN, 10**maxN)
 #         if moment:
