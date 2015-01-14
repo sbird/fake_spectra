@@ -707,29 +707,6 @@ class Spectra(object):
         eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
         return (vbin, eqws)
 
-    def _vel_stat_hist(self, elem, ion, dv, func, log=True, filt=True):
-        """
-           Internal function that finds the histogram in velocity space of
-           the values of a statistic for a particular ion.
-        """
-        #Filter small number of spectra without metals
-        vel_width = func(elem, ion)
-        if filt:
-            ind = self.get_filt(elem, ion)
-            vel_width = vel_width[ind]
-        if np.size(dv) > 1:
-            v_table = dv
-        elif log:
-            v_table = 10**np.arange(1, np.min((50,np.log10(np.max(vel_width)))), dv)
-        else:
-            v_table = np.arange(0, 1, dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        if log:
-            vels = np.histogram(np.log10(vel_width),np.log10(v_table), density=True)[0]
-        else:
-            vels = np.histogram(vel_width,v_table, density=True)[0]
-        return (vbin, vels)
-
     def mass_hist(self, dm=0.1):
         """
         Compute a histogram of the host halo mass of each DLA spectrum.
