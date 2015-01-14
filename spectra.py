@@ -925,8 +925,8 @@ class Spectra(object):
         else:
             HIden = np.mean(col_den)
         HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
-        #Avg. Column density of HI in g cm^-2 (comoving)
-        HIden = self.protonmass * HIden/(1+self.red)**2
+        #Avg. Column density in g cm^-2 (comoving)
+        HIden = self.lines.get_mass(elem) * self.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
         length = (self.box*self.UnitLength_in_cm/self.hubble)/self.nbins/(1+self.red)
         #Avg density in g/cm^3 (comoving)
