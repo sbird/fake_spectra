@@ -26,7 +26,6 @@ import cold_gas
 import line_data
 import h5py
 import hdfsim
-from scipy.integrate import cumtrapz
 from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
@@ -686,7 +685,7 @@ class Spectra(object):
         #lambda in Angstroms, dvbin in km/s,
         #so dl is in Angstrom
         dl = self.dvbin / light * line
-        eq_width = cumtrapz(1-np.exp(-tau),dx=dl, axis=1)[:,-1]
+        eq_width = np.trapz(-np.expm1(-tau),dx=dl, axis=1)
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
 
