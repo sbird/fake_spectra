@@ -954,6 +954,24 @@ class Spectra(object):
         omega_DLA=self._rho_abs(thresh, upthresh, elem=elem, ion=ion)/self.rho_crit()
         return omega_DLA
 
+    def omega_abs_cddf(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+        """Compute Omega_abs, the sum of the mass in a given absorber,
+            divided by the volume of the spectra, divided by the critical density.
+            Omega_abs = m_p * avg. column density / (1+z)^2 / length of column / rho_c
+            This is computed by summing the column density function, rather than directly by summing
+            columns. Should be the same as omega_abs.
+        """
+        dlogN = 0.2
+        (bins, cddf) = self.column_density_function(elem, ion, dlogN, minN=np.log10(thresh), maxN=np.log10(upthresh))
+        #Integrate cddf * N
+        moment = cddf*bins
+        summ = 0.5*np.sum([(bins[i+1]-bins[i])*(moment[i+1]+moment[i]) for i in xrange(0,np.size(cddf)-1)])
+        #summ = 0.5*(dlogN*np.sum(2)-cddf[0]*bins[0] - cddf[-1]*bins[-1])/2.
+        #H0 in 1/s units
+        h100=3.2407789e-18*self.hubble
+        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*summ
+        return omega_abs
+
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
         """Compute the line density, the total no. of DLA sightlines divided by the total number of sightlines, multiplied by d L / dX. This is dN/dX = l_DLA(z)
         """
