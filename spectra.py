@@ -888,7 +888,7 @@ class Spectra(object):
         dX=self.absorption_distance()/self.nbins
         #Col density of each pixel: makes more sense for lower column densities
         rho = np.ravel(self.get_col_density(elem, ion))
-        tot_cells = np.size(rho)
+        tot_cells = np.size(rho)+self.discarded*self.nbins
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
@@ -972,6 +972,7 @@ class Spectra(object):
         eq_width = self.equivalent_width(elem, ion, line)
         #Average fraction of pixels containing a DLA
         frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
+        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded*self.nbins)
         #Divide by abs. distance per sightline
         return frac/self.absorption_distance()
 
