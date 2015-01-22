@@ -13,7 +13,7 @@ class PlottingSpectra(spectra.Spectra):
         self.label=label
 
     def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.002, color="red", ls="-"):
-        """Plot the velocity widths of this snapshot
+        """Plot the equivalent width histogram of this snapshot
         Parameters:
             elem - element to use
             ion - ionisation state: 1 is neutral.
@@ -191,6 +191,14 @@ class PlottingSpectra(spectra.Spectra):
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         hist = np.histogram(np.log10(diff),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
+
+    def plot_eq_width_vs_col_den(self, elem, ion, line):
+        """Plot the equivalent width vs the column density along the sightline for each spectrum."""
+        eqw = np.log10(self.equivalent_width(elem, ion, line))
+        colden = np.sum(self.get_col_density(elem, ion), axis=1)
+        plt.semilogy(eqw, colden,'o')
+        plt.xlabel(r"W $(\AA)$")
+        plt.ylabel(r"N$_\mathrm{HI}$ (cm$^{2}$)")
 
     def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
         """Plot the correlation between mass and metallicity, with a fit"""
