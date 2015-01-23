@@ -967,7 +967,8 @@ class Spectra(object):
         moment = cddf*bins
         #H0 in 1/s units
         h100=3.2407789e-18*self.hubble
-        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)
+        #The 1+z factor converts lightspeed to comoving
+        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)*(1+self.red)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
