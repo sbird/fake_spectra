@@ -925,7 +925,7 @@ class Spectra(object):
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
-        HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
+        HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded)
         #Avg. Column density in g cm^-2 (comoving)
         HIden = self.lines.get_mass(elem) * self.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
@@ -975,12 +975,12 @@ class Spectra(object):
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
         """Compute the line density, the total no. of DLA sightlines divided by the total number of sightlines, multiplied by d L / dX. This is dN/dX = l_DLA(z)
         """
-        col_den = self.get_col_density(elem, ion)
+        col_den = np.sum(self.get_col_density(elem, ion), axis=1)
         #Average fraction of pixels containing a DLA
         frac = 1.*np.size(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         #Divide by abs. distance per sightline
-        frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded*self.nbins)
-        return frac/(self.absorption_distance()/self.nbins)
+        frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded)
+        return frac/(self.absorption_distance())
 
     def line_density_eq_w(self, thresh=0.4, elem = "H", ion = 1, line=1216):
         """Compute the line density with an equivalent width threshold.
@@ -990,7 +990,7 @@ class Spectra(object):
         eq_width = self.equivalent_width(elem, ion, line)
         #Average fraction of pixels containing a DLA
         frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
-        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded*self.nbins)
+        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded)
         #Divide by abs. distance per sightline
         return frac/self.absorption_distance()
 
