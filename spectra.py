@@ -965,11 +965,9 @@ class Spectra(object):
         (bins, cddf) = self.column_density_function(elem, ion, dlogN, minN=np.log10(thresh), maxN=np.log10(upthresh))
         #Integrate cddf * N
         moment = cddf*bins
-        summ = 0.5*np.sum([(bins[i+1]-bins[i])*(moment[i+1]+moment[i]) for i in xrange(0,np.size(cddf)-1)])
-        #summ = 0.5*(dlogN*np.sum(2)-cddf[0]*bins[0] - cddf[-1]*bins[-1])/2.
         #H0 in 1/s units
         h100=3.2407789e-18*self.hubble
-        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*summ
+        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
