@@ -914,14 +914,14 @@ class Spectra(object):
         rho_crit=3*h100**2/(8*math.pi*grav)
         return rho_crit
 
-    def _rho_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+    def _rho_abs(self, thresh=10**20.3, upthresh=None, elem = "H", ion = 1):
         """Compute rho_abs, the sum of the mass in an absorber,
            divided by the volume of the spectra in g/cm^3 (comoving).
             Omega_DLA = m_p * avg. column density / (1+z)^2 / length of column
         """
         #Column density of ion in atoms cm^-2 (physical)
         col_den = np.sum(self.get_col_density(elem, ion), axis=1)
-        if thresh > 0 or upthresh < 10**40:
+        if thresh > 0 or upthresh != None:
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
@@ -988,8 +988,8 @@ class Spectra(object):
         """
         eq_width = self.equivalent_width(elem, ion, line)
         #Average fraction of pixels containing a DLA
-        frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])/np.size(eq_width)
-        frac *= np.size(eq_width)/(np.size(eq_width)+1.*self.discarded)
+        frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])
+        frac /= (np.size(eq_width)+1.*self.discarded)
         #Divide by abs. distance per sightline
         return frac/self.absorption_distance()
 
