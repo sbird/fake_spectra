@@ -929,7 +929,7 @@ class Spectra(object):
         #Avg. Column density in g cm^-2 (comoving)
         HIden = self.lines.get_mass(elem) * self.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.UnitLength_in_cm/self.hubble)/(1+self.red)
+        length = (self.box*self.UnitLength_in_cm/self.hubble)
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
@@ -968,7 +968,7 @@ class Spectra(object):
         #H0 in 1/s units
         h100=3.2407789e-18*self.hubble
         #The 1+z factor converts lightspeed to comoving
-        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)*(1+self.red)
+        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
