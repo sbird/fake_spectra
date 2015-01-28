@@ -885,10 +885,10 @@ class Spectra(object):
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        dX=self.absorption_distance()/self.nbins
-        #Col density of each pixel: makes more sense for lower column densities
-        rho = np.ravel(self.get_col_density(elem, ion))
-        tot_cells = np.size(rho)+self.discarded*self.nbins
+        dX=self.absorption_distance()
+        #Col density of each line
+        rho = np.sum(self.get_col_density(elem, ion), axis=1)
+        tot_cells = self.NumLos+self.discarded
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
