@@ -106,7 +106,7 @@ class Spectra(object):
         #Minimum length of spectra within which to look at metal absorption (in km/s)
         self.minwidth = 500.
         try:
-            self.files = hdfsim.get_all_files(num, base)
+            self.files = sorted(hdfsim.get_all_files(num, base))
             self.files.reverse()
         except IOError:
             pass
