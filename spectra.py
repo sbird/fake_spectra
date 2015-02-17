@@ -654,26 +654,6 @@ class Spectra(object):
             del tresult
         return result
 
-    def res_corr(self, flux, fwhm=8):
-        """
-           Real spectrographs have finite spectral resolution.
-           Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.
-           The input spectrum is assumed to have infinite resolution, since we have used a spline
-           to interpolate it first and/or we are converged.
-           Strictly speaking we should rebin the spectrum after to have the same resolution
-           as the observed pixel, but as long as the pixels are smaller than the FWHM of the
-           spectrograph (which is the case as long as the observer is smart) we will be fine.
-           args:
-               fwhm - FWHM of the spectrograph in km/s
-        """
-        # Convert FWHM input to internal units
-        res = fwhm/self.dvbin
-        #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
-        sigma = res/(2*np.sqrt(2*np.log(2)))
-        oflux = gaussian_filter1d(flux, sigma, axis=-1)
-        return oflux
-
-
     def get_filt(self, elem, ion, thresh = 1):
         """
         Get an index list to exclude spectra where the ion is wildly unphysically too small.
@@ -686,23 +666,6 @@ class Spectra(object):
         phys = self.dvbin/self.velfac*self.rscale
         ind = np.where(dens > thresh/phys)
         return ind
-
-    def _get_rolled_spectra(self,tau):
-        """
-        Cycle the array tau so that the peak is at the middle.
-        """
-        tau_out = np.zeros(np.shape(tau))
-        roll = np.zeros(np.shape(tau[:,0]), dtype=int)
-        for ll in xrange(np.shape(tau)[0]):
-            #Deal with periodicity by making sure the deepest point is in the middle
-            tau_l = tau[ll,:]
-            max_t = np.max(tau_l)
-            if max_t == 0:
-                continue
-            ind_m = np.where(tau_l == max_t)[0][0]
-            tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-            roll[ll] = np.size(tau_l)/2 - ind_m
-        return (roll, tau_out)
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
@@ -812,7 +775,7 @@ class Spectra(object):
             self.tau[(elem, ion,line)] = tau
         if number >= 0:
             tau = tau[number,:]
-        tau = self.res_corr(tau, self.spec_res)
+        tau = res_corr(tau, self.dvbin, self.spec_res)
         if noise and self.snr > 0:
             tau = self.add_noise(self.snr, tau, number)
         return tau
@@ -1085,7 +1048,7 @@ class Spectra(object):
         den = self.get_col_density(elem, ion)
         contig = []
         seps = np.zeros(self.NumLos, dtype=np.bool)
-        (roll, colden) = self._get_rolled_spectra(den)
+        (roll, colden) = _get_rolled_spectra(den)
         #deal with periodicity by making sure the deepest point is in the middle
         for ii in xrange(self.NumLos):
             # This is column density, not absorption, so we cannot
@@ -1186,3 +1149,42 @@ def contiguous_regions(condition):
     # Reshape the result into two columns
     idx.shape = (-1,2)
     return idx
+
+def res_corr(flux, dvbin, fwhm=8):
+    """
+        Real spectrographs have finite spectral resolution.
+        Correct for this by smoothing the spectrum (the flux) by convolving with a Gaussian.
+        The input spectrum is assumed to have infinite resolution, since we have used a spline
+        to interpolate it first and/or we are converged.
+        Strictly speaking we should rebin the spectrum after to have the same resolution
+        as the observed pixel, but as long as the pixels are smaller than the FWHM of the
+        spectrograph (which is the case as long as the observer is smart) we will be fine.
+        args:
+            flux - The input flux spectra
+            dvbin - the width in km/s for the input flux
+            fwhm - FWHM of the spectrograph in km/s
+    """
+    # Convert FWHM input to internal units
+    res = fwhm/self.dvbin
+    #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
+    sigma = res/(2*np.sqrt(2*np.log(2)))
+    oflux = gaussian_filter1d(flux, sigma, axis=-1)
+    return oflux
+
+def _get_rolled_spectra(tau):
+    """
+    Cycle the array tau so that the peak is at the middle.
+    """
+    tau_out = np.zeros(np.shape(tau))
+    roll = np.zeros(np.shape(tau[:,0]), dtype=int)
+    for ll in xrange(np.shape(tau)[0]):
+        #Deal with periodicity by making sure the deepest point is in the middle
+        tau_l = tau[ll,:]
+        max_t = np.max(tau_l)
+        if max_t == 0:
+            continue
+        ind_m = np.where(tau_l == max_t)[0][0]
+        tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
+        roll[ll] = np.size(tau_l)/2 - ind_m
+    return (roll, tau_out)
+
