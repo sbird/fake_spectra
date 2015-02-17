@@ -1165,7 +1165,7 @@ def res_corr(flux, dvbin, fwhm=8):
             fwhm - FWHM of the spectrograph in km/s
     """
     # Convert FWHM input to internal units
-    res = fwhm/self.dvbin
+    res = fwhm/dvbin
     #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
     sigma = res/(2*np.sqrt(2*np.log(2)))
     oflux = gaussian_filter1d(flux, sigma, axis=-1)
