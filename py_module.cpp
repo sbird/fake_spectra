@@ -146,7 +146,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.
     //PyArray_GETCONTIGUOUS increments the reference count of the object,
-    //so to avoid leaking we need to save the PyArrayObject pointer.
     pos = PyArray_GETCONTIGUOUS(pos);
     dens = PyArray_GETCONTIGUOUS(dens);
     h = PyArray_GETCONTIGUOUS(h);
