@@ -49,10 +49,11 @@ class SingleAbsorber
          * vdr2: impact parameter from particle center to sightline in velocity units (km/s)
          * vsmooth: smoothing length in velocity units (km/s)
          * aa: voigt_fac/btherm the parameter for the Voigt profile
+         * Check extra carefully whether m_vhigh is real.
          */
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i),
-            vhigh(sqrt(vsmooth*vsmooth-vdr2))
+            m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0))
         {};
 
         /*Find the mean optical depth in the bin, by averaging over the optical depth
@@ -108,13 +109,13 @@ class SingleAbsorber
         inline double tau_kern_inner(const double vouter)
         {
             //Integration region goes from -vhigh to vhigh, where vhigh is precomputed kernel support
-            const double deltav=2.*vhigh/NGRID;
+            const double deltav=2.*m_vhigh/NGRID;
             //Because we are integrating over the whole sph kernel,
             //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
             double total = 0;
             for(int i=1; i<NGRID; ++i)
             {
-                const double vv = i*deltav-vhigh;
+                const double vv = i*deltav-m_vhigh;
                 const double q = sqrt(vdr2+vv*vv)/vsmooth;
                 //The difference between this velocity bin and the particle velocity
                 const double vdiff = vv - vouter;
@@ -128,7 +129,7 @@ class SingleAbsorber
         const double vdr2;
         const double vsmooth;
         const double aa;
-        const double vhigh;
+        const double m_vhigh;
 };
 
 double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);
