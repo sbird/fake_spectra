@@ -33,6 +33,44 @@ import subfindhdf
 import numexpr as ne
 from _spectra_priv import _Particle_Interpolate, _near_lines
 
+class UnitSystem(object):
+    """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
+    #def __init__(self):
+    #Internal gadget mass unit: 1e10 M_sun/h in g/h
+    UnitMass_in_g=1.989e43
+    #Internal gadget length unit: 1 kpc/h in cm/h
+    UnitLength_in_cm=3.085678e21
+    #Speed of light in cm/s
+    light = 2.99e10
+    #proton mass in g
+    protonmass=1.67262178e-24
+    #Newton's constant in cm^3/g/s^2
+    gravcgs = 6.674e-8
+    #h * 100 km/s/Mpc in h/s
+    h100=3.2407789e-18
+
+    def absorption_distance(self, speclen, red):
+        """
+        Compute X(z), the absorption distance per sightline (dimensionless)
+        X(z) = int (1+z)^2 H_0 / H(z) dz
+        When dz is small, dz ~ H(z)/c dL, so
+        X(z) ~ (1+z)^2 H_0/c dL
+        Arguments:
+            speclen - spectral length (usually box size in comoving kpc/h)
+            red - redshift
+        """
+        #Units: h/s   s/cm                 kpc/h      cm/kpc
+        return self.h100/self.light*speclen*self.UnitLength_in_cm*(1+red)**2
+
+    def rho_crit(self, hubble):
+        """Get the critical density at z=0 in units of g cm^-3"""
+        #H in units of 1/s
+        h100=self.h100*hubble
+        rho_crit=3*h100**2/(8*math.pi*self.gravcgs)
+        return rho_crit
+
+units=UnitSystem()
+
 class Spectra(object):
     """Class to interpolate particle densities along a line of sight and calculate their absorption
         Arguments:
@@ -45,17 +83,6 @@ class Spectra(object):
             spec_res - Resolution of the spectrograph. The spectra will be convolved with a Gaussian of this FWHM on loading from disc.
     """
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8):
-        #Various physical constants
-        #Internal gadget mass unit: 1e10 M_sun/h in g/h
-        self.UnitMass_in_g=1.989e43
-        #Internal gadget length unit: 1 kpc/h in cm/h
-        self.UnitLength_in_cm=3.085678e21
-        #Speed of light in cm/s
-        self.light = 2.99e10
-        #proton mass in g
-        self.protonmass=1.67262178e-24
-        #Newton's constant in cm^3/g/s^2
-        self.gravcgs = 6.674e-8
         self.num = num
         self.base = base
         #Empty dictionary to add results to
@@ -72,7 +99,7 @@ class Spectra(object):
         self.cofm_final = False
         self.num_important = {}
         self.discarded=0
-        self.npart = 512**3
+        self.npart=0
         #If greater than zero, will add noise to spectra when they are loaded.
         self.snr = snr
         self.spec_res = spec_res
@@ -107,7 +134,7 @@ class Spectra(object):
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
-        self.rscale = (self.UnitLength_in_cm*self.atime)/self.hubble    # convert length to physical cm
+        self.rscale = (units.UnitLength_in_cm*self.atime)/self.hubble    # convert length to physical cm
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Convert comoving kpc/h to physical km/s
@@ -683,7 +710,7 @@ class Spectra(object):
         #1 bin in wavelength: δλ =  λ . v / c
         #λ here is the rest wavelength of the line.
         #speed of light in km /s
-        light = self.light / 1e5
+        light = units.light / 1e5
         #lambda in Angstroms, dvbin in km/s,
         #so dl is in Angstrom
         dl = self.dvbin / light * line
@@ -746,13 +773,13 @@ class Spectra(object):
                 mm = self.sub_mass
                 rr = np.array(self.sub_radii)
         #physical cm from comoving kpc/h
-        cminkpch = self.UnitLength_in_cm/self.hubble/(1+self.red)
+        cminkpch = units.UnitLength_in_cm/self.hubble/(1+self.red)
         # Conversion factor from M_sun/kpc/h to g/cm
-        conv = self.UnitMass_in_g/1e10/cminkpch
+        conv = units.UnitMass_in_g/1e10/cminkpch
         #Units: grav is in cm^3 /g/s^-2
         #Define zero radius, zero mass halos as having zero virial velocity.
         rr[np.where(rr == 0)] = 1
-        virial = np.sqrt(self.gravcgs*conv*mm/rr)/1e5
+        virial = np.sqrt(units.gravcgs*conv*mm/rr)/1e5
         return virial
 
     def get_col_density(self, elem, ion, force_recompute=False):
@@ -885,34 +912,13 @@ class Spectra(object):
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        dX=self.absorption_distance()
+        dX=units.absorption_distance(self.box, self.redshift)
         #Col density of each line
         rho = np.sum(self.get_col_density(elem, ion), axis=1)
         tot_cells = self.NumLos+self.discarded
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
-
-    def absorption_distance(self):
-        """
-        Compute X(z), the absorption distance per sightline (dimensionless)
-        X(z) = int (1+z)^2 H_0 / H(z) dz
-        When dz is small, dz ~ H(z)/c dL, so
-        X(z) ~ (1+z)^2 H_0/c dL
-        """
-        #h * 100 km/s/Mpc in h/s
-        h100=3.2407789e-18
-        #Units: h/s   s/cm                 kpc/h      cm/kpc
-        return h100/self.light*self.box*self.UnitLength_in_cm*(1+self.red)**2
-
-    def rho_crit(self):
-        """Get the critical density at z=0 in units of g cm^-3"""
-        #H in units of 1/s
-        h100=3.2407789e-18*self.hubble
-        #G in cm^3 g^-1 s^-2
-        grav=6.672e-8
-        rho_crit=3*h100**2/(8*math.pi*grav)
-        return rho_crit
 
     def _rho_abs(self, thresh=10**20.3, upthresh=None, elem = "H", ion = 1):
         """Compute rho_abs, the sum of the mass in an absorber,
@@ -927,9 +933,9 @@ class Spectra(object):
             HIden = np.mean(col_den)
         HIden *= np.size(col_den)/(np.size(col_den)+1.*self.discarded)
         #Avg. Column density in g cm^-2 (comoving)
-        HIden = self.lines.get_mass(elem) * self.protonmass * HIden/(1+self.red)**2
+        HIden = self.lines.get_mass(elem) * units.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.UnitLength_in_cm/self.hubble)
+        length = (self.box*units.UnitLength_in_cm/self.hubble)
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
@@ -940,7 +946,7 @@ class Spectra(object):
         #Avg density in g/cm^3 (comoving)
         rho_DLA = self._rho_abs(thresh)
         # 1e8 M_sun/Mpc^3 in g/cm^3
-        conv = 0.01 * self.UnitMass_in_g / self.UnitLength_in_cm**3
+        conv = 0.01 * units.UnitMass_in_g / units.UnitLength_in_cm**3
         return rho_DLA / conv
 
     def omega_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
@@ -951,7 +957,7 @@ class Spectra(object):
             the hydrogen mass fraction.
         """
         #Avg density in g/cm^3 (comoving) divided by critical density in g/cm^3
-        omega_DLA=self._rho_abs(thresh, upthresh, elem=elem, ion=ion)/self.rho_crit()
+        omega_DLA=self._rho_abs(thresh, upthresh, elem=elem, ion=ion)/units.rho_crit(self.hubble)
         return omega_DLA
 
     def omega_abs_cddf(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
@@ -966,9 +972,9 @@ class Spectra(object):
         #Integrate cddf * N
         moment = cddf*bins
         #H0 in 1/s units
-        h100=3.2407789e-18*self.hubble
+        h100=units.h100*self.hubble
         #The 1+z factor converts lightspeed to comoving
-        omega_abs = self.lines.get_mass(elem)*self.protonmass/self.light*h100/self.rho_crit()*np.trapz(moment, bins)
+        omega_abs = self.lines.get_mass(elem)*units.protonmass/units.light*h100/units.rho_crit(self.hubble)*np.trapz(moment, bins)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
@@ -979,7 +985,7 @@ class Spectra(object):
         frac = 1.*np.size(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         #Divide by abs. distance per sightline
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded)
-        return frac/(self.absorption_distance())
+        return frac/(units.absorption_distance(self.box, self.redshift))
 
     def line_density_eq_w(self, thresh=0.4, elem = "H", ion = 1, line=1216):
         """Compute the line density with an equivalent width threshold.
@@ -991,7 +997,7 @@ class Spectra(object):
         frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])
         frac /= (np.size(eq_width)+1.*self.discarded)
         #Divide by abs. distance per sightline
-        return frac/self.absorption_distance()
+        return frac/units.absorption_distance(self.box, self.redshift)
 
     def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
@@ -1030,7 +1036,7 @@ class Spectra(object):
             #Get particle center of mass, use group catalogue.
             self.sub_cofm=subs.get_grp("GroupPos")
             #halo masses in M_sun/h: use M_200
-            self.sub_mass=subs.get_grp("Group_M_Crit200")*self.UnitMass_in_g/SolarMass_in_g
+            self.sub_mass=subs.get_grp("Group_M_Crit200")*units.UnitMass_in_g/SolarMass_in_g
             #r200 in kpc/h (comoving).
             self.sub_radii = subs.get_grp("Group_R_Crit200")
             self.sub_vel = subs.get_grp("GroupVel")
