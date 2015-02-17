@@ -1,7 +1,7 @@
 """Module to test the flux statistics computation"""
 
 import numpy as np
-import statistics as stat
+import fluxstatistics as stat
 import math
 
 def testMeanFlux():
