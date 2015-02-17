@@ -11,7 +11,7 @@ def testMeanFlux():
     #Use log x so that the mean flux is x^(-n) and stat.mean_flux returns n.
     tau = np.log(nn)
     mf = np.mean(np.exp(-tau))
-    assert stat.mean_flux(tau, mf,tol) == 1
+    assert abs(stat.mean_flux(tau, mf,tol) - 1) < tol
     mf2 = np.mean(nn**(-2.))
     assert abs(stat.mean_flux(tau, mf2,tol) - 2) < tol
     mf3 = np.mean(nn**(-0.5))

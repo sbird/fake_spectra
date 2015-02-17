@@ -5,6 +5,7 @@ Mostly useful for lyman alpha studies."""
 
 import numpy as np
 import math
+from scipy.optimize import brentq
 
 def flux_power(tau, redshift, rescale=True, statistic = 'power',vmax=None):
     """Compute a flux statistic, potentially rescaling to the observed mean flux.
@@ -39,6 +40,10 @@ def obs_mean_flux(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
+def _mean_flux_kernel(scale, tau, obs_flux):
+    """Kernel for scipy optimisation routine below"""
+    return np.mean(np.exp(-scale*tau)) - obs_flux
+
 def mean_flux(tau, obs_flux, tol = 0.05):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     Solves implicitly using Newton-Raphson.
@@ -49,14 +54,13 @@ def mean_flux(tau, obs_flux, tol = 0.05):
         tol - tolerance within which to hit mean flux
     returns:
         scaling factor for tau"""
-    newscale=1.
-    scale = 0.
-    while abs(newscale-scale) > abs(tol*newscale)+1e-6:
-        scale=newscale
-        flux = np.exp(-scale*tau)
-        mf = np.mean(flux)
-        taumf = np.mean(tau*flux)
-        newscale=scale+(mf-obs_flux)/taumf
+    #Find the initial interval by simple doubling
+    scale = 10
+    while scale < 100:
+        if _mean_flux_kernel(scale, tau, obs_flux) < 0:
+            break
+        scale*=2
+    newscale = brentq(_mean_flux_kernel, 0, scale,args=(tau, obs_flux), xtol=tol)
     return newscale
 
 def _calc_pdf(tau, pbins=20, scale=1.):
