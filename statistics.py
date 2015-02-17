@@ -1,49 +1,76 @@
 # -*- coding: utf-8 -*-
-"""Module to compute flux statistics from spectra: 
+"""Module to compute flux statistics from spectra:
 the power spectrum, the pdf and to normalise to a mean tau.
 Mostly useful for lyman alpha studies."""
 
-import spectra as ss
 import numpy as np
+import math
 
-#class Statistics(ss.Spectra):
+def flux_power(tau, redshift, rescale=True, statistic = 'power',vmax=None):
+    """Compute a flux statistic, potentially rescaling to the observed mean flux.
+        Arguments:
+            tau - optical depths
+            redshift - redshift at which to use the observed mean flux.
+            statistic - If power computes the flux power spectrum. If pdf computes the flux pdf.
+            rescale - Shall I rescale the optical depths?
+        Returns:
+            Computed flux power or pdf.
+    """
+    obs_flux = obs_mean_flux(redshift)
+    if rescale:
+        scale = mean_flux(tau, obs_flux)
+    else:
+        scale = 1.
+    if statistic == 'power':
+        if vmax == None:
+            raise ValueError("You must specify vmax to get the power spectrum")
+        pk = _calc_power(tau, obs_flux, scale)*vmax
+        bins = _flux_power_bins(vmax, np.shape(tau)[1])
+        return (pk, bins)
+    elif statistic == 'pdf':
+        stat = _calc_pdf(tau, scale=scale)
+        return stat
+    else:
+        raise NotImplementedError("Only flux power and pdf implemented")
+
 
 def obs_mean_flux(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
-    
+
 def mean_flux(tau, obs_flux, tol = 0.05):
     """Scale the optical depths by a constant value until we get the observed mean flux.
-    Solves implicitly.
+    Solves implicitly using Newton-Raphson.
+    This is safe because the exponential function is so well-behaved.
     Arguments:
         tau - optical depths to scale
         obs_flux - mean flux desired
         tol - tolerance within which to hit mean flux
-    returns: 
+    returns:
         scaling factor for tau"""
     newscale=1.
     scale = 0.
     while abs(newscale-scale) > abs(tol*newscale)+1e-6:
         scale=newscale
         flux = np.exp(-scale*tau)
-        mean_flux = np.mean(flux)
-        tau_mean_flux = np.mean(tau*flux)
-        newscale=scale+(mean_flux-obs_flux)/tau_mean_flux;
+        mf = np.mean(flux)
+        taumf = np.mean(tau*flux)
+        newscale=scale+(mf-obs_flux)/taumf
     return newscale
 
-def calc_pdf(tau, pbins=20):
+def _calc_pdf(tau, pbins=20, scale=1.):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
-    return np.histogram(np.exp(-tau), bins = pbins, range=(0,1), density=True)
+    return np.histogram(np.exp(-scale*tau), bins = pbins, range=(0,1), density=True)
 
-def powerspectrum(inarray, axis=-1):
+def _powerspectrum(inarray, axis=-1):
     """Compute the power spectrum of the input using np.fft"""
     rfftd = np.fft.rfft(inarray, axis=axis)
     # Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
     power = np.abs(rfftd)**2
     return power
 
-def calc_power(tau, tau_eff):
+def _calc_power(tau, tau_eff, scale=1.):
     """
         Compute the flux power spectrum along the line of sight.
         This is really the power spectrum of delta_flux = exp(-tau) / exp(-tau_eff) - 1
@@ -54,13 +81,28 @@ def calc_power(tau, tau_eff):
             nbins - Number of bins for the output power spectrum.
         Returns:
             flux_power - flux power spectrum. Shape is (npix)
+            bins - the frequency space bins of the power spectrum, in s/km.
     """
     (_, npix) = np.shape(tau)
-    dflux=np.exp(-tau)/np.exp(-tau_eff)-1.
-    flux_power = np.zeros(npix, dtype=np.double)
+    dflux=np.exp(-scale*tau)/np.exp(-tau_eff)-1.
     # Calculate flux power for each spectrum in turn
-    flux_power_perspectra = powerspectrum(dflux, axis=1)
+    flux_power_perspectra = _powerspectrum(dflux, axis=1)
     #Take the mean
-    flux_power = np.mean(flux_power_perspectra, axis=0)
-    assert np.shape(flux_power) == (npix//2+1,)
-    return flux_power
+    mean_flux_power = np.mean(flux_power_perspectra, axis=0)
+    assert np.shape(mean_flux_power) == (npix//2+1,)
+    return mean_flux_power
+
+def _flux_power_bins(vmax, nbins):
+    """
+        Generate k bins for th eflux power spectrum by converting the natural
+        (ie, fractions of the total spectrum) units output by the flux power spectrum
+        routine into physical km/s, accounting for Fourier convention.
+        Arguments:
+            vmax - the length of a spectrum in km/s and the conversion factor from comoving kpc is:
+                H(z) * a / h / 1000
+                defined in spectra.py:115
+            nbins - number of bins of *input spectrum* - not the fourier output!
+        Returns: bin center in s/km
+    """
+    kk = (np.arange(0,nbins//2+1)+0.5)/vmax*2*math.pi
+    return kk
