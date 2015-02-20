@@ -88,6 +88,7 @@ class Spectra(object):
         #Empty dictionary to add results to
         self.tau_obs = {}
         self.tau = {}
+        self.sfr = {}
         self.vel_widths = {}
         self.absorber_width = {}
         self.colden = {}
@@ -846,6 +847,42 @@ class Spectra(object):
             temp /= den
             self.temp[(elem, ion)] = temp
             return temp
+
+    def _sfr_single_file(self,fn, elem, ion):
+        """Get the density weighted interpolated temperature field for a single file"""
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,False)
+        if amumass == False:
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        else:
+            ff = h5py.File(fn, "r")
+            data = ff["PartType0"]
+            hh2 = hsml.get_smooth_length(data)
+            pos2 = np.array(data["Coordinates"],dtype=np.float32)
+            ind = self.particles_near_lines(pos2, hh2,self.axis,self.cofm)
+            sfr = np.array(data["StarFormationRate"],dtype=np.float32)[ind]
+            ff.close()
+            line = self.lines[("H",1)][1215]
+            phys = self.dvbin/self.velfac*self.rscale
+            sss = np.array(elem_den*sfr/phys,dtype=np.float32)
+            stuff = self._do_interpolation_work(pos, vel, sss, temp, hh, amumass, line, False)
+            return stuff
+
+    def get_sfr(self, elem, ion):
+        """Get the density weighted star formation rate along each sightline for a given species.
+        """
+        try:
+            self._really_load_array((elem, ion), self.sfr, "sfr")
+            return self.sfr[(elem, ion)]
+        except KeyError:
+            sfr = np.zeros((self.NumLos, self.nbins),dtype=np.float32)
+            #Do files
+            for fn in self.files:
+                sfr+=  self._sfr_single_file(fn, elem, ion)
+            den = self.get_density(elem, ion)
+            den[np.where(den == 0.)] = 1
+            sfr /= den
+            self.sfr[(elem, ion)] = sfr
+            return sfr
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
         """
