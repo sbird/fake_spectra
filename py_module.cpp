@@ -137,6 +137,12 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     size[0] = NumLos;
     size[1] = nbins;
 
+     if(Npart != PyArray_DIM(dens,0) || Npart  != PyArray_DIM(h,0))
+    {
+      PyErr_SetString(PyExc_ValueError, " Dens, pos and h must have the same length\n");
+      return NULL;
+    }
+
     if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
     {
       PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
