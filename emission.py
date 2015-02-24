@@ -34,7 +34,7 @@ def distance(arcsec, redshift, hubble, OmegaM):
     (_, DA, _) = calculator(hubble*100, OmegaM, redshift)
     size = DA * rad * 1000
     #Comoving kpc/h
-    size = size * atime/ hubble
+    size = size /( atime/ hubble)
     return size
 
 class EmissionSpectra(ss.Spectra):
