@@ -912,7 +912,7 @@ class Spectra(object):
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        dX=units.absorption_distance(self.box, self.redshift)
+        dX=units.absorption_distance(self.box, self.red)
         #Col density of each line
         rho = np.sum(self.get_col_density(elem, ion), axis=1)
         tot_cells = self.NumLos+self.discarded
@@ -985,7 +985,7 @@ class Spectra(object):
         frac = 1.*np.size(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         #Divide by abs. distance per sightline
         frac *= np.size(col_den)/(np.size(col_den)+1.*self.discarded)
-        return frac/(units.absorption_distance(self.box, self.redshift))
+        return frac/(units.absorption_distance(self.box, self.red))
 
     def line_density_eq_w(self, thresh=0.4, elem = "H", ion = 1, line=1216):
         """Compute the line density with an equivalent width threshold.
@@ -997,7 +997,7 @@ class Spectra(object):
         frac = 1.*np.size(eq_width[np.where(eq_width > thresh)])
         frac /= (np.size(eq_width)+1.*self.discarded)
         #Divide by abs. distance per sightline
-        return frac/units.absorption_distance(self.box, self.redshift)
+        return frac/units.absorption_distance(self.box, self.red)
 
     def get_spectra_proj_pos(self, cofm=None):
         """Get the position of the spectra projected to their origin"""
