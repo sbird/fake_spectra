@@ -3,7 +3,7 @@
 #Define this to disable reading of type 2 snapshots
 GREAD=no
 #Change this to where you installed GadgetReader
-GREAD=${CURDIR}/../GadgetReader
+GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
 PYINC=`pkg-config --cflags python2`
 
@@ -48,9 +48,11 @@ LIBS+=-lhdf5 -lhdf5_hl
 endif
 ifeq ($(GREAD),no)
 #Support for loading HDF5 files
-CXXFLAGS += -DNOGREAD
+CFLAGS += -DNOGREAD
+LINK += -DNOGREAD
 else
-LIBS+=-lrgad -L${GREAD} -Wl,-rpath,${GREAD}
+IGREAD = -I${GREADDIR}
+LIBS+=-lrgad -L${GREADDIR} -Wl,-rpath,${GREADDIR}
 endif
 
 # Voigt profiles vs. Gaussian profiles
@@ -81,7 +83,7 @@ statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o
 main.o: main.cpp global_vars.h $(COM_INC)
 
 read_snapshot.o: read_snapshot.cpp global_vars.h
-	$(CXX) $(CXXFLAGS) -I${GREAD} -c $<
+	$(CXX) $(CXXFLAGS) ${IGREAD} -c $<
 
 %.o: %.cpp %.h
 
