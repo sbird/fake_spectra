@@ -7,12 +7,12 @@ GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
 PYINC=`pkg-config --cflags python2`
 
+ifeq ($(CC),cc)
 GCCV:=$(shell gcc --version | head -1)
 ifeq (4.8,$(findstring 4.8,${GCCV}))
-	CC = gcc
-	CXX = g++
-endif
-ifeq ($(CC),cc)
+    CC = gcc
+    CXX = g++
+else
   ICC:=$(shell which icc --tty-only 2>&1)
   #Can we find icc?
   ifeq (/icc,$(findstring /icc,${ICC}))
@@ -24,12 +24,13 @@ ifeq ($(CC),cc)
      ifeq (/gcc,$(findstring /gcc,${GCC}))
         CC = gcc
         CXX = g++
-     endif
-  endif
-endif
+     endif #Did we find gcc?
+  endif #Did we find icc?
+endif #gcc == 4.8
+endif #CC=cc
 
 #Are we using gcc or icc?
-ifeq (icc,$(findstring icc,${CC}))
+ifeq (icpc,$(findstring icpc,${CXX}))
   CFLAGS +=-O3 -g -w1 -openmp -fpic -march=native
   LINK +=${CXX} -O3 -openmp -march=native
 else
