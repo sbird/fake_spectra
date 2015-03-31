@@ -582,7 +582,7 @@ class Spectra(object):
         cofm_DLA[found:top] = self.cofm[ind][:top,:]
         H1_DLA[found:top] = col_den[ind][:top,:]
         found += np.size(ind)
-        self.discarded = wanted-np.size(ind)
+        self.discarded = self.NumLos-np.size(ind)
         print "Discarded: ",self.discarded
         while found < wanted:
             #Get a bunch of new spectra
@@ -594,9 +594,10 @@ class Spectra(object):
             cofm_DLA[found:top] = self.cofm[ind][:top-found,:]
             H1_DLA[found:top] = col_den[ind][:top-found,:]
             found += np.size(ind)
-            self.discarded += wanted-np.size(ind)
+            self.discarded += self.NumLos-np.size(ind)
             print "Discarded: ",self.discarded
-
+        #Correct proportions in case we find slightly more than we need
+        self.discarded *= wanted/found
         #Copy back
         self.cofm=cofm_DLA
         self.axis = self.axis[:ndla]
