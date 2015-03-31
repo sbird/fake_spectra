@@ -562,7 +562,7 @@ class Spectra(object):
         return num_important
 
 
-    def replace_not_DLA(self, thresh=10**20.3, elem="H", ion=1):
+    def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
         Keep track of the number discarded in self.discarded.
@@ -570,8 +570,8 @@ class Spectra(object):
         """
         #Declare variables
         found = 0
-        wanted = self.NumLos
-        cofm_DLA = np.empty_like(self.cofm)
+        wanted = ndla
+        cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
@@ -599,9 +599,11 @@ class Spectra(object):
 
         #Copy back
         self.cofm=cofm_DLA
+        self.axis = self.axis[:ndla]
         self.colden[("H",1)]=H1_DLA
         #Finalise the cofm array
         self.cofm_final = True
+        self.NumLos = ndla
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overridden by child classes"""

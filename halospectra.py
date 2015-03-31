@@ -45,7 +45,7 @@ class HaloSpectra(spectra.Spectra):
 
         #If we did not load from a snapshot
         if cofm != None:
-            self.replace_not_DLA()
+            self.replace_not_DLA(self.NumLos)
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines"""

@@ -7,7 +7,7 @@ import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, numlos=5000, res = 1., cdir = None, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", savedir=None, elem="H", ion=1):
+    def __init__(self,num, base, ndla = 1000, numlos=5000, res = 1., cdir = None, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", savedir=None, elem="H", ion=1):
         #Load halos to push lines through them
         f = hdfsim.get_file(num, base, 0)
         self.box = f["Header"].attrs["BoxSize"]
@@ -22,7 +22,7 @@ class RandSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res=res, cdir=cdir, savefile=savefile,savedir=savedir,reload_file=True)
 
         if thresh > 0:
-            self.replace_not_DLA(thresh, elem=elem, ion=ion)
+            self.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
             print "Found objects over threshold"
 
 
