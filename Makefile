@@ -67,8 +67,7 @@ CXXFLAGS += $(CFLAGS)
 
 .PHONY: all clean dist test python
 
-all: extract _spectra_priv.so statistic rescale
-
+all: extract _spectra_priv.so 
 python: _spectra_priv.so
 
 extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_table.o part_int.o Faddeeva.o
