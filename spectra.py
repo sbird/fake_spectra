@@ -183,7 +183,7 @@ class Spectra(object):
         self._load_all_multihash(self.tau, "tau")
         self._load_all_multihash(self.colden, "colden")
         try:
-            self._load_all_multihash(self.colden, "velocity")
+            self._load_all_multihash(self.velocity, "velocity")
         except IOError:
             pass
         try:
