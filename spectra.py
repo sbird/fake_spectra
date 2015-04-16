@@ -191,10 +191,7 @@ class Spectra(object):
                 shutil.move(self.savefile,self.savefile+".backup")
             f=h5py.File(self.savefile,'w')
         except IOError:
-            try:
-                f=h5py.File(self.savefile,'w')
-            except IOError:
-                raise IOError("Could not open ",self.savefile," for writing")
+            raise IOError("Could not open ",self.savefile," for writing")
         self._save_file(f)
 
     def _save_file(self, f):
