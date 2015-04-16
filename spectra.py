@@ -798,6 +798,26 @@ class Spectra(object):
                 vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight/phys, temp, hh, amumass, line, False)
             return vv
 
+    def _get_mass_weight_quantity(self, func, elem, ion):
+        """
+        Helper function to get a mass weighted quantity, which reduces code duplication.
+        func should be something like _vel_single_file above (for velocity)
+        and have the signature func(file, elem, ion)
+        """
+        result =  func(self.files[0], elem, ion)
+        #Do remaining files
+        for fn in self.files[1:]:
+            tresult =  func(fn, elem, ion)
+            #Add new file
+            result += tresult
+            del tresult
+        den = self.get_density(elem, ion)
+        den[np.where(den == 0.)] = 1
+        #Broadcasting can't handle this
+        for ax in (0,1,2):
+            result[:,:,ax] /= den
+        return result
+
     def get_velocity(self, elem, ion):
         """Get the column density weighted velocity in each pixel for a given species.
         """
@@ -805,18 +825,7 @@ class Spectra(object):
             self._really_load_array((elem, ion), self.velocity, "velocity")
             return self.velocity[(elem, ion)]
         except KeyError:
-            velocity =  self._vel_single_file(self.files[0], elem, ion)
-            #Do remaining files
-            for fn in self.files[1:]:
-                tresult =  self._vel_single_file(fn, elem, ion)
-                #Add new file
-                velocity += tresult
-                del tresult
-            den = self.get_density(elem, ion)
-            den[np.where(den == 0.)] = 1
-            #Broadcasting can't handle this
-            for ax in (0,1,2):
-                velocity[:,:,ax] /= den
+            velocity =  self._get_mass_weight_quantity(self._vel_single_file, elem, ion)
             self.velocity[(elem, ion)] = velocity
             return velocity
 
@@ -838,16 +847,7 @@ class Spectra(object):
             self._really_load_array((elem, ion), self.temp, "temperature")
             return self.temp[(elem, ion)]
         except KeyError:
-            temp =  self._temp_single_file(self.files[0], elem, ion)
-            #Do remaining files
-            for fn in self.files[1:]:
-                tresult =  self._temp_single_file(fn, elem, ion)
-                #Add new file
-                temp += tresult
-                del tresult
-            den = self.get_density(elem, ion)
-            den[np.where(den == 0.)] = 1
-            temp /= den
+            temp =  self._get_mass_weight_quantity(self._temp_single_file, elem, ion)
             self.temp[(elem, ion)] = temp
             return temp
 
@@ -877,13 +877,7 @@ class Spectra(object):
             self._really_load_array((elem, ion), self.sfr, "sfr")
             return self.sfr[(elem, ion)]
         except KeyError:
-            sfr = np.zeros((self.NumLos, self.nbins),dtype=np.float32)
-            #Do files
-            for fn in self.files:
-                sfr+=  self._sfr_single_file(fn, elem, ion)
-            den = self.get_density(elem, ion)
-            den[np.where(den == 0.)] = 1
-            sfr /= den
+            sfr =  self._get_mass_weight_quantity(self._sfr_single_file, elem, ion)
             self.sfr[(elem, ion)] = sfr
             return sfr
 
