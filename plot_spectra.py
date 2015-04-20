@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8., cdir=None):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir)
+    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8., cdir=None, load_halo=True):
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir, load_halo=load_halo)
         self.label=label
 
     def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.002, color="red", ls="-"):
