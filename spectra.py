@@ -82,7 +82,7 @@ class Spectra(object):
             snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
             spec_res - Resolution of the spectrograph. The spectra will be convolved with a Gaussian of this FWHM on loading from disc.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8,load_halo=True):
         self.num = num
         self.base = base
         #Empty dictionary to add results to
@@ -167,11 +167,8 @@ class Spectra(object):
         self.lines = line_data.LineData()
         print self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red
         #Try to load a halo catalogue
-        try:
+        if load_halo:
             self.load_halo()
-        except IndexError:
-            #This occurs when the FoF halos don't exist
-            pass
 
     def save_file(self):
         """
