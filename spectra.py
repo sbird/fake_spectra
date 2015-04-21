@@ -910,9 +910,12 @@ class Spectra(object):
             rho = np.sum(self.get_col_density(elem, ion), axis=1)
             dX=units.absorption_distance(self.box, self.red)
         else:
-            rho = np.ravel(self.get_col_density(elem, ion))
-            cbins = int(close/self.dvbin)
-            rho = np.array([np.sum(rho[i:i+cbins]) for i in xrange(np.size(rho/cbins))])
+            rho = self.get_col_density(elem, ion)
+            cbins = int(np.round((close/self.dvbin)))
+            rhob = np.array([np.sum(rho[:,cbins*i:cbins*(i+1)],axis=1) for i in xrange(np.shape(rho)[1]/cbins)]).T
+            #Check that fp roundoff is not too severe.
+            assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
+            rho = rhob
             tot_cells = np.size(rho)*(tot_cells/self.NumLos)
             dX =units.absorption_distance(self.box/self.nbins*cbins, self.red)
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
