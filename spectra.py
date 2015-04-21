@@ -875,7 +875,7 @@ class Spectra(object):
             self.sfr[(elem, ion)] = sfr
             return sfr
 
-    def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23.):
+    def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., line=True, close=50.):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with HI column densities in the interval
@@ -896,17 +896,25 @@ class Spectra(object):
             dlogN - bin spacing
             minN - minimum log N
             maxN - maximum log N
-
+            line - cddf for whole line or for each cell.
+            close - amalgamate absorbers closer than X km/s
         Returns:
             (NHI, f_N_table) - N_HI (binned in log) and corresponding f(N)
         """
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        dX=units.absorption_distance(self.box, self.red)
         #Col density of each line
-        rho = np.sum(self.get_col_density(elem, ion), axis=1)
         tot_cells = self.NumLos+self.discarded
+        if line:
+            rho = np.sum(self.get_col_density(elem, ion), axis=1)
+            dX=units.absorption_distance(self.box, self.red)
+        else:
+            rho = np.ravel(self.get_col_density(elem, ion))
+            cbins = int(close/self.dvbin)
+            rho = np.array([np.sum(rho[i:i+cbins]) for i in xrange(np.size(rho/cbins))])
+            tot_cells = np.size(rho)*(tot_cells/self.NumLos)
+            dX =units.absorption_distance(self.box/self.nbins*cbins, self.red)
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
