@@ -591,7 +591,7 @@ class Spectra(object):
             self.discarded += self.NumLos-np.size(ind)
             print "Discarded: ",self.discarded
         #Correct proportions in case we find slightly more than we need
-        self.discarded *= wanted/found
+        self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
         self.cofm=cofm_DLA
         self.axis = self.axis[:ndla]
