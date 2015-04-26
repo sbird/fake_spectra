@@ -807,9 +807,12 @@ class Spectra(object):
             del tresult
         den = self.get_density(elem, ion)
         den[np.where(den == 0.)] = 1
-        #Broadcasting can't handle this
-        for ax in (0,1,2):
-            result[:,:,ax] /= den
+        try:
+            result /= den
+        except ValueError:
+            #Broadcasting can't handle velocity as it is 3d/1d
+            for ax in xrange(3):
+                result[:,:,ax] /= den
         return result
 
     def get_velocity(self, elem, ion):
