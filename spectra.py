@@ -479,6 +479,9 @@ class Spectra(object):
             axis = self.axis
         if cofm is None:
             cofm = self.cofm
+        #Axis is 1-indexed between 1 and 3. 1 is x axis.
+        assert np.min(axis) > 0
+        assert np.max(axis) <4
         ind = _near_lines(self.box, pos, hh, axis, cofm)
         return ind
 
