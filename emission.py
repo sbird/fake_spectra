@@ -6,6 +6,7 @@ This uses the Arepo/Illustris output GFM_Photometrics to get photometric band da
 which may or may not be accurate.
 """
 
+from __future__ import print_function
 import spectra as ss
 import h5py
 import numpy as np
@@ -46,7 +47,7 @@ class EmissionSpectra(ss.Spectra):
         try:
             ff = h5py.File(fn, "r")
         except IOError:
-            print "Unable to open ",fn
+            print("Unable to open ",fn)
             ff = h5py.File(fn, "r")
         bands = {'U':0, 'B':1, 'V':2,'K':3,'g':4,'r':5,'i':6,'z':7}
         nband = bands[band]

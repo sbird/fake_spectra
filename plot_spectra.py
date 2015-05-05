@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Contains the plotting-specific functions for the spectrum analysis code."""
 
+from __future__ import print_function
 import spectra
 import numpy as np
 import leastsq as lsq
@@ -113,7 +114,7 @@ class PlottingSpectra(spectra.Spectra):
         den[ind] = 0.
         temps = np.sum(temp*den, axis=1)/np.sum(den, axis=1)
         ind2 = np.where(temps < 1e5)
-        print np.median(temps)," filt: ", np.median(temps[ind2])
+        print(np.median(temps)," filt: ", np.median(temps[ind2]))
         self._plot_2d_contour(np.sum(den,axis=1)[ind2], temps[ind2], 40, name="Temp Density", color="blue", color2="darkblue", ylog=False, xlog=True, fit=False, sample = 300)
         plt.xlabel(r"n (cm$^{-3}$)")
         plt.ylabel(r"T (K)")
@@ -186,7 +187,7 @@ class PlottingSpectra(spectra.Spectra):
         met = np.log10(self.get_metallicity())
         ion_met = np.log10(self.get_ion_metallicity(species, ion))
         diff = 10**(ion_met - met)
-        print np.max(diff), np.min(diff), np.median(diff)
+        print(np.max(diff), np.min(diff), np.median(diff))
         bins=np.linspace(-1,1,nbins)
         mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
         hist = np.histogram(np.log10(diff),bins,density=True)[0]

@@ -18,6 +18,7 @@ sum(GFM_Metals[:2]) +  GFM_Metallicity ~ 1
 Also note that there is some instability at very low metallicities - the code will often return +-1e-20.
 """
 
+from __future__ import print_function
 import numpy as np
 import hsml
 import math
@@ -116,7 +117,7 @@ class Spectra(object):
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
         if reload_file:
-            print "Reloading from snapshot (savefile: ",self.savefile," )"
+            print("Reloading from snapshot (savefile: ",self.savefile," )")
             self.cofm = cofm
             self.axis = np.array(axis, dtype = np.int32)
             ff = h5py.File(self.files[0], "r")
@@ -165,7 +166,7 @@ class Spectra(object):
             self.cloudy_table = convert_cloudy.CloudyTable(self.red)
         #Line data
         self.lines = line_data.LineData()
-        print self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red
+        print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
         #Try to load a halo catalogue
         if load_halo:
             self.load_halo()
@@ -370,7 +371,7 @@ class Spectra(object):
         try:
             ff = h5py.File(fn, "r")
         except IOError:
-            print "Unable to open ",fn
+            print("Unable to open ",fn)
             ff = h5py.File(fn, "r")
         data = ff["PartType0"]
         pos = np.array(data["Coordinates"],dtype=np.float32)
@@ -580,7 +581,7 @@ class Spectra(object):
         H1_DLA[found:top] = col_den[ind][:top,:]
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
-        print "Discarded: ",self.discarded
+        print("Discarded: ",self.discarded)
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
@@ -592,7 +593,7 @@ class Spectra(object):
             H1_DLA[found:top] = col_den[ind][:top-found,:]
             found += np.size(ind)
             self.discarded += self.NumLos-np.size(ind)
-            print "Discarded: ",self.discarded
+            print("Discarded: ",self.discarded)
         #Correct proportions in case we find slightly more than we need
         self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
@@ -655,19 +656,6 @@ class Spectra(object):
             del tresult
         return result
 
-    def get_filt(self, elem, ion, thresh = 1):
-        """
-        Get an index list to exclude spectra where the ion is wildly unphysically too small.
-        With default threshold will do nothing.
-
-        thresh - observable density threshold in column density.
-        """
-        #Remember this is not in log.
-        dens = np.max(self.get_density(elem, ion), axis=1)
-        phys = self.dvbin/self.velfac*self.rscale
-        ind = np.where(dens > thresh/phys)
-        return ind
-
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
         tau = self.get_tau(elem, ion, line)
@@ -682,18 +670,15 @@ class Spectra(object):
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
 
-    def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
+    def eq_width_hist(self, elem, ion, line, dv=0.05):
         """
         Compute a histogram of the equivalent width distribution of our spectra.
 
         Returns:
             (v, f_table) - v (binned in log) and corresponding f(N)
         """
-        print "For ",line," Angstrom"
+        print("For ",line," Angstrom")
         eq_width = self.equivalent_width(elem, ion, line)
-        #Filter small eq. widths as they would not be detected
-        ind = self.get_filt(elem, ion)
-        eq_width = eq_width[ind]
         v_table = np.arange(np.log10(np.min(eq_width)), np.log10(np.max(eq_width)), dv)
         vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
         eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
@@ -717,7 +702,7 @@ class Spectra(object):
         m_table = 10**np.arange(np.log10(np.min(virial)+0.1), np.log10(np.max(virial)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
         pdf = np.histogram(np.log10(virial),np.log10(m_table), density=True)[0]
-        print "Field DLAs: ",np.size(halos)-np.size(f_ind)
+        print("Field DLAs: ",np.size(halos)-np.size(f_ind))
         return (mbin, pdf)
 
     def virial_vel(self, halos=None, subhalo=False):
@@ -1146,8 +1131,8 @@ class Spectra(object):
         for ii in xrange(self.NumLos):
             halos[ii] = list(set(halos[ii]))
             subhalos[ii] = list(set(subhalos[ii]))
-        print "no. halos: ",sum([len(hh) for hh in halos])," mult halos: ",sum([len(hh) > 1 for hh in halos])
-        print "no. subhalos: ",sum([len(hh) for hh in subhalos])," mult subhalos: ",sum([len(hh) > 1 for hh in subhalos])
+        print("no. halos: ",sum([len(hh) for hh in halos])," mult halos: ",sum([len(hh) > 1 for hh in halos]))
+        print("no. subhalos: ",sum([len(hh) for hh in subhalos])," mult subhalos: ",sum([len(hh) > 1 for hh in subhalos]))
         self.spectra_halos = halos
         self.spectra_subhalos = subhalos
         return (halos, subhalos)

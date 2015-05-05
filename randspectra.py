@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Class to gather and analyse various metal line statistics"""
 
+from __future__ import print_function
 import numpy as np
 import hdfsim
 import spectra
@@ -23,7 +24,7 @@ class RandSpectra(spectra.Spectra):
 
         if thresh > 0:
             self.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
-            print "Found objects over threshold"
+            print("Found objects over threshold")
 
 
     def get_cofm(self, num = None):

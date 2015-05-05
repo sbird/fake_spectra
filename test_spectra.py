@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
     Tests for the spectrum module.
-"""
 
-"""Methods in spectra.py:
+Methods in spectra.py:
 
 def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file = False, spec_res = 8):
 
@@ -90,7 +89,6 @@ def testRhoCrit():
     """Critical density at z=0"""
     assert ss.units.rho_crit(0.7) == 9.204285430050004e-30
     assert ss.units.rho_crit(1.0) == 1.8784255979693885e-29
-    
 
 def testAbsDist():
     """Check absorption distance computation"""
@@ -105,7 +103,6 @@ def testRolledSpectra():
     tau[1,0] = 1
     tau[1,-1] = 2
     (roll, tau_new) = ss._get_rolled_spectra(tau)
-    print roll
     assert np.all(roll == np.array([25,-24]))
     assert tau_new[0,25] == 1
     assert tau_new[1,25] == 2

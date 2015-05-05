@@ -9,7 +9,7 @@ Transitions are various.
 import re
 import os.path
 
-class LineData:
+class LineData(object):
     """Class to aggregate a number of lines from VPFIT tables. Reads from atom.dat,
     to get the results call get_line(species, ion), where ion is the transition number.
     At the moment only lowest level transition in each sequence is read."""
@@ -60,7 +60,7 @@ class LineData:
         """Get the mass in amu for a species"""
         return self.masses[specie]
 
-class Line:
+class Line(object):
     """Class to store the parameters of a single line.
     Data is:
         lambda_X - line width in angstroms (10^-10 m)
@@ -99,6 +99,8 @@ def parse_line_contents(line):
             pass
         if len(res) == 3:
             break
+    if len(res) != 3:
+        raise ValueError("Line ",line," did not contain three floats")
     return res
 
 
@@ -132,15 +134,15 @@ def roman_to_int(roman):
 
     Thanks Paul Winkler, on the internet.
     """
-    if type(roman) != type(""):
-        raise TypeError, "expected string, got %s" % type(roman)
+    if not isinstance(roman, str):
+        raise TypeError("expected string, got %s" % type(roman))
     #roman = roman.upper()
     nums = ['M', 'D', 'C', 'L', 'X', 'V', 'I']
     ints = [1000, 500, 100, 50,  10,  5,   1]
     places = []
     for c in roman:
         if not c in nums:
-            raise ValueError, "roman is not a valid roman numeral: %s" % roman
+            raise ValueError("roman is not a valid roman numeral: %s" % roman)
     for i in range(len(roman)):
         c = roman[i]
         value = ints[nums.index(c)]
