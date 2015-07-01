@@ -36,19 +36,19 @@ from _spectra_priv import _Particle_Interpolate, _near_lines
 
 class UnitSystem(object):
     """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
-    #def __init__(self):
-    #Internal gadget mass unit: 1e10 M_sun/h in g/h
-    UnitMass_in_g=1.989e43
-    #Internal gadget length unit: 1 kpc/h in cm/h
-    UnitLength_in_cm=3.085678e21
-    #Speed of light in cm/s
-    light = 2.99e10
-    #proton mass in g
-    protonmass=1.67262178e-24
-    #Newton's constant in cm^3/g/s^2
-    gravcgs = 6.674e-8
-    #h * 100 km/s/Mpc in h/s
-    h100=3.2407789e-18
+    def __init__(self, UnitMass_in_g=1.989e43, UnitLength_in_cm=3.085678e21):
+        #Internal gadget mass unit: 1e10 M_sun/h in g/h
+        self.UnitMass_in_g = UnitMass_in_g
+        #Internal gadget length unit: 1 kpc/h in cm/h
+        self.UnitLength_in_cm = UnitLength_in_cm
+        #Speed of light in cm/s
+        self.light = 2.99e10
+        #proton mass in g
+        self.protonmass=1.67262178e-24
+        #Newton's constant in cm^3/g/s^2
+        self.gravcgs = 6.674e-8
+        #h * 100 km/s/Mpc in h/s
+        self.h100=3.2407789e-18
 
     def absorption_distance(self, speclen, red):
         """
