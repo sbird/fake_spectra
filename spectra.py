@@ -902,7 +902,7 @@ class Spectra(object):
             dX=units.absorption_distance(self.box, self.red)
         else:
             rho = self.get_col_density(elem, ion)
-            cbins = int(np.round((close/self.dvbin)))
+            cbins = np.max((int(np.round((close/self.dvbin))),1))
             rhob = np.array([np.sum(rho[:,cbins*i:cbins*(i+1)],axis=1) for i in xrange(np.shape(rho)[1]/cbins)]).T
             #Check that fp roundoff is not too severe.
             assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
