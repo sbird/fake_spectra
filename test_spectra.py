@@ -87,14 +87,16 @@ import spectra as ss
 
 def testRhoCrit():
     """Critical density at z=0"""
-    assert ss.units.rho_crit(0.7) == 9.204285430050004e-30
-    assert ss.units.rho_crit(1.0) == 1.8784255979693885e-29
+    units = ss.UnitSystem()
+    assert units.rho_crit(0.7) == 9.204285430050004e-30
+    assert units.rho_crit(1.0) == 1.8784255979693885e-29
 
 def testAbsDist():
     """Check absorption distance computation"""
-    assert ss.units.absorption_distance(25000, 3) == 0.13377926628219666
-    assert ss.units.absorption_distance(25000, 2) == 0.07525083728373562
-    assert ss.units.absorption_distance(25000, 3) / ss.units.absorption_distance(12500, 3) == 2.
+    units = ss.UnitSystem()
+    assert units.absorption_distance(25000, 3) == 0.13377926628219666
+    assert units.absorption_distance(25000, 2) == 0.07525083728373562
+    assert units.absorption_distance(25000, 3) / units.absorption_distance(12500, 3) == 2.
 
 def testRolledSpectra():
     """Check that we can correctly rotate a spectrum so the maximum is in the middle"""
@@ -121,3 +123,9 @@ def testrescorr():
     #Check expanded by expected amount
     for i in (0,1):
         assert np.size(np.where(tau2[i,:]> 0)) == 15
+
+# def testNan():
+#     """Test nan"""
+#     spec = ss.Spectra(3,'/home/spb/data/Cosmo/Cosmo0_V6/L25n512/output', cofm=np.array([[ 10724.84151495,   4444.02494373,  10534.57817268]]), axis=np.array([1,]), savefile="testfile.hdf5", reload_file=True)
+#     tau = spec.get_tau("H", 1, 1215)
+#     assert not np.any(np.isnan(tau))
