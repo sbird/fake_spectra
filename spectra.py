@@ -142,8 +142,9 @@ class Spectra(object):
         self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble    # convert length to physical cm
         #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
         Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
-        #Convert comoving kpc/h to physical km/s
-        self.velfac = self.atime / self.hubble * Hz/1000
+        #Convert comoving internal units to physical km/s.
+        #Numerical constant is 1 Mpc in cm.
+        self.velfac = self.atime / self.hubble * Hz*(self.units.UnitLength_in_cm/3.085678e24)
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         try:
