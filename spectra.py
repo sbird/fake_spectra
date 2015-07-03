@@ -397,7 +397,7 @@ class Spectra(object):
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
-        star=cold_gas.RahmatiRT(self.red, self.hubble)
+        star=cold_gas.RahmatiRT(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
