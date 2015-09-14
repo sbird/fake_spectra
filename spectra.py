@@ -914,7 +914,7 @@ class Spectra(object):
             rho = rhob
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         #The normalisation should be the total sightline distance.
-        tot_f_N=tot_f_N/(width*dX*tot_cells)
+        tot_f_N=tot_f_N/(width*dX*tot_lines)
         return (center, tot_f_N)
 
     def _rho_abs(self, thresh=10**20.3, upthresh=None, elem = "H", ion = 1):
