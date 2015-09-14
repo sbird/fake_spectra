@@ -144,7 +144,7 @@ class Spectra(object):
         Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Convert comoving internal units to physical km/s.
         #Numerical constant is 1 Mpc in cm.
-        self.velfac = self.atime / self.hubble * Hz*(self.units.UnitLength_in_cm/3.085678e24)
+        self.velfac = self.rscale * Hz / 3.085678e24
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         try:
