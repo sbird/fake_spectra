@@ -899,11 +899,12 @@ class Spectra(object):
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
-        #Col density of each line
-        tot_cells = self.NumLos+self.discarded
+        #Number of lines
+        tot_lines = self.NumLos+self.discarded
+        #Absorption distance for each line
+        dX=self.units.absorption_distance(self.box, self.red)
         if line:
             rho = np.sum(self.get_col_density(elem, ion), axis=1)
-            dX=self.units.absorption_distance(self.box, self.red)
         else:
             rho = self.get_col_density(elem, ion)
             cbins = np.max((int(np.round((close/self.dvbin))),1))
@@ -911,9 +912,8 @@ class Spectra(object):
             #Check that fp roundoff is not too severe.
             assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
             rho = rhob
-            tot_cells = np.size(rho)*(tot_cells/self.NumLos)
-            dX =self.units.absorption_distance(self.box/self.nbins*cbins, self.red)
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
+        #The normalisation should be the total sightline distance.
         tot_f_N=tot_f_N/(width*dX*tot_cells)
         return (center, tot_f_N)
 
