@@ -6,6 +6,10 @@ import spectra
 import numpy as np
 import leastsq as lsq
 import matplotlib.pyplot as plt
+try:
+    xrange(1)
+except NameError:
+    xrange = range
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
@@ -13,7 +17,7 @@ class PlottingSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir, load_halo=load_halo)
         self.label=label
 
-    def plot_eq_width(self, elem, ion, line, dv=0.1, eq_cut = 0.002, color="red", ls="-"):
+    def plot_eq_width(self, elem, ion, line, dv=0.1, color="red", ls="-"):
         """Plot the equivalent width histogram of this snapshot
         Parameters:
             elem - element to use
@@ -21,7 +25,7 @@ class PlottingSpectra(spectra.Spectra):
             line - line number to use
             dv - bin spacing
         """
-        (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv, eq_cut=eq_cut)
+        (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
     def plot_spectrum(self, elem, ion, line, num, flux=True, xlims=(-500,500), color="blue"):
@@ -217,10 +221,9 @@ class PlottingSpectra(spectra.Spectra):
     def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", log=True):
         """Helper function to plot something against virial velocity"""
         (halo, _) = self.find_nearest_halo()
-        ii = self.get_filt("Si",2)
-        ind = np.where(halo[ii] > 0)
-        halo = halo[ii][ind]
-        xx = xx[ii][ind]
+        ind = np.where(halo > 0)
+        halo = halo[ind]
+        xx = xx[ind]
         virial = self.virial_vel(halo)+0.1
         self._plot_2d_contour(virial, xx, 10, name+" virial velocity", color, color2, ylog=log)
 

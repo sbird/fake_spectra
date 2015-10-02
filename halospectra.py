@@ -7,6 +7,10 @@ import h5py
 import halocat
 import os.path as path
 import spectra
+try:
+    xrange(1)
+except NameError:
+    xrange = range
 
 class HaloSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""

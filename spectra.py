@@ -33,6 +33,11 @@ import shutil
 import subfindhdf
 import numexpr as ne
 from _spectra_priv import _Particle_Interpolate, _near_lines
+try:
+    xrange(1)
+except NameError:
+    xrange = range
+
 
 class UnitSystem(object):
     """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
@@ -234,13 +239,13 @@ class Spectra(object):
     def _load_all_multihash(self,array, array_name):
         """Do all allowed lazy-loading for an array.
         """
-        for key in array.keys():
+        for key in list(array.keys()):
             self._really_load_array(key, array, array_name)
 
     def _save_multihash(self,save_array, grp):
         """Save an array using a tuple key, like save_array[(elem, ion, line)]
         to a hierarchy of hdf groups below grp"""
-        for (key, value) in save_array.iteritems():
+        for (key, value) in save_array.items():
             #Create directory hierarchy recursively
             gg = grp
             for ii in xrange(np.size(key)-1):
@@ -701,7 +706,7 @@ class Spectra(object):
         (halos, _) = self.find_nearest_halo()
         f_ind = np.where(halos != -1)
         #nlos = np.shape(vel_width)[0]
-        #print 'nlos = ',nlos
+        #print('nlos = ',nlos)
         virial = self.virial_vel(halos[f_ind])
         m_table = 10**np.arange(np.log10(np.min(virial)+0.1), np.log10(np.max(virial)), dm)
         mbin = np.array([(m_table[i]+m_table[i+1])/2. for i in range(0,np.size(m_table)-1)])
