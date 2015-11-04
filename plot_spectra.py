@@ -32,8 +32,9 @@ class PlottingSpectra(spectra.Spectra):
         """Plot an spectrum, centered on the maximum tau"""
         tau = self.get_tau(elem, ion, line, num, noise=True)
         peak = np.where(tau == np.max(tau))[0][0]
-        tau_l = np.roll(tau, np.size(tau)/2 - peak)
-        xaxis = np.arange(-np.size(tau)/2,np.size(tau)/2)*self.dvbin
+        szt = int(np.size(tau)/2)
+        tau_l = np.roll(tau, szt - peak)
+        xaxis = (np.arange(0,np.size(tau))-szt)*self.dvbin
         self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color)
         return peak
 
@@ -62,7 +63,7 @@ class PlottingSpectra(spectra.Spectra):
         den = self.get_density(elem, ion)
         mcol = np.max(den[num])
         ind_m = np.where(den[num] == mcol)[0][0]
-        den = np.roll(den[num], np.size(den[num])/2 - ind_m)
+        den = np.roll(den[num], int(np.size(den[num])/2) - ind_m)
         phys = self.dvbin/self.velfac
         #Add one to avoid zeros on the log plot
         plt.semilogy(np.arange(0,np.size(den))*phys-np.size(den)/2*phys,den+1e-30, color=color)
