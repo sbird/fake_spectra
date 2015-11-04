@@ -244,9 +244,50 @@ static PyMethodDef spectrae[] = {
   {NULL, NULL, 0, NULL},
 };
 
-PyMODINIT_FUNC
-init_spectra_priv(void)
+//Python 3 changed the module initialisation.
+#if PY_MAJOR_VERSION >= 3
+  static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_spectra_priv", /* m_name */
+    "C functions for accelerating spectral work",      /* m_doc */
+    -1,                  /* m_size */
+    spectrae,            /* m_methods */
+    NULL,                /* m_reload */
+    NULL,                /* m_traverse */
+    NULL,                /* m_clear */
+    NULL,                /* m_free */
+  };
+#endif
+
+static PyObject *
+moduleinit(void)
 {
-  Py_InitModule("_spectra_priv", spectrae);
-  import_array();
+    PyObject *m;
+
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&moduledef);
+#else
+    m = Py_InitModule3("_spectra_priv",
+                        spectrae);
+#endif
+    import_array();
+
+    if (m == NULL)
+        return NULL;
+
+  return m;
 }
+
+#if PY_MAJOR_VERSION < 3
+    PyMODINIT_FUNC
+    init_spectra_priv(void)
+    {
+        moduleinit();
+    }
+#else
+    PyMODINIT_FUNC
+    PyInit__spectra_priv(void)
+    {
+        return moduleinit();
+    }
+#endif
