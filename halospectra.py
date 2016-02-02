@@ -52,7 +52,7 @@ class HaloSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=self.savefile, savedir=savedir,reload_file=True, cdir=cdir)
 
         #If we did not load from a snapshot
-        if cofm != None:
+        if np.size(cofm) > 0:
             self.replace_not_DLA(self.NumLos)
 
     def get_cofm(self, offset=1, *, num = None):
