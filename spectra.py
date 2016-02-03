@@ -913,7 +913,7 @@ class Spectra(object):
         else:
             rho = self.get_col_density(elem, ion)
             cbins = np.max((int(np.round((close/self.dvbin))),1))
-            rhob = np.array([np.sum(rho[:,cbins*i:cbins*(i+1)],axis=1) for i in xrange(np.shape(rho)[1]/cbins)]).T
+            rhob = np.array([np.sum(rho[:,cbins*i:cbins*(i+1)],axis=1) for i in xrange(int(np.shape(rho)[1]/cbins))]).T
             #Check that fp roundoff is not too severe.
             assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
             rho = rhob
