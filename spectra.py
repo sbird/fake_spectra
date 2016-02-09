@@ -636,9 +636,11 @@ class Spectra(object):
         MM = self.get_density("Z",-1)
         HH = self.get_density("H",-1)
         if width > 0:
-            imax = np.array([np.where(HHr == np.max(HHr, axis=1))[0][0] for HHr in HH])
-            mms = np.array([np.sum(MMr[imax-width/self.dvbin:imax+width/self.dvbin]) for MMr in MM])
-            hhs = np.array([np.sum(HH[imax-width/self.dvbin:imax+width/self.dvbin]) for HHr in HH])
+            (roll, hhr) = _get_rolled_spectra(HH)
+            mmr = np.array([np.roll(MMr, rr) for (MMr,rr) in zip(MM,roll)])
+            imax = int(np.shape(MM)[1]/2)
+            mms = np.array([np.sum(mmrr[imax-width/self.dvbin:imax+width/self.dvbin]) for mmrr in mmr])
+            hhs = np.array([np.sum(hhrr[imax-width/self.dvbin:imax+width/self.dvbin]) for hhrr in hhr])
         else:
             mms = np.sum(MM, axis=1)
             hhs = np.sum(HH, axis=1)

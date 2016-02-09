@@ -177,9 +177,9 @@ class PlottingSpectra(spectra.Spectra):
         hist = np.histogram(np.log10(met),bins,density=True)[0]
         plt.plot(mbin,hist,color=color,label=self.label,ls=ls)
 
-    def plot_metallicity(self, nbins=20,color="blue", ls="-"):
+    def plot_metallicity(self, nbins=20,color="blue", ls="-", width=0.):
         """Plot the distribution of metallicities"""
-        met = self.get_metallicity()
+        met = self.get_metallicity(width=width)
         self._plot_metallicity(met,nbins,color,ls)
 
     def plot_species_metallicity(self, species, ion, nbins=20,color="blue", ls="-"):
