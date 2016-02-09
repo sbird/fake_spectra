@@ -21,9 +21,15 @@ ifeq (icpc,$(findstring icpc,${CXX}))
   CFLAGS +=-O3 -g -w1 -openmp -fpic -march=native
   LINK +=${CXX} -O3 -openmp -march=native
 else
-  CFLAGS +=-O3 -g -Wall -fopenmp -fPIC -ffast-math
-  LINK +=${CXX} -g -O3 -fopenmp $(PRO) -ffast-math
+  CFLAGS +=-O3 -g -Wall -fPIC -ffast-math
+  LINK +=${CXX} -g -O3 $(PRO) -ffast-math
   LFLAGS += -lm -lgomp
+endif
+GCCV:=$(shell gcc --version )
+ifneq (darwin,$(findstring darwin,${GCCV}))
+  LFLAGS += -lgomp
+  LINK += -fopenmp
+  CFLAGS += -fopenmp
 endif
 PG =
 LIBS=
