@@ -19,19 +19,19 @@ Also note that there is some instability at very low metallicities - the code wi
 """
 
 from __future__ import print_function
-import numpy as np
-import hsml
 import math
-import convert_cloudy
-import cold_gas
-import line_data
-import h5py
-import hdfsim
-from scipy.ndimage.filters import gaussian_filter1d
 import os.path as path
 import shutil
-import subfindhdf
+import numpy as np
+import h5py
 import numexpr as ne
+from scipy.ndimage.filters import gaussian_filter1d
+import convert_cloudy
+import hsml
+import cold_gas
+import line_data
+import hdfsim
+import subfindhdf
 from _spectra_priv import _Particle_Interpolate, _near_lines
 try:
     xrange(1)
@@ -120,7 +120,7 @@ class Spectra(object):
             self.files.reverse()
         except IOError:
             pass
-        if savedir == None:
+        if savedir is None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
@@ -356,14 +356,14 @@ class Spectra(object):
     def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,get_tau)
-        if amumass == False:
+        if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
             #Allow us to compute absorption profiles assuming all
             #of one element is in the absorbing state
             if ion == -1:
                 #Slight hack: try every ion in turn until we find the one with this line
-                for ii in xrange(8):
+                for ii in range(8):
                     try:
                         line = self.lines[(elem, ii)][ll]
                     except KeyError:
@@ -453,11 +453,13 @@ class Spectra(object):
 
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Get a filtered list of particles to add to the sightlines"""
+        _ = (pos,velocity, den)
         ind2 = np.where(elem_den > 0)
         return ind2
 
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
+        _ = (data, star, ind, ind2)
         #Make sure temperature doesn't overflow the cloudy table
         #High temperatures are unlikely to be in ionisation equilibrium anyway.
         #Low temperatures can be neglected because we don't follow cooling processes that far anyway.
@@ -788,7 +790,7 @@ class Spectra(object):
     def _vel_single_file(self,fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
-        if amumass == False:
+        if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
         else:
             line = self.lines[("H",1)][1215]
@@ -836,7 +838,7 @@ class Spectra(object):
     def _temp_single_file(self,fn, elem, ion):
         """Get the density weighted interpolated temperature field for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
-        if amumass == False:
+        if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         else:
             line = self.lines[("H",1)][1215]
@@ -858,7 +860,7 @@ class Spectra(object):
     def _sfr_single_file(self,fn, elem, ion):
         """Get the density weighted interpolated temperature field for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,False)
-        if amumass == False:
+        if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         else:
             ff = h5py.File(fn, "r")
@@ -1015,7 +1017,7 @@ class Spectra(object):
         """Get the position of the spectra projected to their origin"""
         if np.mean(self.axis) != self.axis[0] or  self.axis[0] != self.axis[-1]:
             raise ValueError("Not all spectra are along the same axis")
-        if cofm == None:
+        if cofm is None:
             cofm = self.cofm
         axis = self.axis[0]
         if axis == 1:
