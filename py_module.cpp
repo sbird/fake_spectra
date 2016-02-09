@@ -266,11 +266,10 @@ moduleinit(void)
 
 #if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&moduledef);
-#else
-    m = Py_InitModule3("_spectra_priv",
-                        spectrae);
-#endif
     import_array();
+#else
+    m = Py_InitModule3("_spectra_priv",spectrae, "C functions for accelerating spectral work");
+#endif
 
     if (m == NULL)
         return NULL;
