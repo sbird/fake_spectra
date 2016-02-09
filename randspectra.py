@@ -20,9 +20,9 @@ class RandSpectra(spectra.Spectra):
         #Re-seed for repeatability
         np.random.seed(23)
         cofm = self.get_cofm()
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res=res, cdir=cdir, savefile=savefile,savedir=savedir,reload_file=True, units=units)
+        spectra.Spectra.__init__(self,num, base, cofm, axis, res=res, cdir=cdir, savefile=savefile,savedir=savedir,reload_file=True, units=units, load_halo=False)
 
-        if thresh > 0:
+        if np.size(thresh) > 1 or thresh > 0:
             self.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
             print("Found objects over threshold")
 

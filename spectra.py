@@ -621,7 +621,11 @@ class Spectra(object):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
         #sum the column densities over the entire spectrum.
-        ind = np.where(np.sum(col_den,axis=1) > thresh)
+        cdsum = np.sum(col_den, axis=1)
+        if np.size(thresh) > 1:
+            ind = np.where(np.logical_and(cdsum > thresh[0], cdsum < thresh[1]))
+        else:
+            ind = np.where(cdsum > thresh)
         return ind
 
     def get_metallicity(self):
