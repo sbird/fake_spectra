@@ -628,12 +628,18 @@ class Spectra(object):
             ind = np.where(cdsum > thresh)
         return ind
 
-    def get_metallicity(self):
-        """Return the metallicity, as M/H"""
+    def get_metallicity(self, width=0.):
+        """Return the metallicity, as M/H.
+        If width > 0, computes M/H +- width km/s from the maximum H peak."""
         MM = self.get_density("Z",-1)
         HH = self.get_density("H",-1)
-        mms = np.sum(MM, axis=1)
-        hhs = np.sum(HH, axis=1)
+        if width > 0:
+            imax = np.array([np.where(HHr == np.max(HHr, axis=1))[0][0] for HHr in HH])
+            mms = np.array([np.sum(MMr[imax-width/self.dvbin:imax+width/self.dvbin]) for MMr in MM])
+            hhs = np.array([np.sum(HH[imax-width/self.dvbin:imax+width/self.dvbin]) for HHr in HH])
+        else:
+            mms = np.sum(MM, axis=1)
+            hhs = np.sum(HH, axis=1)
         return mms/hhs/self.solarz
         #Use only DLA regions: tricky to preserve shape
         #ma_HH = np.ma.masked_where(HH < thresh, MM/HH)
