@@ -1225,6 +1225,7 @@ def res_corr(flux, dvbin, fwhm=8):
 def _get_rolled_spectra(tau):
     """
     Cycle the array tau so that the peak is at the middle.
+    Returns (roll - the index the array was rolled by, tau_out - the rolled array)
     """
     tau_out = np.zeros(np.shape(tau))
     roll = np.zeros(np.shape(tau[:,0]), dtype=int)
@@ -1235,7 +1236,7 @@ def _get_rolled_spectra(tau):
         if max_t == 0:
             continue
         ind_m = np.where(tau_l == max_t)[0][0]
-        tau_out[ll] = np.roll(tau_l, np.size(tau_l)/2- ind_m)
-        roll[ll] = np.size(tau_l)/2 - ind_m
+        tau_out[ll] = np.roll(tau_l, int(np.size(tau_l)/2)- ind_m)
+        roll[ll] = int(np.size(tau_l)/2) - ind_m
     return (roll, tau_out)
 
