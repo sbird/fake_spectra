@@ -70,6 +70,7 @@ class SingleAbsorber
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
+            assert(vhigh > vlow);
             //If the bin width is less than half
             //the thermal broadening scale,
             //no need to subsample
