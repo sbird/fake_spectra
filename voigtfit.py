@@ -178,7 +178,7 @@ class Profiles(object):
 
     def get_b_params(self):
         """Helper function to return the doppler b (in km/s)"""
-        return self.stddev_new
+        return np.abs(self.stddev_new)
 
     def get_positions(self):
         """Helper function to return the wavelength (offset from a 0 at the start of the box) of each absorber."""
@@ -188,7 +188,7 @@ class Profiles(object):
         """Helper function to return the column densities in 1/cm^-2 of each absorber."""
         # amp is a cross-section in cm^2.
         # sqrt(pi)*c / btherm comes from the profile.
-        amp = self.sigma_a / math.sqrt(math.pi) * (self.light/self.stddev_new)
+        amp = self.sigma_a / math.sqrt(math.pi) * (self.light/np.abs(self.stddev_new))
         aa = self.voigt_fac/np.abs(self.stddev_new)
         #This is the Fadeeva function
         norm = np.real(scipy.special.wofz(1j*aa))
@@ -203,7 +203,7 @@ def get_voigt_fit_params(taus, dvbin):
     for tau_t in taus:
         prof = Profiles(tau_t, dvbin)
         prof.do_fit()
-        np.append(n_vals, prof.get_column_densities())
+        n_vals = np.append(n_vals, prof.get_column_densities())
         print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
-        np.append(b_params, prof.get_b_params())
+        b_params = np.append(b_params, prof.get_b_params())
     return (n_vals, b_params)
