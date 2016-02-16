@@ -269,6 +269,7 @@ moduleinit(void)
     import_array();
 #else
     m = Py_InitModule3("_spectra_priv",spectrae, "C functions for accelerating spectral work");
+    _import_array();
 #endif
 
     if (m == NULL)
