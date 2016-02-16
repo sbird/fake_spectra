@@ -56,10 +56,10 @@ class Profiles(object):
             self.amplitudes.append(amplitude)
             self.stddev.append(stddev)
         #Do a global re-fit of all peaks
-        total = np.size(self.stddev)
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
         result = optimize.minimize(self.fun_min_multiple,inputs, tol=tol*np.max(self.tau), method='Powell')
-        for maxpk in range(3,total):
+        total = 2
+        for maxpk in range(3,np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
             new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=tol*np.max(self.tau), method='Powell')
             if not new_result.success:
@@ -68,7 +68,9 @@ class Profiles(object):
             if new_result.fun > result.fun*signif:
                 total = maxpk-1
                 break
-            result = new_result
+            else:
+                total = maxpk
+                result = new_result
         assert np.size(result.x) == total*3
         self.stddev_new = result.x[0:total]
         self.means_new = result.x[total:2*total]
