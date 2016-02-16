@@ -2,6 +2,7 @@
 #define SINGLE_ABSORBER_H
 
 #include <cmath>
+#include <cassert>
 #include "Faddeeva.h"
 
 #define NGRID 8
