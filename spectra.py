@@ -1226,7 +1226,8 @@ def res_corr(flux, dvbin, fwhm=8):
     res = fwhm/dvbin
     #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
     sigma = res/(2*np.sqrt(2*np.log(2)))
-    oflux = gaussian_filter1d(flux, sigma, axis=-1)
+    #Do filter in wrapping mode to avoid edge effects
+    oflux = gaussian_filter1d(flux, sigma, axis=-1, mode='wrap')
     return oflux
 
 def _get_rolled_spectra(tau):
