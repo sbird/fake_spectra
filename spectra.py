@@ -520,7 +520,7 @@ class Spectra(object):
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24],dtype=np.float32)
-                mass_frac = metal_abund[nelem]
+                mass_frac = metal_abund[nelem]*np.ones_like(data["Density"], dtype=np.float32)
         mass_frac = mass_frac[ind]
         #Deal with floating point roundoff - mass_frac will sometimes be negative
         mass_frac[np.where(mass_frac <= 0)] = 0
