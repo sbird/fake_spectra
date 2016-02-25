@@ -5,7 +5,7 @@ GREAD=no
 #Change this to where you installed GadgetReader
 GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
-PYINC=`pkg-config --cflags python3`
+PYINC:=$(shell python-config --includes)
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
