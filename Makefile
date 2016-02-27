@@ -6,6 +6,7 @@ GREAD=no
 GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
 PYINC:=$(shell python-config --includes)
+PYLIB:=$(shell python-config --libs)
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
@@ -49,6 +50,7 @@ IGREAD = -I${GREADDIR}
 LIBS+=-lrgad -L${GREADDIR} -Wl,-rpath,${GREADDIR}
 endif
 
+LFLAGS +=-Wl,--no-add-needed,--as-needed
 # Voigt profiles vs. Gaussian profiles
 CFLAGS += -DVOIGT
 #If defined, looks for NHEP and NHEPP instead of NE
@@ -90,7 +92,7 @@ py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
 _spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
-	$(LINK) $(LFLAGS) -shared $^ -o $@
+	$(LINK) $(LFLAGS) $(PYLIB) -shared $^ -o $@
 
 clean:
 	rm -f *.o  extract rescale statistic _spectra_priv.so
