@@ -129,10 +129,10 @@ class Spectra(object):
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
-            self.cofm = cofm
+            self.cofm = cofm.astype(np.float64)
             if np.shape(axis) == ():
                 axis = np.array([axis])
-            self.axis = np.array(axis, dtype = np.int32)
+            self.axis = axis.astype(np.int32)
             ff = h5py.File(self.files[0], "r")
             self.box = ff["Header"].attrs["BoxSize"]
             self.red = ff["Header"].attrs["Redshift"]
