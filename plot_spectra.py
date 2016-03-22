@@ -28,9 +28,14 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_spectrum(self, elem, ion, line, num, flux=True, xlims=(-500,500), color="blue"):
-        """Plot an spectrum, centered on the maximum tau"""
-        tau = self.get_tau(elem, ion, line, num, noise=True)
+    def plot_spectrum(self, elem, ion, line, spec_num, flux=True, xlims=(-500,500), color="blue"):
+        """Plot an spectrum, centered on the maximum tau.
+        Parameters:
+            elem, ion, line - line profile to plot.
+            spec_num - number of the spectrum, in the catalogue, to plot
+            flux - if False, print tau, if True print e^-tau
+        """
+        tau = self.get_tau(elem, ion, line, spec_num, noise=True)
         peak = np.where(tau == np.max(tau))[0][0]
         szt = int(np.size(tau)/2)
         tau_l = np.roll(tau, szt - peak)
