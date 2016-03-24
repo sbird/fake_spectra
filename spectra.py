@@ -377,6 +377,10 @@ class Spectra(object):
             else:
                 line = self.lines[(elem,ion)][ll]
         else:
+            #If get_tau is false, we don't use the line data
+            #(only the density), so we can set this as we like.
+            #Setting something makes writing the interfaces easier,
+            #because C doesn't have default arguments.
             line = self.lines[("H",1)][1215]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
