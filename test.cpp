@@ -49,24 +49,27 @@ BOOST_AUTO_TEST_CASE(check_sph_kern_frac)
     * If K(q) is the SPH kernel we need
     * int_zlow^zhigh K(q) dz
     *
-    * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+    * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
     * and q^2 = (b^2 + z^2)/h^2
     * The full range of the function is:
     * zlow = -1, zhigh = 1, coming to:
-    *  2 int_0^1 K(z) dz = 8
+    *  2 int_0^1 K(z) dz = 3/(2 pi)
     *  zrange = sqrt(smooth*smooth-dr2)
     */
-    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0,1), 8.);
+    //Correction from the normalisation I worked out in mathematica,
+    //because the smoothing length definition changed.
+    const double corr = 3/(4*M_PI);
+    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0,1), 3*2/M_PI);
     //Should be the same with a wide range.
-    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0,1), 8.);
+    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0,1), 3*2/M_PI);
     //Small variations
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0,1), 0.489167);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0,1), corr*0.489167);
     //b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4,0.774597), 0.051004);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8,0.447214), 0.000167423);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9,0.316228), 0.00040101);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4,0.774597), corr*0.051004);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8,0.447214), corr*0.000167423);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9,0.316228), corr*0.00040101);
     //Test wider range with b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), 0.177801);
+    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), corr*0.177801);
     //Check outside of range
     FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0,1), 0);
 
@@ -90,7 +93,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     test.add_colden_particle(colden, TNBINS, 0, 1,5002.5, 1);
     //Column density should be in one bin only
     //and total should be rho h int(-1,1)
-    double total = 8.;
+    double total = 8*3./(4*M_PI);
     BOOST_CHECK_EQUAL(colden[999],0);
     FLOATS_NEAR_TO(colden[1000],total);
     BOOST_CHECK_EQUAL(colden[1001],0);
@@ -128,7 +131,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     //Check non-zero offset from line
     test.add_colden_particle(colden, TNBINS, 0.7, 1,4852.5, 1);
     FLOATS_NEAR_TO(colden[969],0);
-    FLOATS_APPROX_NEAR_TO(colden[970],0.0451531);
+    FLOATS_APPROX_NEAR_TO(colden[970],0.0451531*3/(4*M_PI));
     BOOST_CHECK_EQUAL(colden[971],0);
     nonzero.insert(970);
     //Offset enough to not add anything

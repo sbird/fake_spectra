@@ -49,9 +49,10 @@
  * If K(q) is the SPH kernel we need
  * int_zlow^zhigh K(q) dz
  *
- * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 4 pi/3
+ * Normalized such that 4 pi int_{q < 1} K(q) q^2 dq = 1
+ * (this matches the definition used in gadget for the smoothing length!)
  * and q^2 = (b^2 + z^2)/h^2, implying that (since int_{q<1} K(q) q^2 dq = 1/32)
- * we want a normalisation of 32/3
+ * we want a normalisation of 32/(4*pi)
  *
  * */
 double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
@@ -74,7 +75,7 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, doubl
     double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
 
     total += sph_kernel(qhigh)/2.;
-    return 32./3.*deltaz*total;
+    return 32./4/M_PI*deltaz*total;
 }
 
 #else
