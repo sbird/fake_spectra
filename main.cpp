@@ -95,7 +95,7 @@ int main(int argc, char **argv)
   std::string indir;
   char c;
   int pad[32]={0};
-  double  atime, redshift, Hz, box100, h100, omegab;
+  double  atime, redshift, Hz, box100, h100;
   struct particle_data P;
   double * tau_H1=NULL, * colden_H1=NULL;
   /*Make sure stdout is line buffered even when not 
@@ -198,12 +198,12 @@ int main(int argc, char **argv)
             /*If we ran out of files, we're done*/
             if(!(file_readable(ffname.c_str()) && H5Fis_hdf5(ffname.c_str()) > 0))
                     break;
-              Npart=load_hdf5_snapshot(ffname.c_str(), &P,&omegab,fileno);
+              Npart=load_hdf5_snapshot(ffname.c_str(), &P,fileno);
 #endif
           }
           else{
 #ifndef NOGREAD
-              Npart=load_snapshot(indir.c_str(), 0,&P, &omegab);
+              Npart=load_snapshot(indir.c_str(), 0,&P);
               if (! Npart){
                   std::cerr<<"Could not read particles from snapshot"<<std::endl;
                   exit(2);

@@ -25,7 +25,7 @@ void help(void);
 
 #ifndef NOGREAD
 /*Functions to load Gadget-2 snapshots.*/
-int64_t load_snapshot(const char *fname, int64_t StartPart,pdata* P, double *omegab);
+int64_t load_snapshot(const char *fname, int64_t StartPart,pdata* P);
 int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100);
 #endif
 
@@ -37,7 +37,7 @@ void free_parts(pdata* P);
 
 #ifndef NOHDF5
 int load_hdf5_header(const char *infname, double  *atime, double *redshift, double * Hz, double *box100, double *h100);
-int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno);
+int load_hdf5_snapshot(const char *ffname, pdata *P, int fileno);
 #endif
 void populate_los_table(double * cofm, int * axis, int NumLos, char * ext_table, double box);
 #ifdef __cplusplus

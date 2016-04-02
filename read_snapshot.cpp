@@ -52,7 +52,7 @@ int load_header(const char *fname,double  *atime, double *redshift, double * Hz,
 /* this routine loads particle data from Gadget's default
  * binary file format. (A snapshot may be distributed
  * into multiple files. */
-int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *omegab)
+int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
 {
 #ifndef SPLIT_NE
   GadgetReader::GSnap snap(fname);
@@ -89,7 +89,6 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *ome
         fprintf(stderr, "i=%d N = %ld Mass change: %g\n",i,NumPart, (*P).Mass[i]);
         exit(0);
   }
-  (*omegab) = (*P).Mass[0]/((*P).Mass[0]+snap.GetHeader().mass[1])*snap.GetHeader().Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
     { 
@@ -125,15 +124,12 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P, double *ome
         }
      /* The smoothing length */
      snap.GetBlock("HSML",(*P).h,NumPart,StartPart,0);
-     for(int k=0;k<NumPart;k++){
-         (*P).Mass[k] = 4*M_PI/3.*(*P).Mass[k] /pow((*P).h[k],3);
-     }
     }
 
   if(StartPart==0){
         printf("P[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
         printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
-        printf("P[%ld].Mass = %e Ω_B=%g\n\n", NumPart, (*P).Mass[0],(*omegab));
+        printf("P[%ld].Mass = %e\n\n", NumPart, (*P).Mass[0]);
         printf("P[%ld].U = %f\n\n", NumPart, (*P).U[NumPart-1]);
         printf("P[%ld].Ne = %e\n", NumPart, (*P).Ne[NumPart-1]);
         printf("P[%ld].NH0 = %e\n", NumPart, (*P).fraction[NumPart-1]);

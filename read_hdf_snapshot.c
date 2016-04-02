@@ -106,7 +106,7 @@ int load_hdf5_header(const char *ffname, double  *atime, double *redshift, doubl
   
 /* This routine loads particle data from a single HDF5 snapshot file.
  * A snapshot may be distributed into multiple files. */
-int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
+int load_hdf5_snapshot(const char *ffname, pdata *P, int fileno)
 {
   int i;
   int npart[N_TYPE];
@@ -166,7 +166,6 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, double *omegab, int fileno)
         else
             using_mass = 1;
      }
-  (*omegab) = (*P).Mass[0]/((*P).Mass[0]+mass[1])*Omega0;
   /*Seek past the last masses*/
   if(PARTTYPE == 0)
     {
