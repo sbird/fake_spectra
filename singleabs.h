@@ -7,6 +7,9 @@
 
 #define NGRID 8
 
+/* The (unnormalized) cubic kernel from Price 2011: arxiv 1012.1885 , eq. 6
+ * We define the support over h < 1, rather than h < 2 used there.
+ * This changes the values of the constants, but the kernel value is the same.*/
 inline double sph_kernel(const double q)
 {
     if (q >= 1)
@@ -71,7 +74,7 @@ class SingleAbsorber
          */
         double tau_kern_outer(const double vlow, const double vhigh)
         {
-            assert(vhigh > vlow);
+            assert(vhigh >= vlow);
             //If the bin width is less than half
             //the thermal broadening scale,
             //no need to subsample
