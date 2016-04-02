@@ -204,7 +204,7 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, int fileno)
      //Convert mass to Density
      int k;
      for(k=0;k<npart[PARTTYPE];k++){
-         (*P).Mass[k] = 4*M_PI/3.*(*P).Mass[k] /pow((*P).h[k],3);
+         (*P).Mass[k] = (*P).Mass[k] /pow((*P).h[k],3);
      }
     }
     }
