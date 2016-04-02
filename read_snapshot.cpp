@@ -72,18 +72,8 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
   printf("Reading from %ld to %ld\n",StartPart,StartPart+NumPart);
   snap.GetBlock("POS ",(*P).Pos,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
   snap.GetBlock("VEL ",(*P).Vel,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
-  /* Particles masses  */
-  if(snap.GetHeader().mass[PARTTYPE])
-        for(int i=0; i< NumPart;i++)
-           (*P).Mass[i] = snap.GetHeader().mass[PARTTYPE];
-  else{
-        /*Set up types to skip; skip all types not in the mass array*/
-        int skip = (1<<N_TYPE)-1-(1<<PARTTYPE);
-        for(int i=0; i< N_TYPE; i++)
-           if(snap.GetHeader().mass[i])
-                   skip-=1<<i;
-        snap.GetBlock("MASS",(*P).Mass,NumPart,StartPart, skip);
-  }
+  /* Particle densities */
+  snap.GetBlock("RHO ",(*P).Mass,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
   for(int i=0; i< NumPart;i++)
   if ((*P).Mass[i] != (*P).Mass[0]){
         fprintf(stderr, "i=%d N = %ld Mass change: %g\n",i,NumPart, (*P).Mass[i]);
