@@ -196,14 +196,15 @@ class Profiles(object):
         colden = np.array(self.amplitudes_new)/norm/amp
         return colden
 
-def get_voigt_fit_params(taus, dvbin):
+def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
     b_params = np.array([])
     n_vals = np.array([])
     for tau_t in taus:
-        prof = Profiles(tau_t, dvbin)
+        prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
         prof.do_fit()
         n_vals = np.append(n_vals, prof.get_column_densities())
-        print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
+        if verbose:
+            print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
         b_params = np.append(b_params, prof.get_b_params())
     return (n_vals, b_params)
