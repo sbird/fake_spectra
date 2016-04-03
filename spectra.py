@@ -32,6 +32,7 @@ import cold_gas
 import line_data
 import hdfsim
 import subfindhdf
+import voigtfit
 from _spectra_priv import _Particle_Interpolate, _near_lines
 try:
     xrange(1)
@@ -253,7 +254,7 @@ class Spectra(object):
         for (key, value) in save_array.items():
             #Create directory hierarchy recursively
             gg = grp
-            for ii in xrange(np.size(key)-1):
+            for ii in range(np.size(key)-1):
                 try:
                     gg = gg[str(key[ii])]
                 except KeyError:
@@ -831,7 +832,7 @@ class Spectra(object):
             result /= den
         except ValueError:
             #Broadcasting can't handle velocity as it is 3d/1d
-            for ax in xrange(3):
+            for ax in range(3):
                 result[:,:,ax] /= den
         return result
 
@@ -897,6 +898,22 @@ class Spectra(object):
             sfr =  self._get_mass_weight_quantity(self._sfr_single_file, elem, ion)
             self.sfr[(elem, ion)] = sfr
             return sfr
+
+    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23):
+        """This computes the column density function using column densities from a Voigt profile fit"""
+        NHI_table = 10**np.arange(minN, maxN, dlogN)
+        center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
+        width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
+        #Number of lines
+        tot_lines = self.NumLos+self.discarded
+        #Absorption distance for each line
+        dX=self.units.absorption_distance(self.box, self.red)
+        tau = self.get_tau(elem, ion, line)
+        (n_vals, _) = voigtfit.get_voigt_fit_params(tau, self.dvbin, elem=elem,ion=ion, line=line,verbose=False)
+        (tot_f_N, NHI_table) = np.histogram(n_vals,NHI_table)
+        #The normalisation should be the total sightline distance.
+        tot_f_N=tot_f_N/(width*dX*tot_lines)
+        return (center, tot_f_N)
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., line=True, close=50.):
         """
