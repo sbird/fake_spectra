@@ -42,26 +42,29 @@ class Profiles(object):
 
     def do_fit(self, tol=1e-4, signif = 0.9):
         """Do the fit.
-        tol - stop peak finding when the largest peak is tol * max(self.tau)
+        tol - stop peak finding when the largest peak is tol * max(1,max(self.tau))
         As we iteratively remove peaks, small peaks are increasingly likely to just be fitting errors
-        from the larger ones.
+        from the larger ones. Default value is 10^-4 because we cut off the tails of the Gaussian at 10^-5.
         signif - We will do a global re-fit of all the peaks at the end. If adding the extra peak
         improves the fit by less than this value, the remaining peaks are considered not significant.
         """
         fitted_tau = np.array(self.tau)
+        #We do not care about very small peaks; this includes both peaks which are small in absolute value
+        #and peaks which are small in a relative sense.
+        realtol = tol * np.max([1,np.max(self.tau)])
         #Do the fit iteratively, stopping when the largest peak is likely unimportant.
-        while np.max(fitted_tau) > tol*np.max(self.tau):
+        while np.max(fitted_tau) > realtol:
             (fitted_tau, mean, amplitude, stddev)=self.iterate_new_spectrum(fitted_tau)
             self.means.append(mean)
             self.amplitudes.append(amplitude)
             self.stddev.append(stddev)
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
-        result = optimize.minimize(self.fun_min_multiple,inputs, tol=tol*np.max(self.tau), method='Powell')
+        result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Powell')
         total = 2
         for maxpk in range(3,np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
-            new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=tol*np.max(self.tau), method='Powell')
+            new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Powell')
             if not new_result.success:
                 raise RuntimeError(new_result.message)
             #If the extra peak does not substantially improve the fit, stop.
