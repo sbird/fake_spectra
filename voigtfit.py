@@ -65,8 +65,6 @@ class Profiles(object):
         for maxpk in range(3,np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
             new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Powell')
-            if not new_result.success:
-                raise RuntimeError(new_result.message)
             #If the extra peak does not substantially improve the fit, stop.
             if new_result.fun > result.fun*signif:
                 total = maxpk-1
@@ -74,6 +72,11 @@ class Profiles(object):
             else:
                 total = maxpk
                 result = new_result
+            #If it did improve the fit, but didn't converge, stop anyway.
+            if not new_result.success:
+                total = maxpk
+                result = new_result
+                break
         assert np.size(result.x) == total*3
         self.stddev_new = result.x[0:total]
         self.means_new = result.x[total:2*total]
