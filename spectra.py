@@ -1190,6 +1190,20 @@ class Spectra(object):
         self.spectra_subhalos = subhalos
         return (halos, subhalos)
 
+    def get_stellar_mass_function(self):
+        """Plot the galaxy stellar mass function for a snapshot."""
+        subs=subfindhdf.SubFindHDF5(self.base, self.num)
+        stellar_mass = subs.get_grp("GroupMassType")[:,4]*1e10/0.7
+        #Could also use subhalo stellar mass: they are similar
+        #stellar_mass = subs.get_sub("SubhaloMassType")[:,4]
+        bins = np.logspace(6,12)
+        dlogM = np.diff(np.log10(bins[:2]))
+        volume = (25/0.7)**3
+        (gsmf,sm) = np.histogram(stellar_mass, bins=bins)
+        sm = (sm[1:]+sm[:-1])/2.
+        gsmf = gsmf/volume/dlogM
+        return (sm, gsmf)
+
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
     reg = contiguous_regions(condition)
