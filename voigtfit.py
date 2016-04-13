@@ -2,6 +2,7 @@
 Algorithm suggested by Boris Leistedt."""
 
 import math
+import time
 import numpy as np
 import scipy.optimize as optimize
 import scipy.special
@@ -91,7 +92,7 @@ class Profiles(object):
         mean = peak_index*self.dvbin
         amplitude = f[peak_index]
         #First roll the spectrum to avoid edge effects
-        midpt = int(round(np.size(f)/2))
+        midpt = np.size(f)//2
         maxx = midpt - peak_index
         f_rolled = np.roll(f,maxx)
         #Do the fit for the width
@@ -100,14 +101,18 @@ class Profiles(object):
         #The documentation says this is how you test success, but I guess it lies!
         #if not result.success:
         #    raise RuntimeError(result.mesg)
-        return (f-self.profile(result.x,mean,amplitude), mean, amplitude, result.x)
+        fitted = self.profile(result.x,mean,amplitude)
+        assert np.argmax(fitted) == peak_index
+        newf = f-fitted
+        assert np.max(newf) < np.max(f)
+        return newf, mean, amplitude, result.x
 
     def fun_min(self, stddev, amplitude, tau):
         """Helper function to pass to scipy.optimise. Computes the differences
         between the profile and the input spectrum.
         As each spectrum should be localised, down-weight far-off points.
         Function is assumed to be already rotated so that the max value is in the middle."""
-        midpt = int(round(np.size(tau)/2))
+        midpt = np.size(tau)//2
         assert np.argmax(tau) == midpt
         gauss = self.profile(stddev,midpt*self.dvbin, amplitude)
         assert np.argmax(gauss) == midpt
@@ -136,7 +141,7 @@ class Profiles(object):
     def fun_min_multiple(self, inputs):
         """Helper function for scipy.optimise that trys to fit the whole (original) spectrum at once
         with the detected peaks."""
-        third = int(np.size(inputs)/3)
+        third = np.size(inputs)//3
         stddevs = inputs[0:third]
         means = inputs[third:2*third]
         amplitudes = inputs[2*third:]
@@ -159,23 +164,29 @@ class Profiles(object):
         #Normalise the input - it is easier than putting constraints on the solvers.
         stddev = np.abs(stddev)
         amplitude = np.abs(amplitude)
-        mean = mean % np.max(self.wavelengths)
-        midpt = int(round(np.size(self.wavelengths)/2))
+        peak_index = mean/self.dvbin
+        if peak_index < 0:
+            peak_index += np.size(self.wavelengths)-1
+        peak_index = int(round(peak_index))
+        if peak_index >= np.size(self.wavelengths):
+            peak_index -= np.size(self.wavelengths)
+        midpt = np.size(self.wavelengths)//2
         T0 = (self.wavelengths - midpt*self.dvbin)/np.abs(stddev)
         aa = self.voigt_fac/np.abs(stddev)
         #This is the Fadeeva function
         fadeeva = np.real(scipy.special.wofz(T0+1j*aa))
         norm = np.real(scipy.special.wofz(1j*aa))
-        profile = np.roll(fadeeva/norm*amplitude, int(round(mean/self.dvbin))-midpt)
-        assert (np.argmax(profile) - mean/self.dvbin) <= 1
+        rolled = fadeeva/norm*amplitude
+        profile = np.roll(rolled, peak_index-np.argmax(rolled))
+        assert np.argmax(profile) == peak_index
         return profile
 
     def gaussian_profile(self, stddev,mean,amplitude):
         """A Gaussian profile shape"""
-        midpt = int(np.size(self.wavelengths)/2)
+        midpt = np.size(self.wavelengths)//2
         gauss = np.exp(-(self.wavelengths-midpt)**2/stddev**2/2)*amplitude
-        profile = np.roll(gauss,int(mean/self.dvbin) - midpt)
-        assert (np.argmax(profile) - mean/self.dvbin) <= 1
+        profile = np.roll(gauss,int(round(mean/self.dvbin)) - np.argmax(gauss))
+        assert np.argmax(profile) == int(round(mean/self.dvbin))
         return profile
 
     def get_fitted_profile(self):
