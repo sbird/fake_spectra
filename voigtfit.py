@@ -40,6 +40,9 @@ class Profiles(object):
         self.tau = tau
         #In km/s (the units of dvbin)
         self.wavelengths = np.arange(0,np.size(tau))*self.dvbin
+        #Wavelength difference from central region
+        midpt = np.size(self.wavelengths)//2
+        self.lambda_diff = (self.wavelengths - midpt*self.dvbin)
 
     def do_fit(self, tol=1e-4, signif = 0.9):
         """Do the fit.
@@ -61,11 +64,11 @@ class Profiles(object):
             self.stddev.append(stddev)
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
-        result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Powell')
+        result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Nelder-Mead')
         total = 2
         for maxpk in range(3,np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
-            new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Powell')
+            new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Nelder-Mead')
             #If the extra peak does not substantially improve the fit, stop.
             if new_result.fun > result.fun*signif:
                 total = maxpk-1
@@ -169,12 +172,11 @@ class Profiles(object):
             peak_index += np.size(self.wavelengths)-1
         peak_index = int(round(peak_index))
         peak_index = peak_index % np.size(self.wavelengths)
-        midpt = np.size(self.wavelengths)//2
-        T0 = (self.wavelengths - midpt*self.dvbin)/np.abs(stddev)
-        aa = self.voigt_fac/np.abs(stddev)
+        aa = 1j*self.voigt_fac/stddev
         #This is the Fadeeva function
-        fadeeva = np.real(scipy.special.wofz(T0+1j*aa))
-        norm = np.real(scipy.special.wofz(1j*aa))
+        T0 = self.lambda_diff / stddev + aa
+        fadeeva = np.real(scipy.special.wofz(T0))
+        norm = np.real(scipy.special.wofz(aa))
         rolled = fadeeva/norm*amplitude
         profile = np.roll(rolled, peak_index-np.argmax(rolled))
         assert np.argmax(profile) == peak_index
