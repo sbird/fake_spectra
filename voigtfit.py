@@ -168,8 +168,7 @@ class Profiles(object):
         if peak_index < 0:
             peak_index += np.size(self.wavelengths)-1
         peak_index = int(round(peak_index))
-        if peak_index >= np.size(self.wavelengths):
-            peak_index -= np.size(self.wavelengths)
+        peak_index = peak_index % np.size(self.wavelengths)
         midpt = np.size(self.wavelengths)//2
         T0 = (self.wavelengths - midpt*self.dvbin)/np.abs(stddev)
         aa = self.voigt_fac/np.abs(stddev)
