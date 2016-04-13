@@ -212,6 +212,34 @@ class Profiles(object):
         colden = np.array(self.amplitudes_new)/norm/amp
         return colden
 
+    def get_systems(self, close):
+        """Get the absorption components merged into systems. This basically runs friends of friends on each spectrum and
+        merges the closest systems until the closest systems are more than close km/s apart.
+        Only the column density and positions are defined for the merged systems; b parameter doesn't make sense."""
+        pos = self.get_positions()
+        colden = self.get_column_densities()
+        stack = [(pp, cc) for (pp, cc) in zip(pos, colden)]
+        #Sort by distance
+        sort_abs = sorted(stack, key=lambda x: x[0])
+        #Compute difference in position between adjacent objects
+        #this should include distance between the final and initial items
+        distances = np.diff([ss[0] for ss in sort_abs])*self.dvbin
+        assert np.all(distances > 0)
+        #As long as some absorbers are close
+        while np.min(distances) < close:
+            minn = np.argmin(distances)
+            #Add the column densities together, average positions
+            new_abs = ((sort_abs[minn][0]+sort_abs[minn+1][0])/2., sort_abs[minn+1][1]+ sort_abs[minn][1])
+            sort_abs[minn+1] = new_abs
+            del sort_abs[minn]
+            if len(sort_abs) < 2:
+                break
+            distances = np.diff([ss[0] for ss in sort_abs])*self.dvbin
+        pos = np.array([ss[0] for ss in sort_abs])
+        colden = np.array([ss[1] for ss in sort_abs])
+        return colden, pos
+
+
 def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
     b_params = np.array([])
@@ -224,3 +252,18 @@ def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
             print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
         b_params = np.append(b_params, prof.get_b_params())
     return (n_vals, b_params)
+
+def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
+    """Helper function to get the Voigt parameters, N_HI and b in a single call."""
+    n_vals = np.array([])
+    for tau_t in taus:
+        stime = time.clock()
+        prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
+        prof.do_fit()
+        n_this, _ = prof.get_systems(close)
+        n_vals = np.append(n_vals, n_this)
+        ftime = time.clock()
+        if verbose:
+            print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
+            print("Fit took: ",ftime-stime," s")
+    return n_vals
