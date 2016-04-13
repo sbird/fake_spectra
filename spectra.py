@@ -901,8 +901,9 @@ class Spectra(object):
             self.sfr[(elem, ion)] = sfr
             return sfr
 
-    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23):
-        """This computes the column density function using column densities from a Voigt profile fit"""
+    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.):
+        """This computes the column density function using column densities from a Voigt profile fit.
+        Concatenate objects closer than close km/s."""
         NHI_table = 10**np.arange(minN, maxN, dlogN)
         center = np.array([(NHI_table[i]+NHI_table[i+1])/2. for i in range(0,np.size(NHI_table)-1)])
         width =  np.array([NHI_table[i+1]-NHI_table[i] for i in range(0,np.size(NHI_table)-1)])
@@ -911,7 +912,8 @@ class Spectra(object):
         #Absorption distance for each line
         dX=self.units.absorption_distance(self.box, self.red)
         tau = self.get_tau(elem, ion, line)
-        (n_vals, _) = voigtfit.get_voigt_fit_params(tau, self.dvbin, elem=elem,ion=ion, line=line,verbose=False)
+        #Combine all lines closer than the close value into one.
+        n_vals = voigtfit.get_voigt_systems(tau, self.dvbin, elem=elem,ion=ion, line=line,verbose=False, close=close)
         (tot_f_N, NHI_table) = np.histogram(n_vals,NHI_table)
         #The normalisation should be the total sightline distance.
         tot_f_N=tot_f_N/(width*dX*tot_lines)
