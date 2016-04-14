@@ -69,7 +69,7 @@ class Profiles(object):
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
         result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Nelder-Mead')
-        total = 2
+        total = np.min([2,np.size(self.stddev)])
         for maxpk in range(3,np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
             new_result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Nelder-Mead')
