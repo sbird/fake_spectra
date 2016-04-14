@@ -86,8 +86,8 @@ class Profiles(object):
                 result = new_result
                 break
         assert np.size(result.x) == total*3
-        self.stddev_new = result.x[0:total]
-        self.means_new = result.x[total:2*total]
+        self.stddev_new = np.abs(result.x[0:total])
+        self.means_new = result.x[total:2*total] % np.max(self.wavelengths)
         self.amplitudes_new = result.x[2*total:]
 #         refitted=self.profile_multiple(self.stddev_new, self.means, self.amplitudes)
 #         assert np.all(np.abs((tol+refitted)/(tol+self.tau) -1.) < 0.5)
