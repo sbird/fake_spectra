@@ -278,3 +278,20 @@ def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, clos
             print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
             print("Fit took: ",ftime-stime," s")
     return n_vals
+
+# import matplotlib.pyplot as plt
+
+def test_voigtfit():
+    """Simple tests that the Voigt fitter is working, using 10 test CIV spectra."""
+    taus = np.load("example_civ_tau.npz")["arr_0"]
+    for tau in taus:
+        assert np.shape(tau) == (473,)
+        prof = Profiles(tau,5.0103430332365999,elem="C",ion=4,line=1548)
+        prof.do_fit()
+        (ll, tfit) = prof.get_fitted_profile()
+        #Plotting
+#         plt.figure()
+#         plt.plot(ll,tfit,'--')
+#         plt.plot(ll,tau,'-')
+        #Check the fit is reasonable
+        assert np.sum((tfit - tau)**2/(tau+0.5)**2)/np.size(tfit) < 0.05
