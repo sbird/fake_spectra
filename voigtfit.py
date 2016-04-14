@@ -228,26 +228,24 @@ class Profiles(object):
         merges the closest systems until the closest systems are more than close km/s apart.
         Only the column density and positions are defined for the merged systems; b parameter doesn't make sense."""
         pos = self.get_positions()
-        colden = self.get_column_densities()
-        stack = [(pp, cc) for (pp, cc) in zip(pos, colden)]
-        #Sort by distance
-        sort_abs = sorted(stack, key=lambda x: x[0])
+        sorter = np.argsort(pos)
+        colden = self.get_column_densities()[sorter]
+        pos = pos[sorter]
         #Compute difference in position between adjacent objects
         #this should include distance between the final and initial items
-        distances = np.diff([ss[0] for ss in sort_abs])*self.dvbin
+        distances = np.diff(pos)*self.dvbin
         assert np.all(distances > 0)
         #As long as some absorbers are close
         while np.min(distances) < close:
             minn = np.argmin(distances)
             #Add the column densities together, average positions
-            new_abs = ((sort_abs[minn][0]+sort_abs[minn+1][0])/2., sort_abs[minn+1][1]+ sort_abs[minn][1])
-            sort_abs[minn+1] = new_abs
-            del sort_abs[minn]
-            if len(sort_abs) < 2:
+            colden[minn+1] +=colden[minn]
+            pos[minn+1] = (pos[minn]+pos[minn+1])/2.
+            colden = np.delete(colden, minn)
+            pos = np.delete(colden, minn)
+            if len(pos) < 2:
                 break
-            distances = np.diff([ss[0] for ss in sort_abs])*self.dvbin
-        pos = np.array([ss[0] for ss in sort_abs])
-        colden = np.array([ss[1] for ss in sort_abs])
+            distances = np.diff(pos)*self.dvbin
         return colden, pos
 
 
