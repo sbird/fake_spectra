@@ -1,5 +1,8 @@
-"""A simple Voigt profile fitter. Works by finding peaks and removing them iteratively.
-Algorithm suggested by Boris Leistedt."""
+"""
+A simple Voigt profile fitter. Works by finding peaks and removing them iteratively.
+All the peaks are then re-fit to the spectrum at once. Minimisation is done by scipy.
+Algorithm suggested by Boris Leistedt, closely based on that in AUTOVP by Ben Oppenheimer & Romeel Dave.
+"""
 
 import math
 import time
@@ -14,12 +17,9 @@ class Profiles(object):
             dvbin - Size of velocity bin in km/s.
             profile - either Voigt of Gaussian.
             elem, ion, line - Line to fit and ion to use.
-            minweight - when fitting single profiles, the least squares is weighted by a gaussian.
-                This is the std. dev, so points further than 2*distweight are not really considered.
-                In km/s"""
-    def __init__(self, tau, dvbin, profile="Voigt", elem="H", ion=1, line=1215, minweight=50.):
+    """
+    def __init__(self, tau, dvbin, profile="Voigt", elem="H", ion=1, line=1215):
         self.dvbin = dvbin
-        self.distweight = minweight
         self.amplitudes = []
         self.means = []
         self.stddev = []
@@ -177,6 +177,8 @@ class Profiles(object):
         T0 = self.lambda_diff / stddev + aa
         fadeeva = np.real(scipy.special.wofz(T0))
         norm = np.real(scipy.special.wofz(aa))
+        #Note this normalisation means that the profile is normalised to unity at its peak,
+        #rather than having unity integral.
         rolled = fadeeva/norm*amplitude
         profile = np.roll(rolled, peak_index-np.argmax(rolled))
         assert np.argmax(profile) == peak_index
@@ -195,24 +197,31 @@ class Profiles(object):
         return (self.wavelengths, self.profile_multiple(self.stddev_new, self.means_new, self.amplitudes_new))
 
     def get_b_params(self):
-        """Helper function to return the doppler b (in km/s)"""
+        """Helper function to return the doppler b (in km/s): for the definition used b = sigma"""
         return np.abs(self.stddev_new)
 
     def get_positions(self):
         """Helper function to return the wavelength (offset from a 0 at the start of the box) of each absorber."""
         return np.array(self.means_new)
 
+    def get_column_density(self,btherm,amp):
+        """Helper function to return the column density in 1/cm^-2 given an amplitude and a dispersion."""
+        #Our profile is normalised to have peak value of self.amplitudes
+        #The usual normalisation is integral_R voigt  dv = 1.
+        #Correction from this is: amplitudes * b * sqrt(pi) / W(i gamma/b)
+        #So we have N sigma_a c = int_R tau dv
+        # N = 1/(sigma_a c) amplitudes b sqrt(pi) / W(i gamma/b)
+        # vnorm is a cross-section in cm^-2.
+        vnorm = btherm/self.light * math.sqrt(math.pi) / self.sigma_a
+        #This is the Fadeeva function normalisation.
+        fnorm = np.real(scipy.special.wofz(1j*self.voigt_fac/btherm))
+        #Find amplitude divided by Voigt profile, which is still dimensionless.
+        colden = amp * vnorm / fnorm
+        return colden
+
     def get_column_densities(self):
         """Helper function to return the column densities in 1/cm^-2 of each absorber."""
-        # amp is a cross-section in cm^2.
-        # sqrt(pi)*c / btherm comes from the profile.
-        amp = self.sigma_a / math.sqrt(math.pi) * (self.light/np.abs(self.stddev_new))
-        aa = self.voigt_fac/np.abs(self.stddev_new)
-        #This is the Fadeeva function
-        norm = np.real(scipy.special.wofz(1j*aa))
-        #Find amplitude divided by Voigt profile, which is still dimensionless.
-        colden = np.array(self.amplitudes_new)/norm/amp
-        return colden
+        return np.array([self.get_column_density(bb, A) for (bb, A) in zip(np.abs(self.stddev_new), self.amplitudes_new)])
 
     def get_systems(self, close):
         """Get the absorption components merged into systems. This basically runs friends of friends on each spectrum and
