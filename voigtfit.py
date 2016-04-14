@@ -208,7 +208,7 @@ class Profiles(object):
         return np.abs(self.stddev_new)
 
     def get_positions(self):
-        """Helper function to return the wavelength (offset from a 0 at the start of the box) of each absorber."""
+        """Helper function to return the wavelength in km/s (offset from a 0 at the start of the box) of each absorber."""
         return np.array(self.means_new)
 
     def get_column_density(self,btherm,amp):
@@ -238,21 +238,33 @@ class Profiles(object):
         sorter = np.argsort(pos)
         colden = self.get_column_densities()[sorter]
         pos = pos[sorter]
+        #Get maximum and minimum extent of absorbers: this starts off as just their peaks.
+        maxpos = np.array(pos)
+        #Move the end of the largest object back before the beginning of the spectrum.
+        maxpos[-1]-=np.max(self.wavelengths)
+        minpos = np.roll(np.array(pos),-1)
         #Compute difference in position between adjacent objects
         #this should include distance between the final and initial items
-        distances = np.diff(pos)*self.dvbin
+        distances = minpos-maxpos
         assert np.all(distances > 0)
         #As long as some absorbers are close
         while np.min(distances) < close:
             minn = np.argmin(distances)
             #Add the column densities together, average positions
+            if minn == np.size(distances):
+                minn = -1
+                pos[minn+1] = (pos[minn]+pos[minn+1]+np.max(self.wavelengths))/2. % np.max(self.wavelengths)
+            else:
+                pos[minn+1] = (pos[minn]+pos[minn+1])/2.
             colden[minn+1] +=colden[minn]
-            pos[minn+1] = (pos[minn]+pos[minn+1])/2.
             colden = np.delete(colden, minn)
-            pos = np.delete(colden, minn)
+            pos = np.delete(pos, minn)
+            maxpos = np.delete(maxpos, minn)
+            minpos = np.delete(minpos, minn)
             if len(pos) < 2:
                 break
-            distances = np.diff(pos)*self.dvbin
+            distances = minpos-maxpos
+            assert np.all(distances > 0)
         return colden, pos
 
 
