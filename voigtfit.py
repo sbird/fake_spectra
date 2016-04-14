@@ -273,17 +273,21 @@ def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
     b_params = np.array([])
     n_vals = np.array([])
     for tau_t in taus:
+        stime = time.clock()
         prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
         prof.do_fit()
+        ftime = time.clock()
         n_vals = np.append(n_vals, prof.get_column_densities())
         if verbose:
             print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
+            print("Fit took: ",ftime-stime," s")
         b_params = np.append(b_params, prof.get_b_params())
     return (n_vals, b_params)
 
 def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
     n_vals = np.array([])
+    start = time.clock()
     for tau_t in taus:
         stime = time.clock()
         prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
@@ -294,6 +298,8 @@ def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, clos
         if verbose:
             print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
             print("Fit took: ",ftime-stime," s")
+    end = time.clock()
+    print("Total fit took: ",end-start," s")
     return n_vals
 
 # import matplotlib.pyplot as plt
