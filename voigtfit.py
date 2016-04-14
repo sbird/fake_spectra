@@ -44,7 +44,7 @@ class Profiles(object):
         midpt = np.size(self.wavelengths)//2
         self.lambda_diff = (self.wavelengths - midpt*self.dvbin)
 
-    def do_fit(self, tol=1e-4, signif = 0.9):
+    def do_fit(self, tol=1e-4, signif = 0.9, sattau = 4):
         """Do the fit.
         tol - stop peak finding when the largest peak is tol * max(1,max(self.tau))
         As we iteratively remove peaks, small peaks are increasingly likely to just be fitting errors
@@ -56,12 +56,16 @@ class Profiles(object):
         #We do not care about very small peaks; this includes both peaks which are small in absolute value
         #and peaks which are small in a relative sense.
         realtol = tol * np.max([1,np.max(self.tau)])
+        #Initial mask includes the whole spectrum
+        mask = np.where(fitted_tau > -1)
         #Do the fit iteratively, stopping when the largest peak is likely unimportant.
-        while np.max(fitted_tau) > realtol:
-            (fitted_tau, mean, amplitude, stddev)=self.iterate_new_spectrum(fitted_tau)
+        while np.max(fitted_tau[mask]) > realtol:
+            (fitted_tau, mean, amplitude, stddev)=self.iterate_new_spectrum(fitted_tau, mask=mask)
+            #We only want to fit to regions that are not already saturated in the fit.
             self.means.append(mean)
             self.amplitudes.append(amplitude)
             self.stddev.append(stddev)
+            mask = np.where(self.profile_multiple(self.stddev, self.means, self.amplitudes) < sattau)
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
         result = optimize.minimize(self.fun_min_multiple,inputs, tol=realtol, method='Nelder-Mead')
@@ -88,10 +92,13 @@ class Profiles(object):
 #         refitted=self.profile_multiple(self.stddev_new, self.means, self.amplitudes)
 #         assert np.all(np.abs((tol+refitted)/(tol+self.tau) -1.) < 0.5)
 
-    def iterate_new_spectrum(self, f):
+    def iterate_new_spectrum(self, f, mask=None):
         """Fit the largest peak and return a new spectrum with that peak removed."""
-        #Find largest peak
-        peak_index = np.argmax(f)
+        #Find largest peak in unmasked region
+        if mask is None:
+            peak_index = np.argmax(f)
+        else:
+            peak_index = np.where(f == np.max(f[mask]))[0][0]
         mean = peak_index*self.dvbin
         amplitude = f[peak_index]
         #First roll the spectrum to avoid edge effects
@@ -116,7 +123,7 @@ class Profiles(object):
         As each spectrum should be localised, down-weight far-off points.
         Function is assumed to be already rotated so that the max value is in the middle."""
         midpt = np.size(tau)//2
-        assert np.argmax(tau) == midpt
+        assert tau[midpt] == amplitude
         gauss = self.profile(stddev,midpt*self.dvbin, amplitude)
         assert np.argmax(gauss) == midpt
         #Try to avoid separated peaks messing with the fit.
