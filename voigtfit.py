@@ -251,7 +251,7 @@ class Profiles(object):
         while np.min(distances) < close:
             minn = np.argmin(distances)
             #Add the column densities together, average positions
-            if minn == np.size(distances):
+            if minn == np.size(distances)-1:
                 minn = -1
                 pos[minn+1] = (pos[minn]+pos[minn+1]+np.max(self.wavelengths))/2. % np.max(self.wavelengths)
             else:
