@@ -133,7 +133,7 @@ class Profiles(object):
         minn = np.max(np.append(mins[np.where(mins < midpt)], 0))
         maxx = np.min(np.append(mins[np.where(mins > midpt)], np.size(tau)))
         assert minn < midpt and maxx > midpt
-        diff = np.sum(((tau - gauss))[minn:maxx]**2)
+        diff = np.sum(((np.exp(-tau) - np.exp(-gauss)))[minn:maxx]**2)
         return diff
 
     def profile_multiple(self, stddevs, means, amplitudes):
@@ -149,7 +149,7 @@ class Profiles(object):
         means = inputs[third:2*third]
         amplitudes = inputs[2*third:]
         gauss=self.profile_multiple(stddevs, means, amplitudes)
-        return np.sum((self.tau - gauss)**2)
+        return np.sum((np.exp(-self.tau) - np.exp(-gauss))**2)
 
     def voigt_profile(self, stddev, mean, amplitude):
         """Compute the Voigt profile, which is the real part of the
