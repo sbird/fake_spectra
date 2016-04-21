@@ -18,15 +18,12 @@ def get_smooth_length(bar):
     """
     #Are we arepo? If we are a modern version we should have this array.
     try:
-        radius = np.cbrt(bar["Volume"], dtype=np.float32)
+        radius = np.power(bar["Volume"], 1./3, dtype=np.float32)
     except KeyError:
         #If we don't have a Volume array we are gadget, and
         #the SmoothingLength array is actually the smoothing length.
         #There is a different kernel definition, as in gadget the kernel goes from 0 to 2,
         #whereas I put it between zero and 1.
         radius=np.array(bar["SmoothingLength"],dtype=np.float32)/2
-    except AttributeError:
-        #This is for really old numpys without cbrts
-        radius = np.power(bar["Volume"], 1./3, dtype=np.float32)
 
     return radius
