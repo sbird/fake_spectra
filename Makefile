@@ -98,7 +98,7 @@ _spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(PYLFLAGS) $(PYLIB) -shared $^ -o $@
 
 clean:
-	rm -f *.o  extract rescale statistic _spectra_priv.so
+	rm -f *.o *.pyc extract rescale statistic _spectra_priv.so
 
 dist: Makefile
 	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
