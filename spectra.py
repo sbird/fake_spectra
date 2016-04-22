@@ -26,7 +26,10 @@ import numpy as np
 import h5py
 import numexpr as ne
 from scipy.ndimage.filters import gaussian_filter1d
-import convert_cloudy
+try:
+    import convert_cloudy
+except ImportError:
+    print ("No cloudy table found; you will not be able to generate metal line spectra")
 import hsml
 import cold_gas
 import line_data
@@ -177,10 +180,14 @@ class Spectra(object):
         # divided by the mass fraction of hydrogen
         self.solarz = 0.0134/0.7381
         #Generate cloudy tables
-        if cdir != None:
-            self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
-        else:
-            self.cloudy_table = convert_cloudy.CloudyTable(self.red)
+        try:
+            if cdir != None:
+                self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
+            else:
+                self.cloudy_table = convert_cloudy.CloudyTable(self.red)
+        except NameError:
+            #This happens if we did not import the cloudy module; in this case we can only do hydrogen.
+            pass
         #Line data
         self.lines = line_data.LineData()
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
