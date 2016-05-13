@@ -28,7 +28,7 @@ class PlottingSpectra(spectra.Spectra):
         (vbin, eqw) = self.eq_width_hist(elem, ion, line, dv)
         plt.plot(vbin, eqw, color=color, lw=3, ls=ls,label=self.label)
 
-    def plot_spectrum(self, elem, ion, line, spec_num, flux=True, xlims=(-500,500), color="blue"):
+    def plot_spectrum(self, elem, ion, line, spec_num, flux=True, xlims=(-500,500), color="blue",ls="-", offset=0):
         """Plot an spectrum, centered on the maximum tau.
         Parameters:
             elem, ion, line - line profile to plot.
@@ -38,21 +38,21 @@ class PlottingSpectra(spectra.Spectra):
         tau = self.get_tau(elem, ion, line, spec_num, noise=True)
         peak = np.where(tau == np.max(tau))[0][0]
         szt = int(np.size(tau)/2)
-        tau_l = np.roll(tau, szt - peak)
+        tau_l = np.roll(tau, szt - peak+int(offset*self.dvbin))
         xaxis = (np.arange(0,np.size(tau))-szt)*self.dvbin
-        self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color)
+        self.plot_spectrum_raw(tau_l,xaxis, xlims, flux, color=color,ls=ls)
         return peak
 
-    def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True, color="blue"):
+    def plot_spectrum_raw(self, tau,xaxis,xlims, flux=True, color="blue",ls="-"):
         """Plot an array of optical depths, centered on the largest point,
            and marking the 90% velocity width.
            offset: offset in km/s for the x-axis labels"""
         #Make sure we were handed a single spectrum
         assert np.size(np.shape(tau)) == 1
         if flux:
-            plt.plot(xaxis,np.exp(-tau), color=color)
+            plt.plot(xaxis,np.exp(-tau), color=color,ls=ls)
         else:
-            plt.plot(xaxis,tau,color=color)
+            plt.plot(xaxis,tau,color=color, ls=ls)
         plt.xlim(xlims)
         plt.xlabel(r"v (km s$^{-1}$)")
         if flux:
