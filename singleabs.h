@@ -12,12 +12,13 @@
  * This changes the values of the constants, but the kernel value is the same.*/
 inline double sph_kernel(const double q)
 {
+    const double norm = 32./4/M_PI;
     if (q >= 1)
         return 0;
     if(q<0.5)
-        return 1-6*q*q+6*q*q*q;
+        return norm*(1-6*q*q+6*q*q*q);
     else
-        return 2*pow(1.- q,3);
+        return norm*(2*pow(1.- q,3));
 }
 
 
@@ -127,7 +128,7 @@ class SingleAbsorber
                 const double T0 = vdiff/btherm;
                 total+=sph_kernel(q)*profile(T0,aa);
             }
-            return 32./3.*deltav*total;
+            return deltav*total;
         }
 
         const double btherm;

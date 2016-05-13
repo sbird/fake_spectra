@@ -75,7 +75,7 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, doubl
     double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
 
     total += sph_kernel(qhigh)/2.;
-    return 32./4/M_PI*deltaz*total;
+    return deltaz*total;
 }
 
 #else
