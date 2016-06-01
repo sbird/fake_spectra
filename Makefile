@@ -104,7 +104,7 @@ dist: Makefile
 	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
 
 btest: test.cpp absorption.o index_table.o Faddeeva.o
-	${LINK} ${LFLAGS} -lboost_unit_test_framework $^ -o $@
+	${LINK} ${LFLAGS} $^ -lboost_unit_test_framework -o $@
 
 test: btest
 	@./btest
