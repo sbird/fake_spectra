@@ -1,0 +1,13 @@
+sudo: required
+dist: trusty
+language: cpp
+os: linux
+compiler: gcc
+addons:
+    apt:
+        packages:
+            - libboost-test-dev
+            - python-numpy
+#before-install: git submodule update --init --recursive
+install: true
+script: make && make test
