@@ -20,6 +20,7 @@
 #include "singleabs.h"
 #include "index_table.h"
 #include <cstdio>
+#include <numeric>
 #include <math.h>
 #include <set>
 #include <boost/test/unit_test.hpp>
@@ -377,4 +378,27 @@ BOOST_AUTO_TEST_CASE(check_add_tau)
     test.add_tau_particle(tau, TNBINS, 1, 1,5002.5, 0,10000, 1);
     FLOATS_NEAR_TO(tau[1000],0);
     FLOATS_NEAR_TO(tau[1501],0);
+}
+
+//Check that if we compute column density and optical depth with the same input, we get a consistent answer.
+BOOST_AUTO_TEST_CASE(check_tau_colden_consistency)
+{
+    //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
+    double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25);
+    //Since SingleAbsorber is tested above, use it in this test
+    double temp = 2e4;
+    double smooth = 3;
+    double amp = 7.57973e-15;
+    //Conversion factor from cm to kpc/h at z=3
+    double rscale = 3.085678e21*0.25/0.7;
+    double tau[TNBINS] = {0};
+    double colden[TNBINS] = {0};
+    //Bins are 5kpc (1.5km/s) wide: add particle to both tau and colden.
+    //Check that the ratio between optical depth and column density is correct.
+    test.add_tau_particle(tau, TNBINS, 0, 0.1*rscale,5002.5, 0,temp, smooth);
+    test.add_colden_particle(colden, TNBINS, 0, 0.1*rscale,5002.5, smooth);
+    double scolden = std::accumulate(colden, colden+TNBINS,0.);
+    double stau =  std::accumulate(tau, tau+TNBINS,0.);
+    FLOATS_NEAR_TO(stau/scolden, amp/velfac/2.81809);
 }
