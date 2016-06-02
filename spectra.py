@@ -20,6 +20,7 @@ Also note that there is some instability at very low metallicities - the code wi
 
 from __future__ import print_function
 import math
+import os
 import os.path as path
 import shutil
 import numpy as np
@@ -127,7 +128,7 @@ class Spectra(object):
         if savedir is None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
             #Make sure savedir exists.
-            if not os.exists(savedir):
+            if not os.path.exists(savedir):
                 os.mkdir(savedir)
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
