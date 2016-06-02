@@ -196,7 +196,11 @@ class Spectra(object):
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
         #Try to load a halo catalogue
         if load_halo:
-            self.load_halo()
+            try:
+                self.load_halo()
+            #If there are no FoF files, do nothing
+            except IndexError:
+                pass
 
     def save_file(self):
         """
