@@ -151,7 +151,10 @@ class Spectra(object):
             self.axis = axis.astype(np.int32)
             if cofm is None or axis is None:
                 raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
-            ff = h5py.File(self.files[0], "r")
+            try:
+                ff = h5py.File(self.files[0], "r")
+            except AttributeError:
+                raise IOError("No files found for ",base)
             self.box = ff["Header"].attrs["BoxSize"]
             self.red = ff["Header"].attrs["Redshift"]
             self.atime = ff["Header"].attrs["Time"]
