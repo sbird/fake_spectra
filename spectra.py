@@ -1211,6 +1211,40 @@ class Spectra(object):
         gsmf = gsmf/volume/dlogM
         return (sm, gsmf)
 
+    def get_mean_flux(self, elem="H", ion=1, line=1215):
+        """Get the mean flux along a set of sightlines"""
+        tau = self.get_tau(elem, ion, line)
+        return np.mean(np.exp(-tau))
+
+    def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20):
+        """Get the flux PDF, a histogram of the flux values."""
+        flux = np.exp(-self.get_tau(elem, ion, line))
+        bins = np.arange(nbins+1)/nbins
+        (flux_pdf, _) = np.histogram(flux, bins=bins)
+        flux_pdf *= nbins / np.size(flux)
+        cbins = (bins[1:] + bins[:-1])/2.
+        return cbins, flux_pdf
+
+    def get_flux_power_1D(self, elem="H",ion=1, line=1215):
+        """Get the power spectrum of (variations in) the flux along the line of sight.
+        This is: P_F(k_F) = <d_F d_F>
+                 d_F = e^-tau / mean(e^-tau) - 1 """
+        tau = self.get_tau(elem, ion, line)
+        mean_flux = self.get_mean_flux(elem, ion, line)
+        #Get the delta_flux
+        delta_flux = np.exp(-tau) / mean_flux - 1.
+        #Get the power spectrum
+        assert np.shape(delta_flux) == (self.NumLos, self.nbins)
+        df_hat = np.fft.rfft(delta_flux,axis=1)
+        flux_power = np.real(df_hat)**2 + np.imag(df_hat)**2
+        #Normalise the FFT (do I need to do this?)
+        flux_power /= self.nbins**2
+        assert np.shape(flux_power) == (self.NumLos, self.nbins//2 + 1)
+        #Average over all sightlines
+        avg_flux_power = np.mean(flux_power, axis=0)
+        assert np.shape(avg_flux_power) == (self.nbins//2 + 1,)
+        return avg_flux_power
+
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
     reg = contiguous_regions(condition)
