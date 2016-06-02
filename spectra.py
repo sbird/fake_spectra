@@ -27,10 +27,6 @@ import numpy as np
 import h5py
 import numexpr as ne
 from scipy.ndimage.filters import gaussian_filter1d
-try:
-    import convert_cloudy
-except ImportError:
-    print ("No cloudy table found; you will not be able to generate metal line spectra")
 import hsml
 import cold_gas
 import line_data
@@ -38,6 +34,17 @@ import hdfsim
 import subfindhdf
 import voigtfit
 from _spectra_priv import _Particle_Interpolate, _near_lines
+try:
+    import convert_cloudy
+    def _get_cloudy_table(red, cdir=None):
+        """Get the cloudy table if we didn't already"""
+        #Generate cloudy tables
+        if cdir != None:
+            return convert_cloudy.CloudyTable(red, cdir)
+        else:
+            return convert_cloudy.CloudyTable(red)
+except ImportError:
+    print ("No cloudy table found; you will not be able to generate metal line spectra")
 try:
     xrange(1)
 except NameError:
@@ -118,6 +125,7 @@ class Spectra(object):
         #If greater than zero, will add noise to spectra when they are loaded.
         self.snr = snr
         self.spec_res = spec_res
+        self.cdir = cdir
         #Minimum length of spectra within which to look at metal absorption (in km/s)
         self.minwidth = 500.
         try:
@@ -183,15 +191,6 @@ class Spectra(object):
         # Note the solar metallicity is the mass fraction of metals
         # divided by the mass fraction of hydrogen
         self.solarz = 0.0134/0.7381
-        #Generate cloudy tables
-        try:
-            if cdir != None:
-                self.cloudy_table = convert_cloudy.CloudyTable(self.red, cdir)
-            else:
-                self.cloudy_table = convert_cloudy.CloudyTable(self.red)
-        except NameError:
-            #This happens if we did not import the cloudy module; in this case we can only do hydrogen.
-            pass
         #Line data
         self.lines = line_data.LineData()
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
@@ -482,7 +481,13 @@ class Spectra(object):
 
     def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
+        #Shut up a pylint warning
         _ = (data, star, ind, ind2)
+        #Load a cloudy table if not done already
+        try:
+            self.cloudy_table
+        except AttributeError:
+            self.cloudy_table = _get_cloudy_table(self.red, self.cdir)
         #Make sure temperature doesn't overflow the cloudy table
         #High temperatures are unlikely to be in ionisation equilibrium anyway.
         #Low temperatures can be neglected because we don't follow cooling processes that far anyway.
