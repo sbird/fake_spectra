@@ -126,6 +126,9 @@ class Spectra(object):
             pass
         if savedir is None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
+            #Make sure savedir exists.
+            if not os.exists(savedir):
+                os.mkdir(savedir)
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
         if reload_file:
