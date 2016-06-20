@@ -6,9 +6,9 @@ GREAD=no
 GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
 PYINC:=$(shell python-config --includes)
-#Python libraries not needed for now; we only use macros.
-##PYLIB:=$(shell python-config --libs)
-PYLIB:=
+#Python libraries not needed for now
+PYLIB:=-L$(shell python get_python_libdir.py)
+PYLIB+=$(shell python-config --libs)
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
