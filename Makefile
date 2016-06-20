@@ -33,6 +33,7 @@ ifneq (darwin,$(findstring darwin,${GCCV}))
   LFLAGS += -lgomp
   LINK += -fopenmp
   CFLAGS += -fopenmp
+  PYLFLAGS +=-Wl,--no-add-needed,--as-needed
 endif
 PG =
 LIBS=
@@ -52,7 +53,6 @@ IGREAD = -I${GREADDIR}
 LIBS+=-lrgad -L${GREADDIR} -Wl,-rpath,${GREADDIR}
 endif
 
-PYLFLAGS +=-Wl,--no-add-needed,--as-needed
 # Voigt profiles vs. Gaussian profiles
 CFLAGS += -DVOIGT
 #If defined, looks for NHEP and NHEPP instead of NE
