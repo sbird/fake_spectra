@@ -6,9 +6,6 @@ GREAD=no
 GREADDIR=${CURDIR}/../GadgetReader
 #Python include path
 PYINC:=$(shell python-config --includes)
-#Python libraries not needed for now
-PYLIB:=-L$(shell python get_python_libdir.py)
-PYLIB+=$(shell python-config --libs)
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
@@ -38,7 +35,14 @@ endif
 #We are looking for the response: ld unknown option: --no-add-needed
 LDCHECK:=$(shell ld --as-needed 2>&1)
 ifneq (unknown,$(findstring unknown,${LDCHECK}))
-  PYLFLAGS +=-Wl,--no-add-needed,--as-needed
+  PYLIB +=-Wl,--no-add-needed,--as-needed
+  # Python libraries: should not be actually needed, but make the build less fragile.
+  PYLIB=$(shell python-config --libs)
+else
+  #Assume now we are using the mac linker, which is more complicated.
+  #Often there are two pythons installed and we need to use the right one.
+  PYPREF=$(shell python-config --prefix)/lib
+  PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib -weak$(shell python-config --libs)
 endif
 PG =
 LIBS=
@@ -100,7 +104,7 @@ py_module.o: py_module.cpp $(COM_INC)
 	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
 
 _spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
-	$(LINK) $(LFLAGS) $(PYLFLAGS) $(PYLIB) -shared $^ -o $@
+	$(LINK) $(LFLAGS) $(PYLIB) -shared $^ -o $@
 
 clean:
 	rm -f *.o *.pyc extract rescale statistic _spectra_priv.so
