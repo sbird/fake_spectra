@@ -33,6 +33,11 @@ ifneq (darwin,$(findstring darwin,${GCCV}))
   LFLAGS += -lgomp
   LINK += -fopenmp
   CFLAGS += -fopenmp
+endif
+#Mac's ld doesn't support --no-add-needed, so check for it.
+#We are looking for the response: ld unknown option: --no-add-needed
+LDCHECK:=$(shell ld --as-needed 2>&1)
+ifneq (unknown,$(findstring unknown,${LDCHECK}))
   PYLFLAGS +=-Wl,--no-add-needed,--as-needed
 endif
 PG =
