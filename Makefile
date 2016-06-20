@@ -26,7 +26,7 @@ ifeq (icpc,$(findstring icpc,${CXX}))
 else
   CFLAGS +=-O3 -g -Wall -fPIC -ffast-math
   LINK +=${CXX} -g -O3 $(PRO) -ffast-math
-  LFLAGS += -lm -lgomp
+  LFLAGS += -lm
 endif
 GCCV:=$(shell gcc --version )
 ifneq (darwin,$(findstring darwin,${GCCV}))
