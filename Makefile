@@ -42,7 +42,7 @@ else
   #Assume now we are using the mac linker, which is more complicated.
   #Often there are two pythons installed and we need to use the right one.
   PYPREF=$(shell python-config --prefix)/lib
-  PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib -weak$(shell python-config --libs)
+  PYLIB +=-L${PYPREF} -Wl,-L${PYPREF} $(shell python-config --libs)
 endif
 PG =
 LIBS=
