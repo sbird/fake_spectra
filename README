@@ -62,7 +62,7 @@ one would use this script:
 from randspectra import RandSpectra
 
 rr = RandSpectra(5, "MySim", thresh=0.)
-rr.get_tau("H",1,1216)
+rr.get_tau("H",1,1215)
 #Lyman-beta
 rr.get_tau("H",1,1026)
 rr.get_col_density("H",1)
