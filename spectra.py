@@ -80,6 +80,19 @@ class UnitSystem(object):
         #Units: h/s   s/cm                 kpc/h      cm/kpc
         return self.h100/self.light*speclen*self.UnitLength_in_cm*(1+red)**2
 
+    def redshift_distance(self, speclen, red,omegam0):
+        """Compute dz over the box, dz = H(z)/c dL
+        Arguments:
+            speclen - spectral length (usually box size in comoving kpc/h)
+            red - redshift
+        """
+        #Units: h/s   s/cm                 kpc/h      cm/kpc
+        return self.hubble(red, omegam0)/self.light*speclen*self.UnitLength_in_cm
+
+    def hubble(self, z, omegam0):
+        """Hubble parameter"""
+        return self.h100*np.sqrt(omegam0*(1+z)**3 + (1-omegam0))
+
     def rho_crit(self, hubble):
         """Get the critical density at z=0 in units of g cm^-3"""
         #H in units of 1/s
@@ -924,7 +937,7 @@ class Spectra(object):
             self.sfr[(elem, ion)] = sfr
             return sfr
 
-    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.):
+    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.,dX=True):
         """This computes the column density function using column densities from a Voigt profile fit.
         Concatenate objects closer than close km/s."""
         NHI_table = 10**np.arange(minN, maxN, dlogN)
@@ -933,16 +946,19 @@ class Spectra(object):
         #Number of lines
         tot_lines = self.NumLos+self.discarded
         #Absorption distance for each line
-        dX=self.units.absorption_distance(self.box, self.red)
+        if dX:
+            dist=self.units.absorption_distance(self.box, self.red)
+        else:
+            dist=self.units.redshift_distance(self.box, self.red, self.OmegaM)
         tau = self.get_tau(elem, ion, line)
         #Combine all lines closer than the close value into one.
         n_vals = voigtfit.get_voigt_systems(tau, self.dvbin, elem=elem,ion=ion, line=line,verbose=False, close=close)
         (tot_f_N, NHI_table) = np.histogram(n_vals,NHI_table)
         #The normalisation should be the total sightline distance.
-        tot_f_N=tot_f_N/(width*dX*tot_lines)
+        tot_f_N=tot_f_N/(width*dist*tot_lines)
         return (center, tot_f_N)
 
-    def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., line=True, close=50.):
+    def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., line=True, close=50.,dX=True):
         """
         This computes the DLA column density function, which is the number
         of absorbers per sight line with HI column densities in the interval
@@ -965,6 +981,7 @@ class Spectra(object):
             maxN - maximum log N
             line - cddf for whole line or for each cell.
             close - amalgamate absorbers closer than X km/s
+            dX - If true return dn/dN dX, if false return dn/dN dz
         Returns:
             (NHI, f_N_table) - N_HI (binned in log) and corresponding f(N)
         """
@@ -974,7 +991,10 @@ class Spectra(object):
         #Number of lines
         tot_lines = self.NumLos+self.discarded
         #Absorption distance for each line
-        dX=self.units.absorption_distance(self.box, self.red)
+        if dX:
+            dist=self.units.absorption_distance(self.box, self.red)
+        else:
+            dist=self.units.redshift_distance(self.box, self.red, self.OmegaM)
         if line:
             rho = np.sum(self.get_col_density(elem, ion), axis=1)
         else:
@@ -986,7 +1006,7 @@ class Spectra(object):
             rho = rhob
         (tot_f_N, NHI_table) = np.histogram(rho,NHI_table)
         #The normalisation should be the total sightline distance.
-        tot_f_N=tot_f_N/(width*dX*tot_lines)
+        tot_f_N=tot_f_N/(width*dist*tot_lines)
         return (center, tot_f_N)
 
     def _rho_abs(self, thresh=10**20.3, upthresh=None, elem = "H", ion = 1):
