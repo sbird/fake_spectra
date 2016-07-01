@@ -803,7 +803,8 @@ class Spectra(object):
         return virial
 
     def get_col_density(self, elem, ion, force_recompute=False):
-        """get the column density in each pixel for a given species"""
+        """get the column density in each pixel for a given species.
+        In units of [metal] ions cm^-2."""
         try:
             if force_recompute:
                 raise KeyError
@@ -815,13 +816,13 @@ class Spectra(object):
             return colden
 
     def get_density(self, elem, ion, force_recompute=False):
-        """Get the density in each pixel for a given species"""
+        """Get the density in each pixel for a given species, in units of [metal] ions cm^-3."""
         colden = self.get_col_density(elem, ion, force_recompute)
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
     def get_tau(self, elem, ion,line, number = -1, force_recompute=False, noise=True):
-        """Get the column density in each pixel for a given species"""
+        """Get the optical depth in each pixel along the sightline for a given line."""
         try:
             if force_recompute:
                 raise KeyError
@@ -960,20 +961,19 @@ class Spectra(object):
 
     def column_density_function(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., line=True, close=50.,dX=True):
         """
-        This computes the DLA column density function, which is the number
-        of absorbers per sight line with HI column densities in the interval
-        [NHI, NHI+dNHI] at the absorption distance X.
-        Absorption distance is simply a single simulation box.
-        A sightline is assumed to be equivalent to one grid cell.
-        That is, there is presumed to be only one halo in along the sightline
-        encountering a given halo.
+        This computes the absorber column density distribution function, which is the number
+        of absorbers per sight line with column densities in the interval
+        [N, N+dN] at the absorption distance X.
+        The path can be either a whole sightline across the box, if line=True, or, if line=False,
+        it can be a fixed spacing in the hubble flow.
 
-        So we have f(N) = d n_DLA/ dN dX
+        So we have f(N) = d n_abs/ dN dX
         and n_DLA(N) = number of absorbers per sightline in this column density bin.
                      1 sightline is defined to be one grid cell.
                      So this is (cells in this bins) / (no. of cells)
-        ie, f(N) = n_DLA / ΔN / ΔX
+        ie, f(N) = n_abs / ΔN / ΔX
         Note f(N) has dimensions of cm^2, because N has units of cm^-2 and X is dimensionless.
+        Note column density is number of *ions* per cm^2, not amu per cm^2.
 
         Parameters:
             dlogN - bin spacing
@@ -1038,7 +1038,7 @@ class Spectra(object):
         conv = 0.01 * self.units.UnitMass_in_g / self.units.UnitLength_in_cm**3
         return rho_DLA / conv
 
-    def omega_abs(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+    def omega_abs(self, thresh=10**20.3, upthresh=1e40, elem = "H", ion = 1):
         """Compute Omega_abs, the sum of the mass in a given absorber,
             divided by the volume of the spectra, divided by the critical density.
             Ω_abs = m_p * avg. column density / (1+z)^2 / length of column / rho_c
@@ -1049,7 +1049,7 @@ class Spectra(object):
         omega_DLA=self._rho_abs(thresh, upthresh, elem=elem, ion=ion)/self.units.rho_crit(self.hubble)
         return omega_DLA
 
-    def omega_abs_cddf(self, thresh=10**20.3, upthresh=10**40, elem = "H", ion = 1):
+    def omega_abs_cddf(self, thresh=10**20.3, upthresh=1e40, elem = "H", ion = 1):
         """Compute Omega_abs, the sum of the mass in a given absorber,
             divided by the volume of the spectra, divided by the critical density.
             Omega_abs = m_p * avg. column density / (1+z)^2 / length of column / rho_c
