@@ -285,40 +285,31 @@ class _SingleProfileHelper(object):
         stime = time.clock()
         prof = Profiles(tau_t, self.dvbin, elem=self.elem, ion=self.ion, line=self.line)
         prof.do_fit()
-        n_this, _ = prof.get_systems(self.close)
+        n_this, b_param = prof.get_systems(self.close)
         ftime = time.clock()
         if self.verbose:
             print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
             print("Fit took: ",ftime-stime," s")
-        return n_this
+        return n_this, b_param
 
-def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
+def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
-    b_params = np.array([])
-    n_vals = np.array([])
-    for tau_t in taus:
-        stime = time.clock()
-        prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
-        prof.do_fit()
-        ftime = time.clock()
-        n_vals = np.append(n_vals, prof.get_column_densities())
-        if verbose:
-            print("Fit: N=",np.max(prof.get_column_densities()), "b=",prof.get_b_params()[np.argmax(prof.get_column_densities())])
-            print("Fit took: ",ftime-stime," s")
-        b_params = np.append(b_params, prof.get_b_params())
-    return (n_vals, b_params)
+    return get_voigt_systems(taus, dvbin, elem, ion, line, verbose, close, b_param=True)
 
-def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
-    """Helper function to get the Voigt parameters, N_HI and b in a single call."""
+def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0., b_param=False):
+    """Helper function to get the Voigt parameters, N_HI and (optionally) b in a single call."""
     start = time.clock()
     #Set up multiprocessing pool: lambdas are not picklable, so not using them.
     #functools.partial not picklable on python 2.
     helper = _SingleProfileHelper(dvbin, elem, ion, line, verbose, close)
     pool = multiprocessing.Pool(None)
-    results = pool.map(helper, taus)
+    results,b_results = zip(*pool.map(helper, taus))
     n_vals = np.concatenate(results)
     end = time.clock()
     print("Total fit took: ",end-start," s")
+    if b_param:
+        b_params = np.concatenate(b_results)
+        return n_vals, b_params
     return n_vals
 
 # import matplotlib.pyplot as plt
