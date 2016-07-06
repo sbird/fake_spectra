@@ -6,6 +6,7 @@ Algorithm suggested by Boris Leistedt, closely based on that in AUTOVP by Ben Op
 
 import math
 import time
+import multiprocessing
 import numpy as np
 import scipy.optimize as optimize
 import scipy.special
@@ -268,6 +269,29 @@ class Profiles(object):
         return colden, pos
 
 
+class _SingleProfileHelper(object):
+    """Picklable helper class to Voigt fit a single profile and optionally print how long it took.
+    Used because lambdas are not picklable and functools.partial is not picklable on python 2."""
+    def __init__(self, dvbin, elem, ion, line, verbose=False, close=0.):
+        self.dvbin = dvbin
+        self.elem = elem
+        self.ion = ion
+        self.line = line
+        self.verbose = verbose
+        self.close = close
+
+    def __call__(self, tau_t):
+        """Call the fit"""
+        stime = time.clock()
+        prof = Profiles(tau_t, self.dvbin, elem=self.elem, ion=self.ion, line=self.line)
+        prof.do_fit()
+        n_this, _ = prof.get_systems(self.close)
+        ftime = time.clock()
+        if self.verbose:
+            print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
+            print("Fit took: ",ftime-stime," s")
+        return n_this
+
 def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
     b_params = np.array([])
@@ -286,18 +310,13 @@ def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False):
 
 def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
-    n_vals = np.array([])
     start = time.clock()
-    for tau_t in taus:
-        stime = time.clock()
-        prof = Profiles(tau_t, dvbin, elem=elem, ion=ion, line=line)
-        prof.do_fit()
-        n_this, _ = prof.get_systems(close)
-        n_vals = np.append(n_vals, n_this)
-        ftime = time.clock()
-        if verbose:
-            print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
-            print("Fit took: ",ftime-stime," s")
+    #Set up multiprocessing pool: lambdas are not picklable, so not using them.
+    #functools.partial not picklable on python 2.
+    helper = _SingleProfileHelper(dvbin, elem, ion, line, verbose, close)
+    pool = multiprocessing.Pool(None)
+    results = pool.map(helper, taus)
+    n_vals = np.concatenate(results)
     end = time.clock()
     print("Total fit took: ",end-start," s")
     return n_vals
