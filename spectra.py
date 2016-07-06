@@ -938,7 +938,7 @@ class Spectra(object):
             self.sfr[(elem, ion)] = sfr
             return sfr
 
-    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.,dX=True):
+    def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.,dX=True, nspectra=-1):
         """This computes the column density function using column densities from a Voigt profile fit.
         Concatenate objects closer than close km/s."""
         NHI_table = 10**np.arange(minN, maxN, dlogN)
@@ -952,6 +952,9 @@ class Spectra(object):
         else:
             dist=self.units.redshift_distance(self.box, self.red, self.OmegaM)
         tau = self.get_tau(elem, ion, line)
+        if nspectra > 0:
+            tau = tau[:nspectra, :]
+            tot_lines *= nspectra/self.NumLos
         #Combine all lines closer than the close value into one.
         n_vals = voigtfit.get_voigt_systems(tau, self.dvbin, elem=elem,ion=ion, line=line,verbose=False, close=close)
         (tot_f_N, NHI_table) = np.histogram(n_vals,NHI_table)
