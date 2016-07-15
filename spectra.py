@@ -25,7 +25,11 @@ import os.path as path
 import shutil
 import numpy as np
 import h5py
-import numexpr as ne
+try:
+    import numexpr as ne
+except ImportError:
+    #Non-essential
+    pass
 from scipy.ndimage.filters import gaussian_filter1d
 import hsml
 import gas_properties
@@ -49,7 +53,6 @@ try:
     xrange(1)
 except NameError:
     xrange = range
-
 
 class UnitSystem(object):
     """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
@@ -1156,7 +1159,10 @@ class Spectra(object):
             for zzp in zpos[ii]:
                 proj_pos[ax] = zzp
                 #Is this within the virial radius of any halo?
-                dd = ne.evaluate("sum((halo_cofm - proj_pos)**2,axis=1)")
+                try:
+                    dd = ne.evaluate("sum((halo_cofm - proj_pos)**2,axis=1)")
+                except NameError:
+                    dd = np.sum((halo_cofm - proj_pos)**2,axis=1)
                 ind = np.where(dd < halo_radii**2)
                 #Should not be multiple close halos
                 # assert(np.size(ind) < 2)
@@ -1193,8 +1199,8 @@ class Spectra(object):
             for jj in xrange(np.shape(seps)[0]):
                 nn = np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]-roll[ii]
                 llcolden = lcolden[seps[jj,0]:seps[jj,1]]
-                zpos = ne.evaluate("sum(llcolden*nn)")
-                summ = ne.evaluate("sum(llcolden)")
+                zpos = np.sum(llcolden*nn)
+                summ = np.sum(llcolden)
                 #Make sure it refers to a valid position
                 zpos = (zpos / summ) % self.nbins
                 zpos *= 1.*self.box/self.nbins
