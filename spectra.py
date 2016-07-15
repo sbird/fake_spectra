@@ -160,6 +160,8 @@ class Spectra(object):
         self.solarz = 0.0134/0.7381
         #Line data
         self.lines = line_data.LineData()
+        #Load the class for computing gas properties such as temperature from the raw simulation.
+        self.gasprop=gas_properties.GasProperties(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
     def save_file(self):
@@ -388,14 +390,13 @@ class Spectra(object):
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
-        star=gas_properties.GasProperties(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
             vel = np.array(data["Velocities"],dtype=np.float32)
             vel = vel[ind,:]
         #gas density amu / cm^3
-        den=star.get_code_rhoH(data)
+        den=self.gasprop.get_code_rhoH(data)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
@@ -404,7 +405,7 @@ class Spectra(object):
         den = den[ind]
         #Only need temp for ionic density, and tau later
         if get_tau or (ion != -1 and elem != 'H'):
-            temp = star.get_temp(data)
+            temp = self.gasprop.get_temp(data)
             temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
@@ -413,7 +414,7 @@ class Spectra(object):
         #Special case H1:
         if elem == 'H' and ion == 1:
             # Neutral hydrogen mass frac
-            elem_den *= star.get_reproc_HI(data)[ind]
+            elem_den *= self.gasprop.get_reproc_HI(data)[ind]
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
@@ -427,7 +428,7 @@ class Spectra(object):
             hh = hh[ind2]
             if get_tau:
                 vel = vel[ind2]
-            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, data, ind, ind2, star)
+            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, data, ind, ind2)
             del ind2
         ff.close()
         #Get rid of ind so we have some memory for the interpolator
@@ -443,10 +444,10 @@ class Spectra(object):
         ind2 = np.where(elem_den > 0)
         return ind2
 
-    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
+    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
         #Shut up a pylint warning
-        _ = (data, star, ind, ind2)
+        _ = (data, ind, ind2)
         #Load a cloudy table if not done already
         try:
             self.cloudy_table
