@@ -28,7 +28,7 @@ import h5py
 import numexpr as ne
 from scipy.ndimage.filters import gaussian_filter1d
 import hsml
-import cold_gas
+import gas_properties
 import line_data
 import hdfsim
 import subfindhdf
@@ -444,7 +444,7 @@ class Spectra(object):
         pos = pos[ind,:]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
-        star=cold_gas.RahmatiRT(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
+        star=gas_properties.GasProperties(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
@@ -1375,4 +1375,3 @@ def _get_rolled_spectra(tau):
         tau_out[ll] = np.roll(tau_l, int(np.size(tau_l)/2)- ind_m)
         roll[ll] = int(np.size(tau_l)/2) - ind_m
     return (roll, tau_out)
-
