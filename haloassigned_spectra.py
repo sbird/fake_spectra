@@ -9,13 +9,14 @@ except ImportError:
     pass
 import subfindhdf
 import spec_utils
-import spectra
+import plot_spectra as ps
+import matplotlib.pyplot as plt
 try:
     xrange(1)
 except NameError:
     xrange = range
 
-class HaloAssignedSpectra(spectra.Spectra):
+class HaloAssignedSpectra(ps.PlottingSpectra):
     """Class which extends the Spectra class to include methods that connect each absorber in a sightline to a galactic halo."""
     def __init__(self, *args, **kwargs):
         super().__init__(self, *args, **kwargs)
@@ -215,6 +216,60 @@ class HaloAssignedSpectra(spectra.Spectra):
         sm = (sm[1:]+sm[:-1])/2.
         gsmf = gsmf/volume/dlogM
         return (sm, gsmf)
+
+    def _plot_breakdown(self, array, filt, low, high, labels, dv, log=True):
+        """
+        Helper function to plot something broken down by halo mass
+        """
+        #Find virial velocity
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo[filt] > 0)
+        virial = self.virial_vel(halo[filt][ind])
+        array = array[filt]
+        #Make bins
+        if log:
+            func = plt.semilogx
+            v_table = 10**np.arange(np.min(np.log10(array)),np.max(np.log10(array)) , dv)
+        else:
+            func = plt.plot
+            v_table = np.arange(np.min(array),np.max(array) , dv)
+        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
+        #Histogram of vel width
+        vhist = np.histogram(array, v_table)[0]
+        vhist[np.where(vhist == 0)] = 1
+        colors = ("red", "purple", "cyan")
+        lss = ("--", ":", "-")
+        #Histogram of vel width for all halos in given virial velocity bin
+        for ii in xrange(len(low)):
+            vind = np.where((virial > low[ii])*(virial < high[ii]))
+            vhist2 = np.histogram(array[ind][vind], v_table)[0]
+            func(vbin, vhist2/(1.*vhist), color=colors[ii], ls=lss[ii], label=labels[ii])
+#         vind = np.where(halo[filt] < 0)
+#         vhist2 = np.histogram(array[vind], v_table)[0]
+#         func(vbin, vhist2/(1.*vhist), color="grey", ls="-.", label="Field")
+
+    def plot_Z_vs_mass(self,color="blue", color2="darkblue"):
+        """Plot the correlation between mass and metallicity, with a fit"""
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo > 0)
+        met = self.get_metallicity()[ind]
+        mind = np.where(met > 1e-4)
+        halo = halo[ind]
+        mass = self.sub_mass[halo]
+        mass = mass[mind]
+        met = met[mind]
+        self._plot_2d_contour(mass+0.1, met, 10, "Z mass", color, color2)
+        plt.ylim(1e-4,1)
+
+    def _plot_xx_vs_mass(self, xx, name = "xx", color="blue", color2="darkblue", log=True):
+        """Helper function to plot something against virial velocity"""
+        (halo, _) = self.find_nearest_halo()
+        ind = np.where(halo > 0)
+        halo = halo[ind]
+        xx = xx[ind]
+        virial = self.virial_vel(halo)+0.1
+        self._plot_2d_contour(virial, xx, 10, name+" virial velocity", color, color2, ylog=log)
+
 
 def combine_regions(condition, mindist=0):
     """Combine contiguous regions that are shorter than mindist"""
