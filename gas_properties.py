@@ -4,7 +4,6 @@ the neutral hydrogen density in *physical* atoms / cm^3
     Contains:
         GasProperties: converts reported code outputs to useful physical quantities.
                   get_temp: gets temperature from internal energy
-                  get_code_rhoHI: gets the neutral density from the code
                   get_reproc_HI - Gets a corrected neutral hydrogen density,
                   so that we are neutral even for star forming gas.
 """
@@ -133,23 +132,6 @@ class GasProperties(object):
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
         temp = (self.gamma-1) * self.protonmass / self.boltzmann * muienergy
         return temp
-
-    def get_rahmati_HI(self, bar):
-        """Get a neutral hydrogen density using the fitting formula of Rahmati 2012"""
-        #Convert density to atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3
-        nH=self.get_code_rhoH(bar)
-        if not self.redshift_coverage:
-            return nH
-        temp = self.get_temp(bar)
-        nH0 = self.neutral_fraction(nH, temp)
-        return nH0
-
-    def get_code_rhoH(self,bar):
-        """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""
-        nH = np.array(bar["Density"])
-        conv = np.float32(self.UnitDensity_in_cgs*self.hubble**2/(self.protonmass)*(1+self.redshift)**3)
-        #Convert to physical
-        return nH*conv
 
     def code_neutral_fraction(self, bar):
         """Get the neutral fraction from the code"""
