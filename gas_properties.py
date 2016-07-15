@@ -30,6 +30,10 @@ class GasProperties(object):
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
         gamma_UVB = [3.99e-14, 3.03e-13, 6e-13, 5.53e-13, 4.31e-13, 3.52e-13, 2.678e-13,  1.81e-13, 9.43e-14]
         zz = [0, 1, 2, 3, 4, 5, 6, 7,8]
+        self.redshift_coverage = True
+        if redshift > zz[-1]:
+            self.redshift_coverage = False
+            print("Warning: no self-shielding at z=",redshift)
         gamma_inter = intp.interp1d(zz,gamma_UVB)
         gray_inter = intp.interp1d(zz,gray_opac)
         self.gray_opac = gray_inter(redshift)
@@ -134,6 +138,8 @@ class GasProperties(object):
         """Get a neutral hydrogen density using the fitting formula of Rahmati 2012"""
         #Convert density to atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3
         nH=self.get_code_rhoH(bar)
+        if not self.redshift_coverage:
+            return nH
         temp = self.get_temp(bar)
         nH0 = self.neutral_fraction(nH, temp)
         return nH0
@@ -172,8 +178,11 @@ class GasProperties(object):
         density = np.array(bar["Density"])
         conv = np.float32(self.UnitDensity_in_cgs*self.hubble**2/(self.protonmass)*(1+self.redshift)**3)
         ind = np.where(density > self.PhysDensThresh/0.76/conv)
-        ssnH0 = self.neutral_fraction(density[ind]*conv, 1e4)
-        nH0[ind] = ssnH0
+        if self.redshift_coverage:
+            ssnH0 = self.neutral_fraction(density[ind]*conv, 1e4)
+            nH0[ind] = ssnH0
+        else:
+            nH0[ind] = 1.
         return nH0
 
     def get_rho_thresh(self, hubble=0.7,t_0_star=2.27,T_SN=5.73e7,T_c = 1000, A_0=573):
