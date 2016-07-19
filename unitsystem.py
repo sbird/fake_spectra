@@ -4,7 +4,7 @@ import numpy as np
 
 class UnitSystem(object):
     """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
-    def __init__(self, UnitMass_in_g=1.989e43, UnitLength_in_cm=3.085678e21):
+    def __init__(self, UnitMass_in_g=1.98892e43, UnitLength_in_cm=3.085678e21):
         #Internal gadget mass unit: 1e10 M_sun/h in g/h
         self.UnitMass_in_g = UnitMass_in_g
         #Internal gadget length unit: 1 kpc/h in cm/h
