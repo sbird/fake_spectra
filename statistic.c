@@ -227,7 +227,7 @@ int output(double *array, int size, char *suffix, char *outdir)
      }
      /*First value is k*/
      for(j=0; j<size;j++)
-        fprintf(out, "%g %g\n", j+0.5, array[j]);
+        fprintf(out, "%d %g\n", j, array[j]);
      fclose(out);
      return 0;
 }
