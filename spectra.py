@@ -24,6 +24,7 @@ import os
 import os.path as path
 import shutil
 import numpy as np
+from scipy.optimize import minimize_scalar
 import h5py
 import hsml
 import gas_properties
@@ -959,23 +960,43 @@ class Spectra(object):
         tau = self.get_tau(elem, ion, line)
         return np.mean(np.exp(-tau))
 
-    def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20):
+    def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None):
         """Get the flux PDF, a histogram of the flux values."""
-        flux = np.exp(-self.get_tau(elem, ion, line))
+        tau = self.get_tau(elem, ion, line)
+        scale = 1.
+        if mean_flux_desired is not None:
+            scale = self._get_scale(tau, mean_flux_desired)
+        flux = np.exp(-scale * tau)
         bins = np.arange(nbins+1)/nbins
-        (flux_pdf, _) = np.histogram(flux, bins=bins)
-        flux_pdf *= nbins / np.size(flux)
+        (flux_pdf, _) = np.histogram(flux, bins=bins,density=True)
         cbins = (bins[1:] + bins[:-1])/2.
         return cbins, flux_pdf
 
-    def get_flux_power_1D(self, elem="H",ion=1, line=1215):
+    def _get_scale(self, tau, mean_flux_desired):
+        """Get the factor by which we need to multiply the optical depth to get a desired mean flux.
+        ie, we want F_obs = bar{F} = < e^-tau >
+        Solve this iteratively, using Newton-Raphson:
+        S' = S + (<F> - F_obs) / <tau e^-tau>
+        This is really Lyman-alpha forest specific."""
+        minim = lambda scale : (mean_flux_desired - np.mean(np.exp(-scale*tau)))**2
+        res = minimize_scalar(minim, bracket = (0.1, 1., 10.),bounds=(0,100),method='bounded')
+        print("Scaled by:",res.x)
+        return res.x
+
+    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
-                 d_F = e^-tau / mean(e^-tau) - 1 """
+                 d_F = e^-tau / mean(e^-tau) - 1
+        If mean_flux_desired is set, the spectral optical depths will be rescaled
+        to match the desired mean flux."""
         tau = self.get_tau(elem, ion, line)
-        mean_flux = self.get_mean_flux(elem, ion, line)
         #Get the delta_flux
-        delta_flux = np.exp(-tau) / mean_flux - 1.
+        if mean_flux_desired is not None:
+            scale = self._get_scale(tau, mean_flux_desired)
+            delta_flux = np.exp(-scale*tau) / mean_flux_desired - 1.
+        else:
+            mean_flux = self.get_mean_flux(elem, ion, line)
+            delta_flux = np.exp(-tau) / mean_flux - 1.
         #Get the power spectrum
         assert np.shape(delta_flux) == (self.NumLos, self.nbins)
         df_hat = np.fft.rfft(delta_flux,axis=1)
