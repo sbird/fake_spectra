@@ -54,19 +54,19 @@ class GasProperties(object):
         self.boltzmann=1.38066e-16
         self.hubble = hubble
         #Physical density threshold for star formation in H atoms / cm^3
-        self.PhysDensThresh = self.get_rho_thresh(hubble)
+        self.PhysDensThresh = self._get_rho_thresh(hubble)
 
-    def photo_rate(self, nH, temp):
+    def _photo_rate(self, nH, temp):
         """Photoionisation rate as  a function of density from Rahmati 2012, eq. 14.
         Calculates Gamma_{Phot}.
         Inputs: hydrogen density, temperature
             n_H
         The coefficients are their best-fit from appendix A."""
-        nSSh = self.self_shield_dens(temp)
+        nSSh = self._self_shield_dens(temp)
         photUVBratio= 0.98*(1+(nH/nSSh)**1.64)**-2.28+0.02*(1+nH/nSSh)**-0.84
         return photUVBratio * self.gamma_UVB
 
-    def self_shield_dens(self,temp):
+    def _self_shield_dens(self,temp):
         """Calculate the critical self-shielding density. Rahmati 202 eq. 13.
         gray_opac and gamma_UVB are parameters of the UVB used.
         gray_opac is in cm^2 (2.49e-18 is HM01 at z=3)
@@ -78,19 +78,19 @@ class GasProperties(object):
         G12 = self.gamma_UVB/1e-12
         return 6.73e-3 * (self.gray_opac / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)*(self.f_bar/0.17)**(-1./3)
 
-    def recomb_rate(self, temp):
+    def _recomb_rate(self, temp):
         """The recombination rate from Rahmati eq A3, also Hui Gnedin 1997.
         Takes temperature in K, returns rate in cm^3 / s"""
         lamb = 315614./temp
         return 1.269e-13*lamb**1.503 / (1+(lamb/0.522)**0.47)**1.923
 
-    def neutral_fraction(self, nH, temp):
+    def _neutral_fraction(self, nH, temp):
         """The neutral fraction from Rahmati 2012 eq. A8"""
-        alpha_A = self.recomb_rate(temp)
+        alpha_A = self._recomb_rate(temp)
         #A6 from Theuns 98
         LambdaT = 1.17e-10*temp**0.5*np.exp(-157809./temp)/(1+np.sqrt(temp/1e5))
         A = alpha_A + LambdaT
-        B = 2*alpha_A + self.photo_rate(nH, temp)/nH + LambdaT
+        B = 2*alpha_A + self._photo_rate(nH, temp)/nH + LambdaT
         return (B - np.sqrt(B**2-4*A*alpha_A))/(2*A)
 
     def get_temp(self,bar):
@@ -141,7 +141,7 @@ class GasProperties(object):
         #Convert to physical
         return nH*conv
 
-    def code_neutral_fraction(self, bar):
+    def _code_neutral_fraction(self, bar):
         """Get the neutral fraction from the code"""
         return np.array(bar["NeutralHydrogenAbundance"])
 
@@ -150,7 +150,7 @@ class GasProperties(object):
         which are based on Rahmati 2012 if UVB_SELF_SHIELDING is on.
         Above the star formation density use the Rahmati fitting formula directly,
         as Arepo reports values for the eEOS. """
-        nH0 = self.code_neutral_fraction(bar)
+        nH0 = self._code_neutral_fraction(bar)
         #Above star-formation threshold, we want a neutral fraction which includes
         #explicitly the amount of gas in cold clouds.
         #Ideally we should compute this fraction, and then do
@@ -169,13 +169,13 @@ class GasProperties(object):
         conv = np.float32(self.UnitDensity_in_cgs*self.hubble**2/(self.protonmass)*(1+self.redshift)**3)
         ind = np.where(density > self.PhysDensThresh/0.76/conv)
         if self.redshift_coverage:
-            ssnH0 = self.neutral_fraction(density[ind]*conv, 1e4)
+            ssnH0 = self._neutral_fraction(density[ind]*conv, 1e4)
             nH0[ind] = ssnH0
         else:
             nH0[ind] = 1.
         return nH0
 
-    def get_rho_thresh(self, hubble=0.7,t_0_star=2.27,T_SN=5.73e7,T_c = 1000, A_0=573):
+    def _get_rho_thresh(self, hubble=0.7,t_0_star=2.27,T_SN=5.73e7,T_c = 1000, A_0=573):
         """
         This function calculates the physical density threshold for star formation, using the gadget model.
         See Springel & Hernquist 2003 (astro-ph/0206393) and
