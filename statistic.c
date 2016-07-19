@@ -24,7 +24,7 @@
 /*The value from 0711.1862 is (0.0023±0.0007) (1+z)^(3.65±0.21)*/
 #define TAU_EFF 0.0023*pow(1.0+redshift,3.65)
 
-#define PBINS 21
+#define PBINS 20
 int output(double *array, int size, char *suffix, char *outdir);
 void help(void);
 
@@ -238,12 +238,17 @@ void calc_pdf(double *flux_pdf, double *tau_H1, double scale, int NumLos, int nb
     for(i=0;i<PBINS; i++)
         flux_pdf[i]=0;
     /* Calculate flux pdf */
-    for(i=0;i<nbins*NumLos;i++)
-        flux_pdf[(int)round(exp(-scale*tau_H1[i])*(PBINS-1))]++;
+    for(i=0;i<nbins*NumLos;i++) {
+        double tau = exp(-scale*tau_H1[i])*PBINS;
+        if(tau >=PBINS-1)
+            flux_pdf[PBINS-1]++;
+        else
+            flux_pdf[(int)floor(tau)]++;
+    }
     /*Normalise*/
     for(i=0;i<PBINS;i++){
         flux_pdf[i]/=(NumLos*nbins);
-        flux_pdf[i]*=(PBINS-1);
+        flux_pdf[i]*=(PBINS);
     }
     return;
 }
