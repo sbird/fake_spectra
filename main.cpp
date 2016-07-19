@@ -214,8 +214,6 @@ int main(int argc, char **argv)
            for(int ii = 0; ii< Npart; ii++){
              P.Mass[ii] *= P.fraction[ii]*XH;
              P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
-             /*Correct the smoothing length kernel to match our definition instead of gadget's.*/
-             P.h[ii]/=2;
            }
           /*Do the hard SPH interpolation*/
           pint.compute_tau(tau_H1,P.Pos, P.Vel, P.Mass, P.temp, P.h, Npart);

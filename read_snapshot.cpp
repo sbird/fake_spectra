@@ -114,6 +114,8 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
         }
      /* The smoothing length */
      snap.GetBlock("HSML",(*P).h,NumPart,StartPart,0);
+     for(i=0;i<NumPart;i++)
+             (*P).h[i] = (*P).h[i]/2;
     }
 
   if(StartPart==0){

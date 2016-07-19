@@ -193,12 +193,14 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, int fileno)
          * Note that 4 pi/3**1/3 ~ 1.4, so the geometric 
          * factors nearly cancel and the cell is almost a cube.*/
         for(i=0;i<length;i++)
-                (*P).h[i] = pow(3*(*P).h[i]/4/M_PI,0.33333333);
+                (*P).h[i] = pow((*P).h[i],0.33333333);
      }
     else{
         /* The smoothing length for gadget*/
         if (length != get_single_dataset("SmoothingLength",(*P).h,length,&hdf_group,fileno))
             goto exit;
+        for(i=0;i<length;i++)
+                (*P).h[i] = (*P).h[i]/2;
         }
     if(using_mass){
      //Convert mass to Density
