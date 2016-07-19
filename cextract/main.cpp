@@ -23,8 +23,8 @@
 #include <cassert>
 #include <string.h>
 #include "global_vars.h"
-#include "absorption.h"
-#include "part_int.h"
+#include "../absorption.h"
+#include "../part_int.h"
 #include <string>
 #include <sstream>
 #include <iostream>

@@ -77,20 +77,20 @@ CXXFLAGS += $(CFLAGS)
 all: _spectra_priv.so
 python: _spectra_priv.so
 
-extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_table.o part_int.o Faddeeva.o
+extract: cextract/main.o cextract/read_snapshot.o cextract/read_hdf_snapshot.o absorption.o cextract/init.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
-rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
+rescale: cextract/rescale.o cextract/powerspectrum.o cextract/mean_flux.o cextract/calc_power.o cextract/smooth.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
 statistic: cextract/statistic.o cextract/calc_power.o cextract/mean_flux.o cextract/smooth.o cextract/powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-%.o: %.c global_vars.h
-main.o: main.cpp cextract/global_vars.h $(COM_INC)
+cextract/%.o: cextract/%.c cextract/global_vars.h
+cextract/main.o: cextract/main.cpp cextract/global_vars.h $(COM_INC)
 
-read_snapshot.o: read_snapshot.cpp cextract/global_vars.h
-	$(CXX) $(CXXFLAGS) ${IGREAD} -c $<
+cextract/read_snapshot.o: cextract/read_snapshot.cpp cextract/global_vars.h
+	$(CXX) $(CXXFLAGS) ${IGREAD} -c $< -o $@
 
 %.o: %.cpp %.h
 
@@ -107,7 +107,7 @@ _spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(PYLIB) -shared $^ -o $@
 
 clean:
-	rm -f *.o *.pyc extract rescale statistic _spectra_priv.so
+	rm -f *.o *.pyc extract rescale statistic _spectra_priv.so cextract/*.o
 
 dist: Makefile
 	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
