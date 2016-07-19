@@ -37,6 +37,8 @@
 #define  GAMMA_LYA_H1 6.265e8
 #define  GAMMA_LYA_HE2 6.27e8
 
+//Star formation threshold
+#define PHYSDENSTHRESH 0.12948869200298072
 //The gadget mass unit is 1e10 M_sun/h in g/h
 #define  GADGET_MASS 1.98892e43
 //The gadget length unit is 1 kpc/h in cm/h
@@ -221,7 +223,10 @@ int main(int argc, char **argv)
            /*Converts density to amu/cm^3*/
            const double dscale = GADGET_MASS/pow(GADGET_LENGTH,3)*h100*h100/(HMASS*PROTONMASS)/pow(atime,3);
            for(int ii = 0; ii< Npart; ii++){
-             P.Mass[ii] *= dscale*rscale * P.fraction[ii]*XH;
+             P.Mass[ii] *= dscale*rscale *XH;
+             /*If we are above the star formation threshold, assume gas is fully neutral*/
+             if(P.Mass[ii] <= PHYSDENSTHRESH)
+                P.Mass[ii] *= P.fraction[ii];
              P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
            }
           /*Do the hard SPH interpolation*/
