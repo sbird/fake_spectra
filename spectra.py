@@ -162,7 +162,7 @@ class Spectra(object):
         #Line data
         self.lines = line_data.LineData()
         #Load the class for computing gas properties such as temperature from the raw simulation.
-        self.gasprop=gas_properties.GasProperties(self.red, self.hubble, UnitLength_in_cm=self.units.UnitLength_in_cm, UnitMass_in_g=self.units.UnitMass_in_g)
+        self.gasprop=gas_properties.GasProperties(self.red, self.hubble, units=self.units)
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
     def save_file(self):

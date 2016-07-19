@@ -15,10 +15,15 @@ try:
     import numexpr as nmex
 except ImportError:
     pass
+import unitsystem
 
 class GasProperties(object):
     """Class implementing the neutral fraction ala Rahmati 2012"""
-    def __init__(self, redshift,hubble = 0.71, fbar=0.17, UnitLength_in_cm=3.085678e21, UnitMass_in_g=1.989e43):
+    def __init__(self, redshift,hubble = 0.71, fbar=0.17, units=None):
+        if units is not None:
+            self.units = units
+        else:
+            self.units = unitsystem.UnitSystem()
         self.f_bar = fbar
         self.redshift = redshift
         #Interpolate for opacity and gamma_UVB
@@ -38,16 +43,6 @@ class GasProperties(object):
         gray_inter = intp.interp1d(zz,gray_opac)
         self.gray_opac = gray_inter(redshift)
         self.gamma_UVB = gamma_inter(redshift)
-        #Some constants and unit systems
-        #Internal gadget mass unit: 1e10 M_sun/h in g/h
-        self.UnitMass_in_g=UnitMass_in_g
-        #Internal gadget length unit: 1 kpc/h in cm/h
-        self.UnitLength_in_cm=UnitLength_in_cm
-        self.UnitDensity_in_cgs = UnitMass_in_g/self.UnitLength_in_cm**3
-        #Internal velocity unit : 1 km/s in cm/s
-        self.UnitVelocity_in_cm_per_s=1e5
-        #proton mass in g
-        self.protonmass=1.67262178e-24
         #self.hy_mass = 0.76 # Hydrogen massfrac
         self.gamma=5./3
         #Boltzmann constant (cgs)
@@ -131,13 +126,13 @@ class GasProperties(object):
         except NameError:
             muienergy = 4 / (hy_mass * (3 + 4*nelec) + 1)*ienergy
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
-        temp = (self.gamma-1) * self.protonmass / self.boltzmann * muienergy
+        temp = (self.gamma-1) * self.units.protonmass / self.boltzmann * muienergy
         return temp
 
     def get_code_rhoH(self,bar):
         """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""
         nH = np.array(bar["Density"])
-        conv = np.float32(self.UnitDensity_in_cgs*self.hubble**2/(self.protonmass)*(1+self.redshift)**3)
+        conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         #Convert to physical
         return nH*conv
 
@@ -166,7 +161,7 @@ class GasProperties(object):
         #In reality, this should be about 90% of gas in cold clouds, so
         #we will overpredict the neutral fraction by a small amount.
         density = np.array(bar["Density"])
-        conv = np.float32(self.UnitDensity_in_cgs*self.hubble**2/(self.protonmass)*(1+self.redshift)**3)
+        conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         ind = np.where(density > self.PhysDensThresh/0.76/conv)
         if self.redshift_coverage:
             ssnH0 = self._neutral_fraction(density[ind]*conv, 1e4)
@@ -195,7 +190,7 @@ class GasProperties(object):
         """
         #Some constants and unit systems
         #Internal velocity unit : 1 km/s in cm/s
-        UnitTime_in_s = (self.UnitLength_in_cm/self.UnitVelocity_in_cm_per_s)
+        UnitTime_in_s = (self.units.UnitLength_in_cm/self.units.UnitVelocity_in_cm_per_s)
         hy_mass = 0.76 # Primordial Hydrogen massfrac
 
         #Supernova timescale in s
@@ -206,15 +201,15 @@ class GasProperties(object):
 
         #u_c - thermal energy in the cold gas.
         meanweight = 4 / (1 + 3 * hy_mass)          #Assuming neutral gas for u_c
-        u_c =  1. / meanweight * (1.0 / (self.gamma-1)) * (self.boltzmann / self.protonmass) *T_c
+        u_c =  1. / meanweight * (1.0 / (self.gamma-1)) * (self.boltzmann / self.units.protonmass) *T_c
 
         #SN energy: u_SN = (1-beta)/beta epsilon_SN
         meanweight = 4 / (8 - 5 * (1 - hy_mass))    #Assuming FULL ionization for u_H
-        u_SN =  1. / meanweight * (1.0 / (self.gamma -1)) * (self.boltzmann / self.protonmass) * T_SN
+        u_SN =  1. / meanweight * (1.0 / (self.gamma -1)) * (self.boltzmann / self.units.protonmass) * T_SN
 
         #This is the hard-coded "very high density" at which the cooling rate is computed
         #in the Gadget 2-phase SFR model.
-        rhoinf = 277.476 * self.UnitDensity_in_cgs*self.hubble**2
+        rhoinf = 277.476 * self.units.UnitDensity_in_cgs*self.hubble**2
         #The cooling time for cold clouds, as computed inside the Gadget star-forming model.
         tcool = 4.64419e-10 * UnitTime_in_s/self.hubble
 
@@ -222,9 +217,9 @@ class GasProperties(object):
 
         #u_4 - thermal energy at 10^4K
         meanweight = 4 / (8 - 5 * (1 - hy_mass))    #Assuming FULL ionization for u_H
-        u_4 =  1. / meanweight * (1.0 / (self.gamma-1)) * (self.boltzmann / self.protonmass) *1e4
+        u_4 =  1. / meanweight * (1.0 / (self.gamma-1)) * (self.boltzmann / self.units.protonmass) *1e4
         coolrate = u_h / tcool / rhoinf
 
         x = (u_h - u_4) / (u_h - u_c)
         physdens =  x / (1 - x)**2 * (beta * u_SN - (1 -beta) * u_c) /(t_0_star * coolrate)
-        return physdens / self.protonmass *hy_mass
+        return physdens / self.units.protonmass *hy_mass

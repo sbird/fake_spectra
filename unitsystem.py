@@ -4,11 +4,15 @@ import numpy as np
 
 class UnitSystem(object):
     """Class to store the various physical constants and units that are relevant here. Factored out of Spectra."""
-    def __init__(self, UnitMass_in_g=1.98892e43, UnitLength_in_cm=3.085678e21):
+    def __init__(self, UnitMass_in_g=1.98892e43, UnitLength_in_cm=3.085678e21, UnitVelocity_in_cm_per_s = 1e5):
         #Internal gadget mass unit: 1e10 M_sun/h in g/h
         self.UnitMass_in_g = UnitMass_in_g
         #Internal gadget length unit: 1 kpc/h in cm/h
         self.UnitLength_in_cm = UnitLength_in_cm
+        #Some constants and unit systems
+        self.UnitDensity_in_cgs = self.UnitMass_in_g/self.UnitLength_in_cm**3
+        #Internal velocity unit : 1 km/s in cm/s
+        self.UnitVelocity_in_cm_per_s=UnitVelocity_in_cm_per_s
         #Speed of light in cm/s
         self.light = 2.99e10
         #proton mass in g
