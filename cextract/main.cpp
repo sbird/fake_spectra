@@ -223,10 +223,11 @@ int main(int argc, char **argv)
            /*Converts density to amu/cm^3*/
            const double dscale = GADGET_MASS/pow(GADGET_LENGTH,3)*h100*h100/(HMASS*PROTONMASS)/pow(atime,3);
            for(int ii = 0; ii< Npart; ii++){
-             P.Mass[ii] *= dscale*rscale *XH;
+             P.Mass[ii] *= dscale*XH;
              /*If we are above the star formation threshold, assume gas is fully neutral*/
              if(P.Mass[ii] <= PHYSDENSTHRESH)
                 P.Mass[ii] *= P.fraction[ii];
+             P.Mass[ii] *= rscale;
              P.temp[ii] = compute_temp(P.U[ii], P.Ne[ii], XH);
            }
           /*Do the hard SPH interpolation*/
