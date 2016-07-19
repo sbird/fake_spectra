@@ -24,7 +24,7 @@ import os
 import os.path as path
 import shutil
 import numpy as np
-from scipy.optimize import minimize_scalar
+from scipy.optimize import brentq
 import h5py
 import hsml
 import gas_properties
@@ -978,10 +978,11 @@ class Spectra(object):
         Solve this iteratively, using Newton-Raphson:
         S' = S + (<F> - F_obs) / <tau e^-tau>
         This is really Lyman-alpha forest specific."""
-        minim = lambda scale : (mean_flux_desired - np.mean(np.exp(-scale*tau)))**2
-        res = minimize_scalar(minim, bracket = (0.1, 1., 10.),bounds=(0,100),method='bounded')
-        print("Scaled by:",res.x)
-        return res.x
+        #This is amazingly slow compared to C!
+        minim = lambda scale : mean_flux_desired - np.mean(np.exp(-scale*tau))
+        scale = brentq(minim, 0,20.,rtol=1e-6)
+        print("Scaled by:",scale)
+        return scale
 
     def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
