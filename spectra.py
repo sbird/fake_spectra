@@ -1001,9 +1001,9 @@ class Spectra(object):
         #Get the power spectrum
         assert np.shape(delta_flux) == (self.NumLos, self.nbins)
         df_hat = np.fft.rfft(delta_flux,axis=1)
-        flux_power = np.real(df_hat)**2 + np.imag(df_hat)**2
-        #Normalise the FFT
-        flux_power /= self.nbins**2
+        flux_power = np.abs(df_hat)**2
+        #Normalise the FFT: equivalent to using norm = ortho for recent numpy versions
+        flux_power /= self.nbins
         assert np.shape(flux_power) == (self.NumLos, self.nbins//2 + 1)
         #Average over all sightlines
         avg_flux_power = np.mean(flux_power, axis=0)
@@ -1012,9 +1012,9 @@ class Spectra(object):
         #Units:
         #The largest frequency scale is the velocity scale of the box,
         #not 1/nbins as rfftfreq gives.
-        scale= self.nbins/self.vmax
+        scale = self.nbins/self.vmax
         #Adjust Fourier convention.
         kf *= 2.0*math.pi * scale
         assert np.shape(avg_flux_power) == (self.nbins//2 + 1,)
-        avg_flux_power /= scale  #*((1+zz)/3.2)**3
-        return kf,avg_flux_power
+        avg_flux_power /= scale
+        return kf[1:],avg_flux_power[1:]
