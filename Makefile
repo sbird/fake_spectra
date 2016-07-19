@@ -83,13 +83,13 @@ extract: main.o read_snapshot.o read_hdf_snapshot.o absorption.o init.o index_ta
 rescale: rescale.o powerspectrum.o mean_flux.o calc_power.o smooth.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-statistic: statistic.o calc_power.o mean_flux.o smooth.o powerspectrum.o
+statistic: cextract/statistic.o cextract/calc_power.o cextract/mean_flux.o cextract/smooth.o cextract/powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
 %.o: %.c global_vars.h
-main.o: main.cpp global_vars.h $(COM_INC)
+main.o: main.cpp cextract/global_vars.h $(COM_INC)
 
-read_snapshot.o: read_snapshot.cpp global_vars.h
+read_snapshot.o: read_snapshot.cpp cextract/global_vars.h
 	$(CXX) $(CXXFLAGS) ${IGREAD} -c $<
 
 %.o: %.cpp %.h
