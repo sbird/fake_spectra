@@ -80,9 +80,6 @@ python: _spectra_priv.so
 extract: cextract/main.o cextract/read_snapshot.o cextract/read_hdf_snapshot.o absorption.o cextract/init.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
-rescale: cextract/rescale.o cextract/powerspectrum.o cextract/mean_flux.o cextract/calc_power.o cextract/smooth.o
-	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
-
 statistic: cextract/statistic.o cextract/calc_power.o cextract/mean_flux.o cextract/smooth.o cextract/powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
@@ -107,7 +104,7 @@ _spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
 	$(LINK) $(LFLAGS) $(PYLIB) -shared $^ -o $@
 
 clean:
-	rm -f *.o *.pyc extract rescale statistic _spectra_priv.so cextract/*.o
+	rm -f *.o *.pyc extract statistic _spectra_priv.so cextract/*.o
 
 dist: Makefile
 	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
