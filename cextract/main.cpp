@@ -47,6 +47,8 @@
 /* Model parameters outwith header */
 #define XH 0.76  /* hydrogen fraction by mass */
 
+#define NBINS 1024 /* number of pixels */
+
 #ifndef NOHDF5
 #include <hdf5.h>
 

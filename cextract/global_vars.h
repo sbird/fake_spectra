@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 /* Spectrum data set size     */
-#define NBINS 1024 /* number of pixels */
 
 struct particle_data
 {

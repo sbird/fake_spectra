@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 #ifndef NO_HEADER
   int pad[32];
 #endif
-  int nbins=NBINS;
+  int nbins=0;
   int  NumLos=0;
   int UsedLos=0;
   double box100;
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
   }
   /*If no rescale, we output the non-rescaled power spectrum as well*/
   if(statistic & 2){
-      calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos);
+      calc_power_spectra(flux_power,tau_H1,scale,TAU_EFF,UsedLos,nbins);
       sprintf(suffix,"_flux_power.txt");
       if(output(flux_power, (nbins+1)/2,suffix, outdir))
           exit(1);
