@@ -12,24 +12,18 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 #include "statistic.h"
+#include <math.h>
 
-/* Computes the one-dimensional normalized power spectrum*/
-/*Little macro to work the storage order of the FFT.*/
-#define KVAL(n) ((n)<=dims/2 ? (n) : ((n)-dims))
-
-int powerspectrum(const int dims, double *outfield, double *power, fftw_plan* pl)
+int powerspectrum(const int dims, fftw_complex *outfield, double *power)
 {
         int k;
         const int dims2=dims*dims;
-	fftw_execute(*pl);
-	/* Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
-	 * FFTW has a strange format for output array:
-         * F(0).re F(1).re ..F(n/2).re F((n+1)/2-1).im ...F(1).im */
-        power[0]=outfield[0]*outfield[0];
+	/* Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im*/
+        power[0]=pow(creal(outfield[0]),2);
         for(k=1; k<(dims+1)/2; ++k)
-           power[k]=outfield[k]*outfield[k]+outfield[dims-k]*outfield[dims-k];
+           power[k]=pow(creal(outfield[k]), 2) + pow(cimag(outfield[k]),2);
         if(dims%2 ==0)
-            power[dims/2]=outfield[dims/2]*outfield[dims/2];
+            power[0]=pow(creal(outfield[dims/2]),2);
 	for(k=0; k< (dims+1)/2;k++)
 	    power[k]/=dims2;
 	return dims;
