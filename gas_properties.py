@@ -39,10 +39,11 @@ class GasProperties(object):
         if redshift > zz[-1]:
             self.redshift_coverage = False
             print("Warning: no self-shielding at z=",redshift)
-        gamma_inter = intp.interp1d(zz,gamma_UVB)
-        gray_inter = intp.interp1d(zz,gray_opac)
-        self.gray_opac = gray_inter(redshift)
-        self.gamma_UVB = gamma_inter(redshift)
+        else:
+            gamma_inter = intp.interp1d(zz,gamma_UVB)
+            gray_inter = intp.interp1d(zz,gray_opac)
+            self.gray_opac = gray_inter(redshift)
+            self.gamma_UVB = gamma_inter(redshift)
         #self.hy_mass = 0.76 # Hydrogen massfrac
         self.gamma=5./3
         #Boltzmann constant (cgs)
