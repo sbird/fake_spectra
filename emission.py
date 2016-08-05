@@ -7,12 +7,12 @@ which may or may not be accurate.
 """
 
 from __future__ import print_function
-import spectra as ss
-import h5py
-import numpy as np
 import math
 import os.path as path
 import shutil
+import h5py
+import numpy as np
+import spectra as ss
 
 def maginJy(mag, band):
     """Convert a magnitude to flux in Jansky, according to wikipedia's table"""
@@ -44,14 +44,9 @@ class EmissionSpectra(ss.Spectra):
 
     def _read_stellar_data(self,fn, band, hhmult=10.):
         """Read the particle data for a single interpolation"""
-        try:
-            ff = h5py.File(fn, "r")
-        except IOError:
-            print("Unable to open ",fn)
-            ff = h5py.File(fn, "r")
         bands = {'U':0, 'B':1, 'V':2,'K':3,'g':4,'r':5,'i':6,'z':7}
         nband = bands[band]
-        data = ff["PartType4"]
+        data = self.snapshot_set.get_particle_data(4,segment = fn)
         pos = np.array(data["Coordinates"],dtype=np.float32)
         #Set each stellar radius to the pixel size
         hh = hhmult*np.ones(np.shape(pos)[0], dtype=np.float32)
@@ -60,7 +55,6 @@ class EmissionSpectra(ss.Spectra):
         #print np.size(ind)
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            ff.close()
             raise ValueError("No stars")
         pos = pos[ind,:]
         hh = hh[ind]
@@ -68,7 +62,6 @@ class EmissionSpectra(ss.Spectra):
         emflux = maginJy(np.array(data["GFM_StellarPhotometrics"], dtype=np.float32)[ind][:,nband], band)
         fluxx = np.array([ np.sum(emflux[self.particles_near_lines(pos, hh,np.array([ax,]),np.array([cofm,]))]) for (ax, cofm) in zip(self.axis, self.cofm)])
         #print np.sum(emflux)
-        ff.close()
         return fluxx
         #return (pos, emflux, hh)
 
@@ -85,7 +78,7 @@ class EmissionSpectra(ss.Spectra):
             emflux = self.stellar[(band,dist)]
         except KeyError:
             emflux = np.zeros(self.NumLos,dtype=np.float32)
-            for fn in self.files:
+            for fn in self.snapshot_set.get_n_segments():
                 try:
                     emflux +=  self._read_stellar_data(fn, band,dist)
                 except ValueError:

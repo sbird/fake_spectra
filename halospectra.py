@@ -6,7 +6,6 @@ import os.path as path
 import numpy as np
 import h5py
 import spectra
-import hdfsim
 import halocat
 try:
     xrange(1)
@@ -26,12 +25,7 @@ class HaloSpectra(spectra.Spectra):
             axis = None
         except (IOError, KeyError):
             #Load halos to push lines through them
-            f = hdfsim.get_file(num, base, 0)
-            self.OmegaM = f["Header"].attrs["Omega0"]
-            self.box = f["Header"].attrs["BoxSize"]
-            self.npart=f["Header"].attrs["NumPart_Total"]+2**32*f["Header"].attrs["NumPart_Total_HighWord"]
             min_mass = min_mass/1e10
-            f.close()
             (_, self.sub_mass, cofm, self.sub_radii) = halocat.find_wanted_halos(num, base, min_mass)
             ii = np.where(self.sub_mass < max_mass)
             self.sub_mass = self.sub_mass[ii]

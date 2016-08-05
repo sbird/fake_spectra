@@ -3,16 +3,16 @@
 
 from __future__ import print_function
 import numpy as np
-import hdfsim
+import abstractsnapshot as absn
 import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
     def __init__(self,num, base, ndla = 1000, numlos=5000, res = 1., cdir = None, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", savedir=None, elem="H", ion=1,units=None):
         #Load halos to push lines through them
-        f = hdfsim.get_file(num, base, 0)
-        self.box = f["Header"].attrs["BoxSize"]
-        f.close()
+        f = absn.AbstractSnapshotFactory(num, base)
+        self.box = f.get_header_attr("BoxSize")
+        del f
         self.NumLos = numlos
         #All through y axis
         axis = np.ones(self.NumLos)

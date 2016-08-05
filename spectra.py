@@ -27,10 +27,10 @@ import numpy as np
 from scipy.optimize import brentq
 import h5py
 import hsml
+import abstractsnapshot as absn
 import gas_properties
 import line_data
 import unitsystem
-import hdfsim
 import voigtfit
 import spec_utils
 from _spectra_priv import _Particle_Interpolate, _near_lines
@@ -94,8 +94,7 @@ class Spectra(object):
         #Minimum length of spectra within which to look at metal absorption (in km/s)
         self.minwidth = 500.
         try:
-            self.files = sorted(hdfsim.get_all_files(num, base))
-            self.files.reverse()
+            self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
         except IOError:
             pass
         if savedir is None:
@@ -116,22 +115,15 @@ class Spectra(object):
             self.axis = axis.astype(np.int32)
             if cofm is None or axis is None:
                 raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
-            try:
-                ff = h5py.File(self.files[0], "r")
-            except AttributeError:
-                raise IOError("No files found for ",base)
-            self.box = ff["Header"].attrs["BoxSize"]
-            self.red = ff["Header"].attrs["Redshift"]
-            self.atime = ff["Header"].attrs["Time"]
-            self.hubble = ff["Header"].attrs["HubbleParam"]
-            self.OmegaM = ff["Header"].attrs["Omega0"]
-            self.OmegaLambda = ff["Header"].attrs["OmegaLambda"]
-            self.npart=ff["Header"].attrs["NumPart_Total"]+2**32*ff["Header"].attrs["NumPart_Total_HighWord"]
-            #Calculate omega_baryon (approximately)
-            mass_dm = ff["Header"].attrs["MassTable"][1]*ff["Header"].attrs["NumPart_ThisFile"][1]
-            mass_bar = np.sum(ff["PartType0"]["Masses"])
-            self.omegab = mass_bar/(mass_bar+mass_dm)*self.OmegaM
-            ff.close()
+            self.box = self.snapshot_set.get_header_attr("BoxSize")
+            self.red = self.snapshot_set.get_header_attr("Redshift")
+            self.atime = self.snapshot_set.get_header_attr("Time")
+            self.hubble = self.snapshot_set.get_header_attr("HubbleParam")
+            self.OmegaM = self.snapshot_set.get_header_attr("Omega0")
+            self.OmegaLambda = self.snapshot_set.get_header_attr("OmegaLambda")
+            self.npart=self.snapshot_set.get_npart()
+            #Calculate omega_baryon (approximately only for HDF5)
+            self.omegab = self.snapshot_set.get_omega_baryon()
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
@@ -338,9 +330,9 @@ class Spectra(object):
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
+    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau):
         """Read arrays and perform interpolation for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,get_tau)
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
@@ -364,29 +356,23 @@ class Spectra(object):
             line = self.lines[("H",1)][1215]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self,fn, elem, ion, get_tau):
+    def _read_particle_data(self,nsegment, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
-        try:
-            ff = h5py.File(fn, "r")
-        except IOError:
-            print("Unable to open ",fn)
-            ff = h5py.File(fn, "r")
-        data = ff["PartType0"]
+        data = self.snapshot_set.get_particle_data(0,segment = nsegment)
         pos = np.array(data["Coordinates"],dtype=np.float32)
         hh = hsml.get_smooth_length(data)
 
         #Find particles we care about
         if self.cofm_final:
             try:
-                ind = self.part_ind[fn]
+                ind = self.part_ind[nsegment]
             except KeyError:
                 ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
-                self.part_ind[fn] = ind
+                self.part_ind[nsegment] = ind
         else:
             ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            ff.close()
             return (False, False, False, False,False,False)
         pos = pos[ind,:]
         hh = hh[ind]
@@ -420,7 +406,6 @@ class Spectra(object):
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
             if np.size(ind2) == 0:
-                ff.close()
                 return (False, False, False, False,False,False)
             #Shrink arrays: we don't want to interpolate particles
             #with no mass in them
@@ -431,7 +416,6 @@ class Spectra(object):
                 vel = vel[ind2]
             elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, data, ind, ind2)
             del ind2
-        ff.close()
         #Get rid of ind so we have some memory for the interpolator
         del den
         #Put density into number density of particles, from amu
@@ -614,10 +598,11 @@ class Spectra(object):
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        result =  self._interpolate_single_file(self.files[0], elem, ion, ll, get_tau)
+        nsegments = self.snapshot_set.get_n_segments()
+        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau)
         #Do remaining files
-        for fn in self.files[1:]:
-            tresult =  self._interpolate_single_file(fn, elem, ion, ll, get_tau)
+        for nn in xrange(1,nsegments):
+            tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             #Add new file
             result += tresult
             del tresult
@@ -707,10 +692,11 @@ class Spectra(object):
         func should be something like _vel_single_file above (for velocity)
         and have the signature func(file, elem, ion)
         """
-        result =  func(self.files[0], elem, ion)
+        nsegments = self.snapshot_set.get_n_segments()
+        result =  func(0, elem, ion)
         #Do remaining files
-        for fn in self.files[1:]:
-            tresult =  func(fn, elem, ion)
+        for nn in xrange(1, nsegments):
+            tresult =  func(nn, elem, ion)
             #Add new file
             result += tresult
             del tresult
@@ -756,36 +742,6 @@ class Spectra(object):
             temp =  self._get_mass_weight_quantity(self._temp_single_file, elem, ion)
             self.temp[(elem, ion)] = temp
             return temp
-
-    def _sfr_single_file(self,fn, elem, ion):
-        """Get the density weighted interpolated temperature field for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,False)
-        if amumass is False:
-            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-        else:
-            ff = h5py.File(fn, "r")
-            data = ff["PartType0"]
-            hh2 = hsml.get_smooth_length(data)
-            pos2 = np.array(data["Coordinates"],dtype=np.float32)
-            ind = self.particles_near_lines(pos2, hh2,self.axis,self.cofm)
-            sfr = np.array(data["StarFormationRate"],dtype=np.float32)[ind]
-            ff.close()
-            line = self.lines[("H",1)][1215]
-            phys = self.dvbin/self.velfac*self.rscale
-            sss = np.array(elem_den*sfr/phys,dtype=np.float32)
-            stuff = self._do_interpolation_work(pos, vel, sss, temp, hh, amumass, line, False)
-            return stuff
-
-    def get_sfr(self, elem, ion):
-        """Get the density weighted star formation rate along each sightline for a given species.
-        """
-        try:
-            self._really_load_array((elem, ion), self.sfr, "sfr")
-            return self.sfr[(elem, ion)]
-        except KeyError:
-            sfr =  self._get_mass_weight_quantity(self._sfr_single_file, elem, ion)
-            self.sfr[(elem, ion)] = sfr
-            return sfr
 
     def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.,dX=True, nspectra=-1):
         """This computes the column density function using column densities from a Voigt profile fit.
@@ -963,10 +919,11 @@ class Spectra(object):
     def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None):
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
-        scale = 1.
         if mean_flux_desired is not None:
             scale = self._get_scale(tau, mean_flux_desired)
-        flux = np.exp(-scale * tau)
+            flux = np.exp(-scale * tau)
+        else:
+            flux = np.exp(-tau)
         bins = np.arange(nbins+1)/nbins
         (flux_pdf, _) = np.histogram(flux, bins=bins,density=True)
         cbins = (bins[1:] + bins[:-1])/2.
