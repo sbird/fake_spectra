@@ -3,8 +3,8 @@
 the power spectrum, the pdf and to normalise to a mean tau.
 Mostly useful for lyman alpha studies."""
 
-import numpy as np
 import math
+import numpy as np
 from scipy.optimize import brentq
 
 def flux_power(tau, redshift, rescale=True, statistic = 'power',vmax=None):
@@ -23,7 +23,7 @@ def flux_power(tau, redshift, rescale=True, statistic = 'power',vmax=None):
     else:
         scale = 1.
     if statistic == 'power':
-        if vmax == None:
+        if vmax is None:
             raise ValueError("You must specify vmax to get the power spectrum")
         pk = _calc_power(tau, obs_flux, scale)*vmax
         bins = _flux_power_bins(vmax, np.shape(tau)[1])

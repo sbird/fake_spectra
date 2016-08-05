@@ -29,8 +29,7 @@ class RandSpectra(spectra.Spectra):
 
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
-        if num == None:
+        if num is None:
             num = self.NumLos
         cofm = self.box*np.random.random_sample((num,3))
         return cofm
-

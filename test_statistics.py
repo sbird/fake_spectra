@@ -1,8 +1,8 @@
 """Module to test the flux statistics computation"""
 
+import math
 import numpy as np
 import fluxstatistics as stat
-import math
 
 def testMeanFlux():
     """Test that we scale for the mean flux correctly"""

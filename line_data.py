@@ -19,7 +19,7 @@ class LineData(object):
         self.masses = {'H': 1.00794,'He': 4.002602,'C': 12.011,'N': 14.00674,'O': 15.9994,'Ne': 20.18,'Mg': 24.3050,'Si': 28.0855,'Fe': 55.847 }
         #9 empty lists, one list per species
         self.lines = {}
-        if vpdat == None:
+        if vpdat is None:
             vpdata = os.path.join(os.path.dirname(os.path.realpath(__file__)), "atom.dat")
         self.read_vpfit(vpdata)
 
@@ -39,7 +39,7 @@ class LineData(object):
             (lambda_X, fosc_X, gamma_X) = parse_line_contents(inline)
             line = Line(lambda_X, fosc_X, gamma_X)
             #Only add the first transition for lines
-            if not (specie,ion) in self.lines:
+            if (specie,ion) not in self.lines:
                 self.lines[(specie,ion)]={int(lambda_X):line}
             else:
                 self.lines[(specie,ion)][int(lambda_X)] = line
@@ -77,7 +77,7 @@ def find_species(line):
     Ionisation number is then a capital letter followed by three characters."""
     #Match a capital and possibly a lower case, followed by a capital followed by any three characters.
     mat = re.match(r"([A-Z]\s*[a-z]?)([A-Z].{3})",line)
-    if mat == None:
+    if mat is None:
         raise ValueError
     species = re.sub(r"\s","",mat.groups()[0])
     ion = mat.groups()[1]
@@ -99,9 +99,7 @@ def parse_line_contents(line):
             pass
         if len(res) == 3:
             break
-    if len(res) != 3:
-        raise ValueError("Line ",line," did not contain three floats")
-    return res
+    return res[0], res[1], res[2]
 
 
 

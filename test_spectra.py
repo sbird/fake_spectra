@@ -81,19 +81,21 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 
 import numpy as np
 import spectra as ss
+import unitsystem
+import spec_utils
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
 
 def testRhoCrit():
     """Critical density at z=0"""
-    units = ss.UnitSystem()
+    units = unitsystem.UnitSystem()
     assert units.rho_crit(0.7) == 9.204285430050004e-30
     assert units.rho_crit(1.0) == 1.8784255979693885e-29
 
 def testAbsDist():
     """Check absorption distance computation"""
-    units = ss.UnitSystem()
+    units = unitsystem.UnitSystem()
     assert units.absorption_distance(25000, 3) == 0.13377926628219666
     assert units.absorption_distance(25000, 2) == 0.07525083728373562
     assert units.absorption_distance(25000, 3) / units.absorption_distance(12500, 3) == 2.
@@ -104,7 +106,7 @@ def testRolledSpectra():
     tau[0,0] = 1
     tau[1,0] = 1
     tau[1,-1] = 2
-    (roll, tau_new) = ss._get_rolled_spectra(tau)
+    (roll, tau_new) = spec_utils.get_rolled_spectra(tau)
     assert np.all(roll == np.array([25,-24]))
     assert tau_new[0,25] == 1
     assert tau_new[1,25] == 2
@@ -116,7 +118,7 @@ def testrescorr():
     tau = np.zeros((2,50))
     tau[0,25] = 2
     tau[1,23] = 3
-    tau2 = ss.res_corr(tau, 2, 8)
+    tau2 = spec_utils.res_corr(tau, 2, 8)
     #Check flux conserved
     assert np.sum(tau2[0,:]) == np.sum(tau[0,:])
     assert np.sum(tau2[1,:]) == np.sum(tau[1,:])
