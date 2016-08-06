@@ -192,20 +192,34 @@ class BigFileSnapshot(AbstractSnapshot):
         if blockname in self.hdf_to_bigfile_map.keys():
             blockname = self.hdf_to_bigfile_map[blockname]
         try:
-            return self._f_handle[str(part_type)+"/"+blockname][:]
+            (start, end) = self._segment_to_partlist(part_type = part_type, segment=segment)
+            return self._f_handle[str(part_type)+"/"+blockname][start:end]
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
     def get_n_segments(self):
         """Return the number of segments. Number of files on HDF5,
            but may be whatever in convenient for bigfile."""
-        return 1
+        return np.max([1,np.sum(self.get_npart())/(2*256.**3)])
 
     def get_blocklen(self, part_type, blockname, segment):
         """Get the length of a block"""
         if blockname in self.hdf_to_bigfile_map.keys():
             blockname = self.hdf_to_bigfile_map[blockname]
         try:
-            return self._f_handle[str(part_type)+"/"+blockname].size
+            (start, end) = self._segment_to_partlist(part_type=part_type, segment=segment)
+            if end is not None:
+                return end - start
+            else:
+                return self._f_handle[str(part_type)+"/"+blockname].size - start
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
+
+    def _segment_to_partlist(self, part_type, segment):
+        """Get the first and last particle in a segment."""
+        n_segments = self.get_n_segments()
+        one_segment = int(self.get_npart()[part_type]//n_segments)
+        if segment < n_segments -1:
+            return (one_segment*segment, one_segment*(segment+1))
+        else:
+            return (one_segment*segment, None)
