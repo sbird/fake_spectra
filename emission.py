@@ -46,8 +46,7 @@ class EmissionSpectra(ss.Spectra):
         """Read the particle data for a single interpolation"""
         bands = {'U':0, 'B':1, 'V':2,'K':3,'g':4,'r':5,'i':6,'z':7}
         nband = bands[band]
-        data = self.snapshot_set.get_particle_data(4,segment = fn)
-        pos = np.array(data["Coordinates"],dtype=np.float32)
+        pos = self.snapshot_set.get_data(4,"Position", segment = fn).astype(np.float32)
         #Set each stellar radius to the pixel size
         hh = hhmult*np.ones(np.shape(pos)[0], dtype=np.float32)
         #Find particles we care about
@@ -59,7 +58,7 @@ class EmissionSpectra(ss.Spectra):
         pos = pos[ind,:]
         hh = hh[ind]
         #Find the magnitude of stars in this band
-        emflux = maginJy(np.array(data["GFM_StellarPhotometrics"], dtype=np.float32)[ind][:,nband], band)
+        emflux = maginJy(self.snapshot_set.get_data(4,"GFM_StellarPhotometrics", segment = fn).astype(np.float32)[ind][:,nband],band)
         fluxx = np.array([ np.sum(emflux[self.particles_near_lines(pos, hh,np.array([ax,]),np.array([cofm,]))]) for (ax, cofm) in zip(self.axis, self.cofm)])
         #print np.sum(emflux)
         return fluxx

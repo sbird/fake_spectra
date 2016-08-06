@@ -16,27 +16,53 @@ def AbstractSnapshotFactory(num, base):
     try:
         return HDF5Snapshot(num, base)
     except IOError:
-        raise IOError("Not an HDF5 snapshot set")
+        try:
+            return BigFileSnapshot(num, base)
+        except IOError:
+            raise IOError("Not a bigfile or HDF5 snapshot: ",base)
 
 class AbstractSnapshot(object):
     """A class to abstract a simulation snapshot, so we can use a uniform interface for both HDF5 and bigfile."""
-    _f_handle = None
+    def __init__(self):
+        #Map of (only changed) block names between HDF5 and bigfile snapshots.
+        self.hdf_to_bigfile_map = { "Coordinates" : "Position",
+                                    "Velocities": "Velocity", "Masses": "Mass",
+                                    "NeutralHydrogenAbundance": "NeutralHydrogenFraction",
+                                    "GFM_Metallicity": "Metallicity"
+                                  }
+        #This requires python 2.7
+        self.bigfile_to_hdf_map = {v : k for (k,v) in self.hdf_to_bigfile_map.items()}
+
     def __del__(self):
-        self._f_handle.close()
-        #Note that we will segfault if bigfile is used after close.
+        try:
+            #Note that we will segfault if bigfile is used after close.
+            self._f_handle.close()
+        except AttributeError:
+            pass
 
     def get_header_attr(self, attr):
         """Return an attribute of the simulation header"""
-        return self._f_handle["Header"].attrs[attr]
+        attr = self._f_handle["Header"].attrs[attr]
+        if np.size(attr) == 1:
+            try:
+                return attr[0]
+            except IndexError:
+                return attr
+        return attr
 
     def get_n_segments(self):
         """Return the number of segments. Number of files on HDF5,
            but may be whatever in convenient for bigfile."""
         raise NotImplementedError
 
-    def get_particle_data(self, part_type, segment=0):
-        """Get the data for a particular particle type.
-        Segment: which data segment to load"""
+    def get_blocklen(self, part_type, blockname, segment):
+        """Get the length of a block"""
+        raise NotImplementedError
+
+    def get_data(self, part_type, blockname, segment):
+        """Get the data for a particular block, specified
+        using either the BigFile names or the HDF5 names.
+        Segment: which data segment to load."""
         raise NotImplementedError
 
     def get_npart(self):
@@ -47,6 +73,15 @@ class AbstractSnapshot(object):
         """Get omega baryon. Special for HDF5."""
         return self.get_header_attr("OmegaBaryon")
 
+    def get_smooth_length(self, part_type, segment):
+        """Gets the smoothing length, adjusting the kernel definition to the one we use.
+        Special for HDF5, as Arepo stores something else in the SmoothingLength array.
+        The kernel is defined so that the smoothing length is 2*h.
+        """
+        #There is a different kernel definition, as in gadget the kernel goes from 0 to 2,
+        #whereas I put it between zero and 1.
+        return self.get_data(part_type, "SmoothingLength",segment=segment)/2
+
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
     def __init__(self, num, base):
@@ -54,6 +89,7 @@ class HDF5Snapshot(AbstractSnapshot):
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
         self._handle_num = 0
+        super().__init__()
 
     def _get_all_files(self, num, base):
         """Get a file descriptor from a simulation directory,
@@ -75,14 +111,16 @@ class HDF5Snapshot(AbstractSnapshot):
         fnames.sort()
         return [fff for fff in fnames if h5py.is_hdf5(fff) ]
 
-    def get_particle_data(self, part_type, segment=0):
+    def get_data(self, part_type, blockname, segment):
         """Get the data for a particular particle type.
            Segment: which file to load from."""
+        if blockname in self.bigfile_to_hdf_map.keys():
+            blockname = self.bigfile_to_hdf_map[blockname]
         if self._handle_num != segment:
             self._f_handle.close()
             self._f_handle = h5py.File(self._files[segment],'r')
             self._handle_num = segment
-        return self._f_handle["PartType"+str(part_type)]
+        return np.array(self._f_handle["PartType"+str(part_type)][blockname])
 
     def get_npart(self):
         """Get the total number of particles in the snapshot."""
@@ -98,3 +136,76 @@ class HDF5Snapshot(AbstractSnapshot):
         """Return the number of segments. Number of files on HDF5,
            but may be whatever in convenient for bigfile."""
         return len(self._files)
+
+    def get_blocklen(self, part_type, blockname, segment):
+        """Get the length of a block"""
+        if blockname in self.bigfile_to_hdf_map.keys():
+            blockname = self.bigfile_to_hdf_map[blockname]
+        if self._handle_num != segment:
+            self._f_handle.close()
+            self._f_handle = h5py.File(self._files[segment],'r')
+            self._handle_num = segment
+        return self._f_handle["PartType"+str(part_type)][blockname].len()
+
+    def get_smooth_length(self, part_type, segment):
+        """Figures out if the particles are from AREPO or GADGET
+        and computes the smoothing length.
+        Note the Volume array in HDF5 is comoving and this returns a comoving smoothing length
+        The SPH kernel definition used in Gadget (Price 2011: arxiv 1012.1885)
+        gives a normalisation so that rho_p = m_p / h^3
+        So the smoothing length for Arepo is Volume^{1/3}
+        For gadget the kernel is defined so that the smoothing length is 2*h.
+        Arguments:
+            Baryon particles from a simulation
+        Returns:
+            Array of smoothing lengths in code units.
+        """
+        #Are we arepo? If we are a modern version we should have this array.
+        try:
+            radius = np.power(self.get_data(part_type, "Volume",segment=segment), 1./3)
+        except KeyError:
+            #If we don't have a Volume array we are gadget, and
+            #the SmoothingLength array is actually the smoothing length.
+            #There is a different kernel definition, as in gadget the kernel goes from 0 to 2,
+            #whereas I put it between zero and 1.
+            radius=self.get_data(part_type, "SmoothingLength",segment=segment)/2
+        return radius
+
+class BigFileSnapshot(AbstractSnapshot):
+    """Specialised class for loading HDF5 snapshots"""
+    def __init__(self, num, base):
+        fname = base
+        snap=str(num).rjust(3,'0')
+        new_fname = os.path.join(base, "PART_"+snap)
+        #Check for snapshot directory
+        if os.path.exists(new_fname):
+            fname = new_fname
+        self._f_handle = bigfile.BigFile(fname, 'r')
+        if len(self._f_handle.blocks) == 0:
+            raise IOError("No BigFile snapshot at",new_fname)
+        super().__init__()
+
+    def get_data(self, part_type, blockname, segment):
+        """Get the data for a particular block, specified
+        using either the BigFile names or the HDF5 names.
+        Segment: which data segment to load."""
+        if blockname in self.hdf_to_bigfile_map.keys():
+            blockname = self.hdf_to_bigfile_map[blockname]
+        try:
+            return self._f_handle[str(part_type)+"/"+blockname][:]
+        except bigfile.BigFileError:
+            raise KeyError("Not found:"+str(part_type)+"/"+blockname)
+
+    def get_n_segments(self):
+        """Return the number of segments. Number of files on HDF5,
+           but may be whatever in convenient for bigfile."""
+        return 1
+
+    def get_blocklen(self, part_type, blockname, segment):
+        """Get the length of a block"""
+        if blockname in self.hdf_to_bigfile_map.keys():
+            blockname = self.hdf_to_bigfile_map[blockname]
+        try:
+            return self._f_handle[str(part_type)+"/"+blockname].size
+        except bigfile.BigFileError:
+            raise KeyError("Not found:"+str(part_type)+"/"+blockname)

@@ -26,7 +26,6 @@ import shutil
 import numpy as np
 from scipy.optimize import brentq
 import h5py
-import hsml
 import abstractsnapshot as absn
 import gas_properties
 import line_data
@@ -116,8 +115,8 @@ class Spectra(object):
             if cofm is None or axis is None:
                 raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
             self.box = self.snapshot_set.get_header_attr("BoxSize")
-            self.red = self.snapshot_set.get_header_attr("Redshift")
             self.atime = self.snapshot_set.get_header_attr("Time")
+            self.red = 1/self.atime - 1.
             self.hubble = self.snapshot_set.get_header_attr("HubbleParam")
             self.OmegaM = self.snapshot_set.get_header_attr("Omega0")
             self.OmegaLambda = self.snapshot_set.get_header_attr("OmegaLambda")
@@ -154,7 +153,7 @@ class Spectra(object):
         #Line data
         self.lines = line_data.LineData()
         #Load the class for computing gas properties such as temperature from the raw simulation.
-        self.gasprop=gas_properties.GasProperties(self.red, self.hubble, units=self.units)
+        self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units)
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
     def save_file(self):
@@ -356,19 +355,18 @@ class Spectra(object):
             line = self.lines[("H",1)][1215]
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self,nsegment, elem, ion, get_tau):
+    def _read_particle_data(self,fn, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
-        data = self.snapshot_set.get_particle_data(0,segment = nsegment)
-        pos = np.array(data["Coordinates"],dtype=np.float32)
-        hh = hsml.get_smooth_length(data)
+        pos = self.snapshot_set.get_data(0,"Position",segment = fn).astype(np.float32)
+        hh = self.snapshot_set.get_smooth_length(0,segment=fn).astype(np.float32)
 
         #Find particles we care about
         if self.cofm_final:
             try:
-                ind = self.part_ind[nsegment]
+                ind = self.part_ind[fn]
             except KeyError:
                 ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
-                self.part_ind[nsegment] = ind
+                self.part_ind[fn] = ind
         else:
             ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
@@ -380,10 +378,10 @@ class Spectra(object):
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
-            vel = np.array(data["Velocities"],dtype=np.float32)
+            vel = self.snapshot_set.get_data(0,"Velocity",segment = fn).astype(np.float32)
             vel = vel[ind,:]
         #gas density amu / cm^3
-        den=self.gasprop.get_code_rhoH(data)
+        den=self.gasprop.get_code_rhoH(0, segment=fn).astype(np.float32)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
@@ -392,16 +390,16 @@ class Spectra(object):
         den = den[ind]
         #Only need temp for ionic density, and tau later
         if get_tau or (ion != -1 and elem != 'H'):
-            temp = self.gasprop.get_temp(data)
+            temp = self.gasprop.get_temp(0,segment=fn).astype(np.float32)
             temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
-        elem_den = (den*self.rscale)*self.get_mass_frac(elem,data,ind)
+        elem_den = (den*self.rscale)*self.get_mass_frac(elem,fn,ind)
         #Special case H1:
         if elem == 'H' and ion == 1:
             # Neutral hydrogen mass frac
-            elem_den *= self.gasprop.get_reproc_HI(data)[ind]
+            elem_den *= (self.gasprop.get_reproc_HI(0, segment=fn)[ind]).astype(np.float32)
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
@@ -414,7 +412,7 @@ class Spectra(object):
             hh = hh[ind2]
             if get_tau:
                 vel = vel[ind2]
-            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, data, ind, ind2)
+            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, ind, ind2)
             del ind2
         #Get rid of ind so we have some memory for the interpolator
         del den
@@ -429,10 +427,10 @@ class Spectra(object):
         ind2 = np.where(elem_den > 0)
         return ind2
 
-    def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2):
+    def _get_elem_den(self, elem, ion, den, temp, ind, ind2):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
         #Shut up a pylint warning
-        _ = (data, ind, ind2)
+        _ = (ind, ind2)
         #Load a cloudy table if not done already
         try:
             self.cloudy_table
@@ -475,7 +473,7 @@ class Spectra(object):
         ind = _near_lines(self.box, pos, hh, axis, cofm)
         return ind
 
-    def get_mass_frac(self,elem, data, ind):
+    def get_mass_frac(self,elem, fn, ind):
         """Get the mass fraction of a given species from a snapshot.
         Arguments:
             elem = name of element
@@ -484,19 +482,21 @@ class Spectra(object):
         Returns mass_frac - mass fraction of this ion
         """
         if elem == "Z":
-            mass_frac = np.array(data["GFM_Metallicity"],dtype=np.float32)
+            mass_frac = self.snapshot_set.get_data(0,"Metallicity",segment = fn).astype(np.float32)
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
             try:
-                mass_frac = np.array(data["GFM_Metals"][:,nelem],dtype=np.float32)
+                mass_frac = (self.snapshot_set.get_data(0,"GFM_Metals",segment = fn).astype(np.float32))[:,nelem]
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24],dtype=np.float32)
-                mass_frac = metal_abund[nelem]*np.ones_like(data["Density"], dtype=np.float32)
+                nvalues = self.snapshot_set.get_blocklen(0,"Density",segment = fn)
+                mass_frac = metal_abund[nelem]*np.ones(nvalues, dtype=np.float32)
         mass_frac = mass_frac[ind]
         #Deal with floating point roundoff - mass_frac will sometimes be negative
         mass_frac[np.where(mass_frac <= 0)] = 0
+        assert mass_frac.dtype == np.float32
         return mass_frac
 
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
@@ -601,6 +601,8 @@ class Spectra(object):
         nsegments = self.snapshot_set.get_n_segments()
         result =  self._interpolate_single_file(0, elem, ion, ll, get_tau)
         #Do remaining files
+        if nsegments == 1:
+            return result
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             #Add new file
@@ -694,12 +696,13 @@ class Spectra(object):
         """
         nsegments = self.snapshot_set.get_n_segments()
         result =  func(0, elem, ion)
-        #Do remaining files
-        for nn in xrange(1, nsegments):
-            tresult =  func(nn, elem, ion)
-            #Add new file
-            result += tresult
-            del tresult
+        if nsegments > 1:
+            #Do remaining files
+            for nn in xrange(1, nsegments):
+                tresult =  func(nn, elem, ion)
+                #Add new file
+                result += tresult
+                del tresult
         den = self.get_density(elem, ion)
         den[np.where(den == 0.)] = 1
         try:

@@ -19,11 +19,12 @@ import unitsystem
 
 class GasProperties(object):
     """Class implementing the neutral fraction ala Rahmati 2012"""
-    def __init__(self, redshift,hubble = 0.71, fbar=0.17, units=None):
+    def __init__(self, redshift,absnap, hubble = 0.71, fbar=0.17, units=None):
         if units is not None:
             self.units = units
         else:
             self.units = unitsystem.UnitSystem()
+        self.absnap = absnap
         self.f_bar = fbar
         self.redshift = redshift
         #Interpolate for opacity and gamma_UVB
@@ -89,7 +90,7 @@ class GasProperties(object):
         B = 2*alpha_A + self._photo_rate(nH, temp)/nH + LambdaT
         return (B - np.sqrt(B**2-4*A*alpha_A))/(2*A)
 
-    def get_temp(self,bar):
+    def get_temp(self,part_type, segment):
         """Compute temperature (in K) from internal energy.
            Uses: internal energy
                  electron abundance
@@ -114,11 +115,11 @@ class GasProperties(object):
         #m_P is the proton mass
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
-        ienergy=np.array(bar["InternalEnergy"])*1e10
+        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*1e10
         #Calculate temperature from internal energy and electron abundance
-        nelec=np.array(bar['ElectronAbundance'])
+        nelec = self.absnap.get_data(part_type, "ElectronAbundance", segment=segment)
         try:
-            hy_mass = np.array(bar["GFM_Metals"][:,0], dtype=np.float32)
+            hy_mass = self.absnap.get_data(part_type, "GFM_Metals", segment=segment)[:,0]
         except KeyError:
             hy_mass = 0.76*np.ones_like(nelec)
         assert np.size(ienergy) == np.size(nelec) == np.size(hy_mass)
@@ -130,23 +131,23 @@ class GasProperties(object):
         temp = (self.gamma-1) * self.units.protonmass / self.boltzmann * muienergy
         return temp
 
-    def get_code_rhoH(self,bar):
+    def get_code_rhoH(self,part_type, segment):
         """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""
-        nH = np.array(bar["Density"])
+        nH = self.absnap.get_data(part_type, "Density", segment=segment)
         conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         #Convert to physical
         return nH*conv
 
-    def _code_neutral_fraction(self, bar):
+    def _code_neutral_fraction(self, part_type, segment):
         """Get the neutral fraction from the code"""
-        return np.array(bar["NeutralHydrogenAbundance"])
+        return self.absnap.get_data(part_type, "NeutralHydrogenFraction", segment=segment)
 
-    def get_reproc_HI(self, bar):
+    def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen *fraction* using values given by Arepo
         which are based on Rahmati 2012 if UVB_SELF_SHIELDING is on.
         Above the star formation density use the Rahmati fitting formula directly,
         as Arepo reports values for the eEOS. """
-        nH0 = self._code_neutral_fraction(bar)
+        nH0 = self._code_neutral_fraction(part_type=part_type, segment=segment)
         #Above star-formation threshold, we want a neutral fraction which includes
         #explicitly the amount of gas in cold clouds.
         #Ideally we should compute this fraction, and then do
@@ -161,7 +162,7 @@ class GasProperties(object):
         #So just assume that at the threshold all gas is in cold clouds.
         #In reality, this should be about 90% of gas in cold clouds, so
         #we will overpredict the neutral fraction by a small amount.
-        density = np.array(bar["Density"])
+        density = self.absnap.get_data(part_type, "Density", segment=segment)
         conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         ind = np.where(density > self.PhysDensThresh/0.76/conv)
         if self.redshift_coverage:
