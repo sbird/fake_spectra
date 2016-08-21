@@ -200,7 +200,7 @@ class BigFileSnapshot(AbstractSnapshot):
     def get_n_segments(self):
         """Return the number of segments. Number of files on HDF5,
            but may be whatever in convenient for bigfile."""
-        return np.max([1,np.sum(self.get_npart())/(2*256.**3)])
+        return int(np.max([1,np.sum(self.get_npart())/(2*256.**3)]))
 
     def get_blocklen(self, part_type, blockname, segment):
         """Get the length of a block"""
