@@ -50,6 +50,18 @@ class AbstractSnapshot(object):
                 return attr
         return attr
 
+    def get_kernel(self):
+        """Get the integer corresponding to a density kernel for each particle.
+           The types understood are defined in absorption.h and are currently:
+               0 - Top hat kernel
+               1 - SPH cubic spline kernel.
+            Further additions should match the types defined in allvars.h of MP-Gadget, which are:
+                DENSITY_KERNEL_CUBIC_SPLINE = 1,
+                DENSITY_KERNEL_QUINTIC_SPLINE = 2,
+                DENSITY_KERNEL_QUARTIC_SPLINE = 4,
+        """
+        return 1
+
     def get_n_segments(self):
         """Return the number of segments. Number of files on HDF5,
            but may be whatever in convenient for bigfile."""
@@ -171,6 +183,18 @@ class HDF5Snapshot(AbstractSnapshot):
             radius=self.get_data(part_type, "SmoothingLength",segment=segment)/2
         return radius
 
+    def get_kernel(self):
+        """Get the integer corresponding to a density kernel for each particle.
+           The types understood are defined in absorption.h and are currently:
+               0 - Top hat kernel (for Arepo)
+               1 - SPH cubic spline kernel (for Gadget).
+        """
+        #We are Arepo.
+        if "Volume" in self._f_handle["PartType0"].keys():
+            return 0
+        else:
+            return 1
+
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
     def __init__(self, num, base):
@@ -223,3 +247,16 @@ class BigFileSnapshot(AbstractSnapshot):
             return (one_segment*segment, one_segment*(segment+1))
         else:
             return (one_segment*segment, None)
+
+    def get_kernel(self):
+        """Get the integer corresponding to a density kernel for each particle.
+           Currently only the SPH cubic spline is understood.
+            Further additions should match the types defined in allvars.h of MP-Gadget, which are:
+                DENSITY_KERNEL_CUBIC_SPLINE = 1,
+                DENSITY_KERNEL_QUINTIC_SPLINE = 2,
+                DENSITY_KERNEL_QUARTIC_SPLINE = 4,
+        """
+        kernel = self.get_header_attr("DensityKernel")
+        #Other types are not yet supported.
+        assert kernel == 1
+        return kernel

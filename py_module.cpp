@@ -102,7 +102,7 @@ extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
 extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 {
     //Things which should be from input
-    int nbins, NumLos, compute_tau;
+    int nbins, NumLos, compute_tau, kernel;
     long long Npart;
     double box100, velfac, lambda, gamma, fosc, amumass, atime;
     npy_intp size[2];
@@ -111,7 +111,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     PyArrayObject *cofm, *axis;
 
     //Get our input
-    if(!PyArg_ParseTuple(args, "iidddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &box100,  &velfac, &atime, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &dens, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
+    if(!PyArg_ParseTuple(args, "iiidddddddO!O!O!O!O!O!O!", &compute_tau, &nbins, &kernel, &box100,  &velfac, &atime, &lambda, &gamma, &fosc, &amumass, &PyArray_Type, &pos, &PyArray_Type, &vel, &PyArray_Type, &dens, &PyArray_Type, &temp, &PyArray_Type, &h, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
     {
       PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use compute_tau, nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, dens, temp, h, axis, cofm\n");
       return NULL;
@@ -167,7 +167,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
-    ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos, SPH_CUBIC_SPLINE);
+    ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos, kernel);
 
     PyObject * for_return;
     /* Allocate array space. This is (I hope) contiguous.
