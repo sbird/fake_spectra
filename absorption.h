@@ -3,6 +3,12 @@
 
 #define  PROTONMASS  1.67262178e-24 /* 1 a.m.u */
 
+#define TOP_HAT_KERNEL 0
+#define SPH_CUBIC_SPLINE 1
+
+/*Type for the kernel function pointer*/
+typedef double (*const kern_frac_func)(double, double, const double, const double, const double);
+
 /* Class to compute the absorption from a single particle
  * onto a spectrum
  * */
@@ -20,7 +26,7 @@ class LineAbsorption
          * gamma: transition rate in 1/s
          * fosc: oscillation fraction
          * */
-        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i);
+        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i, const int kernel_i=SPH_CUBIC_SPLINE);
 
         /* Add the absorption from a particle to the spectrum in the array
          * tau, or the density from the particle to the array colden,
@@ -54,6 +60,7 @@ class LineAbsorption
          * giving the balance between doppler and thermal broadening in km/s. */
         const double voigt_fac;
         const double velfac, vbox, atime;
+        const kern_frac_func kern_frac;
 };
 
 /* Compute temperature (in K) from internal energy.

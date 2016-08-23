@@ -64,11 +64,8 @@ endif
 
 # Voigt profiles vs. Gaussian profiles
 CFLAGS += -DVOIGT
-#If defined, looks for NHEP and NHEPP instead of NE
-#CFLAGS += -DSPLIT_NE
 #Use a top hat kernel instead of an SPH kernel:
 #arguably better for Arepo column density, but definitely wrong for Gadget.
-#CFLAGS += -DTOP_HAT_KERNEL
 COM_INC = index_table.h absorption.h part_int.h
 CXXFLAGS += $(CFLAGS)
 

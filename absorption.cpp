@@ -36,7 +36,6 @@
 //Note that because this is for each particle, it should be fairly small.
 #define TAUTAIL 1e-5
 
-#ifndef TOP_HAT_KERNEL
 /* Find the integral of the particle density in this pixel by integrating an SPH kernel
  * over the z direction.
  * Arguments:
@@ -55,7 +54,7 @@
  * we want a normalisation of 32/(4*pi)
  *
  * */
-double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
+double sph_cubic_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
 {
     //Truncate bin size to support of kernel
     zlow = std::max(zlow, -zrange);
@@ -78,8 +77,6 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, doubl
     return deltaz*total;
 }
 
-#else
-
 /* Find the fraction of the total particle density in this pixel by integrating a top hat kernel
  * over the z direction. This assumes that rho = rho_0, a constant, within the cell.
  * Arguments:
@@ -90,22 +87,30 @@ double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, doubl
  * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
  * */
 
-double sph_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange)
+double tophat_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
 {
     //Integration limits
     zlow = std::max(zlow, -zrange);
     zhigh = std::min(zhigh, zrange);
     return std::max(0.,zhigh - zlow);
 }
-#endif
+
+kern_frac_func get_kern_frac(const int kernel)
+{
+    if(kernel == TOP_HAT_KERNEL)
+        return tophat_kern_frac;
+    else
+        return sph_cubic_kern_frac;
+}
 
 //Factor of 1e5 in bfac converts from cm/s to km/s
 //Factor of 1e5 in voigt_fac converts from cm/s to km/s
-LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i):
+LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i,const int kernel_i):
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
-velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i)
+velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i),
+kern_frac(get_kern_frac(kernel_i))
 {
 }
 
@@ -141,7 +146,7 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
        * We compute int_z ρ dz
        */
       //colden in units of [den units]*[h units] * integral in terms of z
-      colden[j] += dens*sph_kern_frac(plow, plow + boxtokpc, smooth, dr2,zrange);
+      colden[j] += dens*kern_frac(plow, plow + boxtokpc, smooth, dr2,zrange);
   }
 }
 
