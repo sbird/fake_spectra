@@ -167,7 +167,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
-    ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos);
+    ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos, SPH_CUBIC_SPLINE);
 
     PyObject * for_return;
     /* Allocate array space. This is (I hope) contiguous.

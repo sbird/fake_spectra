@@ -61,19 +61,19 @@ BOOST_AUTO_TEST_CASE(check_sph_kern_frac)
     //Correction from the normalisation I worked out in mathematica,
     //because the smoothing length definition changed.
     const double corr = 3/(4*M_PI);
-    FLOATS_NEAR_TO(sph_kern_frac(-1,1,1,0,1), 3*2/M_PI);
+    FLOATS_NEAR_TO(sph_cubic_kern_frac(-1,1,1,0,1), 3*2/M_PI);
     //Should be the same with a wide range.
-    FLOATS_NEAR_TO(sph_kern_frac(-3,10,1,0,1), 3*2/M_PI);
+    FLOATS_NEAR_TO(sph_cubic_kern_frac(-3,10,1,0,1), 3*2/M_PI);
     //Small variations
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.15,-0.1,1,0,1), corr*0.489167);
+    FLOATS_APPROX_NEAR_TO(sph_cubic_kern_frac(-0.15,-0.1,1,0,1), corr*0.489167);
     //b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.05,0.1,1,0.4,0.774597), corr*0.051004);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.15,0.16,1,0.8,0.447214), corr*0.000167423);
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(-0.05,0.1,1,0.9,0.316228), corr*0.00040101);
+    FLOATS_APPROX_NEAR_TO(sph_cubic_kern_frac(0.05,0.1,1,0.4,0.774597), corr*0.051004);
+    FLOATS_APPROX_NEAR_TO(sph_cubic_kern_frac(0.15,0.16,1,0.8,0.447214), corr*0.000167423);
+    FLOATS_APPROX_NEAR_TO(sph_cubic_kern_frac(-0.05,0.1,1,0.9,0.316228), corr*0.00040101);
     //Test wider range with b!=0
-    FLOATS_APPROX_NEAR_TO(sph_kern_frac(0.3,1,1,0.3,0.83666), corr*0.177801);
+    FLOATS_APPROX_NEAR_TO(sph_cubic_kern_frac(0.3,1,1,0.3,0.83666), corr*0.177801);
     //Check outside of range
-    FLOATS_NEAR_TO(sph_kern_frac(1.5,2,1,0,1), 0);
+    FLOATS_NEAR_TO(sph_cubic_kern_frac(1.5,2,1,0,1), 0);
 
 
 }
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1,SPH_CUBIC_SPLINE);
 
     double colden[TNBINS] = {0};
     std::set<int> nonzero;
@@ -340,7 +340,7 @@ BOOST_AUTO_TEST_CASE(check_add_tau)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25, SPH_CUBIC_SPLINE);
     //Since SingleAbsorber is tested above, use it in this test
     double temp = 2e4;
     double bb  = sqrt(2.0*BOLTZMANN/(PROTONMASS))/1e5*sqrt(temp/1.00794);
@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(check_tau_colden_consistency)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25,SPH_CUBIC_SPLINE);
     //Since SingleAbsorber is tested above, use it in this test
     double temp = 2e4;
     double smooth = 3;

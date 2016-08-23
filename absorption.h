@@ -26,7 +26,7 @@ class LineAbsorption
          * gamma: transition rate in 1/s
          * fosc: oscillation fraction
          * */
-        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i, const int kernel_i=SPH_CUBIC_SPLINE);
+        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i, const int kernel_i);
 
         /* Add the absorption from a particle to the spectrum in the array
          * tau, or the density from the particle to the array colden,
