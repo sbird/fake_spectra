@@ -97,10 +97,11 @@ class Spectra(object):
         except IOError:
             pass
         if savedir is None:
+            #Use snapdir if exists, otherwise use SPEC_
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
             #Make sure savedir exists.
-            if not os.path.exists(savedir):
-                os.mkdir(savedir)
+            if not path.exists(savedir):
+                savedir = path.join(base,"SPECTRA_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
         if reload_file:
@@ -169,9 +170,13 @@ class Spectra(object):
             self._load_all_multihash(self.velocity, "velocity")
         except IOError:
             pass
+        #Make sure the directory exists
+        if not path.exists(path.dirname(self.savefile)):
+            os.mkdir(path.dirname(self.savefile))
+        #Make a backup.
+        if path.exists(self.savefile):
+            shutil.move(self.savefile,self.savefile+".backup")
         try:
-            if path.exists(self.savefile):
-                shutil.move(self.savefile,self.savefile+".backup")
             f=h5py.File(self.savefile,'w')
         except IOError:
             raise IOError("Could not open ",self.savefile," for writing")
