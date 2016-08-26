@@ -101,7 +101,7 @@ class HDF5Snapshot(AbstractSnapshot):
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
         self._handle_num = 0
-        super().__init__()
+        AbstractSnapshot.__init__(self)
 
     def _get_all_files(self, num, base):
         """Get a file descriptor from a simulation directory,
@@ -207,7 +207,7 @@ class BigFileSnapshot(AbstractSnapshot):
         self._f_handle = bigfile.BigFile(fname, 'r')
         if len(self._f_handle.blocks) == 0:
             raise IOError("No BigFile snapshot at",new_fname)
-        super().__init__()
+        AbstractSnapshot.__init__(self)
 
     def get_data(self, part_type, blockname, segment):
         """Get the data for a particular block, specified

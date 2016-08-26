@@ -19,7 +19,7 @@ except NameError:
 class HaloAssignedSpectra(ps.PlottingSpectra):
     """Class which extends the Spectra class to include methods that connect each absorber in a sightline to a galactic halo."""
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        ps.PlottingSpectra.__init__(self, *args, **kwargs)
         #Try to load a halo catalogue
         self.load_halo()
 
