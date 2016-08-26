@@ -24,7 +24,7 @@ class GriddedSpectra(spectra.Spectra):
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
         if num is None:
-            num = np.sqrt(self.NumLos)
+            num = int(np.sqrt(self.NumLos))
         cofm = np.empty([num*num, 3])
         for nn in range(num):
             for mm in range(num):
