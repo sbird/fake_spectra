@@ -241,6 +241,8 @@ class BigFileSnapshot(AbstractSnapshot):
 
     def _segment_to_partlist(self, part_type, segment):
         """Get the first and last particle in a segment."""
+        if segment < 0:
+            return (0, None)
         n_segments = self.get_n_segments()
         one_segment = int(self.get_npart()[part_type]//n_segments)
         if segment < n_segments -1:
