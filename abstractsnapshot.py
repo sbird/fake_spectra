@@ -43,7 +43,7 @@ class AbstractSnapshot(object):
     def get_header_attr(self, attr):
         """Return an attribute of the simulation header"""
         attr = self._f_handle["Header"].attrs[attr]
-        if np.size(attr) == 1:
+        if isinstance(attr, np.ndarray) and np.size(attr) == 1:
             try:
                 return attr[0]
             except IndexError:
@@ -258,7 +258,10 @@ class BigFileSnapshot(AbstractSnapshot):
                 DENSITY_KERNEL_QUINTIC_SPLINE = 2,
                 DENSITY_KERNEL_QUARTIC_SPLINE = 4,
         """
-        kernel = self.get_header_attr("DensityKernel")
+        try:
+            kernel = self.get_header_attr("DensityKernel")
+        except KeyError:
+            kernel = 1
         #Other types are not yet supported.
         assert kernel == 1
         return kernel
