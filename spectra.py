@@ -310,7 +310,7 @@ class Spectra(object):
         for elem in grp.keys():
             for ion in grp[elem].keys():
                 for line in grp[elem][ion].keys():
-                    self.tau[(elem, int(ion),int(line))] = np.array([0])
+                    self.tau[(elem, int(ion),int(float(line)))] = np.array([0])
         try:
             grp = f["velocity"]
             for elem in grp.keys():
