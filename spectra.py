@@ -124,6 +124,11 @@ class Spectra(object):
             self.npart=self.snapshot_set.get_npart()
             #Calculate omega_baryon (approximately only for HDF5)
             self.omegab = self.snapshot_set.get_omega_baryon()
+            #Get the unit system.
+            try:
+                self.units = self.snapshot_set.get_units()
+            except KeyError:
+                print('No units found. Using kpc/kms/10^10Msun by default')
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units

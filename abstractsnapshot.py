@@ -5,6 +5,7 @@ import os
 import glob
 import numpy as np
 import h5py
+import unitsystem
 try:
     import bigfile
 except ImportError:
@@ -93,6 +94,14 @@ class AbstractSnapshot(object):
         #There is a different kernel definition, as in gadget the kernel goes from 0 to 2,
         #whereas I put it between zero and 1.
         return self.get_data(part_type, "SmoothingLength",segment=segment)/2
+
+    def get_units(self):
+        """Get the base scales for the unit system."""
+        length = self.get_header_attr("UnitLength_in_cm")
+        mass = self.get_header_attr("UnitMass_in_g")
+        vel = self.get_header_attr("UnitVelocity_in_cm_per_s")
+        units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
+        return units
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
