@@ -119,6 +119,8 @@ class HDF5Snapshot(AbstractSnapshot):
         #Find a file
         fnames = glob.glob(os.path.join(fname, "snap_"+snap+"*hdf5"))
         if len(fnames) == 0:
+            fnames = glob.glob(os.path.join(fname, "snapshot_"+snap+"*hdf5"))
+        if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
         return [fff for fff in fnames if h5py.is_hdf5(fff) ]
@@ -180,7 +182,14 @@ class HDF5Snapshot(AbstractSnapshot):
             #the SmoothingLength array is actually the smoothing length.
             #There is a different kernel definition, as in gadget the kernel goes from 0 to 2,
             #whereas I put it between zero and 1.
-            radius=self.get_data(part_type, "SmoothingLength",segment=segment)/2
+            try:
+                radius=self.get_data(part_type, "SmoothingLength",segment=segment)/2
+            except KeyError:
+                #Very new Arepo has Density and Masses but no volume.
+                density = self.get_data(part_type, "Density",segment=segment)
+                mass = self.get_data(part_type, "Masses",segment=segment)
+                volume = mass/density
+                radius = np.power(volume, 1./3)
         return radius
 
     def get_kernel(self):
