@@ -105,7 +105,7 @@ class Spectra(object):
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
         if reload_file:
-            print("Reloading from snapshot (savefile: ",self.savefile," )")
+            print("Reloading from snapshot (will save to: ",self.savefile," )")
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -115,13 +115,17 @@ class Spectra(object):
             self.axis = axis.astype(np.int32)
             if cofm is None or axis is None:
                 raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
+            try:
+                self.npart=self.snapshot_set.get_npart()
+                #If we got here without a snapshot_set, we really have an IOError
+            except AttributeError:
+                raise IOError("Unable to load snapshot ",num, base)
             self.box = self.snapshot_set.get_header_attr("BoxSize")
             self.atime = self.snapshot_set.get_header_attr("Time")
             self.red = 1/self.atime - 1.
             self.hubble = self.snapshot_set.get_header_attr("HubbleParam")
             self.OmegaM = self.snapshot_set.get_header_attr("Omega0")
             self.OmegaLambda = self.snapshot_set.get_header_attr("OmegaLambda")
-            self.npart=self.snapshot_set.get_npart()
             #Calculate omega_baryon (approximately only for HDF5)
             self.omegab = self.snapshot_set.get_omega_baryon()
             #Get the unit system.
