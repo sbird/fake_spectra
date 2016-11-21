@@ -14,6 +14,8 @@ addons:
             - python3-numpy
             - python3-scipy
             - python-scipy
+            - python3-h5py
+            - python-h5py
 virtualenv:
     system_site_packages: true
 #before-install: git submodule update --init --recursive
