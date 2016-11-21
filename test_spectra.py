@@ -83,6 +83,7 @@ import numpy as np
 import spectra as ss
 import unitsystem
 import spec_utils
+import voigtfit
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -131,3 +132,14 @@ def testrescorr():
 #     spec = ss.Spectra(3,'/home/spb/data/Cosmo/Cosmo0_V6/L25n512/output', cofm=np.array([[ 10724.84151495,   4444.02494373,  10534.57817268]]), axis=np.array([1,]), savefile="testfile.hdf5", reload_file=True)
 #     tau = spec.get_tau("H", 1, 1215)
 #     assert not np.any(np.isnan(tau))
+
+def test_voigtfit():
+    """Simple tests that the Voigt fitter is working, using 10 test CIV spectra."""
+    taus = np.load("example_civ_tau.npz")["arr_0"]
+    for tau in taus:
+        assert np.shape(tau) == (473,)
+        prof = voigtfit.Profiles(tau,5.0103430332365999,elem="C",ion=4,line=1548)
+        prof.do_fit()
+        (ll, tfit) = prof.get_fitted_profile()
+        #Check the fit is reasonable
+        assert np.sum((tfit - tau)**2/(tau+0.5)**2)/np.size(tfit) < 0.05
