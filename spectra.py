@@ -761,6 +761,12 @@ class Spectra(object):
             self.temp[(elem, ion)] = temp
             return temp
 
+    def get_b_param_dist(self, elem="H", ion=1, line=1215):
+        """Get the power law betweeen the 'minimum' b parameter and column density."""
+        tau = self.get_tau(elem, ion, line)
+        (b_0, gamm1) = voigtfit.get_b_param_dist(tau, self.dvbin, elem=elem, ion=ion, line=line)
+        return (b_0, gamm1)
+
     def column_density_from_voigt(self, elem="H",ion=1,line=1215,dlogN=0.2,minN=13,maxN=23, close=50.,dX=True, nspectra=-1):
         """This computes the column density function using column densities from a Voigt profile fit.
         Concatenate objects closer than close km/s."""

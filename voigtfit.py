@@ -295,7 +295,6 @@ class _SingleProfileHelper(object):
 def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
     return get_voigt_systems(taus, dvbin, elem, ion, line, verbose, close, b_param=True)
-
 def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0., b_param=False):
     """Helper function to get the Voigt parameters, N_HI and (optionally) b in a single call."""
     start = time.clock()
@@ -311,3 +310,51 @@ def get_voigt_systems(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, clos
         b_params = np.concatenate(b_results)
         return n_vals, b_params
     return n_vals
+
+def _opt_power_fit(inputs,lb_params, ln_vals):
+    """Fit log b = log b_0  + (Gamma -1 ) * ( log NHI - log NHI,0)
+    for log b_0 and Gamma-1. log NHI, 0 = 13.6"""
+    lb0 = inputs[0]
+    gamm1 = inputs[1]
+    return np.sum((lb_params - lb0 + gamm1 * (ln_vals - 13.6))**2)
+
+def _power_fit(ln, lb0, gamm1):
+    """A power law fit given some parameters"""
+    return lb0 + gamm1 * (ln - 13.6)
+
+def get_b_param_dist(taus, dvbin,elem="H", ion=1, line=1215,tol=0.05):
+    """Get the power law betweeen the 'minimum' b parameter and column density,
+    following Rudie 2012 and Schaye 1999."""
+    n_vals,b_params = get_voigt_systems(taus, dvbin, elem=elem,ion=ion, line=line,verbose=False, close=-1.,b_param=True)
+    used = np.where((b_params > 8)*(b_params < 100)*(n_vals < 10**(14.5))*(n_vals > 10**(12.5)))
+    ln_vals = np.log10(n_vals[used])
+    lb_params = np.log10(b_params[used])
+    # The fit proceeds iteratively.
+    result = np.array([np.log10(18),0.17])
+    # First fit log b = log b_0  + (Gamma -1 ) * ( log NHI - log NHI,0)
+    # for Gamma -1 and b_0 with NHI,0 = 13.6.
+    newresult = optimize.minimize(_opt_power_fit,result, args=(lb_params, ln_vals), tol=1e-4)
+    while np.sum((newresult/result - 1.)**2) > tol:
+        result = newresult
+        #Find dispersion
+        # Points with b > 1 sigma above the fit are discarded and the fit is made again
+        # until convergence.
+        residuals = lb_params - _power_fit(ln_vals, result[0], result[1])
+        sigma_fit = np.sqrt(np.var(residuals))
+        #remove points more than 1 sigma *above* fit. Note absence of np.abs!
+        used = np.where(residuals <= sigma_fit)
+        lb_params = lb_params[used]
+        ln_vals = ln_vals[used]
+        #Make fit
+        newresult = optimize.minimize(_opt_power_fit,result, args=(lb_params, ln_vals), tol=1e-4)
+    # Now all points > 1 sigma *below* the fit are removed and the fit is made again.
+    residuals = lb_params - _power_fit(ln_vals, result[0], result[1])
+    sigma_fit = np.sqrt(np.var(residuals))
+    #remove points more than 1 sigma *above* fit. Note absence of np.abs!
+    used = np.where(residuals > -1*sigma_fit)
+    lb_params = lb_params[used]
+    ln_vals = ln_vals[used]
+    #Make fit
+    newresult = optimize.minimize(_opt_power_fit,result, args=(lb_params, ln_vals), tol=1e-4)
+    #Return the new b_min and Gamma.
+    return (10**newresult[0], newresult[1])
