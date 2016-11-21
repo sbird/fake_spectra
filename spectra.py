@@ -19,12 +19,10 @@ Also note that there is some instability at very low metallicities - the code wi
 """
 
 from __future__ import print_function
-import math
 import os
 import os.path as path
 import shutil
 import numpy as np
-from scipy.optimize import brentq
 import h5py
 import abstractsnapshot as absn
 import gas_properties
@@ -943,7 +941,7 @@ class Spectra(object):
     def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None):
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
-        return stat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
+        return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
 
     def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
@@ -952,5 +950,5 @@ class Spectra(object):
         If mean_flux_desired is set, the spectral optical depths will be rescaled
         to match the desired mean flux."""
         tau = self.get_tau(elem, ion, line)
-        (kf, avg_flux_power) = stat.flux_power(tau, vmax, mean_flux_desired=mean_flux_desired)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, mean_flux_desired=mean_flux_desired)
         return kf[1:],avg_flux_power[1:]
