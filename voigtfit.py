@@ -285,12 +285,12 @@ class _SingleProfileHelper(object):
         stime = time.clock()
         prof = Profiles(tau_t, self.dvbin, elem=self.elem, ion=self.ion, line=self.line)
         prof.do_fit()
-        n_this, b_param = prof.get_systems(self.close)
+        n_this, _ = prof.get_systems(self.close)
         ftime = time.clock()
         if self.verbose:
             print("Fit: systems=",np.size(n_this),np.size(prof.get_b_params()),"N=",np.max(n_this))
             print("Fit took: ",ftime-stime," s")
-        return n_this, b_param
+        return n_this, prof.get_b_params()
 
 def get_voigt_fit_params(taus, dvbin, elem="H",ion=1, line=1215,verbose=False, close=0.):
     """Helper function to get the Voigt parameters, N_HI and b in a single call."""
