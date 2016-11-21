@@ -32,6 +32,7 @@ import line_data
 import unitsystem
 import voigtfit
 import spec_utils
+import fluxstatistics as fstat
 from _spectra_priv import _Particle_Interpolate, _near_lines
 try:
     import convert_cloudy
@@ -936,27 +937,7 @@ class Spectra(object):
     def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None):
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
-        if mean_flux_desired is not None:
-            scale = self._get_scale(tau, mean_flux_desired)
-            flux = np.exp(-scale * tau)
-        else:
-            flux = np.exp(-tau)
-        bins = np.arange(nbins+1)/nbins
-        (flux_pdf, _) = np.histogram(flux, bins=bins,density=True)
-        cbins = (bins[1:] + bins[:-1])/2.
-        return cbins, flux_pdf
-
-    def _get_scale(self, tau, mean_flux_desired):
-        """Get the factor by which we need to multiply the optical depth to get a desired mean flux.
-        ie, we want F_obs = bar{F} = < e^-tau >
-        Solve this iteratively, using Newton-Raphson:
-        S' = S + (<F> - F_obs) / <tau e^-tau>
-        This is really Lyman-alpha forest specific."""
-        #This is amazingly slow compared to C!
-        minim = lambda scale : mean_flux_desired - np.mean(np.exp(-scale*tau))
-        scale = brentq(minim, 0,20.,rtol=1e-6)
-        print("Scaled by:",scale)
-        return scale
+        return stat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
 
     def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
@@ -965,30 +946,5 @@ class Spectra(object):
         If mean_flux_desired is set, the spectral optical depths will be rescaled
         to match the desired mean flux."""
         tau = self.get_tau(elem, ion, line)
-        #Get the delta_flux
-        if mean_flux_desired is not None:
-            scale = self._get_scale(tau, mean_flux_desired)
-            delta_flux = np.exp(-scale*tau) / mean_flux_desired - 1.
-        else:
-            mean_flux = self.get_mean_flux(elem, ion, line)
-            delta_flux = np.exp(-tau) / mean_flux - 1.
-        #Get the power spectrum
-        assert np.shape(delta_flux) == (self.NumLos, self.nbins)
-        df_hat = np.fft.rfft(delta_flux,axis=1)
-        flux_power = np.abs(df_hat)**2
-        #Normalise the FFT: equivalent to using norm = ortho for recent numpy versions
-        flux_power /= self.nbins
-        assert np.shape(flux_power) == (self.NumLos, self.nbins//2 + 1)
-        #Average over all sightlines
-        avg_flux_power = np.mean(flux_power, axis=0)
-        #Get the frequency component
-        kf = np.fft.rfftfreq(self.nbins)
-        #Units:
-        #The largest frequency scale is the velocity scale of the box,
-        #not 1/nbins as rfftfreq gives.
-        scale = self.nbins/self.vmax
-        #Adjust Fourier convention.
-        kf *= 2.0*math.pi * scale
-        assert np.shape(avg_flux_power) == (self.nbins//2 + 1,)
-        avg_flux_power /= scale
+	(kf, avg_flux_power) = stat.flux_power(tau, vmax, mean_flux_desired=mean_flux_desired)
         return kf[1:],avg_flux_power[1:]

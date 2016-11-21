@@ -21,20 +21,24 @@ def testCalcPdf():
     """Test that we calculate the pdf of the flux correctly"""
     nn = np.arange(1,101)
     tau = np.log(nn)
-    (hist, bins) = stat._calc_pdf(tau, 20)
-    assert bins[0] == 0.
-    assert bins[-1] == 1.
+    (bins,hist) = stat.flux_pdf(tau, 20)
+    print(bins)
+    assert bins[0] == 0.+1/40.
+    assert bins[-1] == 1.-1./40.
     assert np.min(hist) == 0.
     assert np.max(hist) > 1.
     assert np.all(np.abs(hist - np.array([ 16. ,   2.2,   0.6,   0.2,   0.2,   0.2,   0.2,   0. ,   0. , 0. ,   0.2,   0. ,   0. ,   0. ,   0. ,   0. ,   0. ,   0. , 0. ,   0.2])) < 1e-3)
 
 def testPowerspectrum():
     """Test the core FFT routine"""
-    xx = np.arange(0,1,0.01)**2
-    ff = stat._powerspectrum(np.exp(-xx))
+    xx = np.tile(np.arange(0,1,0.01)**2,(10,1))
+#     xx = np.arange(0,1,0.01)**2
+    assert np.shape(xx)[0] == 10
+    fpk = stat._powerspectrum(np.exp(-xx), axis=1)
     #Check that Parseval's theorem is true, accounting for the negative frequency modes not included in the DFT.
-    dpower = (np.sum(ff)+np.sum(ff[1:]))/np.size(xx)
-    assert abs(dpower - np.sum(np.exp(-xx)**2)) < 0.1
+    for ff in fpk:
+        dpower = (np.sum(ff)+np.sum(ff[1:]))
+        assert abs(dpower - np.sum(np.exp(-xx[0,:])**2)) < 0.1
     xx = np.linspace(1,51,200)
     inn = np.sin(2*math.pi*xx)
     #This will be a delta function centered at 50
@@ -51,5 +55,7 @@ def testFluxPower():
         #Construct some optical depths offset from each other
         taus = np.zeros((9,bb))
         taus = np.vstack([inn,]*10)
-        power = stat._calc_power(taus, 0)
-        assert np.all(np.abs(power - ff) < 0.01*ff)
+        bins, power = stat.flux_power(taus, 1.)
+        power/=12.5569
+        assert np.all(np.abs(power[1:] - ff[1:]) < 0.01*ff[1:])
+        assert power[0] < 1e-20
