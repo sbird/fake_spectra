@@ -1,6 +1,9 @@
 sudo: required
 dist: trusty
-language: cpp
+language: python
+python:
+    - 3.4
+    - 2.7
 os: linux
 compiler: gcc
 addons:
@@ -8,6 +11,9 @@ addons:
         packages:
             - libboost-test-dev
             - python-numpy
+            - python3-numpy
+            - python3-scipy
+            - python-scipy
 #before-install: git submodule update --init --recursive
 install: true
-script: make && make test
+script: make && make test && nosetests
