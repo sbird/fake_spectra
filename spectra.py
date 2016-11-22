@@ -162,7 +162,11 @@ class Spectra(object):
         #Line data
         self.lines = line_data.LineData()
         #Load the class for computing gas properties such as temperature from the raw simulation.
-        self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units)
+        try:
+            self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units)
+        except AttributeError:
+            #Occurs if we didn't load a snapshot
+            pass
         print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
     def save_file(self):
