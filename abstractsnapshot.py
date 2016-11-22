@@ -9,7 +9,7 @@ import unitsystem
 try:
     import bigfile
 except ImportError:
-    pass
+    bigfile = False
 
 def AbstractSnapshotFactory(num, base):
     """Function to get a snapshot in whichever format is present"""
@@ -17,6 +17,8 @@ def AbstractSnapshotFactory(num, base):
     try:
         return HDF5Snapshot(num, base)
     except IOError:
+        if bigfile == False:
+            raise IOError("Not an HDF5 snapshot: ", base)
         try:
             return BigFileSnapshot(num, base)
         except IOError:
