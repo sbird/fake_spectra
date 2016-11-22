@@ -4,7 +4,7 @@
 from __future__ import print_function
 import spectra
 import numpy as np
-import leastsq as lsq
+#import leastsq as lsq
 import matplotlib.pyplot as plt
 try:
     xrange(1)
@@ -198,6 +198,6 @@ class PlottingSpectra(spectra.Spectra):
             xbins = 10**xbins
             ax.set_xscale('log')
         plt.contourf(xbins,ybins,H.T,(self.NumLos/sample)*np.array([0.15,1,10]),colors=(color,color2,"black"),alpha=0.5)
-        if fit:
-            (intercept, slope, _) = lsq.leastsq(xvals,yvals)
-            plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")
+        #if fit:
+        #    (intercept, slope, _) = lsq.leastsq(xvals,yvals)
+        #    plt.loglog(xx, 10**intercept*xx**slope, color="black",label=self.label, ls="--")
