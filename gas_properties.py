@@ -18,8 +18,18 @@ except ImportError:
 import unitsystem
 
 class GasProperties(object):
-    """Class implementing the neutral fraction ala Rahmati 2012"""
-    def __init__(self, redshift,absnap, hubble = 0.71, fbar=0.17, units=None):
+    """Class implementing the neutral fraction ala Rahmati 2012.
+    Arguments:
+        redshift - redshift at which the data was drawn, to compute the self-shielding correction.
+        absnap - AbstractSnapshot instance from which to get the particle data.
+        hubble - Hubble parameter.
+        fbar - Baryon fraction
+        units - UnitSystem instance
+        sf_neutral - If True (the default) then gas on the star-forming equation of state is assumed to be neutral.
+        Should only be true if used with a Springel-Hernquist star formation model in a version of Gadget/Arepo which incorrectly
+        sets the neutral fraction in the star forming gas to less than unity.
+        """
+    def __init__(self, redshift, absnap, hubble = 0.71, fbar=0.17, units=None, sf_neutral=True):
         if units is not None:
             self.units = units
         else:
@@ -27,6 +37,7 @@ class GasProperties(object):
         self.absnap = absnap
         self.f_bar = fbar
         self.redshift = redshift
+        self.sf_neutral = sf_neutral
         #Interpolate for opacity and gamma_UVB
         #Opacities for the FG09 UVB from Rahmati 2012.
         #IMPORTANT: The values given for z > 5 are calculated by fitting a power law and extrapolating.
@@ -148,6 +159,8 @@ class GasProperties(object):
         Above the star formation density use the Rahmati fitting formula directly,
         as Arepo reports values for the eEOS. """
         nH0 = self._code_neutral_fraction(part_type=part_type, segment=segment)
+        if not self.sf_neutral:
+            return nH0
         #Above star-formation threshold, we want a neutral fraction which includes
         #explicitly the amount of gas in cold clouds.
         #Ideally we should compute this fraction, and then do

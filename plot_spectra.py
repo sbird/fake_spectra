@@ -13,8 +13,8 @@ except NameError:
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, res=1., savefile="grid_spectra_DLA.hdf5",label="", snr=0., spec_res = 8., cdir=None, load_halo=True):
-        spectra.Spectra.__init__(self,num, base, cofm, axis, res, savefile=savefile, snr=snr, spec_res=spec_res, cdir=cdir, load_halo=load_halo)
+    def __init__(self,num, base, cofm=None, axis=None, label="", snr=0., load_halo=True,**kwargs):
+        spectra.Spectra.__init__(self,num, base, cofm=cofm, axis=axis, snr=snr, load_halo=load_halo, **kwargs)
         self.label=label
 
     def plot_eq_width(self, elem, ion, line, dv=0.1, color="red", ls="-"):
