@@ -7,7 +7,7 @@ import math
 import numpy as np
 from scipy.optimize import brentq
 
-def obs_mean_flux(redshift):
+def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
@@ -37,12 +37,12 @@ def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
     scale = 1.
     if mean_flux_desired is not None:
-        scale = stat.mean_flux(tau, mean_flux_desired)
+        scale = mean_flux(tau, mean_flux_desired)
     flux = np.exp(-scale * tau)
     bins = np.arange(nbins+1)/(1.*nbins)
-    (flux_pdf, _) = np.histogram(flux, bins=bins,density=True)
+    (fpdf, _) = np.histogram(flux, bins=bins,density=True)
     cbins = (bins[1:] + bins[:-1])/2.
-    return cbins, flux_pdf
+    return cbins, fpdf
 
 def _powerspectrum(inarray, axis=-1):
     """Compute the power spectrum of the input using np.fft"""
