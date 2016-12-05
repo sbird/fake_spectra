@@ -22,6 +22,7 @@ class LineData(object):
         #9 empty lists, one list per species
         self.lines = {}
         if vpdat is None:
+            global _lines_cache_
             vpdata = os.path.join(os.path.dirname(os.path.realpath(__file__)), "atom.dat")
             if _lines_cache_ is None:
                 _lines_cache_ = read_vpfit(vpdata,self.species)
