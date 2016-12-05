@@ -14,6 +14,10 @@ how to use it.
 
 == Installation ==
 
+*On linux, this is a python 3 code*
+Make sure you install the python 3 libraries!
+(On Mac we attempt to use the system python.)
+
 Required Python libraries:
 - numpy
 - h5py

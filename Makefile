@@ -4,8 +4,6 @@
 GREAD=no
 #Change this to where you installed GadgetReader
 GREADDIR=${CURDIR}/../GadgetReader
-#Python include path
-PYINC:=$(shell python-config --includes)
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
@@ -37,12 +35,16 @@ LDCHECK:=$(shell ld --as-needed 2>&1)
 ifneq (unknown,$(findstring unknown,${LDCHECK}))
   PYLIB +=-Wl,--no-add-needed,--as-needed
   # Python libraries: should not be actually needed, but make the build less fragile.
-  PYLIB=$(shell python-config --libs)
+  PYLIB3=$(shell python3-config --libs)
+  #Python include path
+  PYINC:=$(shell python3-config --includes)
 else
   #Assume now we are using the mac linker, which is more complicated.
   #Often there are two pythons installed and we need to use the right one.
-  PYPREF=$(shell python-config --prefix)/lib
-  PYLIB +=-L${PYPREF} -Wl,-L${PYPREF} $(shell python-config --libs)
+  PYPREF=$(shell python-config --prefix)
+  PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib $(shell python-config --libs)
+  #Python include path
+  PYINC:=-I${PYPREF}/include $(shell python-config --includes)
 endif
 PG =
 LIBS=
