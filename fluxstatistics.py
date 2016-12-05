@@ -6,6 +6,7 @@ Useful for lyman alpha forest work."""
 import math
 import numpy as np
 from scipy.optimize import brentq
+from _spectra_priv import _rescale_mean_flux
 
 def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
@@ -23,15 +24,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-4):
         tol - tolerance within which to hit mean flux
     returns:
         scaling factor for tau"""
-    #Find the initial interval by simple doubling
-    scale = 2.
-    kernel = lambda scale : np.mean(np.exp(-scale*tau)) - mean_flux_desired
-    while scale < 100:
-        if kernel(scale) < 0:
-            break
-        scale*=2
-    newscale = brentq(kernel, 0, scale, rtol=tol)
-    return newscale
+    return _rescale_mean_flux(tau, mean_flux_desired, np.size(tau), tol)
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""

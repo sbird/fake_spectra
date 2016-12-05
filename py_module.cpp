@@ -231,6 +231,43 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
+extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
+{
+    PyArrayObject *Tau;
+    double mean_flux_desired, tol;
+    int nbins;
+    if(!PyArg_ParseTuple(args, "O!did", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol) )
+    {
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double)\n");
+      return NULL;
+    }
+    Tau = PyArray_GETCONTIGUOUS(Tau);
+    double * tau =(double *) PyArray_DATA(Tau);
+    double mean_flux;
+    double tau_mean_flux;
+    double scale, newscale=100;
+    double des_flux_bins=mean_flux_desired*nbins;
+    do {
+        int i;
+        scale=newscale;
+        mean_flux=0;
+        tau_mean_flux=0;
+        for(i=0; i< nbins; i++)
+        {
+            double temp=exp(-scale*tau[i]);
+            mean_flux+=temp;
+            tau_mean_flux+=temp*tau[i];
+        }
+        newscale=scale+(mean_flux-des_flux_bins)/tau_mean_flux;
+        /*We don't want the absorption to change sign and become emission; 
+         * 0 is too far. */
+        if(newscale < 0)
+                newscale=0;
+    }while(fabs(newscale-scale) > tol*newscale);
+    Py_DECREF(Tau);
+    return Py_BuildValue("d",newscale);
+}
+
 static PyMethodDef spectrae[] = {
   {"_Particle_Interpolate", Py_Particle_Interpolation, METH_VARARGS,
    "Find absorption or column density by interpolating particles. "
@@ -241,6 +278,9 @@ static PyMethodDef spectrae[] = {
    "return a list of booleans for those particles near "
    "a sightline."
    "   Arguments: box, pos, h, axis, cofm"},
+  {"_rescale_mean_flux",Py_mean_flux,METH_VARARGS,
+   "Compute the scale factor for spectra to have the desired mean flux."
+   ""},
   {NULL, NULL, 0, NULL},
 };
 
