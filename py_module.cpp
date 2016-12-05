@@ -231,18 +231,8 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
+double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const int nbins, const double tol)
 {
-    PyArrayObject *Tau;
-    double mean_flux_desired, tol;
-    int nbins;
-    if(!PyArg_ParseTuple(args, "O!did", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol) )
-    {
-      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double)\n");
-      return NULL;
-    }
-    Tau = PyArray_GETCONTIGUOUS(Tau);
-    const double * tau =(double *) PyArray_DATA(Tau);
     const double des_flux_bins=mean_flux_desired*nbins;
     double scale, newscale=1;
     do {
@@ -264,6 +254,21 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
             newscale=1e-10;
         }
     }while(fabs(newscale-scale) > tol*newscale);
+    return newscale;
+}
+extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
+{
+    PyArrayObject *Tau;
+    double mean_flux_desired, tol;
+    int nbins;
+    if(!PyArg_ParseTuple(args, "O!did", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol) )
+    {
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double)\n");
+      return NULL;
+    }
+    Tau = PyArray_GETCONTIGUOUS(Tau);
+    const double * tau =(double *) PyArray_DATA(Tau);
+    const double newscale = get_mean_flux_scale(tau, mean_flux_desired, nbins, tol);
     Py_DECREF(Tau);
     return Py_BuildValue("d",newscale);
 }
