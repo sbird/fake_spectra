@@ -13,7 +13,7 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-4):
+def mean_flux(tau, mean_flux_desired, tol = 1e-5):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
