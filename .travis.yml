@@ -1,7 +1,7 @@
 sudo: required
 dist: trusty
 language: python
-python: 2.7
+python: 3.5
     #    - 3.4
     #    - 2.7
 os: linux
@@ -10,14 +10,11 @@ addons:
     apt:
         packages:
             - libboost-test-dev
-            - python-numpy
             - python3-numpy
             - python3-scipy
-            - python-scipy
             - python3-h5py
-            - python-h5py
 virtualenv:
     system_site_packages: true
 #before-install: git submodule update --init --recursive
 install: true
-script: make && make test && nosetests
+script: make && make test && nosetests3
