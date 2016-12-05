@@ -11,6 +11,7 @@ addons:
         packages:
             - libboost-test-dev
             - python3-numpy
+            - python-numpy
             - python3-scipy
             - python3-h5py
 virtualenv:
