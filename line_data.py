@@ -9,6 +9,8 @@ Transitions are various.
 import re
 import os.path
 
+_lines_cache_ = None
+
 class LineData(object):
     """Class to aggregate a number of lines from VPFIT tables. Reads from atom.dat,
     to get the results call get_line(species, ion), where ion is the transition number.
@@ -21,29 +23,11 @@ class LineData(object):
         self.lines = {}
         if vpdat is None:
             vpdata = os.path.join(os.path.dirname(os.path.realpath(__file__)), "atom.dat")
-        self.read_vpfit(vpdata)
-
-    def read_vpfit(self,vpdat):
-        """Read VPFIT's atom.dat file for the 9 species"""
-        vp = open(vpdat)
-        inline = "--"
-        while inline != "":
-            inline = vp.readline()
-            try:
-                (specie, ion) = find_species(inline)
-            except ValueError:
-                continue
-            #is this a line we care about?
-            if self.species.count(specie) == 0 or ion < 0:
-                continue
-            (lambda_X, fosc_X, gamma_X) = parse_line_contents(inline)
-            line = Line(lambda_X, fosc_X, gamma_X)
-            #Only add the first transition for lines
-            if (specie,ion) not in self.lines:
-                self.lines[(specie,ion)]={int(lambda_X):line}
-            else:
-                self.lines[(specie,ion)][int(lambda_X)] = line
-#                 print "Read line: ",specie,ion
+            if _lines_cache_ is None:
+                _lines_cache_ = read_vpfit(vpdata,self.species)
+            self.lines = _lines_cache_
+        else:
+            self.lines = read_vpfit(vpdata,self.species)
 
     def __getitem__(self,specion):
         """Get data for a particular line.
@@ -70,6 +54,30 @@ class Line(object):
         self.lambda_X = lambda_X
         self.fosc_X = fosc_X
         self.gamma_X = gamma_X
+
+def read_vpfit(vpdat, species):
+    """Read VPFIT's atom.dat file for the 9 species"""
+    vp = open(vpdat)
+    lines = {}
+    inline = "--"
+    while inline != "":
+        inline = vp.readline()
+        try:
+            (specie, ion) = find_species(inline)
+        except ValueError:
+            continue
+        #is this a line we care about?
+        if species.count(specie) == 0 or ion < 0:
+            continue
+        (lambda_X, fosc_X, gamma_X) = parse_line_contents(inline)
+        line = Line(lambda_X, fosc_X, gamma_X)
+        #Only add the first transition for lines
+        if (specie,ion) not in lines:
+            lines[(specie,ion)]={int(lambda_X):line}
+        else:
+            lines[(specie,ion)][int(lambda_X)] = line
+#                 print "Read line: ",specie,ion
+    return lines
 
 def find_species(line):
     """Parse a line to find which species it is: species is given by first two characters, unless the second character is a capital.
