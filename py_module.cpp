@@ -242,27 +242,27 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
       return NULL;
     }
     Tau = PyArray_GETCONTIGUOUS(Tau);
-    double * tau =(double *) PyArray_DATA(Tau);
-    double mean_flux;
-    double tau_mean_flux;
-    double scale, newscale=100;
-    double des_flux_bins=mean_flux_desired*nbins;
+    const double * tau =(double *) PyArray_DATA(Tau);
+    const double des_flux_bins=mean_flux_desired*nbins;
+    double scale, newscale=1;
     do {
-        int i;
         scale=newscale;
-        mean_flux=0;
-        tau_mean_flux=0;
-        for(i=0; i< nbins; i++)
+        double mean_flux=0;
+        double tau_mean_flux=0;
+        #pragma omp parallel for
+        for(int i=0; i< nbins; i++)
         {
-            double temp=exp(-scale*tau[i]);
+            const double temp=exp(-scale*tau[i]);
             mean_flux+=temp;
             tau_mean_flux+=temp*tau[i];
         }
+        /*Newton-Raphson*/
         newscale=scale+(mean_flux-des_flux_bins)/tau_mean_flux;
         /*We don't want the absorption to change sign and become emission; 
          * 0 is too far. */
-        if(newscale < 0)
-                newscale=0;
+        if(newscale <= 0) {
+            newscale=1e-10;
+        }
     }while(fabs(newscale-scale) > tol*newscale);
     Py_DECREF(Tau);
     return Py_BuildValue("d",newscale);
