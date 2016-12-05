@@ -62,7 +62,7 @@ class Spectra(object):
             units - UnitSystem instance.
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8,load_halo=False, units=None, sf_neutral=True):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8,load_halo=False, units=None, sf_neutral=True,quiet=False):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -107,7 +107,8 @@ class Spectra(object):
         self.savefile = path.join(savedir,savefile)
         #Snapshot data
         if reload_file:
-            print("Reloading from snapshot (will save to: ",self.savefile," )")
+            if not quiet:
+                print("Reloading from snapshot (will save to: ",self.savefile," )")
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -134,7 +135,8 @@ class Spectra(object):
             try:
                 self.units = self.snapshot_set.get_units()
             except KeyError:
-                print('No units found. Using kpc/kms/10^10Msun by default')
+                if not quiet:
+                    print('No units found. Using kpc/kms/10^10Msun by default')
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
@@ -170,7 +172,8 @@ class Spectra(object):
         except AttributeError:
             #Occurs if we didn't load a snapshot
             pass
-        print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
+        if not quiet:
+            print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
     def save_file(self):
         """
