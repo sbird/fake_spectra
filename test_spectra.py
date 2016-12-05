@@ -115,14 +115,14 @@ def testRolledSpectra():
     assert np.sum(np.abs(tau_new)) == 4
 
 def testrescorr():
-    """Check that colvolving a spectrum with a Gaussian works"""
+    """Check that convolving a spectrum with a Gaussian works"""
     tau = np.zeros((2,50))
     tau[0,25] = 2
     tau[1,23] = 3
     tau2 = spec_utils.res_corr(tau, 2, 8)
     #Check flux conserved
-    assert np.sum(tau2[0,:]) == np.sum(tau[0,:])
-    assert np.sum(tau2[1,:]) == np.sum(tau[1,:])
+    assert np.abs(np.sum(tau2[0,:])/ np.sum(tau[0,:]) -1) < 1e-6
+    assert np.abs(np.sum(tau2[1,:])/ np.sum(tau[1,:]) -1) < 1e-6
     #Check expanded by expected amount
     for i in (0,1):
         assert np.size(np.where(tau2[i,:]> 0)) == 15
