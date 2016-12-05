@@ -239,7 +239,7 @@ double get_mean_flux_scale(const double * tau, const double mean_flux_desired, c
         scale=newscale;
         double mean_flux=0;
         double tau_mean_flux=0;
-        #pragma omp parallel for
+        #pragma omp parallel for reduction(+:mean_flux, tau_mean_flux)
         for(int i=0; i< nbins; i++)
         {
             const double temp=exp(-scale*tau[i]);
