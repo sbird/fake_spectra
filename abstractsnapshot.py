@@ -146,7 +146,7 @@ class HDF5Snapshot(AbstractSnapshot):
                 """Get data from one file"""
                 fhandle = h5py.File(ff,'r')
                 return np.array(fhandle["PartType"+str(part_type)][blockname])
-            return np.concatenate([_getone(ff) for ff in enumerate(self._files)])
+            return np.concatenate([_getone(ff) for ff in self._files])
         if self._handle_num != segment:
             self._f_handle.close()
             self._f_handle = h5py.File(self._files[segment],'r')
