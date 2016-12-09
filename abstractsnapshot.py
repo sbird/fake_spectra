@@ -17,7 +17,7 @@ def AbstractSnapshotFactory(num, base):
     try:
         return HDF5Snapshot(num, base)
     except IOError:
-        if bigfile == False:
+        if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
         try:
             return BigFileSnapshot(num, base)
@@ -141,6 +141,12 @@ class HDF5Snapshot(AbstractSnapshot):
            Segment: which file to load from."""
         if blockname in self.bigfile_to_hdf_map.keys():
             blockname = self.bigfile_to_hdf_map[blockname]
+        if segment < 0:
+            def _getone(ff):
+                """Get data from one file"""
+                fhandle = h5py.File(ff,'r')
+                return np.array(fhandle["PartType"+str(part_type)][blockname])
+            return np.concatenate([_getone(ff) for ff in self._files])
         if self._handle_num != segment:
             self._f_handle.close()
             self._f_handle = h5py.File(self._files[segment],'r')
