@@ -39,9 +39,11 @@ endif
 #installs such as anaconda (very common on mac)
 #If you want to use python2, change the below to python2-config.
 PYPREF=$(shell python3-config --prefix)
-PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib $(shell python3-config --libs)
+PYLIB +=$(shell python3-config --ldflags)
 #Python include path
 PYINC:=-I${PYPREF}/include $(shell python3-config --includes)
+#potential numpy include path used in anaconda. Would like less hacky way to get this.
+PYINC+= -I$(shell dirname `python3-config --configdir`)/site-packages/numpy/core/include
 
 PG =
 LIBS=
