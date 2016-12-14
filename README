@@ -1,9 +1,9 @@
 = Flux extractor =
 
 This is a small code for generating and analyzing simulated spectra from
-Arepo/Gadget HDF5 simulation output. It is fast, parallel and written in C++ and Python.
+Arepo/Gadget HDF5 simulation output. It is fast, parallel and written in C++ and Python 3.
 It really has two parts: 
-1) a C++/python code which generates and analyses arbitrary spectra
+1) a C++/python 3 code which generates and analyses arbitrary spectra
 2) A (slightly) maintained C++ command line program, extract, that generates 
 Lyman-alpha spectra and outputs them to a binary file.
 
@@ -14,9 +14,8 @@ how to use it.
 
 == Installation ==
 
-*On linux, this is a python 3 code*
-Make sure you install the python 3 libraries!
-(On Mac we attempt to use the system python.)
+*This is a python 3 code*
+*Make sure you install the python 3 libraries!*
 
 Required Python libraries:
 - numpy
@@ -26,6 +25,11 @@ Required Python libraries:
 - cloudy_tables (scripts for finding an ionisation fraction from a cloudy table)
 
 All these libraries should be in your $PYTHONPATH
+
+At time of writing, the code should compile with python2, once 
+python3-config in the Makefile is replaced with python2-config. 
+However, I do not guarantee bug-free operation, and strongly 
+recommend using python 3.
 
 To make the C module, type:
 "make"

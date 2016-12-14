@@ -34,18 +34,15 @@ endif
 LDCHECK:=$(shell ld --as-needed 2>&1)
 ifneq (unknown,$(findstring unknown,${LDCHECK}))
   PYLIB +=-Wl,--no-add-needed,--as-needed
-  # Python libraries: should not be actually needed, but make the build less fragile.
-  PYLIB3=$(shell python3-config --libs)
-  #Python include path
-  PYINC:=$(shell python3-config --includes)
-else
-  #Assume now we are using the mac linker, which is more complicated.
-  #Often there are two pythons installed and we need to use the right one.
-  PYPREF=$(shell python-config --prefix)
-  PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib $(shell python-config --libs)
-  #Python include path
-  PYINC:=-I${PYPREF}/include $(shell python-config --includes)
 endif
+#Set up the python paths, if people are using non-standard python
+#installs such as anaconda (very common on mac)
+#If you want to use python2, change the below to python2-config.
+PYPREF=$(shell python3-config --prefix)
+PYLIB +=-L${PYPREF}/lib -Wl,-L${PYPREF}/lib $(shell python3-config --libs)
+#Python include path
+PYINC:=-I${PYPREF}/include $(shell python3-config --includes)
+
 PG =
 LIBS=
 
