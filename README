@@ -22,7 +22,10 @@ Required Python libraries:
 - h5py
 - matplotlib
 - spb_common (small python routines I use in a number of my projects)
-- cloudy_tables (scripts for finding an ionisation fraction from a cloudy table)
+
+Optional libraries:
+- cloudy_tables (scripts for finding an ionisation fraction from a cloudy table): this is required to generate metal line absorption.
+- bigfile (to install, do 'pip install --user bigfile') for reading BigFile snapshot outputs from Yu Feng's MP-Gadget.
 
 All these libraries should be in your $PYTHONPATH
 
