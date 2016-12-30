@@ -2,22 +2,20 @@
 """Class to create spectra spaced on a regular grid through the box"""
 
 import numpy as np
-import hdfsim
+import abstractsnapshot as absn
 import spectra
 
 class GriddedSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot. Default parameters are BOSS DR9"""
     def __init__(self,num, base, nspec=200, res = 90., cdir = None, savefile="gridded_spectra.hdf5", savedir=None):
-        #Load halos to push lines through them
-        f = hdfsim.get_file(num, base, 0)
-        self.box = f["Header"].attrs["BoxSize"]
-        f.close()
+        # get box size from file (either HDF5 or BigFile)
+        f = absn.AbstractSnapshotFactory(num, base)
+        self.box = f.get_header_attr("BoxSize")
+        del f
         self.NumLos = nspec*nspec
         #All through y axis
         axis = np.ones(self.NumLos)
-        #Sightlines at random positions
-        #Re-seed for repeatability
-        np.random.seed(23)
+        # get position of skewers (on a regular grid)
         cofm = self.get_cofm()
         spectra.Spectra.__init__(self,num, base, cofm, axis, res, cdir, savefile=savefile,savedir=savedir,reload_file=True)
 
