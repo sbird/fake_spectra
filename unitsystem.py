@@ -23,7 +23,7 @@ class UnitSystem(object):
         self.boltzmann=1.38066e-16
         #Newton's constant in cm^3/g/s^2
         self.gravcgs = 6.674e-8
-        #h * 100 km/s/Mpc in h/s
+        #100 km/s/Mpc in 1/s
         self.h100=3.2407789e-18
         #Gas equation of state
         self.gamma=5./3
