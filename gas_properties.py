@@ -11,10 +11,6 @@ the neutral hydrogen density in *physical* atoms / cm^3
 
 import numpy as np
 import scipy.interpolate.interpolate as intp
-try:
-    import numexpr as nmex
-except ImportError:
-    pass
 import unitsystem
 
 class GasProperties(object):
@@ -102,45 +98,8 @@ class GasProperties(object):
         return (B - np.sqrt(B**2-4*A*alpha_A))/(2*A)
 
     def get_temp(self,part_type, segment):
-        """Compute temperature (in K) from internal energy.
-           Uses: internal energy
-                 electron abundance
-                 hydrogen mass fraction (0.76)
-           Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
-           T = U (γ-1) μ m_P / k_B
-           where k_B is the Boltzmann constant
-           γ is 5/3, the perfect gas constant
-           m_P is the proton mass
-
-           μ = 1 / (mean no. molecules per unit atomic weight)
-             = 1 / (X + Y /4 + E)
-             where E = Ne * X, and Y = (1-X).
-             Can neglect metals as they are heavy.
-             Leading contribution is from electrons, which is already included
-             [+ Z / (12->16)] from metal species
-             [+ Z/16*4 ] for OIV from electrons."""
-        #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
-        #T = U (γ-1) μ m_P / k_B
-        #where k_B is the Boltzmann constant
-        #γ is 5/3, the perfect gas constant
-        #m_P is the proton mass
-        #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
-        #Internal energy units are 10^-10 erg/g
-        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*1e10
-        #Calculate temperature from internal energy and electron abundance
-        nelec = self.absnap.get_data(part_type, "ElectronAbundance", segment=segment)
-        try:
-            hy_mass = self.absnap.get_data(part_type, "GFM_Metals", segment=segment)[:,0]
-        except KeyError:
-            hy_mass = 0.76*np.ones_like(nelec)
-        assert np.size(ienergy) == np.size(nelec) == np.size(hy_mass)
-        try:
-            muienergy = nmex.evaluate("4 / (hy_mass * (3 + 4*nelec) + 1)*ienergy")
-        except NameError:
-            muienergy = 4 / (hy_mass * (3 + 4*nelec) + 1)*ienergy
-        #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
-        temp = (self.gamma-1) * self.units.protonmass / self.boltzmann * muienergy
-        return temp
+        """Compute temperature (in K) from internal energy."""
+        return self.absnap.get_temp(part_type, segment=segment)
 
     def get_code_rhoH(self,part_type, segment):
         """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""

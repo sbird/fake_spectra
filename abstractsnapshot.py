@@ -105,6 +105,40 @@ class AbstractSnapshot(object):
         units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
         return units
 
+    def get_temp(self,part_type, segment,hy_mass=0.76):
+        """Compute temperature (in K) from internal energy.
+           Uses: internal energy
+                 electron abundance
+                 hydrogen mass fraction (0.76)
+           Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+           T = U (γ-1) μ m_P / k_B
+           where k_B is the Boltzmann constant
+           γ is 5/3, the perfect gas constant
+           m_P is the proton mass
+
+           μ = 1 / (mean no. molecules per unit atomic weight)
+             = 1 / (X + Y /4 + E)
+             where E = Ne * X, and Y = (1-X).
+             Can neglect metals as they are heavy.
+             Leading contribution is from electrons, which is already included
+             [+ Z / (12->16)] from metal species
+             [+ Z/16*4 ] for OIV from electrons."""
+        #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+        #T = U (γ-1) μ m_P / k_B
+        #where k_B is the Boltzmann constant
+        #γ is 5/3, the perfect gas constant
+        #m_P is the proton mass
+        #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+        #Internal energy units are 10^-10 erg/g
+        units = self.get_units()
+        ienergy = self.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
+        #Calculate temperature from internal energy and electron abundance
+        nelec = self.get_data(part_type, "ElectronAbundance", segment=segment)
+        muienergy = 4 / (hy_mass * (3 + 4*nelec) + 1)*ienergy
+        #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
+        temp = (units.gamma-1) * units.protonmass / units.boltzmann * muienergy
+        return temp
+
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
     def __init__(self, num, base):

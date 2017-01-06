@@ -413,7 +413,7 @@ class Spectra(object):
         den = den[ind]
         #Only need temp for ionic density, and tau later
         if get_tau or (ion != -1 and elem != 'H'):
-            temp = self.gasprop.get_temp(0,segment=fn).astype(np.float32)
+            temp = self.snapshot_set.get_temp(0,segment=fn).astype(np.float32)
             temp = temp[ind]
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
