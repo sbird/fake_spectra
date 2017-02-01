@@ -105,7 +105,7 @@ class AbstractSnapshot(object):
         units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
         return units
 
-    def get_temp(self,part_type, segment,hy_mass=0.76):
+    def get_temp(self,part_type, segment,hy_mass=0.76, units=None):
         """Compute temperature (in K) from internal energy.
            Uses: internal energy
                  electron abundance
@@ -130,7 +130,8 @@ class AbstractSnapshot(object):
         #m_P is the proton mass
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
-        units = self.get_units()
+        if units is None:
+            units = self.get_units()
         ienergy = self.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
         #Calculate temperature from internal energy and electron abundance
         nelec = self.get_data(part_type, "ElectronAbundance", segment=segment)
