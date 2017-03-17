@@ -21,7 +21,7 @@ def AbstractSnapshotFactory(num, base):
             raise IOError("Not an HDF5 snapshot: ", base)
         try:
             return BigFileSnapshot(num, base)
-        except IOError:
+        except (IOError,bigfile.BigFileError):
             raise IOError("Not a bigfile or HDF5 snapshot: ",base)
 
 class AbstractSnapshot(object):
@@ -266,7 +266,7 @@ class BigFileSnapshot(AbstractSnapshot):
         if os.path.exists(new_fname):
             fname = new_fname
         self._f_handle = bigfile.BigFile(fname, 'r')
-        if len(self._f_handle.blocks) == 0:
+        if "Header" not in self._f_handle.blocks:
             raise IOError("No BigFile snapshot at",new_fname)
         AbstractSnapshot.__init__(self)
 
