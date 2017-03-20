@@ -1,9 +1,14 @@
+#Optional file formats for the C reader.
+#Does not affect python.
 #Define this to disable HDF5
 #HDF5=no
 #Define this to disable reading of type 2 snapshots
 GREAD=no
 #Change this to where you installed GadgetReader
 GREADDIR=${CURDIR}/../GadgetReader
+
+# Voigt profiles vs. Gaussian profiles
+CFLAGS += -DVOIGT
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
@@ -42,8 +47,8 @@ PYPREF=$(shell python3-config --prefix)
 PYLIB +=$(shell python3-config --ldflags)
 #Python include path
 PYINC:=-I${PYPREF}/include $(shell python3-config --includes)
-#potential numpy include path used in anaconda. Would like less hacky way to get this.
-PYINC+= -I$(shell dirname `python3-config --configdir`)/site-packages/numpy/core/include
+#Set include path for numpy
+PYINC+= -I$(shell python3 _np_setup.py)
 
 PG =
 LIBS=
@@ -63,10 +68,6 @@ IGREAD = -I${GREADDIR}
 LIBS+=-lrgad -L${GREADDIR} -Wl,-rpath,${GREADDIR}
 endif
 
-# Voigt profiles vs. Gaussian profiles
-CFLAGS += -DVOIGT
-#Use a top hat kernel instead of an SPH kernel:
-#arguably better for Arepo column density, but definitely wrong for Gadget.
 COM_INC = index_table.h absorption.h part_int.h
 CXXFLAGS += $(CFLAGS)
 
