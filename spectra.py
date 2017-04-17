@@ -140,8 +140,9 @@ class Spectra(object):
         else:
             self.load_savefile(self.savefile)
         # Conversion factors from internal units
-        self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble    # convert length to physical cm
-        #  Calculate the length scales to be used in the box: Hz in km/s/Mpc
+        self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble
+        # Convert length to physical cm
+        # Calculate the length scales to be used in the box: Hz in km/s/Mpc
         Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Convert comoving internal units to physical km/s.
         #Numerical constant is 1 Mpc in cm.
