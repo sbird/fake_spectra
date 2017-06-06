@@ -14,6 +14,7 @@ addons:
             - python-numpy
             - python3-scipy
             - python3-h5py
+            - libhdf5-serial-dev
 virtualenv:
     system_site_packages: true
 #before-install: git submodule update --init --recursive
