@@ -7,3 +7,4 @@ tags
 *.dat
 build
 */*/__pycache__/*
+*/__pycache__/*
