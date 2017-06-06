@@ -2,7 +2,8 @@
 
 import math
 import numpy as np
-import fluxstatistics as stat
+
+from fake_spectra import fluxstatistics as stat
 
 def testMeanFlux():
     """Test that we scale for the mean flux correctly"""

@@ -11,7 +11,8 @@ the neutral hydrogen density in *physical* atoms / cm^3
 
 import numpy as np
 import scipy.interpolate.interpolate as intp
-import unitsystem
+
+from . import unitsystem
 
 class GasProperties(object):
     """Class implementing the neutral fraction ala Rahmati 2012.

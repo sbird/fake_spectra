@@ -89,14 +89,16 @@ if check_for_openmp():
     extra_link_args += ['-lgomp',]
 
 cmodule = [
-        Extension("_spectra_priv",
-            ["py_module.cpp",
-             "absorption.cpp", "index_table.cpp",
-             "Faddeeva.cpp",   "part_int.cpp"
+        Extension("fake_spectra._spectra_priv",
+            ["fake_spectra/py_module.cpp",
+             "fake_spectra/absorption.cpp",
+             "fake_spectra/index_table.cpp",
+             "fake_spectra/Faddeeva.cpp",
+             "fake_spectra/part_int.cpp",
             ],
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
-            include_dirs = [".", numpy.get_include()])]
+            include_dirs = ["fake_spectra/", numpy.get_include()])]
 
 setup(
     name="fake_spectra",
@@ -107,11 +109,12 @@ setup(
 #     cmdclass = {'build_ext': build_ext_subclass },
     url="http://github.com/sbird/fake_spectra",
     description="Analysis tools for generating artificial spectra from simulations.",
-#     package_dir = {'fake_spectra': 'build'},
-    py_modules = ['spectra', 'unitsystem', 'abstractsnapshot', 'halospectra',
-        'spec_utils','voigtfit','line_data','plot_spectra','gas_properties','fluxstatistics',
-        'randspectra','griddedspectra','haloassigned_spectra'],
+    packages = ['fake_spectra', 'fake_spectra.tests'],
     requires=['numpy', 'h5py','scipy'],
+    package_data = {
+            'fake_spectra.tests': ['*.npz'],
+            'fake_spectra': ['*.dat'],
+           },
     ext_modules = cmodule,
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",

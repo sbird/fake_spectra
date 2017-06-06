@@ -5,8 +5,10 @@ import math
 import os.path as path
 import numpy as np
 import h5py
-import spectra
-import halocat
+
+from . import spectra
+from . import halocat
+
 try:
     xrange(1)
 except NameError:

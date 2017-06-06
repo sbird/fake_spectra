@@ -3,8 +3,9 @@
 
 from __future__ import print_function
 import numpy as np
-import abstractsnapshot as absn
-import spectra
+
+from . import abstractsnapshot as absn
+from . import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""

@@ -6,7 +6,8 @@ Useful for lyman alpha forest work."""
 import math
 import numpy as np
 from scipy.optimize import brentq
-from _spectra_priv import _rescale_mean_flux
+
+from ._spectra_priv import _rescale_mean_flux
 
 def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
