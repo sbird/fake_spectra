@@ -1,3 +1,3 @@
-include *.h
+include fake_spectra/*.h
 include fake_spectra/tests/*.npz
 include fake_spectra/*.dat
