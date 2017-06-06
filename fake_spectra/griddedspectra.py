@@ -2,8 +2,9 @@
 """Class to create spectra spaced on a regular grid through the box"""
 
 import numpy as np
-import abstractsnapshot as absn
-import spectra
+
+from . import abstractsnapshot as absn
+from . import spectra
 
 class GriddedSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot. Default parameters are BOSS DR9"""

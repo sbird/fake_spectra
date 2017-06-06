@@ -2,10 +2,12 @@
 """Contains the plotting-specific functions for the spectrum analysis code."""
 
 from __future__ import print_function
-import spectra
 import numpy as np
 #import leastsq as lsq
 import matplotlib.pyplot as plt
+
+from . import spectra
+
 try:
     xrange(1)
 except NameError:

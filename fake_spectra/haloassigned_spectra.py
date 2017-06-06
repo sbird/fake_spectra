@@ -7,10 +7,12 @@ try:
 except ImportError:
     #Non-essential
     pass
-import subfindhdf
-import spec_utils
-import plot_spectra as ps
 import matplotlib.pyplot as plt
+
+from . import subfindhdf
+from . import spec_utils
+from . import plot_spectra as ps
+
 try:
     xrange(1)
 except NameError:

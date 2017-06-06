@@ -80,10 +80,11 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 """
 
 import numpy as np
-import spectra as ss
-import unitsystem
-import spec_utils
-import voigtfit
+
+from fake_spectra import spectra as ss
+from fake_spectra import unitsystem
+from fake_spectra import spec_utils
+from fake_spectra import voigtfit
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -135,7 +136,10 @@ def testrescorr():
 
 def test_voigtfit():
     """Simple tests that the Voigt fitter is working, using 10 test CIV spectra."""
-    taus = np.load("example_civ_tau.npz")["arr_0"]
+    import os.path
+
+    fn = os.path.join(os.path.dirname(__file__), "example_civ_tau.npz")
+    taus = np.load(fn)["arr_0"]
     for tau in taus:
         assert np.shape(tau) == (473,)
         prof = voigtfit.Profiles(tau,5.0103430332365999,elem="C",ion=4,line=1548)

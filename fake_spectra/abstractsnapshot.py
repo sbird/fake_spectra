@@ -5,7 +5,9 @@ import os
 import glob
 import numpy as np
 import h5py
-import unitsystem
+
+from . import unitsystem
+
 try:
     import bigfile
 except ImportError:

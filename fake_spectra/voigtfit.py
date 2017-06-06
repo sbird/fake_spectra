@@ -10,7 +10,8 @@ import multiprocessing
 import numpy as np
 import scipy.optimize as optimize
 import scipy.special
-import line_data
+
+from . import line_data
 
 class Profiles(object):
     """Class to fit a spectrum input (without noise) with a series of profiles, Gaussian or Voigt.

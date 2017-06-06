@@ -12,7 +12,8 @@ import os.path as path
 import shutil
 import h5py
 import numpy as np
-import spectra as ss
+
+from . import spectra as ss
 
 def maginJy(mag, band):
     """Convert a magnitude to flux in Jansky, according to wikipedia's table"""

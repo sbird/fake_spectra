@@ -24,16 +24,18 @@ import os.path as path
 import shutil
 import numpy as np
 import h5py
-import abstractsnapshot as absn
-import gas_properties
-import line_data
-import unitsystem
-import voigtfit
-import spec_utils
-import fluxstatistics as fstat
-from _spectra_priv import _Particle_Interpolate, _near_lines
+
+from . import abstractsnapshot as absn
+from . import gas_properties
+from . import line_data
+from . import unitsystem
+from . import voigtfit
+from . import spec_utils
+from . import fluxstatistics as fstat
+from ._spectra_priv import _Particle_Interpolate, _near_lines
+
 try:
-    import convert_cloudy
+    from . import convert_cloudy
     def _get_cloudy_table(red, cdir=None):
         """Get the cloudy table if we didn't already"""
         #Generate cloudy tables
