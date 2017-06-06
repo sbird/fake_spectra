@@ -18,5 +18,6 @@ addons:
 virtualenv:
     system_site_packages: true
 #before-install: git submodule update --init --recursive
-install: true
-script: make && make test && nosetests3
+install:
+    - pip install runtests
+script: python3 do_the_tests.py
