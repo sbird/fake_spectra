@@ -96,6 +96,13 @@ cmodule = [
              "fake_spectra/Faddeeva.cpp",
              "fake_spectra/part_int.cpp",
             ],
+            depends = [
+                "fake_spectra/Faddeeva.h",
+                "fake_spectra/absorption.h",
+                "fake_spectra/index_table.h",
+                "fake_spectra/part_int.h",
+                "fake_spectra/singleabs.h",]
+            ,
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
             include_dirs = ["fake_spectra/", numpy.get_include()])]
