@@ -6,3 +6,4 @@ tags
 .directory
 *.dat
 build
+*/*/__pycache__/*
