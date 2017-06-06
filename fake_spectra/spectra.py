@@ -34,17 +34,16 @@ from . import spec_utils
 from . import fluxstatistics as fstat
 from ._spectra_priv import _Particle_Interpolate, _near_lines
 
-try:
-    from . import convert_cloudy
-    def _get_cloudy_table(red, cdir=None):
-        """Get the cloudy table if we didn't already"""
-        #Generate cloudy tables
-        if cdir != None:
-            return convert_cloudy.CloudyTable(red, cdir)
-        else:
-            return convert_cloudy.CloudyTable(red)
-except ImportError:
-    print ("No cloudy table found; you will not be able to generate metal line spectra")
+from .cloudy_tables import convert_cloudy
+def _get_cloudy_table(red, cdir=None):
+    """Get the cloudy table if we didn't already"""
+    #Generate cloudy tables
+    if cdir != None:
+        return convert_cloudy.CloudyTable(red, cdir)
+    else:
+        return convert_cloudy.CloudyTable(red)
+
+#python2 compat
 try:
     xrange(1)
 except NameError:

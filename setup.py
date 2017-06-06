@@ -116,11 +116,12 @@ setup(
 #     cmdclass = {'build_ext': build_ext_subclass },
     url="http://github.com/sbird/fake_spectra",
     description="Analysis tools for generating artificial spectra from simulations.",
-    packages = ['fake_spectra', 'fake_spectra.tests'],
+    packages = ['fake_spectra', 'fake_spectra.tests', 'fake_spectra.cloudy_tables'],
     requires=['numpy', 'h5py','scipy'],
     package_data = {
             'fake_spectra.tests': ['*.npz'],
             'fake_spectra': ['*.dat'],
+            'fake_spectra.cloudy_tables': ['ion_out_*/cloudy_table.npz']
            },
     ext_modules = cmodule,
     classifiers = ["Development Status :: 4 - Beta",
