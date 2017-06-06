@@ -17,7 +17,7 @@ addons:
             - libhdf5-serial-dev
 virtualenv:
     system_site_packages: true
-#before-install: git submodule update --init --recursive
+before-install: git submodule update --init --recursive
 install:
     - pip install runtests
 script: python3 do_the_tests.py && make test && make
