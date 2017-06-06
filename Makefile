@@ -8,7 +8,7 @@ GREAD=no
 GREADDIR=${CURDIR}/../GadgetReader
 
 # Voigt profiles vs. Gaussian profiles
-CFLAGS += -DVOIGT
+CFLAGS += -DVOIGT -Ifake_spectra
 
 ifeq ($(CC),cc)
     GCC:=$(shell which gcc --tty-only 2>&1)
@@ -40,15 +40,6 @@ LDCHECK:=$(shell ld --as-needed 2>&1)
 ifneq (unknown,$(findstring unknown,${LDCHECK}))
   PYLIB +=-Wl,--no-add-needed,--as-needed
 endif
-#Set up the python paths, if people are using non-standard python
-#installs such as anaconda (very common on mac)
-#If you want to use python2, change the below to python2-config.
-PYPREF=$(shell python3-config --prefix)
-PYLIB +=$(shell python3-config --ldflags)
-#Python include path
-PYINC:=-I${PYPREF}/include $(shell python3-config --includes)
-#Set include path for numpy
-PYINC+= -I$(shell python3 _np_setup.py)
 
 PG =
 LIBS=
@@ -68,49 +59,46 @@ IGREAD = -I${GREADDIR}
 LIBS+=-lrgad -L${GREADDIR} -Wl,-rpath,${GREADDIR}
 endif
 
-COM_INC = index_table.h absorption.h part_int.h
+COM_INC = fake_spectra/index_table.h fake_spectra/absorption.h fake_spectra/part_int.h
 CXXFLAGS += $(CFLAGS)
 
-.PHONY: all clean dist test python
+.PHONY: clean test all
 
-all: _spectra_priv.so
-python: _spectra_priv.so
+all: btest cextract/build cextract/build/extract
 
-extract: cextract/main.o cextract/read_snapshot.o cextract/read_hdf_snapshot.o absorption.o cextract/init.o index_table.o part_int.o Faddeeva.o
+btest:
+	mkdir btest
+
+cextract/build:
+	mkdir cextract/build
+
+cextract/build/extract: cextract/build/main.o cextract/build/read_snapshot.o cextract/build/read_hdf_snapshot.o btest/absorption.o cextract/build/init.o btest/index_table.o btest/part_int.o btest/Faddeeva.o
 	$(LINK) $(LFLAGS) $(LIBS) $^ -o $@
 
-statistic: cextract/statistic.o cextract/calc_power.o cextract/mean_flux.o cextract/smooth.o cextract/powerspectrum.o
+cextract/build/statistic: cextract/build/statistic.o cextract/build/calc_power.o cextract/build/mean_flux.o cextract/build/smooth.o cextract/build/powerspectrum.o
 	$(LINK) $(LFLAGS) -lfftw3 $^ -o $@
 
-cextract/%.o: cextract/%.c cextract/global_vars.h
-cextract/main.o: cextract/main.cpp cextract/global_vars.h $(COM_INC)
+cextract/build/%.o: cextract/%.c cextract/global_vars.h cextract/build
+	$(CC) $(CFLAGS) ${IGREAD} -c $< -o $@
 
-cextract/read_snapshot.o: cextract/read_snapshot.cpp cextract/global_vars.h
-	$(CXX) $(CXXFLAGS) ${IGREAD} -c $< -o $@
+cextract/build/main.o: cextract/main.cpp cextract/global_vars.h $(COM_INC)
+	$(CC) $(CFLAGS) ${IGREAD} -c $< -o $@
 
-%.o: %.cpp %.h
+cextract/build/read_snapshot.o: cextract/read_snapshot.cpp cextract/global_vars.h
+	$(CC) $(CFLAGS) ${IGREAD} -c $< -o $@
 
-absorption.o: absorption.cpp absorption.h singleabs.h
+btest/%.o: fake_spectra/%.cpp fake_spectra/%.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-part_int.o: part_int.cpp part_int.h absorption.h index_table.h
-
-calc_power.o: calc_power.c smooth.o powerspectrum.o
-
-py_module.o: py_module.cpp $(COM_INC)
-	$(CXX) $(CFLAGS) -fno-strict-aliasing -DNDEBUG $(PYINC) -c $< -o $@
-
-_spectra_priv.so: py_module.o absorption.o index_table.o part_int.o Faddeeva.o
-	$(LINK) $(LFLAGS) $(PYLIB) -shared $^ -o $@
+btest/absorption.o: fake_spectra/absorption.cpp fake_spectra/absorption.h fake_spectra/singleabs.h
+btest/part_int.o: fake_spectra/part_int.cpp fake_spectra/part_int.h fake_spectra/absorption.h fake_spectra/index_table.h
 
 clean:
-	rm -f *.o *.pyc extract statistic _spectra_priv.so cextract/*.o
+	rm -f cextract/build/* btest/*
 
-dist: Makefile
-	tar -czf flux_extract.tar.gz *.c *.h *.cpp *.py $^
-
-btest: test.cpp absorption.o index_table.o Faddeeva.o
+btest/btest: fake_spectra/test.cpp btest/absorption.o btest/index_table.o btest/Faddeeva.o
 	${LINK} ${LFLAGS} $^ -lboost_unit_test_framework -o $@
 
-test: btest
-	@./btest
+test: btest btest/btest
+	@./btest/btest
 

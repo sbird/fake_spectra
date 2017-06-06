@@ -23,8 +23,8 @@
 #include <cassert>
 #include <string.h>
 #include "global_vars.h"
-#include "../absorption.h"
-#include "../part_int.h"
+#include "absorption.h"
+#include "part_int.h"
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
     populate_los_table(cofm, axis,NumLos, ext_table, box100);
     /*Setup the interpolator*/
     const double velfac = atime/h100*Hz/1e3;
-    ParticleInterp pint(NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos);
+    ParticleInterp pint(NBINS, LAMBDA_LYA_H1, GAMMA_LYA_H1, FOSC_LYA, HMASS, box100, velfac, atime, cofm, axis,NumLos,1);
   if(!(output=fopen(outname.c_str(),"w")))
   {
           fprintf(stderr, "Error opening %s: %s\n",outname.c_str(), strerror(errno));
