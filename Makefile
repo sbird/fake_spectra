@@ -37,10 +37,10 @@ cextract/build:
 	mkdir cextract/build
 
 cextract/build/extract: cextract/build/main.o cextract/build/read_snapshot.o cextract/build/read_hdf_snapshot.o btest/absorption.o cextract/build/init.o btest/index_table.o btest/part_int.o btest/Faddeeva.o
-	$(CXX) $(CFLAGS) $(LIBS) $^ -o $@
+	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
 
 cextract/build/statistic: cextract/build/statistic.o cextract/build/calc_power.o cextract/build/mean_flux.o cextract/build/smooth.o cextract/build/powerspectrum.o
-	$(CC) $(CFLAGS) -lfftw3 $^ -o $@
+	$(CC) $(CFLAGS) $^ -lfftw3 -o $@
 
 cextract/build/%.o: cextract/%.c cextract/global_vars.h cextract/build
 	$(CC) $(CFLAGS) ${IGREAD} -c $< -o $@
