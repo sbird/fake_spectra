@@ -563,7 +563,7 @@ class Spectra(object):
         #Copy back
         self.cofm=cofm_DLA
         self.axis = self.axis[:ndla]
-        self.colden[("H",1)]=H1_DLA
+        self.colden[("H",1)]=H1_DLA[:top]
         #Finalise the cofm array
         self.cofm_final = True
         self.NumLos = ndla
@@ -592,8 +592,9 @@ class Spectra(object):
             (roll, hhr) = spec_utils.get_rolled_spectra(HH)
             mmr = np.array([np.roll(MMr, rr) for (MMr,rr) in zip(MM,roll)])
             imax = int(np.shape(MM)[1]/2)
-            mms = np.array([np.sum(mmrr[imax-width/self.dvbin:imax+width/self.dvbin]) for mmrr in mmr])
-            hhs = np.array([np.sum(hhrr[imax-width/self.dvbin:imax+width/self.dvbin]) for hhrr in hhr])
+            wbins = min(int(width/self.dvbin), imax)
+            mms = np.array([np.sum(mmrr[imax-wbins:imax+wbins]) for mmrr in mmr])
+            hhs = np.array([np.sum(hhrr[imax-wbins:imax+wbins]) for hhrr in hhr])
         else:
             mms = np.sum(MM, axis=1)
             hhs = np.sum(HH, axis=1)
