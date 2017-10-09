@@ -12,6 +12,10 @@ def check_for_openmp():
 
     This routine is adapted from yt, thanks to Nathan
     Goldbaum. See https://github.com/pynbody/pynbody/issues/124"""
+
+    if os.getenv('DISABLE_OPENMP') is not None:
+        return False
+
     # Create a temporary directory
     tmpdir = tempfile.mkdtemp()
     curdir = os.getcwd()
