@@ -2,7 +2,7 @@
 """Split off module to load halo catalogues and export a list of mass and positions"""
 
 import numpy as np
-import subfindhdf
+from . import subfindhdf
 try:
     xrange(1)
 except NameError:
