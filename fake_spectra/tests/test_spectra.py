@@ -85,6 +85,7 @@ from fake_spectra import spectra as ss
 from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
+from fake_spectra import halocat
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
