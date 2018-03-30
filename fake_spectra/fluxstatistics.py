@@ -48,7 +48,15 @@ def _powerspectrum(inarray, axis=-1):
     power /= np.shape(inarray)[axis]
     return power
 
-def flux_power(tau, vmax, mean_flux_desired=None):
+def _window_function(k, *, R, dv):
+    """The window function corresponding to the spectra response of the spectrograph.
+    R is the spectrograph resolution.
+    dv is the pixel width of the spectrograph.
+    Default values for BOSS are:
+        dv = 69, R = 60 at 5000 A and R = 80 at 4300 A."""
+    return np.exp(-0.5 * (k * R)**2) * np.sin(k * dv/2)/( k * dv/2)
+
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -76,6 +84,8 @@ def flux_power(tau, vmax, mean_flux_desired=None):
     mean_flux_power = vmax*np.mean(flux_power_perspectra, axis=0)
     assert np.shape(mean_flux_power) == (npix//2+1,)
     kf = _flux_power_bins(vmax, npix)
+    #Divide out the window function
+    mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
     return kf,mean_flux_power
 
 def _flux_power_bins(vmax, npix):

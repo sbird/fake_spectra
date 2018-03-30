@@ -963,5 +963,5 @@ class Spectra(object):
         If mean_flux_desired is set, the spectral optical depths will be rescaled
         to match the desired mean flux."""
         tau = self.get_tau(elem, ion, line)
-        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, mean_flux_desired=mean_flux_desired)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired)
         return kf[1:],avg_flux_power[1:]
