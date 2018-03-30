@@ -35,7 +35,7 @@ def testPowerspectrum():
     xx = np.tile(np.arange(0,1,0.01)**2,(10,1))
 #     xx = np.arange(0,1,0.01)**2
     assert np.shape(xx)[0] == 10
-    fpk = stat._powerspectrum(np.exp(-xx), axis=1)
+    fpk = stat._powerspectrum(np.exp(-xx), axis=1) * (2 * math.pi)
     #Check that Parseval's theorem is true, accounting for the negative frequency modes not included in the DFT.
     for ff in fpk:
         dpower = (np.sum(ff)+np.sum(ff[1:]))
@@ -56,7 +56,8 @@ def testFluxPower():
         #Construct some optical depths offset from each other
         taus = np.zeros((9,bb))
         taus = np.vstack([inn,]*10)
-        bins, power = stat.flux_power(taus, 1.)
+        bins, power = stat.flux_power(taus, vmax=1.,spec_res = 0.01)
         power/=12.5569
-        assert np.all(np.abs(power[1:] - ff[1:]) < 0.01*ff[1:])
+        wind = stat._window_function(bins[1:],R=0.01,dv=1/np.size(xx))
+        assert np.all(np.abs(power[1:]*wind**2 - ff[1:]) < 0.01*ff[1:])
         assert power[0] < 1e-20
