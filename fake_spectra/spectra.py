@@ -956,12 +956,12 @@ class Spectra(object):
         tau = self.get_tau(elem, ion, line)
         return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
 
-    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None):
+    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None, window=True):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
         If mean_flux_desired is set, the spectral optical depths will be rescaled
         to match the desired mean flux."""
         tau = self.get_tau(elem, ion, line)
-        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:],avg_flux_power[1:]

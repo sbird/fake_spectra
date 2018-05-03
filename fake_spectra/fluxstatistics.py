@@ -56,7 +56,7 @@ def _window_function(k, *, R, dv):
         dv = 69, R = 60 at 5000 A and R = 80 at 4300 A."""
     return np.exp(-0.5 * (k * R)**2) * np.sinc(k * dv/2/math.pi)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None):
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -85,7 +85,8 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None):
     assert np.shape(mean_flux_power) == (npix//2+1,)
     kf = _flux_power_bins(vmax, npix)
     #Divide out the window function
-    mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
+    if window:
+        mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
     return kf,mean_flux_power
 
 def _flux_power_bins(vmax, npix):
