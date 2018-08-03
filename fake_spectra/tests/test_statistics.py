@@ -39,7 +39,7 @@ def testPowerspectrum():
     #Check that Parseval's theorem is true, accounting for the negative frequency modes not included in the DFT.
     for ff in fpk:
         dpower = (np.sum(ff)+np.sum(ff[1:]))
-        assert abs(dpower - np.sum(np.exp(-xx[0,:])**2)) < 0.1
+        assert abs(dpower - 2 * math.pi *np.sum(np.exp(-xx[0,:])**2)/np.shape(xx)[1]) < 0.1
     xx = np.linspace(1,51,200)
     inn = np.sin(2*math.pi*xx)
     #This will be a delta function centered at 50
