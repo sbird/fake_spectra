@@ -54,7 +54,9 @@ def _window_function(k, *, R, dv):
     dv is the pixel width of the spectrograph.
     Default values for BOSS are:
         dv = 69, R = 60 at 5000 A and R = 80 at 4300 A."""
-    return np.exp(-0.5 * (k * R)**2) * np.sinc(k * dv/2/math.pi)
+    #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
+    sigma = R/(2*np.sqrt(2*np.log(2)))
+    return np.exp(-0.5 * (k * sigma)**2) * np.sinc(k * dv/2/math.pi)
 
 def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
     """Get the power spectrum of (variations in) the flux along the line of sight.
