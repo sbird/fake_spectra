@@ -42,10 +42,9 @@ def _powerspectrum(inarray, axis=-1):
     """Compute the power spectrum of the input using np.fft"""
     rfftd = np.fft.rfft(inarray, axis=axis)
     # Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
-    #We are changing fourier convention for k in _flux_power_bins, so we need to change it here too.
-    power = np.abs(rfftd)**2 /(2*math.pi)
-    #Normalise the FFT: equivalent to using norm = ortho for recent numpy versions
-    power /= np.shape(inarray)[axis]
+    power = np.abs(rfftd)**2
+    #Normalise the FFT so it is independent of input size.
+    power /= np.shape(inarray)[axis]**2
     return power
 
 def _window_function(k, *, R, dv):
@@ -76,6 +75,7 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
     scale = 1.
     if mean_flux_desired is not None:
         scale = mean_flux(tau, mean_flux_desired)
+        #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
     else:
         mean_flux_desired = np.mean(np.exp(-tau))
     (_, npix) = np.shape(tau)
