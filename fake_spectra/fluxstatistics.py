@@ -78,12 +78,16 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
     else:
         mean_flux_desired = np.mean(np.exp(-tau))
-    (_, npix) = np.shape(tau)
-    dflux=np.exp(-scale*tau)/mean_flux_desired - 1.
-    # Calculate flux power for each spectrum in turn
-    flux_power_perspectra = _powerspectrum(dflux, axis=1)
-    #Take the mean and convert units.
-    mean_flux_power = vmax*np.mean(flux_power_perspectra, axis=0)
+    (nspec, npix) = np.shape(tau)
+    mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
+    for i in range(10):
+        end = min((i+1)*nspec//10, nspec)
+        dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.
+        # Calculate flux power for each spectrum in turn
+        flux_power_perspectra = _powerspectrum(dflux, axis=1)
+        #Take the mean and convert units.
+        mean_flux_power += vmax*np.sum(flux_power_perspectra, axis=0)
+    mean_flux_power/= nspec
     assert np.shape(mean_flux_power) == (npix//2+1,)
     kf = _flux_power_bins(vmax, npix)
     #Divide out the window function
