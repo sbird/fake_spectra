@@ -231,23 +231,26 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const int nbins, const double tol)
+double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const int nbins, const double tol, const double thresh)
 {
-    const double des_flux_bins=mean_flux_desired*nbins;
     double scale, newscale=1;
     do {
         scale=newscale;
         double mean_flux=0;
         double tau_mean_flux=0;
+        int nbins_used = 0;
         #pragma omp parallel for reduction(+:mean_flux, tau_mean_flux)
         for(int i=0; i< nbins; i++)
         {
+            if(tau[i] > thresh)
+                continue;
             const double temp=exp(-scale*tau[i]);
             mean_flux+=temp;
             tau_mean_flux+=temp*tau[i];
+            nbins_used++;
         }
         /*Newton-Raphson*/
-        newscale=scale+(mean_flux-des_flux_bins)/tau_mean_flux;
+        newscale=scale+(mean_flux-mean_flux_desired * nbins_used)/tau_mean_flux;
         /*We don't want the absorption to change sign and become emission; 
          * 0 is too far. */
         if(newscale <= 0) {
@@ -259,16 +262,16 @@ double get_mean_flux_scale(const double * tau, const double mean_flux_desired, c
 extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
 {
     PyArrayObject *Tau;
-    double mean_flux_desired, tol;
+    double mean_flux_desired, tol, thresh;
     int nbins;
-    if(!PyArg_ParseTuple(args, "O!did", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol) )
+    if(!PyArg_ParseTuple(args, "O!didd", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol, &thresh) )
     {
-      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double)\n");
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double), thresh (double)\n");
       return NULL;
     }
     Tau = PyArray_GETCONTIGUOUS(Tau);
     const double * tau =(double *) PyArray_DATA(Tau);
-    const double newscale = get_mean_flux_scale(tau, mean_flux_desired, nbins, tol);
+    const double newscale = get_mean_flux_scale(tau, mean_flux_desired, nbins, tol, thresh);
     Py_DECREF(Tau);
     return Py_BuildValue("d",newscale);
 }

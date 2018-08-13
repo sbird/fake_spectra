@@ -14,7 +14,7 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5):
+def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=2):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -25,7 +25,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5):
         tol - tolerance within which to hit mean flux
     returns:
         scaling factor for tau"""
-    return _rescale_mean_flux(tau, mean_flux_desired, np.size(tau), tol)
+    return _rescale_mean_flux(tau, mean_flux_desired, np.size(tau), tol, thresh)
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
