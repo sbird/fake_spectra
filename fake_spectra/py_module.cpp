@@ -231,16 +231,16 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const int nbins, const double tol, const double thresh)
+double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const long long nbins, const double tol, const double thresh)
 {
     double scale, newscale=1;
     do {
         scale=newscale;
         double mean_flux=0;
         double tau_mean_flux=0;
-        int nbins_used = 0;
-        #pragma omp parallel for reduction(+:mean_flux, tau_mean_flux)
-        for(int i=0; i< nbins; i++)
+        long long nbins_used = 0;
+        #pragma omp parallel for reduction(+:mean_flux, tau_mean_flux, nbins_used)
+        for(long long i=0; i< nbins; i++)
         {
             if(tau[i] > thresh)
                 continue;
@@ -263,8 +263,8 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
 {
     PyArrayObject *Tau;
     double mean_flux_desired, tol, thresh;
-    int nbins;
-    if(!PyArg_ParseTuple(args, "O!didd", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol, &thresh) )
+    long long nbins;
+    if(!PyArg_ParseTuple(args, "O!dLdd", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol, &thresh) )
     {
       PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double), thresh (double)\n");
       return NULL;
