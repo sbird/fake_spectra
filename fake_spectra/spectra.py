@@ -54,14 +54,22 @@ class Spectra(object):
         Arguments:
             num - Snapshot number
             base - Name of base directory for snapshot
-            cofm - table of los positions, as [n, 3] shape array.
-            axis - axis along which to put the sightline
-            res (optional) - Spectra pixel resolution in km/s
+            cofm - table of los positions, as [n, 3] shape array. Can be None if reloading from a savefile.
+            axis - axis along which to put the sightline. Can be None if reloading from a savefile.
+        Optional arguments:
+            res - Pixel width of the spectrum in km/s
+            spec_res - Resolution of the simulated spectrograph. Note this is not the pixel width.
+                       Spectra will be convolved with a Gaussian of this FWHM on loading from disc.
             snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
-            spec_res - Resolution of the spectrograph. The spectra will be convolved with a Gaussian of this FWHM on loading from disc.
-            load_halo - Should I load the halo catalogue?
-            units - UnitSystem instance.
+            cdir - Directory containing cloudy tables.
+            savefile - name of file to save spectra to.
+            savedir - Directory of file to save spectra to.
+            reload_file - if true, ignore save spectra and regenerate from the snapshot.
+            load_halo - Whether to load the halo catalogue
+            units - If not None, UnitSystem instance which overrides the default units read from the simulation.
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
+            quiet - Whether to output debug messages
+            load_snapshot - Whether to load the snapshot
     """
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 8,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
