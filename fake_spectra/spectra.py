@@ -58,8 +58,8 @@ class Spectra(object):
             axis - axis along which to put the sightline. Can be None if reloading from a savefile.
         Optional arguments:
             res - Pixel width of the spectrum in km/s
-            spec_res - Resolution of the simulated spectrograph. Note this is not the pixel width.
-                       Spectra will be convolved with a Gaussian of this FWHM on loading from disc.
+            spec_res - Resolution of the simulated spectrograph in km/s. Note this is not the pixel width.
+                       Spectra will be convolved with a Gaussian of this rms on loading from disc.
             snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
             cdir - Directory containing cloudy tables.
             savefile - name of file to save spectra to.
