@@ -90,6 +90,7 @@ class Spectra(object):
         self.colden = {}
         self.velocity = {}
         self.temp = {}
+        self.dens_weight_dens = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
@@ -245,6 +246,11 @@ class Spectra(object):
         grp_grid = f.create_group("num_important")
         self._save_multihash(self.num_important, grp_grid)
         f.close()
+        #Density weighted density for each spectrum:
+        #see get_dens_weighted_density for a description of what this is.
+        grp_grid = f.create_group("density_weight_density")
+        self._save_multihash(self.dens_weight_dens, grp_grid)
+        f.close()
 
     def _load_all_multihash(self,array, array_name):
         """Do all allowed lazy-loading for an array.
@@ -352,6 +358,13 @@ class Spectra(object):
             for elem in grp.keys():
                 for ion in grp[elem].keys():
                     self.temp[(elem, int(ion))] = np.array([0])
+        except KeyError:
+            pass
+        try:
+            grp = f["density_weight_density"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.dens_weight_dens[(elem, int(ion))] = np.array([0])
         except KeyError:
             pass
         grp = f["num_important"]
@@ -787,6 +800,37 @@ class Spectra(object):
             temp =  self._get_mass_weight_quantity(self._temp_single_file, elem, ion)
             self.temp[(elem, ion)] = temp
             return temp
+
+    def _densweightdens(self, fn, elem, ion):
+        """Get the density weighted interpolated density field for a single file"""
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
+        if amumass is False:
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        else:
+            (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1,True)
+            line = self.lines[("H",1)][1215]
+            phys = self.dvbin/self.velfac*self.rscale
+            dens = self._do_interpolation_work(pos, vel, elem_den*species_den/phys**2, temp, hh, amumass, line, False)
+            return dens
+
+    def get_dens_weighted_density(self, elem, ion):
+        """This function gets the (ion) density weighted (species) density in each pixel for a given species.
+        This may seem an odd thing to compute, but it shows the characteristic density which dominates the
+        production of a given ionic species is found in these spectra.
+
+        For example, to see which gas densities produce the Lyman alpha forest, one could do:
+            get_dens_weighted_density("H", 1)
+        which would be:
+            int ( rho_HI rho dv) / int(rho_HI dv)
+        where rho is the density of hydrogen and rho_HI is the density of neutral hydrogen.
+        """
+        try:
+            self._really_load_array((elem, ion), self.dens_weight_dens, "density_weight_density")
+            return self.dens_weight_dens[(elem, ion)]
+        except KeyError:
+            dens_weight_dens =  self._get_mass_weight_quantity(self._densweightdens, elem, ion)
+            self.dens_weight_dens[(elem, ion)] = dens_weight_dens
+            return dens_weight_dens
 
     def get_b_param_dist(self, elem="H", ion=1, line=1215):
         """Get the power law betweeen the 'minimum' b parameter and column density."""
