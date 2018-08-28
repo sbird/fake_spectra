@@ -786,7 +786,7 @@ class Spectra(object):
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         else:
             line = self.lines[("H",1)][1215]
-            phys = self.dvbin/self.velfac*self.rscale
+            phys = np.float32(self.dvbin/self.velfac*self.rscale)
             temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
             return temp
 
@@ -809,8 +809,8 @@ class Spectra(object):
         else:
             (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1,True)
             line = self.lines[("H",1)][1215]
-            phys = self.dvbin/self.velfac*self.rscale
-            dens = self._do_interpolation_work(pos, vel, elem_den*species_den/phys**2, temp, hh, amumass, line, False)
+            phys = np.float32(self.dvbin/self.velfac*self.rscale)
+            dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/phys), temp, hh, amumass, line, False)
             return dens
 
     def get_dens_weighted_density(self, elem, ion):
