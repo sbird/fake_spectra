@@ -245,7 +245,6 @@ class Spectra(object):
         #Number of particles important for each spectrum
         grp_grid = f.create_group("num_important")
         self._save_multihash(self.num_important, grp_grid)
-        f.close()
         #Density weighted density for each spectrum:
         #see get_dens_weighted_density for a description of what this is.
         grp_grid = f.create_group("density_weight_density")
