@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1,SPH_CUBIC_SPLINE);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 1,SPH_CUBIC_SPLINE,1e-5);
 
     double colden[TNBINS] = {0};
     std::set<int> nonzero;
@@ -340,7 +340,7 @@ BOOST_AUTO_TEST_CASE(check_add_tau)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25, SPH_CUBIC_SPLINE);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25, SPH_CUBIC_SPLINE,1e-5);
     //Since SingleAbsorber is tested above, use it in this test
     double temp = 2e4;
     double bb  = sqrt(2.0*BOLTZMANN/(PROTONMASS))/1e5*sqrt(temp/1.00794);
@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(check_tau_colden_consistency)
 {
     //Give it the properties of Lyman alpha, a 10 Mpc box size, and a velfac from z=3.
     double velfac = 414.50523718485636/1e3 * 0.2 / 0.71;
-    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25,SPH_CUBIC_SPLINE);
+    LineAbsorption test(1215.6701e-10,6.265e8,0.416400,1.00794,velfac, 10000, 0.25,SPH_CUBIC_SPLINE,1e-5);
     //Since SingleAbsorber is tested above, use it in this test
     double temp = 2e4;
     double smooth = 3;
