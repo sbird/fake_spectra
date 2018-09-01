@@ -24,8 +24,8 @@
 class ParticleInterp: public LineAbsorption
 {
     public:
-        ParticleInterp(const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const double atime, const double cofm[], const int axis[], const int NumLos, const int kernel):
-        LineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize, atime, kernel),
+        ParticleInterp(const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const double atime, const double cofm[], const int axis[], const int NumLos, const int kernel, const double tautail):
+        LineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize, atime, kernel, tautail),
         nbins(nbins_i),nlos(NumLos),
         sort_los_table(cofm, axis, NumLos, boxsize)
         {

@@ -32,10 +32,6 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
-//Threshold of tau below which we stop computing profiles
-//Note that because this is for each particle, it should be fairly small.
-#define TAUTAIL 1e-5
-
 /* Find the integral of the particle density in this pixel by integrating an SPH kernel
  * over the z direction.
  * Arguments:
@@ -105,7 +101,8 @@ kern_frac_func get_kern_frac(const int kernel)
 
 //Factor of 1e5 in bfac converts from cm/s to km/s
 //Factor of 1e5 in voigt_fac converts from cm/s to km/s
-LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i,const int kernel_i):
+LineAbsorption::LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i,const int kernel_i, const double tautail):
+tautail(tautail),
 sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
@@ -187,7 +184,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
         j+=nbins;
       tau[j]+=taulast;
       //Absorption will only decrease as you go further from the particle.
-      if(taulast < TAUTAIL)
+      if(taulast < tautail)
         break;
   }
   //Go from the particle backwards
@@ -201,7 +198,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
         j+=nbins;
       tau[j]+=taulast;
       //Absorption will only decrease as you go further from the particle.
-      if(taulast < TAUTAIL)
+      if(taulast < tautail)
         break;
   }
 }

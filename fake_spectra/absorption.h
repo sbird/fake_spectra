@@ -26,7 +26,7 @@ class LineAbsorption
          * gamma: transition rate in 1/s
          * fosc: oscillation fraction
          * */
-        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i, const int kernel_i);
+        LineAbsorption(const double lambda, const double gamma, const double fosc, const double amumass, const double velfac_i, const double boxsize, const double atime_i, const int kernel_i, const double tautail);
 
         /* Add the absorption from a particle to the spectrum in the array
          * tau, or the density from the particle to the array colden,
@@ -52,6 +52,9 @@ class LineAbsorption
         void add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
 
     private:
+        /* Threshold of tau below which we stop computing profiles.
+         * Note that because this is for each particle, it should be fairly small.*/
+        const double tautail;
         /* Absorption cross-sections cm^2 */
         const double sigma_a;
         /* Constant factor to turn sqrt(temperature) in K into velocity in km/s*/
