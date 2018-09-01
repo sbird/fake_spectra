@@ -106,7 +106,7 @@ class Spectra(object):
         self.minwidth = 500.
         #Stopping criterion for optical depth: if a particle is adding less
         #than this to a pixel, stop the integration.
-        self.tautail = 1e-5
+        self.tautail = 1e-7
         try:
             if load_snapshot:
                 self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
