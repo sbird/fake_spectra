@@ -2,6 +2,7 @@
 """A rate network for neutral hydrogen following
 Katz, Weinberg & Hernquist 1996, eq. 28-32."""
 import numpy as np
+import os.path
 import scipy.interpolate as interp
 import scipy.optimize
 
@@ -304,7 +305,11 @@ class PhotoRates(object):
         # log_10(1+z), Gamma_HI, Gamma_HeI, Gamma_HeII,  Qdot_HI, Qdot_HeI, Qdot_HeII,
         # where 'Gamma' is the photoionization rate and 'Qdot' is the photoheating rate.
         # The Gamma's are in units of s^-1, and the Qdot's are in units of erg s^-1.
-        data = np.loadtxt(treecool_file)
+        try:
+            data = np.loadtxt(treecool_file)
+        except OSError:
+            treefile = os.path.join(os.path.dirname(os.path.realpath(__file__)), treecool_file)
+            data = np.loadtxt(treefile)
         redshifts = data[:,0]
         photo_rates = data[:,1:4]
         assert np.shape(redshifts)[0] == np.shape(photo_rates)[0]

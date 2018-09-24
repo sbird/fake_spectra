@@ -124,7 +124,7 @@ setup(
     requires=['numpy', 'h5py','scipy'],
     package_data = {
             'fake_spectra.tests': ['*.npz'],
-            'fake_spectra': ['*.dat'],
+            'fake_spectra': ['data/TREECOOL*', '*.dat'],
             'fake_spectra.cloudy_tables': ['ion_out_*/cloudy_table.npz']
            },
     ext_modules = cmodule,
