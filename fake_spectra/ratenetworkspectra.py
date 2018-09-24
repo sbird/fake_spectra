@@ -59,8 +59,7 @@ class RateNetworkGas(gas_properties.GasProperties):
 class RateNetworkSpectra(spectra.Spectra):
     """Generate spectra with a neutral fraction from a rate network"""
     def __init__(self, *args, photo_factor = 1, selfshield=False, **kwargs):
-        try:
-            gasprop = RateNetworkGas(redshift = self.red, absnap = self.snapshot_set, hubble=self.hubble, units = self.units, sf_neutral=False, photo_factor = photo_factor, selfshield=selfshield)
-        except AttributeError:
-            pass
-        super().__init__(*args, **kwargs, gasprop=gasprop)
+        kwargs["gasprop"]=RateNetworkGas
+        kwargs["sf_neutral"] = False
+        kwargs["gasprop_args"] = {"photo_factor": photo_factor, "selfshield" : selfshield}
+        super().__init__(*args, **kwargs)
