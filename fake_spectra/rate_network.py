@@ -8,7 +8,7 @@ import scipy.optimize
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True, treecool_file="TREECOOL_ep_2018p"):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
         else:
@@ -299,7 +299,7 @@ class RecombRatesVerner96(object):
 class PhotoRates(object):
     """The photoionization rates for a given species.
     Eq. 29 of KWH 96. This is loaded from a TREECOOL table."""
-    def __init__(self, treecool_file="TREECOOL"):
+    def __init__(self, treecool_file="data/TREECOOL_ep_2018p"):
         #Format of the treecool table:
         # log_10(1+z), Gamma_HI, Gamma_HeI, Gamma_HeII,  Qdot_HI, Qdot_HeI, Qdot_HeII,
         # where 'Gamma' is the photoionization rate and 'Qdot' is the photoheating rate.
