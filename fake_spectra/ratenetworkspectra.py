@@ -6,19 +6,6 @@ from fake_spectra import gas_properties
 from fake_spectra import spectra
 from rate_network import RateNetwork
 
-def RateNetworkGasTest():
-    """Test that the spline is working."""
-    gasprop = RateNetworkGas(3, None)
-    dlim = (np.log(1e-7), np.log(3))
-    elim = (np.log(20), np.log(3e6))
-    randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
-    randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
-    spline = gasprop.build_interp(dlim, elim)
-    for dd, ii in zip(randd, randi):
-        spl = spline(dd, ii)[0]
-        rate = np.log(gasprop.rates.get_neutral_fraction(np.exp(dd), np.exp(ii)))
-        assert np.abs(spl - rate) < 1e-5
-
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
     def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=False, photo_factor=1):

@@ -3,6 +3,7 @@
 import time
 import numpy as np
 import rate_network
+import ratenetworkspectra
 
 def _exact_alphaHp():
     """For hydrogen recombination we have an exact answer from Ferland et al 1992 (http://adsabs.harvard.edu/abs/1992ApJ...387...95F).
@@ -66,3 +67,16 @@ def testRateNetwork():
             rates2.get_temp(nH_bench, uu_bench)
     after = time.clock()
     print(after-before)
+
+def testRateNetworkGas():
+    """Test that the spline is working."""
+    gasprop = ratentworkspectra.RateNetworkGas(3, None)
+    dlim = (np.log(1e-7), np.log(3))
+    elim = (np.log(20), np.log(3e6))
+    randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
+    randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
+    spline = gasprop.build_interp(dlim, elim)
+    for dd, ii in zip(randd, randi):
+        spl = spline(dd, ii)[0]
+        rate = np.log(gasprop.rates.get_neutral_fraction(np.exp(dd), np.exp(ii)))
+        assert np.abs(spl - rate) < 1e-5
