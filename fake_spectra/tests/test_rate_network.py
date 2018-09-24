@@ -38,10 +38,10 @@ def testRateNetwork():
     assert np.abs(rates.get_temp(1e-4, 400.,helium=0.24) / rates.get_temp(1e-4, 200.,helium=0.24) - 2.) < 1e-3
     #Neutral fraction prop to density.
     for dens in (1e-4, 1e-5, 1e-6):
-        assert np.abs(rates.get_neutral_fraction(dens, 200.,helium=0.24) / dens - 0.31817) < 1e-3
+        assert np.abs(rates.get_neutral_fraction(dens, 200.,helium=0.24) / dens - 0.3113) < 1e-3
     #Neutral (self-shielded) at high density:
     assert rates.get_neutral_fraction(1, 100.,helium=0.24) > 0.95
-    assert 0.75 > rates.get_neutral_fraction(0.1, 100.,helium=0.24) > 0.74
+    assert 0.75 > rates.get_neutral_fraction(0.1, 100.,helium=0.24) > 0.739
 
     #Check self-shielding is working.
     rates2 = rate_network.RateNetwork(redshift=2., selfshield=False)
