@@ -70,8 +70,12 @@ class Spectra(object):
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
             quiet - Whether to output debug messages
             load_snapshot - Whether to load the snapshot
+            gasprop - class to compute neutral fractions and temperatures.
+                      It should inherit from gas_properties.GasProperties and provide get_reproc_HI
+                      for neutral fractions and get_temp for temperatures.
+                      Default reads both of these from the particle output.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gas_properties=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -182,11 +186,14 @@ class Spectra(object):
         #Line data
         self.lines = line_data.LineData()
         #Load the class for computing gas properties such as temperature from the raw simulation.
-        try:
-            self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units, sf_neutral=sf_neutral)
-        except AttributeError:
-            #Occurs if we didn't load a snapshot
-            pass
+        if gasprop is None:
+            try:
+                self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units, sf_neutral=sf_neutral)
+            except AttributeError:
+                #Occurs if we didn't load a snapshot
+                pass
+        else:
+            self.gasprop = gasprop
         if not quiet:
             print(self.NumLos, " sightlines. resolution: ", self.dvbin, " z=", self.red)
 
