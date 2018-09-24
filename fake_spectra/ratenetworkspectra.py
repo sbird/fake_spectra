@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp2d
 from fake_spectra import gas_properties
 from fake_spectra import spectra
-from rate_network import RateNetwork
+from fake_spectra.rate_network import RateNetwork
 
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
