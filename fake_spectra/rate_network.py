@@ -269,8 +269,10 @@ class RecombRatesVerner96(object):
     def alphad(self, temp):
         """Recombination rate for dielectronic recombination, in cm^3/s.
         This is the value from Aldrovandi & Pequignot 73, as used in Nyx, Sherwood and Cen 1992.
+        It is corrected from the value in Aldrovandi & Pequignot 1973 by Burgess & Tworkowski 1976 (fig1)
+        by a factor of 0.65. The exponent is also made slightly more accurate.
         Temp in K."""
-        return 1.9e-3 / np.power(temp,1.5) * np.exp(-4.7e5/temp)*(1+0.3*np.exp(-9.4e4/temp))
+        return 1.23e-3 / np.power(temp,1.5) * np.exp(-4.72e5/temp)*(1+0.3*np.exp(-9.4e4/temp))
 
     def alphaHepp(self, temp):
         """Recombination rate for doubly ionized helium, in cm^3/s. Accurate to 2%.
