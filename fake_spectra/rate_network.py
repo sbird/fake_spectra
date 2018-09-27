@@ -8,7 +8,41 @@ import scipy.optimize
 
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
-    Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
+    Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32.
+
+    Most internal methods are CamelCapitalized and follow a convention that
+    they are named like the process and then the ion they refer to.
+    eg:
+        CollisionalExciteHe0 is the neutral Helium collisional excitation rate.
+        RecombHp is the recombination rate for ionized hydrogen.
+
+    Externally useful methods (the API) are named like get_*.
+    These are:
+        get_temp() - gets the temperature from the density and internal energy.
+        get_cooling_rate() - gets the total cooling rate from density and internal energy.
+        get_neutral_fraction() - gets the neutral fraction from the rate network given density and internal energy.
+    Two useful helper functions:
+        get_equilib_ne() - gets the equilibrium electron density.
+        get_ne_by_nh() - gets the above, divided by the hydrogen density (Gadget reports this as ElectronAbundance).
+
+    Constructor arguments:
+        redshift - the redshift at which to evaluate the cooling. Affects the photoionization rate,
+                   the Inverse Compton cooling and the self shielding threshold.
+        photo_factor - Factor by which to multiply the UVB amplitude.
+        f_bar - Baryon fraction. Omega_b / Omega_cdm.
+        converge - Tolerance to which the rate network should be converged.
+        selfshield - Flag to enable self-shielding following Rahmati 2013
+        cool - which cooling rate coefficient table to use.
+               Supported are: KWH (original Gadget rates)
+                              Nyx (rates used in Nyx (Lukic 2015) and Sherwood (Bolton 2017))
+                              other: Our current best guess rates.
+              Default is KWH so we agree with Gadget. This may change to 'Nyx' at some point.
+        recomb - which recombination rate table to use.
+                 Supported are: C92 (Cen 1992, the Gadget default)
+                                V96 (Verner & Ferland 1996, more accurate rates).
+        collisional - Flag to enable collisional ionizations.
+        treecool_file - File to read a UV background from. Matches format used by Gadget.
+    """
     def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()

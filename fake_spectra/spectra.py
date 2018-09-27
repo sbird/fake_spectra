@@ -74,6 +74,7 @@ class Spectra(object):
                       It should inherit from gas_properties.GasProperties and provide get_reproc_HI
                       for neutral fractions and get_temp for temperatures.
                       Default is gas_properties.GasProperties which reads both of these from the particle output.
+            gasprop_args - Dictionary of extra arguments to be fed to gasprop, if gasprop is not the default.
     """
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
