@@ -487,8 +487,9 @@ class CoolingRatesNyx(CoolingRatesKWH92):
     hydrogen collisional cooling rates, a less aggressive high temperature correction for helium, and
     Shapiro & Kang 1987 for free free.
     Older Black 1981 recombination cooling rates are used!
-    They use the recombination rates from Voronov 1997, but do not change the cooling rates to match.
-    Ditto the ionization rates from Verner & Ferland 96: they should also use these rates for collisional ionisation.
+    They use the recombination rates from Verner & Ferland 96, but do not change the cooling rates to match.
+    Ditto the ionization rates from Voronov 1997: they should also use these rates for collisional ionisation,
+    although this is harder because Sholz & Walter don't break their rates into ionization and excitation.
     References:
         Scholz & Walters 1991 (0.45% accuracy)
         Black 1981 (recombination and helium)
