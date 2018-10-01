@@ -3,7 +3,7 @@
 #include "numpy/arrayobject.h"
 #include "part_int.h"
 #include <set>
-
+#include <gsl/gsl_interp2d.h>
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
@@ -276,6 +276,56 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
     return Py_BuildValue("d",newscale);
 }
 
+/* Take a particle list and a 2D array and interpolate each particle to that 2D array.
+ * Used to compute the neutral fraction quickly*/
+extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
+{
+    PyArrayObject *PartA;
+    PyArrayObject *PartB;
+    PyArrayObject *griddata;
+    PyArrayObject *xvals;
+    PyArrayObject *yvals;
+    if(!PyArg_ParseTuple(args, "O!O!O!O!O!", &PyArray_Type,&PartA, &PyArray_Type, &PartB, &PyArray_Type, &xvals, &PyArray_Type, &yvals, &PyArray_Type, &griddata) )
+    {
+      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use Particle array, dims 0 and 1, then grid data.\n");
+      return NULL;
+    }
+    /*Copy grid to C*/
+    PartA = PyArray_GETCONTIGUOUS(PartA);
+    PartB = PyArray_GETCONTIGUOUS(PartB);
+    const double * parta =(double *) PyArray_DATA(PartA);
+    const double * partb =(double *) PyArray_DATA(PartB);
+    const int xsize = PyArray_DIM(xvals,0);
+    const int ysize = PyArray_DIM(yvals,0);
+    npy_intp osize = PyArray_DIM(PartA, 0);
+    PyArrayObject * interp_out = (PyArrayObject *) PyArray_SimpleNew(1, &osize, NPY_DOUBLE);
+    double * results = (double *) PyArray_DATA(interp_out);
+    if ( !interp_out ){
+      PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for tau\n");
+      return NULL;
+    }
+    PyArray_FILLWBYTE(interp_out, 0);
+    /* Build interpolator.*/
+    gsl_interp2d * gsl_intp = gsl_interp2d_alloc(gsl_interp2d_bilinear, xsize, ysize);
+    const double * c_xvals = (double *) PyArray_DATA(xvals);
+    const double * c_yvals = (double *) PyArray_DATA(yvals);
+    const double * c_griddata = (double *) PyArray_DATA(griddata);
+    gsl_interp2d_init (gsl_intp, c_xvals, c_yvals, c_griddata, xsize, ysize);
+
+    /*Do interpolation*/
+    #pragma omp parallel for
+    for(int i = 0; i < osize; i++)
+        results[i] = gsl_interp2d_eval(gsl_intp, c_xvals, c_yvals, c_griddata, parta[i], partb[i], NULL, NULL);
+
+    gsl_interp2d_free (gsl_intp);
+
+    //Build a tuple from the interp struct
+    PyObject * for_return = Py_BuildValue("O", interp_out);
+    Py_DECREF(interp_out);
+    return for_return;
+}
+
+
 static PyMethodDef spectrae[] = {
   {"_Particle_Interpolate", Py_Particle_Interpolation, METH_VARARGS,
    "Find absorption or column density by interpolating particles. "
@@ -288,6 +338,9 @@ static PyMethodDef spectrae[] = {
    "   Arguments: box, pos, h, axis, cofm"},
   {"_rescale_mean_flux",Py_mean_flux,METH_VARARGS,
    "Compute the scale factor for spectra to have the desired mean flux."
+   ""},
+  {"_interpolate_2d",Py_interpolate_2d,METH_VARARGS,
+   "Do 2D interpolation in parallel in C."
    ""},
   {NULL, NULL, 0, NULL},
 };
