@@ -306,7 +306,7 @@ extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
     }
     PyArray_FILLWBYTE(interp_out, 0);
     /* Build interpolator.*/
-    gsl_interp2d * gsl_intp = gsl_interp2d_alloc(gsl_interp2d_bilinear, xsize, ysize);
+    gsl_interp2d * gsl_intp = gsl_interp2d_alloc(gsl_interp2d_bicubic, xsize, ysize);
     const double * c_xvals = (double *) PyArray_DATA(xvals);
     const double * c_yvals = (double *) PyArray_DATA(yvals);
     const double * c_griddata = (double *) PyArray_DATA(griddata);

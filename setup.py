@@ -87,6 +87,13 @@ python setup.py build
 extra_compile_args=['-ffast-math',]
 extra_link_args = ['-ffast-math',]
 
+try:
+    gsl_libs = subprocess.check_output(["gsl-config", "--libs"], stderr=subprocess.STDOUT, universal_newlines=True)
+    extra_link_args += gsl_libs.split()
+except subprocess.CalledProcessError as e:
+    print(e.output)
+    raise
+
 if check_for_openmp():
     extra_compile_args += ['-fopenmp',]
     #gcc specific
