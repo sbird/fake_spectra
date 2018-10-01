@@ -2,9 +2,10 @@
 
 import numpy as np
 from scipy.interpolate import interp2d
-from fake_spectra import gas_properties
-from fake_spectra import spectra
-from fake_spectra.rate_network import RateNetwork
+from ._spectra_priv import _interpolate_2d
+from . import gas_properties
+from . import spectra
+from .rate_network import RateNetwork
 
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
@@ -17,13 +18,11 @@ class RateNetworkGas(gas_properties.GasProperties):
     def build_interp(self, dlim, elim, sz=500):
         """Build the interpolator"""
         #Build interpolation
-        densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
-        ienergygrid = np.linspace(elim[0], elim[1], sz)
-        dgrid, egrid = np.meshgrid(densgrid, ienergygrid)
-        lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
+        self.densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
+        self.ienergygrid = np.linspace(elim[0], elim[1], sz)
+        dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
+        self.lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
         #We assume primordial helium
-        spline = interp2d(densgrid, ienergygrid, lh0grid, kind='cubic')
-        return spline
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
@@ -31,9 +30,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = np.log(self.get_code_rhoH(part_type, segment))
         #expecting units of 10^-10 ergs/g
         ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
-        spline = self.build_interp(dlim=(np.min(density), np.max(density)), elim=(np.min(ienergy), np.max(ienergy)))
-        #spline(density, ienergy) evaluates on a Ndens x Nenerg grid!
-        nh0 = np.exp([spline(dd, ii)[0] for (dd, ii) in zip(density, ienergy)])
+        nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
         return nh0
 
     def _get_ienergy_rescaled(self, density, ienergy, density0):
