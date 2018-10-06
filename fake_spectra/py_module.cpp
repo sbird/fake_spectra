@@ -296,16 +296,20 @@ extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
       PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use Particle array, dims 0 and 1, then grid data.\n");
       return NULL;
     }
+    if(check_float(PartA) || check_float(PartB)){
+       PyErr_SetString(PyExc_TypeError, "One of the data arrays does not have 32-bit float type\n");
+       return NULL;
+    }
     /*Copy grid to C*/
     PartA = PyArray_GETCONTIGUOUS(PartA);
     PartB = PyArray_GETCONTIGUOUS(PartB);
-    const double * parta =(double *) PyArray_DATA(PartA);
-    const double * partb =(double *) PyArray_DATA(PartB);
+    const float * parta =(float *) PyArray_DATA(PartA);
+    const float * partb =(float *) PyArray_DATA(PartB);
     const int xsize = PyArray_DIM(xvals,0);
     const int ysize = PyArray_DIM(yvals,0);
     npy_intp osize = PyArray_DIM(PartA, 0);
-    PyArrayObject * interp_out = (PyArrayObject *) PyArray_SimpleNew(1, &osize, NPY_DOUBLE);
-    double * results = (double *) PyArray_DATA(interp_out);
+    PyArrayObject * interp_out = (PyArrayObject *) PyArray_SimpleNew(1, &osize, NPY_FLOAT);
+    float * results = (float *) PyArray_DATA(interp_out);
     if ( !interp_out ){
       PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for tau\n");
       return NULL;
@@ -327,7 +331,9 @@ extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
     for(int i = 0; i < osize; i++) {
         if(errval == GSL_EDOM)
             continue;
-        errval = gsl_interp2d_eval_e(gsl_intp, c_xvals, c_yvals, c_griddata, parta[i], partb[i], NULL, NULL, &results[i]);
+        double result;
+        errval = gsl_interp2d_eval_e(gsl_intp, c_xvals, c_yvals, c_griddata, parta[i], partb[i], NULL, NULL, &result);
+        results[i] = result;
         if(errval == GSL_EDOM)
             snprintf(errstr, 4095, "out of range: min: %g %g max: %g %g xpart %g ypart %g\n",c_xvals[0], c_yvals[0], c_xvals[xsize-1], c_yvals[ysize-1], parta[i], partb[i]);
     }

@@ -77,6 +77,6 @@ def testRateNetworkGas():
     randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
     randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
     gasprop.build_interp(dlim, elim)
-    spl = _interpolate_2d(randd, randi, gasprop.densgrid, gasprop.ienergygrid, gasprop.lh0grid)
+    spl = _interpolate_2d(randd.astype(np.float32), randi.astype(np.float32), gasprop.densgrid, gasprop.ienergygrid, gasprop.lh0grid)
     rate = np.array([np.log(gasprop.rates.get_neutral_fraction(np.exp(dd), np.exp(ii))) for dd, ii in zip(randd, randi)])
     assert np.all(np.abs(spl - rate) < 1e-5)
