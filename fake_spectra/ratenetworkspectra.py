@@ -13,7 +13,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, cool="KWH", recomb="C92", selfshield=selfshield, treecool_file="data/TREECOOL_ep_2018p")
         self.temp_factor = 1
         self.gamma_factor = 1
-        self.build_interp(dlim=(-7, 3), elim=(1, 6))
+        self.build_interp(dlim=(-15, 2), elim=(3, 14))
 
     def build_interp(self, dlim, elim, sz=500):
         """Build the interpolator"""
@@ -30,7 +30,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = np.log(self.get_code_rhoH(part_type, segment))
         #expecting units of 10^-10 ergs/g
         ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
-        if np.any((np.max(self.densgrid) < density)*(np.min(self.densgrid) > density)):
+        if np.any((np.max(self.densgrid) < density)+(np.min(self.densgrid) > density)):
             if np.any((np.max(self.ienergygrid) < ienergy)*(np.min(self.ienergygrid) > ienergy)):
                 raise ValueError("Interpolation out of range!")
         nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
