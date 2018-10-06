@@ -90,6 +90,8 @@ extra_link_args = ['-ffast-math',]
 try:
     gsl_libs = subprocess.check_output(["gsl-config", "--libs"], stderr=subprocess.STDOUT, universal_newlines=True)
     extra_link_args += gsl_libs.split()
+    gsl_incl = subprocess.check_output(["gsl-config", "--cflags"], stderr=subprocess.STDOUT, universal_newlines=True)
+    extra_compile_args += gsl_incl.split()
 except subprocess.CalledProcessError as e:
     print(e.output)
     raise
