@@ -193,7 +193,7 @@ class Spectra(object):
             gprop_args = {"redshift" : self.red, "absnap" : self.snapshot_set, "hubble": self.hubble, "units": self.units, "sf_neutral": sf_neutral}
             if gasprop_args is not None:
                 gprop_args.update(gasprop_args)
-            self.gasprop = gasprop(**gasprop_args)
+            self.gasprop = gasprop(**gprop_args)
         except AttributeError:
             #Occurs if we didn't load a snapshot
             pass
