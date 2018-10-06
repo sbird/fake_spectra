@@ -4,6 +4,7 @@
 #include "part_int.h"
 #include <set>
 #include <gsl/gsl_interp2d.h>
+#include <gsl/gsl_errno.h>
 
 /*Wraps the flux_extractor into a python module called spectra_priv. Don't call this directly, call the python wrapper.*/
 
@@ -276,6 +277,11 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
     return Py_BuildValue("d",newscale);
 }
 
+void gsl_handler (const char * reason, const char * file, int line, int gsl_errno)
+{
+    return;
+}
+
 /* Take a particle list and a 2D array and interpolate each particle to that 2D array.
  * Used to compute the neutral fraction quickly*/
 extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
@@ -312,10 +318,23 @@ extern "C" PyObject * Py_interpolate_2d(PyObject *self, PyObject *args)
     const double * c_griddata = (double *) PyArray_DATA(griddata);
     gsl_interp2d_init (gsl_intp, c_xvals, c_yvals, c_griddata, xsize, ysize);
 
+    /*Null error handler*/
+    gsl_set_error_handler(gsl_handler);
     /*Do interpolation*/
+    int errval = 0;
+    char errstr[4096] = {'\0'};
     #pragma omp parallel for
-    for(int i = 0; i < osize; i++)
-        results[i] = gsl_interp2d_eval(gsl_intp, c_xvals, c_yvals, c_griddata, parta[i], partb[i], NULL, NULL);
+    for(int i = 0; i < osize; i++) {
+        if(errval == GSL_EDOM)
+            continue;
+        errval = gsl_interp2d_eval_e(gsl_intp, c_xvals, c_yvals, c_griddata, parta[i], partb[i], NULL, NULL, &results[i]);
+        if(errval == GSL_EDOM)
+            snprintf(errstr, 4095, "out of range: min: %g %g max: %g %g xpart %g ypart %g\n",c_xvals[0], c_yvals[0], c_xvals[xsize-1], c_yvals[ysize-1], parta[i], partb[i]);
+    }
+    if (errval == GSL_EDOM) {
+        PyErr_SetString(PyExc_AttributeError,errstr);
+        return NULL;
+    }
 
     gsl_interp2d_free (gsl_intp);
 
