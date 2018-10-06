@@ -1,7 +1,6 @@
 """Modified versions of gas properties and spectra that use the rate network."""
 
 import numpy as np
-from scipy.interpolate import interp2d
 from ._spectra_priv import _interpolate_2d
 from . import gas_properties
 from . import spectra
@@ -35,7 +34,7 @@ class RateNetworkGas(gas_properties.GasProperties):
             if np.any((np.max(self.ienergygrid) < ienergy)*(np.min(self.ienergygrid) > ienergy)):
                 raise ValueError("Interpolation out of range!")
         nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
-        return nh0
+        return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy, density0):
         """Get the internal energy, rescaled to give the desired equation of state.
