@@ -13,9 +13,9 @@ class RateNetworkGas(gas_properties.GasProperties):
         self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, cool="KWH", recomb="C92", selfshield=selfshield, treecool_file="data/TREECOOL_ep_2018p")
         self.temp_factor = 1
         self.gamma_factor = 1
-        self.build_interp(dlim=(-15, 2), elim=(3, 14))
+        self.build_interp(dlim=(-15, 2), elim=(1, 14))
 
-    def build_interp(self, dlim, elim, sz=500):
+    def build_interp(self, dlim, elim, sz=750):
         """Build the interpolator"""
         #Build interpolation
         self.densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
