@@ -5,12 +5,16 @@ import numpy as np
 import scipy.interpolate as interp
 import scipy.optimize
 
+
+
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="Nyx", recomb="B06", collisional=True, treecool_file="TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
+        elif recomb == "B06":
+            self.recomb = RecombRatesBadnell()
         else:
             self.recomb = RecombRatesCen92()
         self.photo = PhotoRates(treecool_file=treecool_file)
@@ -62,7 +66,8 @@ class RateNetwork(object):
                              self.cool.RecombHePP(temp) * nHepp)
         LambdaFF = ne * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
         LambdaCmptn = ne * self.cool.InverseCompton(temp, self.redshift)
-        return LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
+
+        return LambdaCollis + LambdaRecomb +  LambdaCmptn + LambdaFF 
 
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
@@ -296,10 +301,42 @@ class RecombRatesVerner96(object):
         """Collisional ionization rate for HeI in cm^3/s. Temp in K. Voronov 97, Table 1."""
         return self._Voronov96Fit(temp, 54.4, 1, 0.205e-08, 0.265, 0.25)
 
+
+class RecombRatesBadnell(RecombRatesVerner96):
+    """Recombination rates and collisional ionization rates, as a function of temperature.
+     Recombination rates are the fit from Badnell's website: http://amdpp.phys.strath.ac.uk/tamoc/RR/#partial.
+    """
+ 
+    def _RecombRateFit_lowcharge_ion(self, temp, aa, bb, cc, temp0, temp1, temp2):
+        """Formula used as a fitting function in Verner & Ferland 1996 (astro-ph/9509083)/ See http://amdpp.phys.strath.ac.uk/tamoc/RR/#partial."""
+        sqrttt0 = np.sqrt(temp/temp0)
+        sqrttt1 = np.sqrt(temp/temp1)
+        BB = bb + cc*np.exp(-temp2/temp)
+        return aa / ( sqrttt0 * (1 + sqrttt0)**(1-BB)*(1+sqrttt1)**(1+BB) )
+
+
+    def alphaHp(self,temp):
+        """Recombination rate for H+, ionized hydrogen, in cm^3/s.
+        Temp in K."""
+        #See line 1 of V&F96 table 1.
+        return self._Verner96Fit(temp, aa=8.318e-11, bb=0.7472, temp0=2.965, temp1=7.001e5)
+
+    def alphaHep(self,temp):
+        """Recombination rate for H+, ionized hydrogen, in cm^3/s.
+        Temp in K."""
+        #See line 1 of V&F96 table 1.
+        return self._Verner96Fit(temp, aa=1.818E-10, bb=0.7492, temp0=10.17, temp1=2.786e6)
+
+    def alphaHepp(self, temp):
+        """Recombination rate for doubly ionized helium, in cm^3/s. 
+        Temp in K."""
+        #See line 4 of V&F96 table 1.
+        return self._RecombRateFit_lowcharge_ion(temp, aa=5.235E-11, bb=0.6988, cc=0.0829, temp0=7.301, temp1=4.475e6, temp2 = 1.682e5)
+
 class PhotoRates(object):
     """The photoionization rates for a given species.
     Eq. 29 of KWH 96. This is loaded from a TREECOOL table."""
-    def __init__(self, treecool_file="data/TREECOOL_ep_2018p"):
+    def __init__(self, treecool_file="TREECOOL"):
         #Format of the treecool table:
         # log_10(1+z), Gamma_HI, Gamma_HeI, Gamma_HeII,  Qdot_HI, Qdot_HeI, Qdot_HeII,
         # where 'Gamma' is the photoionization rate and 'Qdot' is the photoheating rate.
@@ -445,8 +482,9 @@ class CoolingRatesNyx(CoolingRatesKWH92):
     Major differences from KWH are the use of the Scholz & Walter 1991
     hydrogen collisional cooling rates, a less aggressive high temperature correction for helium, and
     Shapiro & Kang 1987 for free free.
-    Older Black 1981 recombination cooling rates are used!
-    They use the recombination rates from Voronov 1997, but do not change the cooling rates to match.
+    Older Black 1981 recombination cooling rates are used, but I don't know why!
+    They use the recombination rates from Voronov 1997, but don't seem to realise that
+    this should also change the cooling rates.
     Ditto the ionization rates from Verner & Ferland 96: they should also use these rates for collisional ionisation.
     References:
         Scholz & Walters 1991 (0.45% accuracy)
