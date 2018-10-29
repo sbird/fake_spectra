@@ -36,10 +36,11 @@ class RateNetwork(object):
                Supported are: KWH (original Gadget rates)
                               Nyx (rates used in Nyx (Lukic 2015) and Sherwood (Bolton 2017))
                               other: Our current best guess rates.
-              Default is KWH so we agree with Gadget. This may change to 'Nyx' at some point.
+              Default is Nyx, used in Sherwood and Nyx simulations.
         recomb - which recombination rate table to use.
                  Supported are: C92 (Cen 1992, the Gadget default)
                                 V96 (Verner & Ferland 1996, more accurate rates).
+                                B06 (Badnell 2006 rates, current cloudy defaults. Very similar to V96).
         collisional - Flag to enable collisional ionizations.
         treecool_file - File to read a UV background from. Matches format used by Gadget.
     """
