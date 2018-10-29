@@ -35,7 +35,6 @@ class RateNetwork(object):
         cool - which cooling rate coefficient table to use.
                Supported are: KWH (original Gadget rates)
                               Nyx (rates used in Nyx (Lukic 2015) and Sherwood (Bolton 2017))
-                              other: Our current best guess rates.
               Default is Nyx, used in Sherwood and Nyx simulations.
         recomb - which recombination rate table to use.
                  Supported are: C92 (Cen 1992, the Gadget default)
@@ -59,7 +58,7 @@ class RateNetwork(object):
         elif cool == "Nyx":
             self.cool = CoolingRatesNyx()
         else:
-            self.cool = CoolingRatesNewGadget()
+            raise ValueError("Not supported")
         #proton mass in g
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
@@ -572,38 +571,3 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         little = (temp/zz**2 <= 3.2e5)
         lt = np.log10(temp/zz**2)
         return little * (0.79464 + 0.1243*lt) + np.logical_not(little) * ( 2.13164 - 0.1240 * lt)
-
-class CoolingRatesNewGadget(CoolingRatesKWH92):
-    """These are the cooling rates that I think at the moment should be used.
-    Collisional Ionization and recombination rates are from Voronov 97 and Verner & Ferland 96, respectively.
-    Helium excitation is from Cen 1992. Free-free is Spitzer 1978 (as Shapiro & Kang 1987 is discontinuous).
-    Hydrogen excitation cooling is Scholz & Walters 1991, which *only* includes the Gamma 1s-2s and
-    Gamma 1s-2p terms. However it is not dominant except at high densities where everything is neutral.
-    Notably this means that Cen's t5 correction factor only appears in the
-    He+ collisional excitation rate, where it should be safely
-    negligible (because at high temperatures ionisation dominates).
-    """
-    def __init__(self, tcmb=2.7255):
-        CoolingRatesKWH92.__init__(self, tcmb=tcmb, recomb=RecombRatesVerner96)
-
-    def CollisionalExciteH0(self, temp):
-        """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0.
-        Formula from Eq. 16, 17, Table 3 of Scholz & Walters 1991.
-        This *only* includes the Gamma 1s-2s and Gamma 1s-2p terms. At worst this may underestimate cooling by 20%.
-        However it is not dominant except at high densities where everything is neutral, and we probably miss
-        molecular lines there anyway.
-        """
-        y = np.log(temp)
-        bblowT = [3.299613e1,1.858848e1, 6.052265, 8.603783e-1, 5.717760e-2, 1.451330e-3]
-        cclowT = [1.630155e2,8.795711e1, 2.057117e1, 2.359573, 1.339059e-1,3.021507e-3]
-        bbmedT = [2.869759e2, 1.077956e2, 1.524107e1, 1.080538, 3.836975e-2, 5.467273e-4]
-        ccmedT = [5.279996e2, 1.939399e2, 2.718982e1, 1.883399, 6.462462e-2, 8.811076e-4]
-        bbhighT = [2.7604708e3, 7.9339351e2, 9.1198462e1, 5.1993362, 1.4685343e-1, 1.6404093e-3]
-        cchighT = [2.8133632e3, 8.1509685e2, 9.4418414e1, 5.4280565, 1.5467120e-1, 1.7439112e-3]
-        gamma2s = 0.
-        gamma2p = 0.
-        for j in range(6):
-            gamma2s += (-1*(temp < 6e4)*bblowT[j]+(temp >=6e4)*(temp < 6e6)*bbmedT[j]-1*(temp > 6e6)*bbhighT[j])*(-y)**j
-            gamma2p += (-1*(temp < 6e4)*cclowT[j]+(temp >=6e4)*(temp < 6e6)*ccmedT[j]-1*(temp > 6e6)*cchighT[j])*(-y)**j
-        #10.2 eV in erg
-        return 10.2 * 1.60184e-12 * (np.exp(gamma2s) + np.exp(gamma2p)) * np.exp(-11606* 10.2/ temp)
