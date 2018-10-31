@@ -23,24 +23,30 @@ Required Python libraries:
 
 Optional libraries:
 - matplotlib (if you want to plot)
-- cloudy_tables (scripts for finding an ionisation fraction from a cloudy table): this is required to generate metal line absorption.
 - bigfile (to install, do 'pip install --user bigfile') for reading BigFile snapshot outputs from Yu Feng's MP-Gadget.
-- spb_common  (used only to read halo catalogues)
 
-All these libraries should be in your $PYTHONPATH
+All these libraries can be installed with pip.
+
+The easiest way to install the code is with pip:
+
+pip3 install --user fake_spectra
+
+If you need to use a pre-release version for any reason, you need this git repo.
+To compile it, use:
+
+python3 setup.py build
+python3 setup.py install --user
+
+On some systems you may have to add the directory it installs to
+(usually $HOME/.local/python) to your $PYTHONPATH
 
 At time of writing, the code should compile with python2, once 
 python3-config in the Makefile is replaced with python2-config. 
 However, I do not guarantee bug-free operation, and strongly 
 recommend using python 3.
 
-To make the C module, type:
-"make"
-On some systems you may have to set PYINC in the Makefile 
-to the location of your python include headers.
-
-The test suite for the C++ module requires Boost::Test and can be used with 
-"make test"
+The test suite for the C++ module (only required during development)
+requires Boost::Test and can be used with "make test"
 
 == Usage ==
 The main spectral generation routines are used can be called with:
