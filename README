@@ -32,13 +32,18 @@ The easiest way to install the code is with pip:
 pip3 install --user fake_spectra
 
 If you need to use a pre-release version for any reason, you need this git repo.
-To compile it, use:
+
+First you need to check out the submodules:
+
+git submodule update --init
+
+Then compile it using:
 
 python3 setup.py build
 python3 setup.py install --user
 
 On some systems you may have to add the directory it installs to
-(usually $HOME/.local/python) to your $PYTHONPATH
+(usually $HOME/.local/lib) to your $PYTHONPATH
 
 At time of writing, the code should compile with python2, once 
 python3-config in the Makefile is replaced with python2-config. 
