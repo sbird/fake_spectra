@@ -5,7 +5,7 @@ import os
 import glob
 import numpy as np
 import h5py
-
+from scipy.interpolate import interp1d
 from . import unitsystem
 
 try:
@@ -13,11 +13,12 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base):
+def AbstractSnapshotFactory(num, base, TDR_file=""):
     """Function to get a snapshot in whichever format is present"""
+    """If TDR_file is not empty, read in temperature density relation from the file."""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base)
+        return HDF5Snapshot(num, base, TDR_file=TDR_file)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
@@ -37,6 +38,9 @@ class AbstractSnapshot(object):
                                   }
         #This requires python 2.7
         self.bigfile_to_hdf_map = {v : k for (k,v) in self.hdf_to_bigfile_map.items()}
+
+        # initialize as empty
+        self.TDR_file = ""
 
     def __del__(self):
         try:
@@ -134,22 +138,43 @@ class AbstractSnapshot(object):
         #Internal energy units are 10^-10 erg/g
         if units is None:
             units = self.get_units()
+
         ienergy = self.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
         #Calculate temperature from internal energy and electron abundance
         nelec = self.get_data(part_type, "ElectronAbundance", segment=segment)
         muienergy = 4 / (hy_mass * (3 + 4*nelec) + 1)*ienergy
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
         temp = (units.gamma-1) * units.protonmass / units.boltzmann * muienergy
+
+        # interpolate the given temperature density relation if the TDR file is provided
+        if self.TDR_file != "":
+            TDR = np.loadtxt(self.TDR_file)
+            logDelta_lo = TDR[0,0] # upper bound for doing interpolation
+            logDelta_hi = TDR[-1,0] # lower bound
+            TDR = TDR[1:-1] # the first and last lines of this file are not used for interpolation
+
+            # read in gas density
+            h = self.get_header_attr("HubbleParam")
+            density = self.get_data(part_type, "Density", segment=segment) * units.UnitDensity_in_cgs * h**2 # to cgs units
+            rho_mean = units.rho_crit(h) * self.get_header_attr("OmegaBaryon")
+            logDelta = np.log10(density/rho_mean)
+
+            ii = (logDelta >= logDelta_lo) & (logDelta <= logDelta_hi) & (temp < 1e5)
+            f = interp1d(TDR[:,0], TDR[:,1], kind="linear", fill_value="extrapolate")
+            temp[ii] = 10**f(logDelta[ii])
+
         return temp
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base):
+    def __init__(self, num, base, TDR_file=""):
         self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
         self._handle_num = 0
         AbstractSnapshot.__init__(self)
+
+        self.TDR_file = TDR_file
 
     def _get_all_files(self, num, base):
         """Get a file descriptor from a simulation directory,
@@ -188,6 +213,25 @@ class HDF5Snapshot(AbstractSnapshot):
             self._f_handle.close()
             self._f_handle = h5py.File(self._files[segment],'r')
             self._handle_num = segment
+
+        # need to change ne and nh1 if use a provided TDR
+        if self.TDR_file != "" and part_type == 0 and blockname == "NeutralHydrogenAbundance":
+            alpha = lambda T: T**-0.7 / (1. + (T / 1e6)**0.7)
+            xHI = self._f_handle["PartType"+str(part_type)][blockname]
+
+            # get the original temperature first
+            tmp = self.TDR_file
+            self.TDR_file = ""
+            temp0 = self.get_temp(part_type, segment)
+
+            # get the interpolated temperature
+            self.TDR_file = tmp
+            temp = self.get_temp(part_type, segment)
+
+            # scale xHI
+            xHI *= alpha(temp)/alpha(temp0)
+            return xHI
+
         return np.array(self._f_handle["PartType"+str(part_type)][blockname])
 
     def get_npart(self):
