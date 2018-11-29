@@ -57,7 +57,7 @@ def _window_function(k, *, R, dv):
     sigma = R/(2*np.sqrt(2*np.log(2)))
     return np.exp(-0.5 * (k * sigma)**2) * np.sinc(k * dv/2/math.pi)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, scale=1., window=True):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -68,16 +68,16 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
 	    vmax - velocity scale corresponding to maximal length of the sightline.
+            scale - scaling factor of tau (intensity of the UVB)
         Returns:
             flux_power - flux power spectrum in km/s. Shape is (npix)
             bins - the frequency space bins of the power spectrum, in s/km.
     """
-    scale = 1.
     if mean_flux_desired is not None:
         scale = mean_flux(tau, mean_flux_desired)
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
     else:
-        mean_flux_desired = np.mean(np.exp(-tau))
+        mean_flux_desired = np.mean(np.exp(-scale*tau))
     (nspec, npix) = np.shape(tau)
     mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
     for i in range(10):
