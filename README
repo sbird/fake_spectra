@@ -75,10 +75,13 @@ from fake_spectra.randspectra import RandSpectra
 rr = RandSpectra(5, "MySim", thresh=0.)
 rr.get_tau("H",1,1215)
 #Lyman-beta
-rr.get_tau("H",1,1026)
+rr.get_tau("H",1,1025)
 rr.get_col_density("H",1)
 #Save spectra to file
 rr.save_file()
+
+Note that the wavelength of the transition always rounds down,
+so lyman alpha at 1215.67 A is 1215, not 1216!
 
 Generated spectra will be saved into HDF5 files, for ease of later analysis.
 Each spectral generation routine saves spectra to a differently named file.
