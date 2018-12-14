@@ -87,6 +87,15 @@ python setup.py build
 extra_compile_args=['-ffast-math',]
 extra_link_args = ['-ffast-math',]
 
+try:
+    gsl_libs = subprocess.check_output(["gsl-config", "--libs"], stderr=subprocess.STDOUT, universal_newlines=True)
+    extra_link_args += gsl_libs.split()
+    gsl_incl = subprocess.check_output(["gsl-config", "--cflags"], stderr=subprocess.STDOUT, universal_newlines=True)
+    extra_compile_args += gsl_incl.split()
+except subprocess.CalledProcessError as e:
+    print(e.output)
+    raise
+
 if check_for_openmp():
     extra_compile_args += ['-fopenmp',]
     #gcc specific
@@ -124,7 +133,7 @@ setup(
     requires=['numpy', 'h5py','scipy'],
     package_data = {
             'fake_spectra.tests': ['*.npz'],
-            'fake_spectra': ['*.dat'],
+            'fake_spectra': ['data/TREECOOL*', '*.dat'],
             'fake_spectra.cloudy_tables': ['ion_out_*/cloudy_table.npz']
            },
     ext_modules = cmodule,
