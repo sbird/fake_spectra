@@ -665,6 +665,7 @@ class Spectra(object):
             return result
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
+            print("Interpolation %.1f percent done" % (100*nn/nsegments))
             #Add new file
             result += tresult
             del tresult
