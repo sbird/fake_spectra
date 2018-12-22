@@ -693,9 +693,10 @@ class Spectra(object):
         """
         print("For ",line," Angstrom")
         eq_width = self.equivalent_width(elem, ion, line)
-        v_table = np.arange(np.log10(np.min(eq_width)), np.log10(np.max(eq_width)), dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
+        ii = np.where(eq_width > 0)
+        v_table = np.arange(np.log10(np.min(eq_width[ii])), np.log10(np.max(eq_width[ii])), dv)
+        vbin = (v_table[1:]+v_table[:-1])/2.
+        eqws = np.histogram(np.log10(eq_width[ii]),v_table, density=True)[0]
         return (vbin, eqws)
 
     def get_col_density(self, elem, ion, force_recompute=False):
