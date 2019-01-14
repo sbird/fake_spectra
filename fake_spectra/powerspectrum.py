@@ -30,12 +30,12 @@ class CalcPowerspectrum(spectra.Spectra):
         tau = self.get_tau(elem, ion, line)
         return fstat.mean_flux(tau, mean_flux_desired)
 
-    def calc_powerspectrum(self, elem="H", ion=1, line=1215, mean_flux_desired=None, scale=1., window=True, kmin=0.001, kmax=0.1, N=1000):
+    def calc_powerspectrum(self, elem="H", ion=1, line=1215, mean_flux_=None, mean_flux_desired=None, scale=1., window=True, kmin=0.001, kmax=0.1, N=1000):
         """Calculate power spectrum and do an interpolation in the range [kmin, kmax], using N points. Return the interpolated values.
         Can choose to input mean_flux_desired or scaling of the UVB."""
         xinterp = np.linspace(np.log10(kmin), np.log10(kmax), N)
         rst = self.get_flux_power_1D(
-            elem, ion, line, mean_flux_desired, scale, window)
+            elem, ion, line, mean_flux_, mean_flux_desired, scale, window)
         yinterp = np.interp(xinterp, np.log10(rst[0]), np.log10(
             rst[1]), left=np.nan, right=np.nan)
         return 10**xinterp, 10**yinterp
