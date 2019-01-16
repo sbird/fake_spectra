@@ -13,12 +13,12 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base, TDR_file=""):
+def AbstractSnapshotFactory(num, base, TDR_file="", include_shockheated=True):
     """Function to get a snapshot in whichever format is present"""
     """If TDR_file is not empty, read in temperature density relation from the file."""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base, TDR_file=TDR_file)
+        return HDF5Snapshot(num, base, TDR_file=TDR_file, include_shockheated=include_shockheated)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
@@ -41,6 +41,7 @@ class AbstractSnapshot(object):
 
         # initialize as empty
         self.TDR_file = ""
+        self.include_shockheated = True
 
     def __del__(self):
         try:
@@ -159,7 +160,10 @@ class AbstractSnapshot(object):
             rho_mean = units.rho_crit(h) * self.get_header_attr("OmegaBaryon")
             logDelta = np.log10(density/rho_mean)
 
-            ii = (logDelta >= logDelta_lo) & (logDelta <= logDelta_hi) & (temp < 1e5)
+            if not self.include_shockheated:
+                ii = (logDelta >= logDelta_lo) & (logDelta <= logDelta_hi) & (temp < 1e5)
+            else:
+                ii = (logDelta >= logDelta_lo) & (logDelta <= logDelta_hi)
             f = interp1d(TDR[:,0], TDR[:,1], kind="linear", fill_value="extrapolate")
             temp[ii] = 10**f(logDelta[ii])
 
@@ -167,7 +171,7 @@ class AbstractSnapshot(object):
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base, TDR_file=""):
+    def __init__(self, num, base, TDR_file="", include_shockheated=True):
         self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
@@ -175,6 +179,7 @@ class HDF5Snapshot(AbstractSnapshot):
         AbstractSnapshot.__init__(self)
 
         self.TDR_file = TDR_file
+        self.include_shockheated = include_shockheated
 
     def _get_all_files(self, num, base):
         """Get a file descriptor from a simulation directory,

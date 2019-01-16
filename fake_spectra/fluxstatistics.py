@@ -57,7 +57,7 @@ def _window_function(k, *, R, dv):
     sigma = R/(2*np.sqrt(2*np.log(2)))
     return np.exp(-0.5 * (k * sigma)**2) * np.sinc(k * dv/2/math.pi)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, scale=1., window=True):
+def flux_power(tau, vmax, spec_res = 8, mean_flux_=None, mean_flux_desired=None, scale=1., window=True):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -83,6 +83,8 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, scale=1., window
     for i in range(10):
         end = min((i+1)*nspec//10, nspec)
         dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.
+        if mean_flux_ is not None:
+            dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_ - 1.
         # Calculate flux power for each spectrum in turn
         flux_power_perspectra = _powerspectrum(dflux, axis=1)
         #Take the mean and convert units.

@@ -72,7 +72,7 @@ class Spectra(object):
             load_snapshot - Whether to load the snapshot
             TDR_file - if not empty, this file contains a temperature density relation to interpolate from. also provides initial guesses for Ne.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, TDR_file=""):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, TDR_file="", include_shockheated=True):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -110,7 +110,7 @@ class Spectra(object):
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, TDR_file)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, TDR_file, include_shockheated)
         except IOError:
             pass
         if savedir is None:
@@ -1019,7 +1019,7 @@ class Spectra(object):
         tau = self.get_tau(elem, ion, line)
         return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
 
-    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None, scale=1., window=True):
+    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_=None, mean_flux_desired = None, scale=1., window=True):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -1029,5 +1029,5 @@ class Spectra(object):
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
-        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, scale=scale, window=window)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_=mean_flux_, mean_flux_desired=mean_flux_desired, scale=scale, window=window)
         return kf[1:],avg_flux_power[1:]
