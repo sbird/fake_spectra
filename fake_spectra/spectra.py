@@ -379,11 +379,27 @@ class Spectra(object):
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau):
+    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau, arepo=False):
         """Read arrays and perform interpolation for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
-        if amumass is False:
-            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        if arepo:
+            for nseg in range(self.snapshot_set.get_n_segments()):
+                (pos_, vel_, elem_den_, temp_, hh_, amumass) = self._read_particle_data(nseg, elem, ion, get_tau)
+                if amumass is False:
+                    return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+                if nseg == 0:
+                    pos = pos_; vel = vel_; elem_den = elem_den_; temp = temp_; hh = hh_;
+                else:
+                    pos = np.concatenate((pos, pos_), axis=0)
+                    if get_tau:
+                        vel = np.concatenate((vel, vel_), axis=0)
+                    elem_den = np.append(elem_den, elem_den_)
+                    if len(temp) > 1:
+                        temp = np.append(temp, temp_)
+                    hh = np.append(hh, hh_)
+        else:
+            (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
+            if amumass is False:
+                return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
             #Allow us to compute absorption profiles assuming all
             #of one element is in the absorbing state
@@ -403,12 +419,17 @@ class Spectra(object):
             #Setting something makes writing the interfaces easier,
             #because C doesn't have default arguments.
             line = self.lines[("H",1)][1215]
+        print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
     def _read_particle_data(self,fn, elem, ion, get_tau):
         """Read the particle data for a single interpolation"""
         pos = self.snapshot_set.get_data(0,"Position",segment = fn).astype(np.float32)
         hh = self.snapshot_set.get_smooth_length(0,segment=fn).astype(np.float32)
+
+        # arepo
+        # if self.snapshot_set.get_kernel() == 0:
+        #     hh *= 2
 
         #Find particles we care about
         if self.cofm_final:
@@ -650,7 +671,11 @@ class Spectra(object):
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments()
-        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau)
+        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau, arepo=self.snapshot_set.get_kernel()==0)
+        # arepo
+        if self.snapshot_set.get_kernel() == 0:
+            return result
+        # otherwise...
         #Do remaining files
         if nsegments == 1:
             return result

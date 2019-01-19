@@ -107,6 +107,7 @@ sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i),
+arepo(kernel_i == TOP_HAT_KERNEL),
 kern_frac(get_kern_frac(kernel_i))
 {
 }
@@ -117,21 +118,29 @@ kern_frac(get_kern_frac(kernel_i))
  */
 void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float pos, const float smooth)
 {
-  //If we are outside the kernel, do nothing.
-  if (smooth*smooth - dr2 <= 0)
-      return;
+  double pos1 = pos;
+  if(arepo)
+  {
+      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      pos1 = (dr2 + smooth) / 2.;
+  }
+  else
+  {
+      if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
+  }
   //z range covered by particle in kpc/h
-  const double zrange = sqrt(smooth*smooth - dr2);
+  double zrange = sqrt(smooth*smooth - dr2);
+  if(arepo) zrange = (smooth - dr2) / 2.;
   //Conversion between units of position to units of the box.
   const double boxtokpc = vbox / nbins / velfac;
   // z is position in units of the box
-  const int zlow = floor((pos - zrange) / boxtokpc);
-  const int zhigh = ceil((pos + zrange) / boxtokpc);
+  const int zlow = floor((pos1 - zrange) / boxtokpc);
+  const int zhigh = ceil((pos1 + zrange) / boxtokpc);
   // Compute the column density
   for(int z=zlow; z<=zhigh; z++)
   {
       //Difference between position of bin this edge and particle
-      const double plow = (boxtokpc*z - pos);
+      const double plow = (boxtokpc*z - pos1);
       // The index may be periodic wrapped.
       // Index in units of the box
       int j = z % nbins;
@@ -156,11 +165,19 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   const double vel = velfac * ppos + pvel * sqrt(atime);
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
-  //Double check we are within the kernel support
-  if(smooth*smooth - dr2 <=0)
-      return;
+  if(arepo)
+  {
+      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+  }
+  else
+  {
+      if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
+  }
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
+  double val1 = velfac*dr2;
+  double val2 = velfac*smooth;
+  if(!arepo) val1 *= velfac;
+  SingleAbsorber absorber ( btherm, val1, val2, voigt_fac/btherm, arepo );
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.

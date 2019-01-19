@@ -1,4 +1,5 @@
 #include "index_table.h"
+#include <stdio.h>
 #include <cmath>
 #include <cassert>
 
@@ -146,4 +147,89 @@ std::valarray< std::map<int, double> > IndexTable::get_near_particles(const floa
         }
     }
     return line_near_parts;
+}
+
+double * IndexTable::assign_cells(const int line_i, const std::valarray< std::map<int, double> > nearby_array, const float pos[])
+{
+    /***********************************/
+    printf("assigning parts of line %d to cells...\n", line_i);
+    int Ncells = 0;
+    for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it) Ncells++;
+    printf("Ncells=%d\n", Ncells);
+    double * arr2 = new double [2*Ncells];
+    // initialize
+    for(int i = 0; i < Ncells; ++i)
+    {
+        arr2[2*i] = -100;
+        arr2[2*i+1] = -100;
+    }
+    //printf("arr2[0]=%f, arr2[1]=%f\n", arr2[0], arr2[1]);
+
+    // divide each sightline into an array. grid size = RESO ckpc/h
+    int N = int(boxsize/RESO);
+    double reso = boxsize/N;
+
+    int axis_i = axis[line_i];
+    double xp;
+    double yp = cofm[3*line_i+axis_i%3], zp = cofm[3*line_i+(axis_i+1)%3];
+    double dx, dy, dz;
+    // loop over all grid points along the sightline
+    for(int i = 0; i < N; ++i){
+        // the default choice is the sightline points in the x direction
+        xp = (i+0.5)*reso;
+        // find the particle index that this point along the sightline belongs to
+        double dist, min_dist = boxsize;
+        int min_ind = 0, ind = 0;
+        for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it){
+            const int ipart = it->first;
+            // take into account periodicity
+            dx = abs(pos[3*ipart+axis_i-1]-xp);
+            if(dx > boxsize/2.) dx = boxsize - dx;
+            dy = abs(pos[3*ipart+axis_i%3]-yp);
+            if(dy > boxsize/2.) dy = boxsize - dy;
+            dz = abs(pos[3*ipart+(axis_i+1)%3]-zp);
+            if(dz > boxsize/2.) dz = boxsize - dz;
+            dist = sqrt(dx*dx + dy*dy + dz*dz);
+            if(dist < min_dist){
+                min_dist = dist;
+                min_ind = ind;
+            }
+            ind++;
+        }
+        // assign to arr2
+        //printf("i=%d min_ind=%d, before: left=%f, right=%f\n", i, min_ind, arr2[2*min_ind], arr2[2*min_ind+1]);
+        if(arr2[2*min_ind] < 0)
+        {
+            arr2[2*min_ind] = xp;
+            arr2[2*min_ind+1] = xp;
+        }
+        else
+        {
+            if(xp - arr2[2*min_ind+1] < 1.01*reso)
+                arr2[2*min_ind+1] = xp;
+            else
+            {
+                if(arr2[2*min_ind] < reso && xp > boxsize/2.+0.5*reso)
+                {
+                    arr2[2*min_ind] = xp;
+                    arr2[2*min_ind+1] += boxsize;
+                    break;
+                }
+                else
+                {
+                    printf("i=%d, something wrong! left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
+                    exit(1);
+                }
+            }
+        }
+        //printf("i=%d min_ind=%d, after: left=%f, right=%f\n", i, min_ind, arr2[2*min_ind], arr2[2*min_ind+1]);
+    }
+
+    for(int i = 0; i < Ncells; ++i){
+        arr2[2*i] -= 0.5*reso;
+        arr2[2*i+1] += 0.5*reso;
+    }
+
+    return arr2;
+    /***********************************/
 }

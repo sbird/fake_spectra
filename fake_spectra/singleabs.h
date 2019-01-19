@@ -56,10 +56,17 @@ class SingleAbsorber
          * aa: voigt_fac/btherm the parameter for the Voigt profile
          * Check extra carefully whether m_vhigh is real.
          */
-        SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i):
+        SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i, int arepo_):
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i),
-            m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0))
-        {};
+            m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0)),
+            arepo(arepo_)
+            {
+                if(arepo)
+                {
+                    if(vdr2 > 0 && vsmooth > 0) m_vhigh = (vsmooth - vdr2)/2.;
+                    else m_vhigh = 0;
+                }
+            };
 
         /*Find the mean optical depth in the bin, by averaging over the optical depth
          * at different points within it. The relevant scale here is the thermal broadening, b,
@@ -126,7 +133,8 @@ class SingleAbsorber
                 //The difference between this velocity bin and the particle velocity
                 const double vdiff = vv - vouter;
                 const double T0 = vdiff/btherm;
-                total+=sph_kernel(q)*profile(T0,aa);
+                if(arepo) total += profile(T0,aa);
+                else total+=sph_kernel(q)*profile(T0,aa);
             }
             return deltav*total;
         }
@@ -135,7 +143,8 @@ class SingleAbsorber
         const double vdr2;
         const double vsmooth;
         const double aa;
-        const double m_vhigh;
+        double m_vhigh;
+        const int arepo;
 };
 
 double sph_cubic_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);

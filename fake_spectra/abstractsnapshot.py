@@ -305,7 +305,7 @@ class HDF5Snapshot(AbstractSnapshot):
         if "Volume" in self._f_handle["PartType0"].keys():
             return 0
         else:
-            return 1
+            return 0
 
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""

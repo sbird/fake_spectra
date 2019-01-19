@@ -63,6 +63,7 @@ class LineAbsorption
          * giving the balance between doppler and thermal broadening in km/s. */
         const double voigt_fac;
         const double velfac, vbox, atime;
+        const int arepo;
         const kern_frac_func kern_frac;
 };
 
