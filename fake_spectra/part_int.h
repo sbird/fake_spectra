@@ -17,6 +17,7 @@
 
 #include "index_table.h"
 #include "absorption.h"
+#include "singleabs.h"
 
 /* Class extending LineAbsorption to efficiently loop
  * over all particles, using an index table to find those near each line
@@ -26,7 +27,7 @@ class ParticleInterp: public LineAbsorption
     public:
         ParticleInterp(const int nbins_i, const double lambda, const double gamma, const double fosc, const double amumass, const double boxsize, const double velfac, const double atime, const double cofm[], const int axis[], const int NumLos, const int kernel, const double tautail):
         LineAbsorption(lambda, gamma, fosc, amumass, velfac, boxsize, atime, kernel, tautail),
-        nbins(nbins_i),nlos(NumLos),
+        nbins(nbins_i),nlos(NumLos),arepo(kernel==TOP_HAT_KERNEL),
         sort_los_table(cofm, axis, NumLos, boxsize)
         {
         }
@@ -45,6 +46,7 @@ class ParticleInterp: public LineAbsorption
     private:
         const int nbins;
         const int nlos;
+        const int arepo;
         IndexTable sort_los_table;
 };
 

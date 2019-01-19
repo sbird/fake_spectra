@@ -62,7 +62,13 @@ class SingleAbsorber
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i, int kernel_i):
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i), kernel(kernel_i),
             m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0))
-        {};
+            {
+                if(kernel == TOP_HAT_KERNEL)
+                {
+                    if(vdr2 > 0 && vsmooth > 0) m_vhigh = (vsmooth - vdr2)/2.;
+                    else m_vhigh = 0;
+                }
+            };
 
         /*Find the mean optical depth in the bin, by averaging over the optical depth
          * at different points within it. The relevant scale here is the thermal broadening, b,
@@ -132,8 +138,6 @@ class SingleAbsorber
                 double tbin = profile(T0, aa);
                 if(kernel == SPH_CUBIC_SPLINE)
                     tbin*=sph_kernel(q);
-                else if(kernel == TOP_HAT_KERNEL)
-                    tbin *= 3./4./M_PI;
                 total+=tbin;
             }
             return deltav*total;
@@ -144,7 +148,7 @@ class SingleAbsorber
         const double vsmooth;
         const double aa;
         const int kernel;
-        const double m_vhigh;
+        double m_vhigh;
 };
 
 double sph_cubic_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);
