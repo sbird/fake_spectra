@@ -419,7 +419,7 @@ class Spectra(object):
             #Setting something makes writing the interfaces easier,
             #because C doesn't have default arguments.
             line = self.lines[("H",1)][1215]
-        print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
+        # print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
     def _read_particle_data(self,fn, elem, ion, get_tau):
@@ -429,7 +429,7 @@ class Spectra(object):
 
         # arepo
         # if self.snapshot_set.get_kernel() == 0:
-        #     hh *= 2
+        #     hh *= 1.5
 
         #Find particles we care about
         if self.cofm_final:

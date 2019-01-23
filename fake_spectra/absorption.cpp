@@ -162,17 +162,19 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
    */
-  const double vel = velfac * ppos + pvel * sqrt(atime);
+  double pos1 = ppos;
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
   if(arepo)
   {
       if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      pos1 = (dr2 + smooth) / 2.;
   }
   else
   {
       if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
   }
+  const double vel = velfac * pos1 + pvel * sqrt(atime);
   // Create absorption object
   double val1 = velfac*dr2;
   double val2 = velfac*smooth;
