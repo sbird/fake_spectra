@@ -1,0 +1,22 @@
+feature/arepo:
+This file summarizes major changes between a6daa8 and 817759.
+
+abstractsnapshot.py:
+We did not output Volume so I had to deliberately change the kernel to 0.
+
+spectra.py:
+_interpolate_single_file: when using arepo we need all gas cells from all the snapshot segments in order to assign points along a sightline to the voronoi mesh.
+
+index_table.cpp
+Added function assign_cells. I first divide a sightline into a set of points separated by 1 ckpc/h (RESO defined in index_table.h). Then for each such point along the sightline, I search through the nearest gas cells to the sightline (given by nearby_array[line_i]) to get the minimum distance from this point to the mesh generating points. Then this point is determined to belong to that gas cell. The array arr2 stores the minimum and maximum positions of points along the sightline that belong to each gas cell closest to the sightline.
+nearby_array is obtained through get_near_lines(). The search radius is still one smoothing length (in principle I could double this value; I tried once and it did not make a difference. Points along a sightline are still assigned to gas cells that are within one smoothing length away).
+
+part_int.cpp:
+Changes are made in compute_tau and compute_colden in a similar way. For each sightline, first call sort_los_table.assign_cells to get arr2. Then for the case of arepo, when calling add_tau_particle and add_colden_particle, instead of inputting dr2 and smoothing length I input the minimum and maximum positions on the sightline that belong to the gas cell being looped (ind specifies the index).
+
+absorption.cpp:
+Similar changes are made to add_tau_particle and add_colden_particle. From my understanding, the center position for the calculation should be shifted to (arr2[2*ind]+arr2[2*ind+1])/2, instead of using the position of the gas cell. For computing column density, zrange should be given by (arr2[2*ind+1]-arr2[2*ind])/2. The integral should be done in the range (arr2[2*ind], arr2[2*ind+1]). For computing tau, the velocity is shifted a bit because I shifted the center position for the calculation.
+
+singleabs.h:
+m_vhigh is changed to (arr2[2*ind+1]-arr2[2*ind])/2. In tau_kern_inner I dropped the sph kernel for arepo type of integration.
+
