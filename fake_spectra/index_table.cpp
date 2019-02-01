@@ -183,11 +183,11 @@ double * IndexTable::assign_cells(const int line_i, const std::valarray< std::ma
         for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it){
             const int ipart = it->first;
             // take into account periodicity
-            dx = abs(pos[3*ipart+axis_i-1]-xp);
+            dx = fabs(pos[3*ipart+axis_i-1]-xp);
             if(dx > boxsize/2.) dx = boxsize - dx;
-            dy = abs(pos[3*ipart+axis_i%3]-yp);
+            dy = fabs(pos[3*ipart+axis_i%3]-yp);
             if(dy > boxsize/2.) dy = boxsize - dy;
-            dz = abs(pos[3*ipart+(axis_i+1)%3]-zp);
+            dz = fabs(pos[3*ipart+(axis_i+1)%3]-zp);
             if(dz > boxsize/2.) dz = boxsize - dz;
             dist = sqrt(dx*dx + dy*dy + dz*dz);
             if(dist < min_dist){
