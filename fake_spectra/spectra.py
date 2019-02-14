@@ -115,6 +115,8 @@ class Spectra(object):
         try:
             if load_snapshot:
                 self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
+                #Set up the kernel
+                self.kernel_int = self.snapshot_set.get_kernel()
         except IOError:
             pass
         if savedir is None:
@@ -530,7 +532,7 @@ class Spectra(object):
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.snapshot_set.get_kernel(), self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
