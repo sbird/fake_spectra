@@ -3,9 +3,6 @@
 
 #define  PROTONMASS  1.67262178e-24 /* 1 a.m.u */
 
-#define TOP_HAT_KERNEL 0
-#define SPH_CUBIC_SPLINE 1
-
 /*Type for the kernel function pointer*/
 typedef double (*const kern_frac_func)(double, double, const double, const double, const double);
 
