@@ -81,6 +81,7 @@ double sph_cubic_kern_frac(double zlow, double zhigh, const double smooth, const
  * smooth - smoothing length
  * dr2 - transverse distance from particle to pixel, squared.
  * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
+ * Normalized the same as the SPH kernel, so that 4 pi int_0^1 K q^2 dq = 1
  * */
 
 double tophat_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
@@ -88,7 +89,7 @@ double tophat_kern_frac(double zlow, double zhigh, const double smooth, const do
     //Integration limits
     zlow = std::max(zlow, -zrange);
     zhigh = std::min(zhigh, zrange);
-    return std::max(0.,zhigh - zlow);
+    return 3./4./M_PI*std::max(0.,zhigh - zlow);
 }
 
 kern_frac_func get_kern_frac(const int kernel)
