@@ -252,11 +252,11 @@ class HDF5Snapshot(AbstractSnapshot):
                0 - Top hat kernel (for Arepo)
                1 - SPH cubic spline kernel (for Gadget).
         """
-        #We are Arepo.
-        if "Volume" in self._f_handle["PartType0"].keys():
-            return 0
-        else:
+        #We are Gadget
+        if "SmoothingLength" in self._f_handle["PartType0"].keys():
             return 1
+        #We are Arepo if there is no smoothing length.
+        return 0
 
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
