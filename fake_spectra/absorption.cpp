@@ -108,7 +108,8 @@ sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i),
-kern_frac(get_kern_frac(kernel_i))
+kern_frac(get_kern_frac(kernel_i)),
+kernel(kernel_i)
 {
 }
 
@@ -161,7 +162,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   if(smooth*smooth - dr2 <=0)
       return;
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
+  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm, kernel);
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
