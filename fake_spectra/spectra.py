@@ -480,6 +480,18 @@ class Spectra(object):
         #Do interpolation.
         return (pos, vel, elem_den, temp, hh, amumass)
 
+    def find_all_particles(self):
+        """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
+        nsegments = self.snapshot_set.get_n_segments()
+        pp = np.empty([0,3])
+        hhh = np.array([])
+        for i in range(nsegments):
+            (pos, _, _, _, hh, amumass) = self._read_particle_data(i, "H", -1, False)
+            if amumass is not False:
+                pp = np.concatenate([pp, pos])
+                hhh = np.concatenate([hhh, hh])
+        return pp, hhh
+
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Get a filtered list of particles to add to the sightlines"""
         _ = (pos,velocity, den)
