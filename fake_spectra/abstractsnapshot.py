@@ -297,8 +297,9 @@ class BigFileSnapshot(AbstractSnapshot):
             (start, end) = self._segment_to_partlist(part_type=part_type, segment=segment)
             if end is not None:
                 return end - start
-            else:
-                return self._f_handle[str(part_type)+"/"+blockname].size - start
+            #Last segment has no end
+            return self._f_handle[str(part_type)+"/"+blockname].size - start
+
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
@@ -310,8 +311,8 @@ class BigFileSnapshot(AbstractSnapshot):
         one_segment = int(self.get_npart()[part_type]//n_segments)
         if segment < n_segments -1:
             return (one_segment*segment, one_segment*(segment+1))
-        else:
-            return (one_segment*segment, None)
+        #Last segment has no end
+        return (one_segment*segment, None)
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.
