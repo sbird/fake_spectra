@@ -252,6 +252,9 @@ class HDF5Snapshot(AbstractSnapshot):
                0 - Top hat kernel (for Arepo)
                1 - SPH cubic spline kernel (for Gadget).
         """
+        #We are an older Arepo version if there is a Volume key
+        if "Volume" in self._f_handle["PartType0"].keys():
+            return 0
         #We are Gadget
         if "SmoothingLength" in self._f_handle["PartType0"].keys():
             return 1
