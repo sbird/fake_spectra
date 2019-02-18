@@ -435,10 +435,6 @@ class Spectra(object):
         pos = self.snapshot_set.get_data(0,"Position",segment = fn).astype(np.float32)
         hh = self.snapshot_set.get_smooth_length(0,segment=fn).astype(np.float32)
 
-        # arepo
-        # if self.snapshot_set.get_kernel() == 0:
-        #     hh *= 1.5
-
         #Find particles we care about
         if self.cofm_final:
             try:
@@ -691,7 +687,7 @@ class Spectra(object):
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments()
-        arepo = (self.snapshot_set.get_kernel() == 0)
+        arepo = (self.snapshot_set.get_kernel() == 2)
         result =  self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         # arepo
         if arepo or nsegments == 1:

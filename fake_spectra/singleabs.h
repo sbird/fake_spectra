@@ -8,6 +8,7 @@
 #define NGRID 8
 #define TOP_HAT_KERNEL 0
 #define SPH_CUBIC_SPLINE 1
+#define VORONOI_MESH 2
 
 
 /* The (unnormalized) cubic kernel from Price 2011: arxiv 1012.1885 , eq. 6
@@ -63,7 +64,7 @@ class SingleAbsorber
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i), kernel(kernel_i),
             m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0))
             {
-                if(kernel == TOP_HAT_KERNEL)
+                if(kernel == VORONOI_MESH)
                 {
                     if(vdr2 > 0 && vsmooth > 0) m_vhigh = (vsmooth - vdr2)/2.;
                     else m_vhigh = 0;
@@ -138,6 +139,8 @@ class SingleAbsorber
                 double tbin = profile(T0, aa);
                 if(kernel == SPH_CUBIC_SPLINE)
                     tbin*=sph_kernel(q);
+                else if(kernel == TOP_HAT_KERNEL)
+                    tbin *= 3./4./M_PI;
                 total+=tbin;
             }
             return deltav*total;

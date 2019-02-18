@@ -108,7 +108,6 @@ sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i),
-arepo(kernel_i == TOP_HAT_KERNEL),
 kern_frac(get_kern_frac(kernel_i)),
 kernel(kernel_i)
 {
@@ -121,7 +120,7 @@ kernel(kernel_i)
 void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float pos, const float smooth)
 {
   double pos1 = pos;
-  if(arepo)
+  if(kernel == VORONOI_MESH)
   {
       if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
       pos1 = (dr2 + smooth) / 2.;
@@ -132,7 +131,7 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
   }
   //z range covered by particle in kpc/h
   double zrange = sqrt(smooth*smooth - dr2);
-  if(arepo) zrange = (smooth - dr2) / 2.;
+  if(kernel == VORONOI_MESH) zrange = (smooth - dr2) / 2.;
   //Conversion between units of position to units of the box.
   const double boxtokpc = vbox / nbins / velfac;
   // z is position in units of the box
@@ -167,7 +166,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   double pos1 = ppos;
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
-  if(arepo)
+  if(kernel == VORONOI_MESH)
   {
       if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
       pos1 = (dr2 + smooth) / 2.;
@@ -179,8 +178,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   const double vel = velfac * pos1 + pvel * sqrt(atime);
   // Create absorption object
   double val1 = velfac*dr2;
-  double val2 = velfac*smooth;
-  if(!arepo) val1 *= velfac;
+  if(kernel != VORONOI_MESH) val1 *= velfac;
   SingleAbsorber absorber ( btherm, val1, velfac*smooth, voigt_fac/btherm, kernel);
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
