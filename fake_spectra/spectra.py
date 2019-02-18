@@ -390,27 +390,24 @@ class Spectra(object):
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau, arepo=False):
+    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
-        if arepo:
-            for nseg in range(self.snapshot_set.get_n_segments()):
-                (pos_, vel_, elem_den_, temp_, hh_, amumass) = self._read_particle_data(nseg, elem, ion, get_tau)
-                if amumass is False:
-                    return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-                if nseg == 0:
-                    pos = pos_; vel = vel_; elem_den = elem_den_; temp = temp_; hh = hh_;
-                else:
-                    pos = np.concatenate((pos, pos_), axis=0)
-                    if get_tau:
-                        vel = np.concatenate((vel, vel_), axis=0)
-                    elem_den = np.append(elem_den, elem_den_)
-                    if len(temp) > 1:
-                        temp = np.append(temp, temp_)
-                    hh = np.append(hh, hh_)
-        else:
-            (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
-            if amumass is False:
-                return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
+        if load_all_data_first:
+            for nseg in range(1, self.snapshot_set.get_n_segments()):
+                (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
+                if amumass_ is False:
+                    continue
+                pos = np.concatenate((pos, pos_), axis=0)
+                if get_tau:
+                    vel = np.concatenate((vel, vel_), axis=0)
+                elem_den = np.append(elem_den, elem_den_)
+                if len(temp) > 1:
+                    temp = np.append(temp, temp_)
+                hh = np.append(hh, hh_)
+                amumass = amumass_
+        if amumass is False:
+            return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
             #Allow us to compute absorption profiles assuming all
             #of one element is in the absorbing state
@@ -694,14 +691,12 @@ class Spectra(object):
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments()
-        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau, arepo=self.snapshot_set.get_kernel()==0)
+        arepo = (self.snapshot_set.get_kernel() == 0)
+        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         # arepo
-        if self.snapshot_set.get_kernel() == 0:
+        if arepo or nsegments == 1:
             return result
-        # otherwise...
         #Do remaining files
-        if nsegments == 1:
-            return result
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             print("Interpolation %.1f percent done" % (100*nn/nsegments))
