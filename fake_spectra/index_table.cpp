@@ -152,7 +152,7 @@ std::valarray< std::map<int, double> > IndexTable::get_near_particles(const floa
 float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map<int, double> > nearby_array, const float pos[])
 {
     /***********************************/
-    const int Ncells = nearby_array.size();
+    const int Ncells = nearby_array[line_i].size();
     printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
     float * arr2 = new float [2*Ncells];
     // initialize
