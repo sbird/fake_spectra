@@ -152,17 +152,12 @@ std::valarray< std::map<int, double> > IndexTable::get_near_particles(const floa
 double * IndexTable::assign_cells(const int line_i, const std::valarray< std::map<int, double> > nearby_array, const float pos[])
 {
     /***********************************/
-    printf("assigning parts of line %d to cells...\n", line_i);
-    int Ncells = 0;
-    for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it) Ncells++;
-    printf("Ncells=%d\n", Ncells);
-    double * arr2 = new double [2*Ncells];
+    const int Ncells = nearby_array.size();
+    printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
+    float * arr2 = new float [2*Ncells];
     // initialize
-    for(int i = 0; i < Ncells; ++i)
-    {
-        arr2[2*i] = -100;
-        arr2[2*i+1] = -100;
-    }
+    for(int i = 0; i < 2*Ncells; ++i)
+        arr2[i] = -100;
     //printf("arr2[0]=%f, arr2[1]=%f\n", arr2[0], arr2[1]);
 
     // divide each sightline into an array. grid size = RESO ckpc/h
