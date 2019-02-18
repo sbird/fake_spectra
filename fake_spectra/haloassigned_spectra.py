@@ -49,14 +49,14 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
     def virial_vel(self, halos=None, subhalo=False):
         """Get the virial velocities of the selected halos in km/s"""
         if subhalo:
-            if halos != None:
+            if halos is not None:
                 mm = self.sub_sub_mass[halos]
                 rr = np.array(self.sub_sub_radii[halos])
             else:
                 mm = self.sub_sub_mass
                 rr = np.array(self.sub_sub_radii)
         else:
-            if halos != None:
+            if halos is not None:
                 mm = self.sub_mass[halos]
                 rr = np.array(self.sub_radii[halos])
             else:

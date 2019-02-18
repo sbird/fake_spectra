@@ -70,8 +70,13 @@ class Spectra(object):
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
             quiet - Whether to output debug messages
             load_snapshot - Whether to load the snapshot
+            gasprop - Name (not instance!) of class to compute neutral fractions and temperatures.
+                      It should inherit from gas_properties.GasProperties and provide get_reproc_HI
+                      for neutral fractions and get_temp for temperatures.
+                      Default is gas_properties.GasProperties which reads both of these from the particle output.
+            gasprop_args - Dictionary of extra arguments to be fed to gasprop, if gasprop is not the default.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -182,8 +187,13 @@ class Spectra(object):
         #Line data
         self.lines = line_data.LineData()
         #Load the class for computing gas properties such as temperature from the raw simulation.
+        if gasprop is None:
+            gasprop = gas_properties.GasProperties
         try:
-            self.gasprop=gas_properties.GasProperties(redshift = self.red, absnap=self.snapshot_set, hubble=self.hubble, units=self.units, sf_neutral=sf_neutral)
+            gprop_args = {"redshift" : self.red, "absnap" : self.snapshot_set, "hubble": self.hubble, "units": self.units, "sf_neutral": sf_neutral}
+            if gasprop_args is not None:
+                gprop_args.update(gasprop_args)
+            self.gasprop = gasprop(**gprop_args)
         except AttributeError:
             #Occurs if we didn't load a snapshot
             pass
@@ -655,6 +665,7 @@ class Spectra(object):
             return result
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
+            print("Interpolation %.1f percent done" % (100*nn/nsegments))
             #Add new file
             result += tresult
             del tresult
@@ -683,9 +694,10 @@ class Spectra(object):
         """
         print("For ",line," Angstrom")
         eq_width = self.equivalent_width(elem, ion, line)
-        v_table = np.arange(np.log10(np.min(eq_width)), np.log10(np.max(eq_width)), dv)
-        vbin = np.array([(v_table[i]+v_table[i+1])/2. for i in range(0,np.size(v_table)-1)])
-        eqws = np.histogram(np.log10(eq_width),v_table, density=True)[0]
+        ii = np.where(eq_width > 0)
+        v_table = np.arange(np.log10(np.min(eq_width[ii])), np.log10(np.max(eq_width[ii])), dv)
+        vbin = (v_table[1:]+v_table[:-1])/2.
+        eqws = np.histogram(np.log10(eq_width[ii]),v_table, density=True)[0]
         return (vbin, eqws)
 
     def get_col_density(self, elem, ion, force_recompute=False):
