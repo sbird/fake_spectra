@@ -310,23 +310,23 @@ BOOST_AUTO_TEST_CASE(check_single_absorber)
     //because the smoothing length definition changed.
     const double corr = 3/(4*M_PI);
     //First test not offset
-    SingleAbsorber sing(bb,0,10,1.e-4);
+    SingleAbsorber sing(bb,0,10,1.e-4, SPH_CUBIC_SPLINE);
     //Absorption at the origin
     FLOATS_NEAR_TO(sing.tau_kern_outer(0,0),corr*78.0409);
     FLOATS_NEAR_TO(sing.tau_kern_outer(5,5),corr*72.6216);
     FLOATS_NEAR_TO(sing.tau_kern_outer(10,10),corr*58.5185);
     FLOATS_NEAR_TO(sing.tau_kern_outer(20,20),corr*24.6696);
     //Try different smoothing length
-    SingleAbsorber sing2(bb,0,2,1.e-4);
+    SingleAbsorber sing2(bb,0,2,1.e-4, SPH_CUBIC_SPLINE);
     FLOATS_NEAR_TO(sing2.tau_kern_outer(5,5),corr*14.8203);
     //Offset from the sightline
-    SingleAbsorber sing3(bb,25,10,1.e-4);
+    SingleAbsorber sing3(bb,25,10,1.e-4, SPH_CUBIC_SPLINE);
     FLOATS_APPROX_NEAR_TO(sing3.tau_kern_outer(0,0),corr*18.218);
     FLOATS_APPROX_NEAR_TO(sing3.tau_kern_outer(5,5),corr*16.9436);
     //Check integrating over a range in v
     //Carbon
     bb = 0.128557*sqrt(2e4/16);
-    SingleAbsorber sing4(bb,0,5,1.e-6);
+    SingleAbsorber sing4(bb,0,5,1.e-6, SPH_CUBIC_SPLINE);
     FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(0,10),corr*16.0403);
     FLOATS_APPROX_NEAR_TO(sing4.tau_kern_outer(-5,5),corr*27.1978);
 }
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(check_add_tau)
     double smooth = 3;
     double amp = 7.57973e-15;
     double voigt_fac = 1215.6701e-10*6.265e8/(4.*M_PI)/1e5;
-    SingleAbsorber sing(bb,0,velfac*smooth,voigt_fac/bb);
+    SingleAbsorber sing(bb,0,velfac*smooth,voigt_fac/bb, SPH_CUBIC_SPLINE);
     //Conversion factor from cm to kpc/h at z=3
     double rscale = 3.085678e21*0.25/0.7;
     double tau[TNBINS] = {0};

@@ -38,10 +38,9 @@ from .cloudy_tables import convert_cloudy
 def _get_cloudy_table(red, cdir=None):
     """Get the cloudy table if we didn't already"""
     #Generate cloudy tables
-    if cdir != None:
-        return convert_cloudy.CloudyTable(red, cdir)
-    else:
+    if cdir is None:
         return convert_cloudy.CloudyTable(red)
+    return convert_cloudy.CloudyTable(red, cdir)
 
 #python2 compat
 try:
@@ -82,7 +81,7 @@ class Spectra(object):
         self.num = num
         self.base = base
         #Create the unit system
-        if units != None:
+        if units is not None:
             self.units = units
         else:
             self.units = unitsystem.UnitSystem()
@@ -115,6 +114,8 @@ class Spectra(object):
         try:
             if load_snapshot:
                 self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
+                #Set up the kernel
+                self.kernel_int = self.snapshot_set.get_kernel()
         except IOError:
             pass
         if savedir is None:
@@ -480,6 +481,18 @@ class Spectra(object):
         #Do interpolation.
         return (pos, vel, elem_den, temp, hh, amumass)
 
+    def find_all_particles(self):
+        """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
+        nsegments = self.snapshot_set.get_n_segments()
+        pp = np.empty([0,3])
+        hhh = np.array([])
+        for i in range(nsegments):
+            (pos, _, _, _, hh, amumass) = self._read_particle_data(i, "H", -1, False)
+            if amumass is not False:
+                pp = np.concatenate([pp, pos])
+                hhh = np.concatenate([hhh, hh])
+        return pp, hhh
+
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Get a filtered list of particles to add to the sightlines"""
         _ = (pos,velocity, den)
@@ -518,7 +531,7 @@ class Spectra(object):
     def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.snapshot_set.get_kernel(), self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh,axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -748,14 +761,13 @@ class Spectra(object):
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
-        else:
-            line = self.lines[("H",1)][1215]
-            vv =  np.empty([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
-            phys = self.dvbin/self.velfac*self.rscale
-            for ax in (0,1,2):
-                weight = vel[:,ax]*np.sqrt(self.atime)
-                vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight/phys, temp, hh, amumass, line, False)
-            return vv
+        line = self.lines[("H",1)][1215]
+        vv =  np.empty([np.shape(self.cofm)[0],self.nbins,3],dtype=np.float32)
+        phys = self.dvbin/self.velfac*self.rscale
+        for ax in (0,1,2):
+            weight = vel[:,ax]*np.sqrt(self.atime)
+            vv[:,:,ax] = self._do_interpolation_work(pos, vel, elem_den*weight/phys, temp, hh, amumass, line, False)
+        return vv
 
     def _get_mass_weight_quantity(self, func, elem, ion):
         """
@@ -798,11 +810,10 @@ class Spectra(object):
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-        else:
-            line = self.lines[("H",1)][1215]
-            phys = np.float32(self.dvbin/self.velfac*self.rscale)
-            temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
-            return temp
+        line = self.lines[("H",1)][1215]
+        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
+        return temp
 
     def get_temp(self, elem, ion):
         """Get the density weighted temperature in each pixel for a given species.
@@ -820,12 +831,11 @@ class Spectra(object):
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion,True)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
-        else:
-            (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1,True)
-            line = self.lines[("H",1)][1215]
-            phys = np.float32(self.dvbin/self.velfac*self.rscale)
-            dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/self.rscale), temp, hh, amumass, line, False)
-            return dens
+        (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1,True)
+        line = self.lines[("H",1)][1215]
+        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/self.rscale), temp, hh, amumass, line, False)
+        return dens
 
     def get_dens_weighted_density(self, elem, ion):
         """This function gets the (ion) density weighted (species) density in each pixel for a given species.
@@ -933,7 +943,7 @@ class Spectra(object):
         """
         #Column density of ion in atoms cm^-2 (physical)
         col_den = np.sum(self.get_col_density(elem, ion), axis=1)
-        if thresh > 0 or upthresh != None:
+        if thresh > 0 or upthresh is not None:
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)

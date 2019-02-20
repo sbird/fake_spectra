@@ -252,11 +252,14 @@ class HDF5Snapshot(AbstractSnapshot):
                0 - Top hat kernel (for Arepo)
                1 - SPH cubic spline kernel (for Gadget).
         """
-        #We are Arepo.
+        #We are an older Arepo version if there is a Volume key
         if "Volume" in self._f_handle["PartType0"].keys():
             return 0
-        else:
+        #We are Gadget
+        if "SmoothingLength" in self._f_handle["PartType0"].keys():
             return 1
+        #We are Arepo if there is no smoothing length.
+        return 0
 
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
@@ -297,8 +300,9 @@ class BigFileSnapshot(AbstractSnapshot):
             (start, end) = self._segment_to_partlist(part_type=part_type, segment=segment)
             if end is not None:
                 return end - start
-            else:
-                return self._f_handle[str(part_type)+"/"+blockname].size - start
+            #Last segment has no end
+            return self._f_handle[str(part_type)+"/"+blockname].size - start
+
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
@@ -310,8 +314,8 @@ class BigFileSnapshot(AbstractSnapshot):
         one_segment = int(self.get_npart()[part_type]//n_segments)
         if segment < n_segments -1:
             return (one_segment*segment, one_segment*(segment+1))
-        else:
-            return (one_segment*segment, None)
+        #Last segment has no end
+        return (one_segment*segment, None)
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.

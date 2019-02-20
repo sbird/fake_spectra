@@ -81,6 +81,7 @@ double sph_cubic_kern_frac(double zlow, double zhigh, const double smooth, const
  * smooth - smoothing length
  * dr2 - transverse distance from particle to pixel, squared.
  * zrange - sqrt(smooth*smooth - dr2) (so it can be precomputed)
+ * Normalized the same as the SPH kernel, so that 4 pi int_0^1 K q^2 dq = 1
  * */
 
 double tophat_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
@@ -88,7 +89,7 @@ double tophat_kern_frac(double zlow, double zhigh, const double smooth, const do
     //Integration limits
     zlow = std::max(zlow, -zrange);
     zhigh = std::min(zhigh, zrange);
-    return std::max(0.,zhigh - zlow);
+    return 3./4./M_PI*std::max(0.,zhigh - zlow);
 }
 
 kern_frac_func get_kern_frac(const int kernel)
@@ -107,7 +108,8 @@ sigma_a( sqrt(3.0*M_PI*SIGMA_T/8.0) * lambda  * fosc ),
 bfac( sqrt(2.0*BOLTZMANN/(amumass*PROTONMASS))/1e5 ),
 voigt_fac( gamma*lambda/(4.*M_PI)/1e5 ),
 velfac(velfac_i), vbox(boxsize*velfac_i), atime(atime_i),
-kern_frac(get_kern_frac(kernel_i))
+kern_frac(get_kern_frac(kernel_i)),
+kernel(kernel_i)
 {
 }
 
@@ -160,7 +162,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   if(smooth*smooth - dr2 <=0)
       return;
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm );
+  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm, kernel);
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
