@@ -1040,7 +1040,7 @@ class Spectra(object):
         tau = self.get_tau(elem, ion, line)
         return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired = mean_flux_desired)
 
-    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None, window=True):
+    def get_flux_power_1D(self, elem="H",ion=1, line=1215, mean_flux_desired = None, window=True, tau_thresh=None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -1048,8 +1048,14 @@ class Spectra(object):
             mean_flux_desired: if not None, the spectral optical depths will be rescaled
                 to match the desired mean flux.
             window: if True, the flux power spectrum is divided by the window function for the pixel width.
-                    This interacts poorly with mean flux rescaling."""
+                    This interacts poorly with mean flux rescaling.
+            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling."""
         tau = self.get_tau(elem, ion, line)
+        #Remove sightlines which contain a strong absorber
+        if tau_thresh is not None:
+            tausum = np.sum(tau, axis=1)
+            ii = np.where(tausum < tau_thresh)
+            tau = tau[ii]
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
