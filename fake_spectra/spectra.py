@@ -1053,7 +1053,7 @@ class Spectra(object):
         tau = self.get_tau(elem, ion, line)
         #Remove sightlines which contain a strong absorber
         if tau_thresh is not None:
-            tausum = np.sum(tau, axis=1)
+            tausum = np.max(tau, axis=1)
             ii = np.where(tausum < tau_thresh)
             tau = tau[ii]
         #Mean flux rescaling does not commute with the spectrum resolution correction!
