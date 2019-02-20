@@ -1044,11 +1044,14 @@ class Spectra(object):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
-        If mean_flux_desired is set, the spectral optical depths will be rescaled
-        to match the desired mean flux."""
+        Arguments:
+            mean_flux_desired: if not None, the spectral optical depths will be rescaled
+                to match the desired mean flux.
+            window: if True, the flux power spectrum is divided by the window function for the pixel width.
+                    This interacts poorly with mean flux rescaling."""
         tau = self.get_tau(elem, ion, line)
         #Mean flux rescaling does not commute with the spectrum resolution correction!
-        if mean_flux_desired is not None and self.spec_res > 0:
+        if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:],avg_flux_power[1:]
