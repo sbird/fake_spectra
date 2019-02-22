@@ -119,21 +119,29 @@ kernel(kernel_i)
  */
 void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float pos, const float smooth)
 {
-  //If we are outside the kernel, do nothing.
-  if (smooth*smooth - dr2 <= 0)
-      return;
+  double pos1 = pos;
+  if(kernel == VORONOI_MESH)
+  {
+      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      pos1 = (dr2 + smooth) / 2.;
+  }
+  else
+  {
+      if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
+  }
   //z range covered by particle in kpc/h
-  const double zrange = sqrt(smooth*smooth - dr2);
+  double zrange = sqrt(smooth*smooth - dr2);
+  if(kernel == VORONOI_MESH) zrange = (smooth - dr2) / 2.;
   //Conversion between units of position to units of the box.
   const double boxtokpc = vbox / nbins / velfac;
   // z is position in units of the box
-  const int zlow = floor((pos - zrange) / boxtokpc);
-  const int zhigh = ceil((pos + zrange) / boxtokpc);
+  const int zlow = floor((pos1 - zrange) / boxtokpc);
+  const int zhigh = ceil((pos1 + zrange) / boxtokpc);
   // Compute the column density
   for(int z=zlow; z<=zhigh; z++)
   {
       //Difference between position of bin this edge and particle
-      const double plow = (boxtokpc*z - pos);
+      const double plow = (boxtokpc*z - pos1);
       // The index may be periodic wrapped.
       // Index in units of the box
       int j = z % nbins;
@@ -155,14 +163,23 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
      to vel in km/s physical. Note that gadget velocities come comoving,
      so we need the sqrt(a) conversion factor.
    */
-  const double vel = velfac * ppos + pvel * sqrt(atime);
+  double pos1 = ppos;
   /* btherm has the units of velocity: km/s*/
   const double btherm = bfac*sqrt(temp);
-  //Double check we are within the kernel support
-  if(smooth*smooth - dr2 <=0)
-      return;
+  if(kernel == VORONOI_MESH)
+  {
+      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      pos1 = (dr2 + smooth) / 2.;
+  }
+  else
+  {
+      if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
+  }
+  const double vel = velfac * pos1 + pvel * sqrt(atime);
   // Create absorption object
-  SingleAbsorber absorber ( btherm, velfac*velfac*dr2, velfac*smooth, voigt_fac/btherm, kernel);
+  double val1 = velfac*dr2;
+  if(kernel != VORONOI_MESH) val1 *= velfac;
+  SingleAbsorber absorber ( btherm, val1, velfac*smooth, voigt_fac/btherm, kernel);
   // Do the tau integral for each bin
   const double bintov = vbox/nbins;
   // Amplitude factor for the strength of the transition.
