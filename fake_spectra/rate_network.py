@@ -86,7 +86,6 @@ class RateNetwork(object):
         temp = self._get_temp(ne/nh, ienergy, helium)
         nH0 = self._nH0(nh, temp, ne)
         nHe0 = self._nHe0(nh, temp, ne)
-        nHep = self._nHep(nh, temp, ne)
         nHp = self._nHp(nh, temp, ne)
         nHep = self._nHep(nh, temp, ne)
         nHepp = self._nHepp(nh, temp, ne)
