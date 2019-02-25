@@ -92,12 +92,22 @@ double tophat_kern_frac(double zlow, double zhigh, const double smooth, const do
     return 3./4./M_PI*std::max(0.,zhigh - zlow);
 }
 
+double arepo_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
+{
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    return std::max(0.,zhigh - zlow);
+}
+
 kern_frac_func get_kern_frac(const int kernel)
 {
     if(kernel == TOP_HAT_KERNEL)
         return tophat_kern_frac;
     else
-        return sph_cubic_kern_frac;
+    {
+        if(kernel == SPH_CUBIC_SPLINE) return sph_cubic_kern_frac;
+        else return arepo_kern_frac;
+    }
 }
 
 //Factor of 1e5 in bfac converts from cm/s to km/s
