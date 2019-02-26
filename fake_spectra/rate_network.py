@@ -2,6 +2,7 @@
 """A rate network for neutral hydrogen following
 Katz, Weinberg & Hernquist 1996, eq. 28-32."""
 import os.path
+import math
 import numpy as np
 import scipy.interpolate as interp
 import scipy.optimize
@@ -59,13 +60,19 @@ class RateNetwork(object):
             self.cool = CoolingRatesNyx()
         else:
             raise ValueError("Not supported")
+        #Extra helium reionization photoheating model
+        self.hub = 0.7
+        self.he_thresh = 10
+        self.he_amp = 1
+        self.he_exp = 0
+        self.he_model_on = False
         #proton mass in g
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
         self.converge = converge
         self.selfshield = selfshield
         self.collisional = collisional
-        zz = [0, 1, 2, 3, 4, 5, 6, 7,8]
+        zz = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
         self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
@@ -104,6 +111,8 @@ class RateNetwork(object):
             Heating = nH0 * self.photo.epsH0(self.redshift)
             Heating += nHe0 * self.photo.epsHe0(self.redshift)
             Heating += nHep * self.photo.epsHep(self.redshift)
+            if self.he_model_on:
+                Heating *= self._he_reion_factor(density)
         return Lambda - Heating
 
     def get_equilib_ne(self, density, ienergy,helium=0.24):
@@ -195,6 +204,21 @@ class RateNetwork(object):
         T4 = temp/1e4
         G12 = self.photo.gH0(redshift)/1e-12
         return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)*(self.f_bar/0.17)**(-1./3)
+
+    def _he_reion_factor(self, density):
+        """Compute a density dependent correction factor to the heating rate which can model the effect of helium reionization.
+        Argument: Gas density in protons/cm^3."""
+        #Newton's constant (cgs units)
+        gravity = 6.672e-8
+        #100 km/s/Mpc in h/sec
+        hubble = 3.2407789e-18
+        omegab = 0.0483
+        atime = 1/(1+self.redshift)
+        rhoc = 3 * (self.hub* hubble)**2 /(8* math.pi * gravity)
+        overden = self.protonmass * density /(omegab * rhoc * atime**(-3))
+        if overden >= self.he_thresh:
+            overden = self.he_thresh
+        return self.he_amp * overden**self.he_exp
 
     def _get_temp(self, nebynh, ienergy, helium=0.24):
         """Compute temperature (in K) from internal energy and electron density.
