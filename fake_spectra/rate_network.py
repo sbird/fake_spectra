@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """A rate network for neutral hydrogen following
 Katz, Weinberg & Hernquist 1996, eq. 28-32."""
-import numpy as np
 import os.path
+import numpy as np
 import scipy.interpolate as interp
 import scipy.optimize
 
@@ -79,8 +79,8 @@ class RateNetwork(object):
         nh = density * (1-helium)
         return self._get_temp(ne/nh, ienergy, helium)
 
-    def get_cooling_rate(self, density, ienergy, helium=0.24):
-        """Get the total cooling rate for a temperature and density."""
+    def get_cooling_rate(self, density, ienergy, helium=0.24, photoheating=False):
+        """Get the total cooling rate for a temperature and density. Negative means heating."""
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
         temp = self._get_temp(ne/nh, ienergy, helium)
@@ -98,7 +98,13 @@ class RateNetwork(object):
                              self.cool.RecombHePP(temp) * nHepp)
         LambdaFF = ne * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
         LambdaCmptn = ne * self.cool.InverseCompton(temp, self.redshift)
-        return LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
+        Lambda = LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
+        Heating = 0
+        if photoheating:
+            Heating = nH0 * self.photo.epsH0(self.redshift)
+            Heating += nHe0 * self.photo.epsHe0(self.redshift)
+            Heating += nHep * self.photo.epsHep(self.redshift)
+        return Lambda - Heating
 
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
@@ -380,10 +386,14 @@ class PhotoRates(object):
             data = np.loadtxt(treefile)
         redshifts = data[:,0]
         photo_rates = data[:,1:4]
+        photo_heat = data[:,4:7]
         assert np.shape(redshifts)[0] == np.shape(photo_rates)[0]
         self.Gamma_HI = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,0])
         self.Gamma_HeI = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,1])
         self.Gamma_HeII = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,2])
+        self.Eps_HI = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,0])
+        self.Eps_HeI = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,1])
+        self.Eps_HeII = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,2])
 
     def gHe0(self,redshift):
         """Get photo rate for neutral Helium"""
@@ -399,6 +409,21 @@ class PhotoRates(object):
         """Get photo rate for neutral Hydrogen"""
         log1z = np.log10(1+redshift)
         return self.Gamma_HI(log1z)
+
+    def epsHe0(self,redshift):
+        """Get photo heating rate for neutral Helium"""
+        log1z = np.log10(1+redshift)
+        return self.Eps_HeI(log1z)
+
+    def epsHep(self,redshift):
+        """Get photo heating rate for singly ionized Helium"""
+        log1z = np.log10(1+redshift)
+        return self.Eps_HeII(log1z)
+
+    def epsH0(self,redshift):
+        """Get photo heating rate for neutral Hydrogen"""
+        log1z = np.log10(1+redshift)
+        return self.Eps_HI(log1z)
 
 class CoolingRatesKWH92(object):
     """The cooling rates from KWH92, in erg s^-1 cm^-3 (cgs).
