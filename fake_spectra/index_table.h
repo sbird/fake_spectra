@@ -5,6 +5,8 @@
 #include <vector>
 #include <valarray>
 
+#define RESO 0.1 // for arepo
+
 class IndexTable
 {
 public:
@@ -19,6 +21,7 @@ public:
   //Each element is a list of particles near that line,
   //and each list element is (particle index, distance from line).
   std::valarray< std::map<int, double> > get_near_particles(const float pos[], const float hh[], const long long npart);
+  float * assign_cells(const int i, const std::valarray< std::map<int, double> > nearby_array, const float pos[]);
 
   //Get the axis of a line
   inline int get_axis(const int iproc)

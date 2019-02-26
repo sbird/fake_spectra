@@ -8,6 +8,7 @@
 #define NGRID 8
 #define TOP_HAT_KERNEL 0
 #define SPH_CUBIC_SPLINE 1
+#define VORONOI_MESH 2
 
 
 /* The (unnormalized) cubic kernel from Price 2011: arxiv 1012.1885 , eq. 6
@@ -62,7 +63,13 @@ class SingleAbsorber
         SingleAbsorber(double bth_i, double vdr2_i, double vsm_i, double aa_i, int kernel_i):
             btherm(bth_i), vdr2(vdr2_i), vsmooth(vsm_i), aa(aa_i), kernel(kernel_i),
             m_vhigh((vsmooth*vsmooth > vdr2 ? sqrt(vsmooth*vsmooth-vdr2) : 0))
-        {};
+            {
+                if(kernel == VORONOI_MESH)
+                {
+                    if(vdr2 > 0 && vsmooth > 0) m_vhigh = (vsmooth - vdr2)/2.;
+                    else m_vhigh = 0;
+                }
+            };
 
         /*Find the mean optical depth in the bin, by averaging over the optical depth
          * at different points within it. The relevant scale here is the thermal broadening, b,
@@ -144,7 +151,7 @@ class SingleAbsorber
         const double vsmooth;
         const double aa;
         const int kernel;
-        const double m_vhigh;
+        double m_vhigh;
 };
 
 double sph_cubic_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);

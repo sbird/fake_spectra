@@ -389,9 +389,22 @@ class Spectra(object):
         self.axis = np.array(grp["axis"])
         f.close()
 
-    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau):
+    def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
+        if load_all_data_first:
+            for nseg in range(1, self.snapshot_set.get_n_segments()):
+                (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
+                if amumass_ is False:
+                    continue
+                pos = np.concatenate((pos, pos_), axis=0)
+                if get_tau:
+                    vel = np.concatenate((vel, vel_), axis=0)
+                elem_den = np.append(elem_den, elem_den_)
+                if len(temp) > 1:
+                    temp = np.append(temp, temp_)
+                hh = np.append(hh, hh_)
+                amumass = amumass_
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
         if get_tau:
@@ -413,6 +426,7 @@ class Spectra(object):
             #Setting something makes writing the interfaces easier,
             #because C doesn't have default arguments.
             line = self.lines[("H",1)][1215]
+        # print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
     def _read_particle_data(self,fn, elem, ion, get_tau):
@@ -672,10 +686,12 @@ class Spectra(object):
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments()
-        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau)
-        #Do remaining files
-        if nsegments == 1:
+        arepo = (self.kernel_int == 2)
+        result =  self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
+        # arepo
+        if arepo or nsegments == 1:
             return result
+        #Do remaining files
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             print("Interpolation %.1f percent done" % (100*nn/nsegments))
