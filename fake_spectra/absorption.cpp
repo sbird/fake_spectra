@@ -92,6 +92,18 @@ double tophat_kern_frac(double zlow, double zhigh, const double smooth, const do
     return 3./4./M_PI*std::max(0.,zhigh - zlow);
 }
 
+/* Find the fraction of the total particle density in this pixel by integrating from zlow to zhigh over
+ * the z direction (see below for meaning). This assumes that rho = rho_0, a constant, within the cell.
+ * Arguments:
+ * zlow - Lower z limit for the integral (as z distance from the center of the sightline segment which
+ * belongs to the gas cell)
+ * zhigh - Upper z limit for the integral (again as distance from the center of the sightline segment)
+ * smooth - the upper z limit of the sightline segment belonging to the cell (not used in this function)
+ * dr2 - the lower z limit of the sightline segment belonging to the cell (not used in this function)
+ * zrange - (smooth - dr2) / 2, half the length of the sightline segment (so it can be precomputed)
+ * From the definition of column density (integral of number density along line of sight), there should
+ * not be any additional normalization factor, because we are working on the mesh directly.
+ * */
 double arepo_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
 {
     zlow = std::max(zlow, -zrange);
@@ -132,7 +144,11 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
   double pos1 = pos;
   if(kernel == VORONOI_MESH)
   {
-      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      /*In the case of the arepo mesh, what are inputted into dr2 and smooth are the lower and upper limits
+       * of the sightline segment that belongs to the gas cell, respectively.
+       * pos1 is the center of this sightline segment.
+       * */
+      if(dr2 < 0 || smooth < 0) return;
       pos1 = (dr2 + smooth) / 2.;
   }
   else
@@ -178,7 +194,11 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   const double btherm = bfac*sqrt(temp);
   if(kernel == VORONOI_MESH)
   {
-      if(dr2 < 0 || smooth < 0) return; // here dr2 and smooth mean something else
+      /*In the case of the arepo mesh, what are inputted into dr2 and smooth are the lower and upper limits
+       * of the sightline segment that belongs to the gas cell, respectively.
+       * pos1 is the center of this sightline segment.
+       * */
+      if(dr2 < 0 || smooth < 0) return;
       pos1 = (dr2 + smooth) / 2.;
   }
   else

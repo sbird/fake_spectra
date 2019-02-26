@@ -259,6 +259,7 @@ class HDF5Snapshot(AbstractSnapshot):
         if "SmoothingLength" in self._f_handle["PartType0"].keys():
             return 1
         #We are Arepo if there is no smoothing length.
+        #return 2 for using the Voronoi mesh. Otherwise return 0 for the tophat kernel.
         return 2
         #return 0
 
