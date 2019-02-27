@@ -35,8 +35,9 @@ class RateNetwork(object):
         selfshield - Flag to enable self-shielding following Rahmati 2013
         cool - which cooling rate coefficient table to use.
                Supported are: KWH (original Gadget rates)
-                              Nyx (rates used in Nyx (Lukic 2015) and Sherwood (Bolton 2017))
-              Default is Nyx, used in Sherwood and Nyx simulations.
+                              Nyx (rates used in Nyx (Lukic 2015))
+                              Sherwood (rates used in Sherwood simulations (Bolton 2017))
+              Default is Sherwood
         recomb - which recombination rate table to use.
                  Supported are: C92 (Cen 1992, the Gadget default)
                                 V96 (Verner & Ferland 1996, more accurate rates).
@@ -44,7 +45,7 @@ class RateNetwork(object):
         collisional - Flag to enable collisional ionizations.
         treecool_file - File to read a UV background from. Matches format used by Gadget.
     """
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="Nyx", recomb="B06", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="Sherwood", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
         elif recomb == "B06":
@@ -56,6 +57,8 @@ class RateNetwork(object):
         self.f_bar = f_bar
         if cool == "KWH":
             self.cool = CoolingRatesKWH92()
+        elif cool == "Sherwood":
+            self.cool = CoolingRatesSherwood()
         elif cool == "Nyx":
             self.cool = CoolingRatesNyx()
         else:
@@ -111,6 +114,7 @@ class RateNetwork(object):
             Heating = nH0 * self.photo.epsH0(self.redshift)
             Heating += nHe0 * self.photo.epsHe0(self.redshift)
             Heating += nHep * self.photo.epsHep(self.redshift)
+            Heating *= self.photo_factor
             if self.he_model_on:
                 Heating *= self._he_reion_factor(density)
         return Lambda - Heating
@@ -463,20 +467,27 @@ class CoolingRatesKWH92(object):
         Free-free: Spitzer 1978.
     Collisional excitation and ionisation cooling rates are merged.
     """
-    def __init__(self, tcmb=2.7255, recomb=None):
+    def __init__(self, tcmb=2.7255, t5_corr=1e5, recomb=None):
         self.tcmb = tcmb
         if recomb is None:
             self.recomb = RecombRatesCen92()
         else:
             self.recomb = recomb
+        self.t5_corr = t5_corr
         #1 eV in ergs
         self.eVinergs = 1.60218e-12
         #boltzmann constant in erg/K
         self.kB = 1.38064852e-16
 
     def _t5(self, temp):
-        """Commonly used Cen 1992 correction factor for large temperatures."""
-        return 1+(temp/1e5)**0.5
+        """Commonly used Cen 1992 correction factor for large temperatures.
+        This is implemented so that the cooling rates have the right
+        asymptotic behaviour. However, Cen erroneously imposes this correction at T=1e5,
+        which is too small: the Black 1981 rates these are based on should be good
+        until 5e5 at least, where the correction factor has a 10% effect already.
+        More modern tables thus impose it at T=5e7, which is still arbitrary but should be harmless.
+        """
+        return 1+(temp/t5_corr)**0.5
 
     def CollisionalExciteH0(self, temp):
         """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0."""
@@ -560,6 +571,14 @@ class CoolingRatesKWH92(object):
         cc = 2.99792e10
         return 4 * sigmat * rad_dens / (me*cc) * tcmb_red**4 * self.kB * (temp - tcmb_red)
 
+class CoolingRatesSherwood(CoolingRatesKWH92):
+    """The cooling rates used in the Sherwood simulation, Bolton et al 2017, in erg s^-1 cm^-3 (cgs).
+    Differences from KWH92 are updated recombination and collisional ionization rates, and the use of a
+    larger temperature correction factor than Cen 92.
+    """
+    def __init__(self, tcmb=2.7255, recomb=None):
+        CoolingRatesKWH92.__init__(tcmb = tcmb, t5_corr = 5e7, recomb=RecombRatesVerner96)
+
 class CoolingRatesNyx(CoolingRatesKWH92):
     """The cooling rates used in the Nyx paper Lukic 2014, 1406.6361, in erg s^-1 cm^-3 (cgs).
     All rates are divided by the abundance of the ions involved in the interaction.
@@ -576,15 +595,8 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         Black 1981 (recombination and helium)
         Shapiro & Kang 1987
     """
-    def _t5(self, temp):
-        """
-        Lukic uses a less aggressive correction factor for large temperatures than Cen 1992.
-        No explanation is given for this in the paper, but he explained privately that this is probably
-        so that it matches Black 1981 for all the regime where that code is valid.
-        This factor increases the excitation cooling rate for helium by about a factor of ten and
-        thus changes the cooling curve substantially.
-        """
-        return 1+(temp/5e7)**0.5
+    def __init__(self, tcmb=2.7255, recomb=None):
+        CoolingRatesKWH92.__init__(tcmb = tcmb, t5_corr = 5e7, recomb=recomb)
 
     def CollisionalH0(self, temp):
         """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0.
