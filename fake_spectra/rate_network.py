@@ -577,7 +577,7 @@ class CoolingRatesSherwood(CoolingRatesKWH92):
     larger temperature correction factor than Cen 92.
     """
     def __init__(self, tcmb=2.7255, recomb=None):
-        CoolingRatesKWH92.__init__(tcmb = tcmb, t5_corr = 5e7, recomb=RecombRatesVerner96)
+        CoolingRatesKWH92.__init__(self, tcmb = tcmb, t5_corr = 5e7, recomb=RecombRatesVerner96)
 
 class CoolingRatesNyx(CoolingRatesKWH92):
     """The cooling rates used in the Nyx paper Lukic 2014, 1406.6361, in erg s^-1 cm^-3 (cgs).
