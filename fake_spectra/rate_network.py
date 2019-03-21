@@ -78,7 +78,7 @@ class RateNetwork(object):
         zz = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
-        self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
+        self.Gray_ss = interp.interp1d(zz, gray_opac)
 
     def get_temp(self, density, ienergy, helium=0.24):
         """Get the equilibrium temperature at given internal energy.
@@ -416,42 +416,42 @@ class PhotoRates(object):
         photo_rates = data[:,1:4]
         photo_heat = data[:,4:7]
         assert np.shape(redshifts)[0] == np.shape(photo_rates)[0]
-        self.Gamma_HI = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,0])
-        self.Gamma_HeI = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,1])
-        self.Gamma_HeII = interp.InterpolatedUnivariateSpline(redshifts, photo_rates[:,2])
-        self.Eps_HI = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,0])
-        self.Eps_HeI = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,1])
-        self.Eps_HeII = interp.InterpolatedUnivariateSpline(redshifts, photo_heat[:,2])
+        self.Gamma_HI = interp.interp1d(redshifts, np.log10(photo_rates[:,0]))
+        self.Gamma_HeI = interp.interp1d(redshifts, np.log10(photo_rates[:,1]))
+        self.Gamma_HeII = interp.interp1d(redshifts, np.log10(photo_rates[:,2]))
+        self.Eps_HI = interp.interp1d(redshifts, np.log10(photo_heat[:,0]))
+        self.Eps_HeI = interp.interp1d(redshifts, np.log10(photo_heat[:,1]))
+        self.Eps_HeII = interp.interp1d(redshifts, np.log10(photo_heat[:,2]))
 
     def gHe0(self,redshift):
         """Get photo rate for neutral Helium"""
         log1z = np.log10(1+redshift)
-        return self.Gamma_HeI(log1z)
+        return 10**self.Gamma_HeI(log1z)
 
     def gHep(self,redshift):
         """Get photo rate for singly ionized Helium"""
         log1z = np.log10(1+redshift)
-        return self.Gamma_HeII(log1z)
+        return 10**self.Gamma_HeII(log1z)
 
     def gH0(self,redshift):
         """Get photo rate for neutral Hydrogen"""
         log1z = np.log10(1+redshift)
-        return self.Gamma_HI(log1z)
+        return 10**self.Gamma_HI(log1z)
 
     def epsHe0(self,redshift):
         """Get photo heating rate for neutral Helium"""
         log1z = np.log10(1+redshift)
-        return self.Eps_HeI(log1z)
+        return 10**self.Eps_HeI(log1z)
 
     def epsHep(self,redshift):
         """Get photo heating rate for singly ionized Helium"""
         log1z = np.log10(1+redshift)
-        return self.Eps_HeII(log1z)
+        return 10**self.Eps_HeII(log1z)
 
     def epsH0(self,redshift):
         """Get photo heating rate for neutral Hydrogen"""
         log1z = np.log10(1+redshift)
-        return self.Eps_HI(log1z)
+        return 10**self.Eps_HI(log1z)
 
 class CoolingRatesKWH92(object):
     """The cooling rates from KWH92, in erg s^-1 cm^-3 (cgs).
