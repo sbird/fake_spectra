@@ -75,10 +75,11 @@ class RateNetwork(object):
         self.converge = converge
         self.selfshield = selfshield
         self.collisional = collisional
-        zz = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-        #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
-        gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
-        self.Gray_ss = interp.interp1d(zz, gray_opac)
+        zz = [0, 1, 2, 3, 4, 5]
+        #Tables for the self-shielding correction.
+        #These are not well-measured for z > 5, so we keep the ss density constant.
+        gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18]
+        self.Gray_ss = interp.interp1d(zz, gray_opac, bounds_error=False, fill_value = (gray_opac[0], gray_opac[-1]))
 
     def get_temp(self, density, ienergy, helium=0.24):
         """Get the equilibrium temperature at given internal energy.
