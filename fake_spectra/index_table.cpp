@@ -156,7 +156,7 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
     float * arr2 = new float [2*Ncells];
     // initialize
     for(int i = 0; i < 2*Ncells; ++i)
-        arr2[i] = -100;
+        arr2[i] = 3*boxsize;
 
     // divide each sightline into an array. grid size = RESO ckpc/h
     const int N = int(boxsize/RESO);
@@ -189,35 +189,29 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
             }
             ind++;
         }
-        // assign to arr2 if this is the first time we have hit this condition.
-        if(arr2[2*min_ind] < 0)
+        //This changes sign in the special
+        //case where we have wrapped around the box.
+        //We can break here because we know all the remaining
+        //grid points will be close to this particle.
+        if(arr2[2*min_ind] < reso && xp > boxsize/2.+0.5*reso)
         {
             arr2[2*min_ind] = xp;
-            arr2[2*min_ind+1] = xp;
+            arr2[2*min_ind+1] += boxsize;
+            break;
         }
-        else
+        //This asserts that we are advancing the maximal
+        //cell only one grid point.
+        if(xp - arr2[2*min_ind+1] > 1.01*reso)
         {
-            //This asserts that we are advancing the maximal
-            //cell association only one grid point.
-            if(xp - arr2[2*min_ind+1] < 1.01*reso)
-                arr2[2*min_ind+1] = xp;
-            else
-            {
-                //This changes sign in the special
-                //case where we have wrapped around the box.
-                if(arr2[2*min_ind] < reso && xp > boxsize/2.+0.5*reso)
-                {
-                    arr2[2*min_ind] = xp;
-                    arr2[2*min_ind+1] += boxsize;
-                    break;
-                }
-                else
-                {
-                    printf("Advanced pointer more than expected for cell: %d left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
-                    exit(1);
-                }
-            }
+            printf("Advanced pointer more than expected for cell: %d left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
+            exit(1);
         }
+        // Assign lowermost grid point if this is the first place
+        // this particle is close to.
+        if(arr2[2*min_ind] > 2*boxsize)
+            arr2[2*min_ind] = xp;
+        //Assign uppermost grid point
+        arr2[2*min_ind+1] = xp;
     }
 
     for(int i = 0; i < Ncells; ++i){
