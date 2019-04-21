@@ -147,8 +147,9 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
       /*In the case of the arepo mesh, what are inputted into dr2 and smooth are the lower and upper limits
        * of the sightline segment that belongs to the gas cell, respectively.
        * pos1 is the center of this sightline segment.
+       * If these values are larger than 2 * boxsize, this particle has no effect on the line.
        * */
-      if(dr2 < 0 || smooth < 0) return;
+      if(dr2 > 2 * vbox / velfac || smooth > 2 * vbox / velfac) return;
       pos1 = (dr2 + smooth) / 2.;
   }
   else
@@ -198,7 +199,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
        * of the sightline segment that belongs to the gas cell, respectively.
        * pos1 is the center of this sightline segment.
        * */
-      if(dr2 < 0 || smooth < 0) return;
+      if(dr2 > 2 * vbox / velfac || smooth > 2 * vbox / velfac) return;
       pos1 = (dr2 + smooth) / 2.;
   }
   else
