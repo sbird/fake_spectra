@@ -201,7 +201,7 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
         }
         //This asserts that we are advancing the maximal
         //cell only one grid point.
-        if(xp - arr2[2*min_ind+1] > 1.01*reso)
+        if(xp > 1.5*reso + arr2[2*min_ind+1])
         {
             printf("Advanced pointer more than expected for cell: %d left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
             exit(1);
