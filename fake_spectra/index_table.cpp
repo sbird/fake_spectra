@@ -156,25 +156,25 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
     float * arr2 = new float [2*Ncells];
     // initialize
     for(int i = 0; i < 2*Ncells; ++i)
-        arr2[i] = -100;
+        arr2[i] = 3*boxsize;
 
     // divide each sightline into an array. grid size = RESO ckpc/h
-    int N = int(boxsize/RESO);
-    double reso = boxsize/N;
+    const int N = int(boxsize/RESO);
+    const double reso = boxsize/N;
 
-    int axis_i = axis[line_i];
-    double xp;
-    double yp = cofm[3*line_i+axis_i%3], zp = cofm[3*line_i+(axis_i+1)%3];
-    double dx, dy, dz;
+    const int axis_i = axis[line_i];
+    const double yp = cofm[3*line_i+axis_i%3], zp = cofm[3*line_i+(axis_i+1)%3];
     // loop over all grid points along the sightline
-    for(int i = 0; i < N; ++i){
+    for(int i = 0; i < N; ++i)
+    {
         // the default choice is the sightline points in the x direction
-        xp = (i+0.5)*reso;
+        double xp = (i+0.5)*reso;
         // find the particle index that this point along the sightline belongs to
-        double dist, min_dist = boxsize;
+        double min_dist = boxsize;
         int min_ind = 0, ind = 0;
         for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it){
             const int ipart = it->first;
+            double dx, dy, dz;
             // take into account periodicity
             dx = fabs(pos[3*ipart+axis_i-1]-xp);
             if(dx > boxsize/2.) dx = boxsize - dx;
@@ -182,38 +182,36 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
             if(dy > boxsize/2.) dy = boxsize - dy;
             dz = fabs(pos[3*ipart+(axis_i+1)%3]-zp);
             if(dz > boxsize/2.) dz = boxsize - dz;
-            dist = sqrt(dx*dx + dy*dy + dz*dz);
+            double dist = sqrt(dx*dx + dy*dy + dz*dz);
             if(dist < min_dist){
                 min_dist = dist;
                 min_ind = ind;
             }
             ind++;
         }
-        // assign to arr2
-        if(arr2[2*min_ind] < 0)
+        //This changes sign in the special
+        //case where we have wrapped around the box.
+        //We can break here because we know all the remaining
+        //grid points will be close to this particle.
+        if(arr2[2*min_ind] < reso && xp > boxsize/2.+0.5*reso)
         {
             arr2[2*min_ind] = xp;
-            arr2[2*min_ind+1] = xp;
+            arr2[2*min_ind+1] += boxsize;
+            break;
         }
-        else
+        //This asserts that we are advancing the maximal
+        //cell only one grid point.
+        if(xp > 1.5*reso + arr2[2*min_ind+1])
         {
-            if(xp - arr2[2*min_ind+1] < 1.01*reso)
-                arr2[2*min_ind+1] = xp;
-            else
-            {
-                if(arr2[2*min_ind] < reso && xp > boxsize/2.+0.5*reso)
-                {
-                    arr2[2*min_ind] = xp;
-                    arr2[2*min_ind+1] += boxsize;
-                    break;
-                }
-                else
-                {
-                    printf("i=%d, something wrong! left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
-                    exit(1);
-                }
-            }
+            printf("Advanced pointer more than expected for cell: %d left=%f, right=%f\n", i, arr2[2*min_ind], arr2[2*min_ind+1]);
+            exit(1);
         }
+        // Assign lowermost grid point if this is the first place
+        // this particle is close to.
+        if(arr2[2*min_ind] > 2*boxsize)
+            arr2[2*min_ind] = xp;
+        //Assign uppermost grid point
+        arr2[2*min_ind+1] = xp;
     }
 
     for(int i = 0; i < Ncells; ++i){
