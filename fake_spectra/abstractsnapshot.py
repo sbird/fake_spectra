@@ -13,11 +13,11 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base):
+def AbstractSnapshotFactory(num, base, file_num):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base)
+        return HDF5Snapshot(num, base, file_num)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
@@ -144,14 +144,14 @@ class AbstractSnapshot(object):
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base):
-        self._files = sorted(self._get_all_files(num, base))
+    def __init__(self, num, base, file_num):
+        self._files = sorted(self._get_all_files(num, base, file_num))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
         self._handle_num = 0
         AbstractSnapshot.__init__(self)
 
-    def _get_all_files(self, num, base):
+    def _get_all_files(self, num, base, file_num):
         """Get a file descriptor from a simulation directory,
         snapshot number and optionally file number.
         Input:
@@ -160,14 +160,17 @@ class HDF5Snapshot(AbstractSnapshot):
             file_num - file number in the snapshot"""
         fname = base
         snap=str(num).rjust(3,'0')
+        fnum=str(file_num)
         new_fname = os.path.join(base, "snapdir_"+snap)
         #Check for snapshot directory
         if os.path.exists(new_fname):
             fname = new_fname
         #Find a file
-        fnames = glob.glob(os.path.join(fname, "snap_"+snap+"*hdf5"))
+        fnames = glob.glob(os.path.join(fname, "snap_"+snap+"."+fnum+".hdf5"))
+        print(len(fnames))
+        print(fnames)
         if len(fnames) == 0:
-            fnames = glob.glob(os.path.join(fname, "snapshot_"+snap+"*hdf5"))
+            fnames = glob.glob(os.path.join(fname, "snapshot_"+snap+"."+fnum+".hdf5"))
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
