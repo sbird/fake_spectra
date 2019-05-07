@@ -479,7 +479,7 @@ class CoolingRatesKWH92(object):
         if recomb is None:
             self.recomb = RecombRatesCen92()
         else:
-            self.recomb = recomb
+            self.recomb = recomb()
         self.t5_corr = t5_corr
         #1 eV in ergs
         self.eVinergs = 1.60218e-12
