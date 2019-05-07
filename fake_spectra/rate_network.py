@@ -91,7 +91,10 @@ class RateNetwork(object):
         return self._get_temp(ne/nh, ienergy, helium)
 
     def get_cooling_rate(self, density, ienergy, helium=0.24, photoheating=False):
-        """Get the total cooling rate for a temperature and density. Negative means heating."""
+        """Get the total cooling rate for a temperature and density. Negative means heating.
+           Density is gas denstiy in protons/cm^3. Internal energy is ergs/g.
+           Returns net heating/cooling rate in erg/s/g.
+        """
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
         temp = self._get_temp(ne/nh, ienergy, helium)
@@ -118,7 +121,10 @@ class RateNetwork(object):
             Heating *= self.photo_factor
             if self.he_model_on:
                 Heating *= self._he_reion_factor(density)
-        return Lambda - Heating
+        LambdaNet = (Lambda - Heating) / nh**2
+        # LambdaNet in erg/s cm^3, Density in protons/cm^3, PROTONMASS in protons/g.
+        # Convert to erg/s/g*/
+        return LambdaNet * (1 - helium)**2 * density / self.protonmass
 
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
