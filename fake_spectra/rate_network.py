@@ -488,7 +488,7 @@ class CoolingRatesKWH92(object):
         until 5e5 at least, where the correction factor has a 10% effect already.
         More modern tables thus impose it at T=5e7, which is still arbitrary but should be harmless.
         """
-        return 1+(temp/t5_corr)**0.5
+        return 1+(temp/self.t5_corr)**0.5
 
     def CollisionalExciteH0(self, temp):
         """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0."""
@@ -597,7 +597,7 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         Shapiro & Kang 1987
     """
     def __init__(self, tcmb=2.7255, recomb=None):
-        CoolingRatesKWH92.__init__(tcmb = tcmb, t5_corr = 5e7, recomb=recomb)
+        CoolingRatesKWH92.__init__(self, tcmb = tcmb, t5_corr = 5e7, recomb=recomb)
 
     def CollisionalH0(self, temp):
         """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0.
