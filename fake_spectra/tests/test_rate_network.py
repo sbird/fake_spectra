@@ -69,6 +69,40 @@ def testRateNetwork():
     after = time.clock()
     print(after-before)
 
+def test_heatingcooling_rate():
+    """Test the cooling rate."""
+    rates = rate_network.RateNetwork(redshift=0., recomb="Cen92", cool="KWH", selfshield=False)
+
+    #Default values from sfr_eff.c translated to cgs.
+    #In J/kg.
+    egyhot = 2.10492e13/1e10
+    dens = 5.45755
+
+    # zero ionization at z=0.
+    LambdaNet = rates.get_cooling_rate(dens, egyhot, photoheating=False)
+
+    tcool = 1e10 * egyhot / LambdaNet
+
+#     print("tcool = %g LambdaNet = %g" % (tcool, LambdaNet))
+    assert abs(tcool / 2.07589e11 - 1) < 1e-3
+
+    #Now check that we get the desired cooling rate with a UVB
+
+    dens /= 100
+    LambdaNet = rates.get_cooling_rate(dens, egyhot/10., photoheating=True)
+#     print("LambdaNet = %g" % LambdaNet)
+    assert abs(LambdaNet / 0.0406755 - 1) < 1e-3
+
+    LambdaNet = rates.get_cooling_rate(dens/2.5, egyhot/10., photoheating=True)
+    print("LambdaNet = %g" % LambdaNet)
+    assert LambdaNet < 0
+    # Check self-shielding affects the cooling rates
+    ratesss = rate_network.RateNetwork(redshift=0., recomb="Cen92", cool="KWH", selfshield=True)
+    LambdaNet = ratesss.get_cooling_rate(dens*1.5, egyhot/10., photoheating=True)
+    print("LambdaNet = %g" % LambdaNet)
+    assert LambdaNet > 0
+    assert abs(LambdaNet/ 1.64834 - 1) < 1e-3
+
 def testRateNetworkGas():
     """Test that the spline is working."""
     gasprop = ratenetworkspectra.RateNetworkGas(3, None)
