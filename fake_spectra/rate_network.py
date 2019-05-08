@@ -98,30 +98,32 @@ class RateNetwork(object):
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
         temp = self._get_temp(ne/nh, ienergy, helium)
-        nH0 = self._nH0(nh, temp, ne)
-        nHe0 = self._nHe0(nh, temp, ne)
-        nHp = self._nHp(nh, temp, ne)
-        nHep = self._nHep(nh, temp, ne)
-        nHepp = self._nHepp(nh, temp, ne)
+        nH0 = self._nH0(nh, temp, ne) /nh
+        nHp = self._nHp(nh, temp, ne) / nh
+        yy = helium / 4 / (1 - helium)
+        nHe0 = self._nHe0(nh, temp, ne) * yy /nh
+        nHep = self._nHep(nh, temp, ne) * yy / nh
+        nHepp = self._nHepp(nh, temp, ne) * yy /nh
         #This is the collisional excitation and ionisation rate.
-        LambdaCollis = ne * (self.cool.CollisionalH0(temp) * nH0 +
+        LambdaCollis = ne/nh * (self.cool.CollisionalH0(temp) * nH0 +
                              self.cool.CollisionalHe0(temp) * nHe0 +
                              self.cool.CollisionalHeP(temp) * nHep)
-        LambdaRecomb = ne * (self.cool.RecombHp(temp) * nHp +
+        LambdaRecomb = ne/nh * (self.cool.RecombHp(temp) * nHp +
                              self.cool.RecombHeP(temp) * nHep +
                              self.cool.RecombHePP(temp) * nHepp)
-        LambdaFF = ne * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
-        LambdaCmptn = ne * self.cool.InverseCompton(temp, self.redshift)
+        LambdaFF = ne/nh * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
+        LambdaCmptn = ne/nh**2 * self.cool.InverseCompton(temp, self.redshift)
         Lambda = LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
         Heating = 0
         if photoheating:
-            Heating = nH0 * self.photo.epsH0(self.redshift)
-            Heating += nHe0 * self.photo.epsHe0(self.redshift)
-            Heating += nHep * self.photo.epsHep(self.redshift)
+            Heating = nH0 * self.photo.epsH0(self.redshift)/nh
+            Heating += nHe0 * self.photo.epsHe0(self.redshift)/nh
+            Heating += nHep * self.photo.epsHep(self.redshift)/nh
             Heating *= self.photo_factor
             if self.he_model_on:
                 Heating *= self._he_reion_factor(density)
-        LambdaNet = (Lambda - Heating) / nh**2
+        #print("Heat = %g Lambda = %g LC = %g LR = %g LFF = %g LCmptn = %g, ne = %g, nH0 = %g, nHp = %g, nHe0 = %g, nHep = %g, nHepp = %g, nh=%g, temp=%g, ienergy=%g" % (Heating, Lambda, LambdaCollis, LambdaRecomb, LambdaFF, LambdaCmptn, ne/nh, nH0, nHp, nHe0, nHep, nHepp, nh, temp, ienergy))
+        LambdaNet = Lambda - Heating
         # LambdaNet in erg/s cm^3, Density in protons/cm^3, PROTONMASS in protons/g.
         # Convert to erg/s/g*/
         return LambdaNet * (1 - helium)**2 * density / self.protonmass
