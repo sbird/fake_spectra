@@ -79,11 +79,12 @@ class Spectra(object):
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
                      kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base, file_num, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
         self.base = base
+        self.file_num = file_num
         #Create the unit system
         if units is not None:
             self.units = units
@@ -117,7 +118,7 @@ class Spectra(object):
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, file_num)
                 #Set up the kernel
                 if kernel is None:
                     self.kernel_int = self.snapshot_set.get_kernel()
@@ -619,10 +620,13 @@ class Spectra(object):
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
         print("Discarded: ",self.discarded)
-        while found < wanted:
+        dom = 0
+        #while found < wanted:
+        while dom<1000:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
+            print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
@@ -631,6 +635,7 @@ class Spectra(object):
             found += np.size(ind)
             self.discarded += self.NumLos-np.size(ind)
             print("Discarded: ",self.discarded)
+            dom +=1
         #Correct proportions in case we find slightly more than we need
         self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back

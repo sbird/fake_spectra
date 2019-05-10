@@ -1,3 +1,11 @@
+This branch is to run fake_spectra on a single fof group on TNG simukations.
+So in randspectra call, argument like 
+file_num =447
+is needed.
+
+
+
+-------------------------------------------------
 = Flux extractor =
 
 This is a small code for generating and analyzing simulated spectra from
