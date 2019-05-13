@@ -620,13 +620,13 @@ class Spectra(object):
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
         print("Discarded: ",self.discarded)
-        dom = 0
-        #while found < wanted:
-        while dom<1000:
+        #dom = 0
+        while found < wanted:
+        #while dom<1000:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
-            print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
+            #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
@@ -635,7 +635,7 @@ class Spectra(object):
             found += np.size(ind)
             self.discarded += self.NumLos-np.size(ind)
             print("Discarded: ",self.discarded)
-            dom +=1
+            #dom +=1
         #Correct proportions in case we find slightly more than we need
         self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
