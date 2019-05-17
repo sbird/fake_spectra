@@ -250,6 +250,7 @@ class RateNetwork(object):
         #m_P is the proton mass
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
+        helium = 0.24 # temporarily added to avoid helium being a large array
         hy_mass = 1 - helium
         muienergy = 4 / (hy_mass * (3 + 4*nebynh) + 1)*ienergy*1e10
         #Boltzmann constant (cgs)
