@@ -297,13 +297,16 @@ class Spectra(object):
                     gg.create_group(str(key[ii]))
                     gg = gg[str(key[ii])]
             #Delete old dataset if present
+            #I commented this line to save both ion = -1 and ion = 1 in output spectra
+            """
             try:
                 del gg[str(key[-1])]
             except KeyError:
                 pass
+            """
             #Save the dataset
             gg.create_dataset(str(key[-1]),data=value)
-
+            
     def _really_load_array(self, key, array, array_name):
         """Replace a lazy-loaded array with the real one from disc"""
         #First check it was not already loaded
