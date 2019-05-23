@@ -130,7 +130,7 @@ class GasProperties(object):
         units = self.absnap.get_units()
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
         ne = self.absnap.get_data(part_type, "ElectronAbundance", segment)
-        nH0 = self.rtn.get_neutral_fraction(self, density, ienergy, ne)
+        nH0 = self.rtn.get_neutral_fraction(density, ienergy, ne)
         if not self.sf_neutral:
             return nH0
         #Above star-formation threshold, we want a neutral fraction which includes
