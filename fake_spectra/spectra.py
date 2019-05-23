@@ -74,8 +74,12 @@ class Spectra(object):
                       for neutral fractions and get_temp for temperatures.
                       Default is gas_properties.GasProperties which reads both of these from the particle output.
             gasprop_args - Dictionary of extra arguments to be fed to gasprop, if gasprop is not the default.
+            kernel - Interpolation method to use. The default is to select the method based on the type of simulation:
+                     this will use a Voronoi mesh build if we are Arepo and an SPH kernel for Gadget.
+                     Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
+                     kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -115,7 +119,15 @@ class Spectra(object):
             if load_snapshot:
                 self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
                 #Set up the kernel
-                self.kernel_int = self.snapshot_set.get_kernel()
+                if kernel is None:
+                    self.kernel_int = self.snapshot_set.get_kernel()
+                elif kernel == "voronoi":
+                    self.kernel_int = 2
+                elif kernel == "tophat":
+                    self.kernel_int = 0
+                else:
+                    #SPH kernel
+                    self.kernel_int = 1
         except IOError:
             pass
         if savedir is None:
