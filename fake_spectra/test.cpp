@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(check_add_tau)
     memset(tau, 0, TNBINS*sizeof(double));
     //Check peculiar vel dependence: this should just induce an offset
     //3 bins
-    double pecvel = 10000/TNBINS*3*velfac/sqrt(0.25);
+    double pecvel = 10000/TNBINS*3*velfac;
     test.add_tau_particle(tau, TNBINS, 0, 1e-3*rscale,5002.5,pecvel ,temp, smooth);
     FLOATS_NEAR_TO(tau[1002],SA(999,5002.5, 1e-3*rscale));
     FLOATS_NEAR_TO(tau[1003],SA(1000, 5002.5,1e-3*rscale));
