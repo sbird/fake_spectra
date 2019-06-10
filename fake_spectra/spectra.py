@@ -464,7 +464,7 @@ class Spectra(object):
         vel = np.zeros(1,dtype=np.float32)
         temp = np.zeros(1,dtype=np.float32)
         if get_tau:
-            vel = self.snapshot_set.get_data(0,"Velocity",segment = fn).astype(np.float32)
+            vel = self.snapshot_set.get_peculiar_velocity(0,segment = fn).astype(np.float32)
             vel = vel[ind,:]
         #gas density amu / cm^3
         den=self.gasprop.get_code_rhoH(0, segment=fn).astype(np.float32)

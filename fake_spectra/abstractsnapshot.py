@@ -107,6 +107,13 @@ class AbstractSnapshot(object):
         units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
         return units
 
+    def get_peculiar_velocity(self, part_type, segment):
+        """Get the peculiar velocity in internal units. Converts out the various Gadget comoving a factors."""
+        vel = self.get_data(part_type, "Velocities", segment = segment)
+        atime = self.get_header_attr("Time")
+        vel *= np.sqrt(atime)
+        return vel
+
     def get_temp(self,part_type, segment,hy_mass=0.76, units=None):
         """Compute temperature (in K) from internal energy.
            Uses: internal energy
@@ -334,3 +341,12 @@ class BigFileSnapshot(AbstractSnapshot):
         #Other types are not yet supported.
         assert kernel == 1
         return kernel
+
+    def get_peculiar_velocity(self, part_type, segment):
+        """Get the peculiar velocity in internal units. Converts out the various Gadget comoving a factors."""
+        vel = self.get_data(part_type, "Velocity", segment = segment)
+        pecvel = self.get_header_attr("UsePeculiarVelocities")
+        if not pecvel:
+            atime = self.get_header_attr("Time")
+            vel /= atime
+        return vel

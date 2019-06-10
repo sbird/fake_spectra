@@ -206,7 +206,7 @@ void LineAbsorption::add_tau_particle(double * tau, const int nbins, const doubl
   {
       if (smooth*smooth - dr2 <= 0) return; //If we are outside the kernel, do nothing.
   }
-  const double vel = velfac * pos1 + pvel * sqrt(atime);
+  const double vel = velfac * pos1 + pvel;
   // Create absorption object
   double val1 = velfac*dr2;
   if(kernel != VORONOI_MESH) val1 *= velfac;
