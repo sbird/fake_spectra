@@ -345,7 +345,7 @@ class BigFileSnapshot(AbstractSnapshot):
     def get_peculiar_velocity(self, part_type, segment):
         """Get the peculiar velocity in internal units. Converts out the various Gadget comoving a factors."""
         vel = self.get_data(part_type, "Velocity", segment = segment)
-        pecvel = self.get_header_attr("UsePeculiarVelocities")
+        pecvel = self.get_header_attr("UsePeculiarVelocity")
         if not pecvel:
             atime = self.get_header_attr("Time")
             vel /= atime
