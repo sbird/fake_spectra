@@ -258,6 +258,7 @@ class RateNetwork(object):
         #m_P is the proton mass
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
+
         helium = 0.24 # I temporary added this, otherwise helium would be a large array
         hy_mass = 1 - helium
         muienergy = 4 / (hy_mass * (3 + 4*nebynh) + 1)*ienergy*1e10
@@ -266,6 +267,7 @@ class RateNetwork(object):
         gamma=5./3
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
         temp = (gamma-1) * self.protonmass / boltzmann * muienergy
+        assert np.all(temp >= 0)
         return temp
 
 class RecombRatesCen92(object):
