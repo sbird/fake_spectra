@@ -266,6 +266,7 @@ class RateNetwork(object):
         gamma=5./3
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
         temp = (gamma-1) * self.protonmass / boltzmann * muienergy
+        assert np.all(temp >= 0)
         return temp
 
 class RecombRatesCen92(object):
