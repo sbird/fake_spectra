@@ -13,7 +13,7 @@ from .ratenetworkspectra import RateNetworkGas
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
 
-def mean_density(hub, redshift, omegab=0.0465):
+def mean_density(hub, redshift, unit, omegab=0.0465):
     """Get mean gas density at some redshift."""
     unit = units.UnitSystem()
     #in g cm^-3
@@ -58,11 +58,11 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
         plot - if True, make a plot, otherwise just do the fit
     """
     snap = absn.AbstractSnapshotFactory(num, base)
-
+    unit = snap.get_units()
     redshift = 1./snap.get_header_attr("Time") - 1
     hubble = snap.get_header_attr("HubbleParam")
     if gas == "raw":
-        rates = GasProperties(redshift, snap, hubble)
+        rates = GasProperties(redshift, snap, hubble, units=unit)
     else:
         rates = RateNetworkGas(redshift, snap, hubble)
 
@@ -72,7 +72,7 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
 
     logdens = np.log10(dens)
     logT = np.log10(temp)
-    mean_dens = mean_density(hubble, redshift, omegab=snap.get_omega_baryon())
+    mean_dens = mean_density(hubble, redshift, unit=unit, omegab=snap.get_omega_baryon())
     (T0, gamma) = fit_temp_dens_relation(logdens - np.log10(mean_dens), logT)
     print("z=%f T0(K) = %f, gamma = %g" % (redshift, T0, gamma))
 
@@ -82,19 +82,19 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
         else:
             nhi = dens
 
-        hist, dedges, tedges = np.histogram2d(logdens, logT, bins=nbins, weights=nhi, density=True)
+        hist, dedges, tedges = np.histogram2d(logdens-np.log10(mean_dens), logT, bins=nbins, weights=nhi, density=True)
 
         plt.imshow(hist.T, interpolation='nearest', origin='low', extent=[dedges[0], dedges[-1], tedges[0], tedges[-1]], cmap=plt.cm.cubehelix_r, vmax=0.75, vmin=0.01)
 
-        plt.plot(np.log10(mean_dens), np.log10(T0), '*', markersize=10, color="gold")
-        dd = np.array([-6,-5,-4,-3])
+        plt.plot(0, np.log10(T0), '*', markersize=10, color="gold")
+        dd = np.array([-2,-1,0,1,2])
         plt.xticks(dd, [r"$10^{%d}$" % d for d in dd])
         tt = np.array([2000, 3000, 5000, 10000, 20000, 30000, 50000, 100000])
         plt.yticks(np.log10(tt), tt//1000)
         plt.ylabel(r"T ($10^3$ K)")
-        plt.xlabel(r"$\rho$ (cm$^{-3}$)")
+        plt.xlabel(r"$\rho / \bar{\rho}$")
 
-        plt.xlim(-6,-3)
+        plt.xlim(-2,2)
         plt.ylim(3.4,5)
         plt.colorbar()
         plt.tight_layout()
