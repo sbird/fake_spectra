@@ -24,12 +24,11 @@ class RandSpectra(spectra.Spectra):
         spectra.Spectra.__init__(self,num, base, file_num, cofm, axis, savefile=savefile,reload_file=True, load_halo=False, **kwargs)
         
         ### I will call replace_not_DLA, in parallel script (After adding col_den of all hdf5 files)
-        """
+        
         if np.size(thresh) > 1 or thresh > 0:
-            self.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
+            self.initial_spectra(ndla, thresh, elem=elem, ion=ion)
             print("Found objects over threshold")
-        """
-
+        
     def get_cofm(self, num = None):
         """Find a bunch more sightlines: should be overriden by child classes"""
         if num is None:
