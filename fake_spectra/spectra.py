@@ -601,7 +601,7 @@ class Spectra(object):
         assert mass_frac.dtype == np.float32
         return mass_frac
 
-    def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
+    def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1, ind):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
         Keep track of the number discarded in self.discarded.
@@ -614,7 +614,7 @@ class Spectra(object):
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
-        ind = self.filter_DLA(col_den, thresh)
+        #ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])

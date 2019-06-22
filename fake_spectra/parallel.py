@@ -19,18 +19,21 @@ col_den_added = np.empty(size_col_den, 'd')
 
 if rank ==0 :
 
-    for i in range(0,100):
-        
-        istr = str(i)
-        rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output", file_num = i, thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/", savefile="spectra_34."+istr+".hdf5")
-        
-        num_not_DLA = 1000 # just for first iteration  of the while below
+    num_not_DLA = 1000 # just for first iteration  of the while below
 
-        while(num_not_DLA > 0) :
+    while(num_not_DLA > 0) :
+
+        for i in range(0,100):
+        
+            istr = str(i)
+            rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output", file_num = i, thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/", savefile="spectra_34."+istr+".hdf5")
+        
+        H1_DLA = np.empty_like()
+
 
             ### Here, get not_DLA_indices and if there are still some, regenerate those indices
             ### Replacing part
-            rr.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
+            rr.replace_not_DLA(ndla, thresh, elem=elem, ion=ion, not_DLA_indices)
         
             tau_1215 = rr.get_tau("H", 1,1215)
             tau_1025 = rr.get_tau("H", 1, 1025)
