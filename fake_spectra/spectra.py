@@ -79,12 +79,14 @@ class Spectra(object):
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
                      kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
     """
-    def __init__(self,num, base, file_num, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base, file_num, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, MPI, comm):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
         self.base = base
         self.file_num = file_num
+        self.MPI = MPI
+        self.comm = comm
         #Create the unit system
         if units is not None:
             self.units = units
@@ -600,7 +602,7 @@ class Spectra(object):
         mass_frac[np.where(mass_frac <= 0)] = 0
         assert mass_frac.dtype == np.float32
         return mass_frac
-
+    
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1, ind):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
@@ -615,6 +617,12 @@ class Spectra(object):
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
         #ind = self.filter_DLA(col_den, thresh)
+        
+        ### Call manager rank here
+        self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
+        num_DLA = self.comm.bcast(root=0)
+        ind = np.empty(num_DLA, dtype='d')
+        self.comm.Bcast(ind, root=0)
         H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
@@ -630,7 +638,14 @@ class Spectra(object):
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
-            ind = self.filter_DLA(col_den, thresh)
+            #ind = self.filter_DLA(col_den, thresh)
+            
+            ### Call manager rank here
+            self.comm.Reduce(cdsum, col_den_added, op=MPI.SUM, root=0)
+            num_DLA = self.comm.bcast(root=0)
+            ind = np.empty(num_DLA, dtype='d')
+            self.comm.Bcast(ind, root=0)
+            
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found,:]

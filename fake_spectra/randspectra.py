@@ -9,7 +9,7 @@ from . import spectra
 
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
-    def __init__(self,num, base, file_num,ndla = 1000, numlos=5000, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", elem="H", ion=1, **kwargs):
+    def __init__(self,num, base, file_num,ndla = 1000, numlos=5000, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", elem="H", ion=1, MPI, comm,**kwargs):
         #Load halos to push lines through them
         f = absn.AbstractSnapshotFactory(num, base, file_num)
         self.box = f.get_header_attr("BoxSize")
@@ -21,12 +21,13 @@ class RandSpectra(spectra.Spectra):
         #Re-seed for repeatability
         np.random.seed(23)
         cofm = self.get_cofm()
-        spectra.Spectra.__init__(self,num, base, file_num, cofm, axis, savefile=savefile,reload_file=True, load_halo=False, **kwargs)
+        spectra.Spectra.__init__(self,num, base, file_num, cofm, axis, savefile=savefile,reload_file=True, load_halo=False, MPI, comm,**kwargs)
         
         ### I will call replace_not_DLA, in parallel script (After adding col_den of all hdf5 files)
         
         if np.size(thresh) > 1 or thresh > 0:
-            self.initial_spectra(ndla, thresh, elem=elem, ion=ion)
+            #self.initial_spectra(ndla, thresh, elem=elem, ion=ion)
+            self.replace_not_DLA(ndla, thresh, elem=elem, ion=ion)
             print("Found objects over threshold")
         
     def get_cofm(self, num = None):
