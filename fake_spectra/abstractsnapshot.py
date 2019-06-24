@@ -167,17 +167,15 @@ class HDF5Snapshot(AbstractSnapshot):
             file_num - file number in the snapshot"""
         fname = base
         snap=str(num).rjust(3,'0')
-        fnum=str(file_num)
-        new_fname = os.path.join(base, "snapdir_"+snap)
+        #new_fname = os.path.join(base, "snapdir_"+snap)
+        new_fname = base
         #Check for snapshot directory
         if os.path.exists(new_fname):
             fname = new_fname
         #Find a file
-        fnames = glob.glob(os.path.join(fname, "snap_"+snap+"."+fnum+".hdf5"))
-        print(len(fnames))
-        print(fnames)
+        fnames = glob.glob(os.path.join(fname, "snap_"+snap+"*hdf5"))
         if len(fnames) == 0:
-            fnames = glob.glob(os.path.join(fname, "snapshot_"+snap+"."+fnum+".hdf5"))
+            fnames = glob.glob(os.path.join(fname, "snapshot_"+snap+"*hdf5"))
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
