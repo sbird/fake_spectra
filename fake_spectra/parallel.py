@@ -19,8 +19,9 @@ col_den_added = np.empty(size_col_den, 'd')
 
 if rank ==0 :
     
+    found = 0
 
-    While (num_not_DLA > 0) :
+    While (found < 1000) :
 
         col_den_added = np.empty(size_col_den, dtype='d')
         #temp_col_den_added = np.empty(size_col, dtype='d')
@@ -30,12 +31,13 @@ if rank ==0 :
         comm.Reduce(col_den_added, col_den_added, op = MPI.SUM, root = 0)
         
         ### indices which should be replaced
-        ind = np.where(np.sum(col_den_added[:], axis=1) > 10**20.3)
-        num_DLA = np.size(ind)
+        ind = np.where(col_den_added > 10**20.3)
+        size_ind = np.size(ind)
+        found += size_ind
         ### Here, Broadcast not_DLA_indices to each rank to be regenrated
         
 
-        comm.bcast(num_DLA, root=0)
+        comm.bcast(size_ind, root=0)
         comm.Bcast(ind, root = 0)
 
 

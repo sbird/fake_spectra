@@ -616,12 +616,13 @@ class Spectra(object):
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
+        cdsum=np.sum(col_den, axis=1)
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
         self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
-        num_DLA = self.comm.bcast(root=0)
-        ind = np.empty(num_DLA, dtype='d')
+        size_ind = self.comm.bcast(root=0)
+        ind = np.empty(size_ind, dtype='d')
         self.comm.Bcast(ind, root=0)
         H1_DLA = np.empty_like(col_den)
         #Update saves
@@ -637,13 +638,14 @@ class Spectra(object):
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
+            cdsum = np.sum(col_den, axis = 1)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             #ind = self.filter_DLA(col_den, thresh)
             
             ### Call manager rank here
             self.comm.Reduce(cdsum, col_den_added, op=MPI.SUM, root=0)
-            num_DLA = self.comm.bcast(root=0)
-            ind = np.empty(num_DLA, dtype='d')
+            size_ind = self.comm.bcast(root=0)
+            ind = np.empty(size_ind, dtype='d')
             self.comm.Bcast(ind, root=0)
             
             #Update saves
