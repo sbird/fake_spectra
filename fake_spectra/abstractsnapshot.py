@@ -13,11 +13,11 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base, file_num):
+def AbstractSnapshotFactory(num, base):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base, file_num)
+        return HDF5Snapshot(num, base)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)

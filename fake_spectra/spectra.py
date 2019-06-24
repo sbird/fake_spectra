@@ -79,12 +79,12 @@ class Spectra(object):
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
                      kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
     """
-    def __init__(self,num, base, file_num, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, MPI, comm):
+    def __init__(self,num, base, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, MPI, comm):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
         self.base = base
-        self.file_num = file_num
+
         self.MPI = MPI
         self.comm = comm
         #Create the unit system
@@ -120,7 +120,7 @@ class Spectra(object):
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, file_num)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
                 #Set up the kernel
                 if kernel is None:
                     self.kernel_int = self.snapshot_set.get_kernel()
@@ -612,16 +612,19 @@ class Spectra(object):
         #Declare variables
         found = 0
         wanted = ndla
+        size_ind = None
         cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
+        # A variable for comm.Reduce()
+        col_den_added = np.empty_like(colden_added)
         cdsum=np.sum(col_den, axis=1)
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
         self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
-        size_ind = self.comm.bcast(root=0)
+        size_ind = self.comm.bcast(size_ind, root=0)
         ind = np.empty(size_ind, dtype='d')
         self.comm.Bcast(ind, root=0)
         H1_DLA = np.empty_like(col_den)
@@ -635,16 +638,18 @@ class Spectra(object):
         #dom = 0
         while found < wanted:
         #while dom<1000:
+            size_ind = None
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
+            col_den_added = np.empty_like(colden_added)
             cdsum = np.sum(col_den, axis = 1)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             #ind = self.filter_DLA(col_den, thresh)
             
             ### Call manager rank here
             self.comm.Reduce(cdsum, col_den_added, op=MPI.SUM, root=0)
-            size_ind = self.comm.bcast(root=0)
+            size_ind = self.comm.bcast(size_ind, root=0)
             ind = np.empty(size_ind, dtype='d')
             self.comm.Bcast(ind, root=0)
             
