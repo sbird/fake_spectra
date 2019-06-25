@@ -151,20 +151,20 @@ class AbstractSnapshot(object):
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base, file_num):
-        self._files = sorted(self._get_all_files(num, base, file_num))
+    def __init__(self, num, base):
+        self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
         self._handle_num = 0
         AbstractSnapshot.__init__(self)
 
-    def _get_all_files(self, num, base, file_num):
+    def _get_all_files(self, num, base):
         """Get a file descriptor from a simulation directory,
         snapshot number and optionally file number.
         Input:
             num - snapshot number
             base - simulation directory
-            file_num - file number in the snapshot"""
+            """
         fname = base
         snap=str(num).rjust(3,'0')
         #new_fname = os.path.join(base, "snapdir_"+snap)

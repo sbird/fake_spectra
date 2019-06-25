@@ -79,7 +79,7 @@ class Spectra(object):
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
                      kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
     """
-    def __init__(self,num, base, cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, MPI, comm):
+    def __init__(self,num, base, MPI, comm,cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -603,7 +603,7 @@ class Spectra(object):
         assert mass_frac.dtype == np.float32
         return mass_frac
     
-    def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1, ind):
+    def replace_not_DLA(self, ndla, ind, thresh=10**20.3, elem="H", ion=1):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
         Keep track of the number discarded in self.discarded.

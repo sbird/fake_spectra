@@ -22,12 +22,12 @@ if rank ==0 :
     
     found = 0
 
-    While (found < 1000) :
+    while (found < 1000) :
 
         col_den_added = np.empty(shape=(numlos,))
 
         ### Recieve col_den from all other ranks and add them together
-        comm.Reduce(np.empty(size_col_den, dtype='d'), col_den_added, op = MPI.SUM, root = 0)
+        comm.Reduce(np.empty(numlos, dtype='d'), col_den_added, op = MPI.SUM, root = 0)
         
         ### indices which should be replaced
         ind = np.where(col_den_added > 10**20.3)
@@ -52,7 +52,7 @@ if rank ==1 :
     
     #num_DLA = 0# just for first iteration  of the while below
     rank_str = str(rank)
-    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/0/",  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/", savefile="spectra_34.0.hdf5", MPI, comm)
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/0/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
 
     #### Calculate spectra for 100 hdf5 files
     rr.get_tau("H",1,1215)
@@ -60,8 +60,6 @@ if rank ==1 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
-    #Save spectra to file
-    rr.save_file()  
     
 
     """
@@ -90,8 +88,58 @@ if rank ==1 :
             
     """
 
+if rank ==2 :
+    
+    #num_DLA = 0# just for first iteration  of the while below
+    rank_str = str(rank)
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/1/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+
+    #### Calculate spectra for 100 hdf5 files
+    rr.get_tau("H",1,1215)
+    #Lyman-beta
+    rr.get_tau("H",1,1025)
+    rr.get_col_density("H",1)
+    rr.get_col_density("H",-1)
         
+if rank ==3 :
+    
+    #num_DLA = 0# just for first iteration  of the while below
+    rank_str = str(rank)
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/2/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+
+    #### Calculate spectra for 100 hdf5 files
+    rr.get_tau("H",1,1215)
+    #Lyman-beta
+    rr.get_tau("H",1,1025)
+    rr.get_col_density("H",1)
+    rr.get_col_density("H",-1)
 
 
+
+if rank ==4 :
+    
+    #num_DLA = 0# just for first iteration  of the while below
+    rank_str = str(rank)
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/3/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+
+    #### Calculate spectra for 100 hdf5 files
+    rr.get_tau("H",1,1215)
+    #Lyman-beta
+    rr.get_tau("H",1,1025)
+    rr.get_col_density("H",1)
+    rr.get_col_density("H",-1)
+
+if rank ==5 :
+    
+    #num_DLA = 0# just for first iteration  of the while below
+    rank_str = str(rank)
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/4/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+
+    #### Calculate spectra for 100 hdf5 files
+    rr.get_tau("H",1,1215)
+    #Lyman-beta
+    rr.get_tau("H",1,1025)
+    rr.get_col_density("H",1)
+    rr.get_col_density("H",-1)
 
 
