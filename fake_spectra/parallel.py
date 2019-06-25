@@ -42,12 +42,6 @@ if rank ==0 :
 
 
 
-    ### Save Final Data
-
-    rr.savefile()
-
-
-
 if rank ==1 :
     
     #num_DLA = 0# just for first iteration  of the while below
@@ -60,7 +54,7 @@ if rank ==1 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
-    
+    rr.save_file()
 
     """
     while(num_DLA < 1000) :
@@ -100,6 +94,7 @@ if rank ==2 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
+    rr.save_file()
         
 if rank ==3 :
     
@@ -113,7 +108,7 @@ if rank ==3 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
-
+    rr.save_file()
 
 
 if rank ==4 :
@@ -128,6 +123,7 @@ if rank ==4 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
+    rr.save_file()
 
 if rank ==5 :
     
@@ -141,5 +137,6 @@ if rank ==5 :
     rr.get_tau("H",1,1025)
     rr.get_col_density("H",1)
     rr.get_col_density("H",-1)
+    rr.save_file()
 
 
