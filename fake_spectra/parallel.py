@@ -86,7 +86,7 @@ if rank ==2 :
     
     #num_DLA = 0# just for first iteration  of the while below
     rank_str = str(rank)
-    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/1/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/1/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.1.hdf5")
 
     #### Calculate spectra for 100 hdf5 files
     rr.get_tau("H",1,1215)
@@ -100,7 +100,7 @@ if rank ==3 :
     
     #num_DLA = 0# just for first iteration  of the while below
     rank_str = str(rank)
-    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/2/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/2/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.2.hdf5")
 
     #### Calculate spectra for 100 hdf5 files
     rr.get_tau("H",1,1215)
@@ -115,7 +115,7 @@ if rank ==4 :
     
     #num_DLA = 0# just for first iteration  of the while below
     rank_str = str(rank)
-    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/3/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/3/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.3.hdf5")
 
     #### Calculate spectra for 100 hdf5 files
     rr.get_tau("H",1,1215)
@@ -129,7 +129,7 @@ if rank ==5 :
     
     #num_DLA = 0# just for first iteration  of the while below
     rank_str = str(rank)
-    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/4/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.0.hdf5")
+    rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/4/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34.4.hdf5")
 
     #### Calculate spectra for 100 hdf5 files
     rr.get_tau("H",1,1215)
