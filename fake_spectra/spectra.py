@@ -617,9 +617,9 @@ class Spectra(object):
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
-        # A variable for comm.Reduce()
-        col_den_added = np.empty_like(colden_added)
         cdsum=np.sum(col_den, axis=1)
+        # A variable for comm.Reduce()
+        col_den_added = np.empty_like(cdsum)
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
@@ -642,8 +642,8 @@ class Spectra(object):
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
-            col_den_added = np.empty_like(colden_added)
             cdsum = np.sum(col_den, axis = 1)
+            col_den_added = np.empty_like(cdsum)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             #ind = self.filter_DLA(col_den, thresh)
             
