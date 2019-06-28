@@ -619,13 +619,13 @@ class Spectra(object):
         col_den = self.compute_spectra(elem,ion,1215,False)
         cdsum=np.sum(col_den, axis=1)
         # A variable for comm.Reduce()
-        col_den_added = np.empty_like(cdsum)
+        col_den_added = np.zeros_like(cdsum, dtype='d')
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
         self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
         size_ind = self.comm.bcast(size_ind, root=0)
-        ind = np.empty(size_ind, dtype='d')
+        ind = np.zeros(size_ind, dtype='d')
         self.comm.Bcast(ind, root=0)
         H1_DLA = np.empty_like(col_den)
         #Update saves
@@ -643,14 +643,14 @@ class Spectra(object):
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
             cdsum = np.sum(col_den, axis = 1)
-            col_den_added = np.empty_like(cdsum)
+            col_den_added = np.zeros_like(cdsum)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
             #ind = self.filter_DLA(col_den, thresh)
             
             ### Call manager rank here
             self.comm.Reduce(cdsum, col_den_added, op=MPI.SUM, root=0)
             size_ind = self.comm.bcast(size_ind, root=0)
-            ind = np.empty(size_ind, dtype='d')
+            ind = np.zeros(size_ind, dtype='d')
             self.comm.Bcast(ind, root=0)
             
             #Update saves
@@ -736,7 +736,7 @@ class Spectra(object):
         #Do remaining files
         for nn in xrange(1,nsegments):
             tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments))
+            #print("Interpolation %.1f percent done" % (100*nn/nsegments))
             #Add new file
             result += tresult
             del tresult
