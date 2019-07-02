@@ -628,12 +628,13 @@ class Spectra(object):
         
         if self.rank == 0 :
             ind = self.filter_DLA(col_den_added, thresh)
+            ind = ind[0]
             size_ind = np.size(ind)
         
         size_ind = self.comm.bcast(size_ind, root=0)
 
         if self.rank != 0 :
-            ind = np.zeros(size_ind, dtype='d')
+            ind = np.zeros(size_ind, dtype=np.int)
         
         self.comm.Bcast(ind, root=0)
         H1_DLA = np.empty_like(col_den)
@@ -660,12 +661,13 @@ class Spectra(object):
                         
             if self.rank == 0 :
                 ind = self.filter_DLA(col_den, thresh)
+                ind = ind[0]
                 size_ind = np.size(ind)
             
             size_ind = self.comm.bcast(size_ind, root=0)
 
             if self.rank != 0:
-                ind = np.zeros(size_ind, dtype='d')
+                ind = np.zeros(size_ind, dtype=np.int)
 
             self.comm.Bcast(ind, root=0)            
             #Update saves
