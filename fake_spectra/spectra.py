@@ -656,7 +656,7 @@ class Spectra(object):
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
 
             ### Call manager rank here
-            self.comm.Reduce(cdsum, col_den_added, op=MPI.SUM, root=0)
+            self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
                         
             if rank == 0 :
                 ind = self.filter_DLA(col_den, thresh)
@@ -694,7 +694,9 @@ class Spectra(object):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
         #sum the column densities over the entire spectrum.
-        cdsum = np.sum(col_den, axis=1)
+        #cdsum = np.sum(col_den, axis=1)
+        cdsum = col_den
+        
         if np.size(thresh) > 1:
             ind = np.where(np.logical_and(cdsum > thresh[0], cdsum < thresh[1]))
         else:
