@@ -26,7 +26,7 @@ rr.get_tau("H",1,1025)
 rr.get_col_density("H",1)
 rr.get_col_density("H",-1)
 rr.save_file()
-
+del rr
 
 
 
