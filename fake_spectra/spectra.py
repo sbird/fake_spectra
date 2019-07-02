@@ -658,13 +658,13 @@ class Spectra(object):
             ### Call manager rank here
             self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
                         
-            if rank == 0 :
+            if self.rank == 0 :
                 ind = self.filter_DLA(col_den, thresh)
                 size_ind = np.size(ind)
             
             size_ind = self.comm.bcast(size_ind, root=0)
 
-            if rank != 0:
+            if self.rank != 0:
                 ind = np.zeros(size_ind, dtype='d')
 
             self.comm.Bcast(ind, root=0)            
