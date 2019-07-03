@@ -660,7 +660,7 @@ class Spectra(object):
             self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
                         
             if self.rank == 0 :
-                ind = self.filter_DLA(col_den, thresh)
+                ind = self.filter_DLA(col_den_added, thresh)
                 ind = ind[0]
                 size_ind = np.size(ind)
             
