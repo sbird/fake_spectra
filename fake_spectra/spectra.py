@@ -620,14 +620,14 @@ class Spectra(object):
         col_den = self.compute_spectra(elem,ion,1215,False)
         cdsum=np.sum(col_den, axis=1)
         # A variable for comm.Reduce()
-        col_den_added = np.zeros_like(cdsum, dtype='d')
+        cdsum_added = np.zeros_like(cdsum, dtype='d')
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
-        self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
+        self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
         
         if self.rank == 0 :
-            ind = self.filter_DLA(col_den_added, thresh)
+            ind = self.filter_DLA(cdsum_added, thresh)
             ind = ind[0]
             size_ind = np.size(ind)
         
@@ -653,14 +653,14 @@ class Spectra(object):
             self.cofm = self.get_cofm()
             col_den = self.compute_spectra(elem,ion,1215,False)
             cdsum = np.sum(col_den, axis = 1)
-            col_den_added = np.zeros_like(cdsum)
+            cdsum_added = np.zeros_like(cdsum)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
 
             ### Call manager rank here
-            self.comm.Reduce(cdsum, col_den_added, op=self.MPI.SUM, root=0)
+            self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
                         
             if self.rank == 0 :
-                ind = self.filter_DLA(col_den_added, thresh)
+                ind = self.filter_DLA(cdsum_added, thresh)
                 ind = ind[0]
                 size_ind = np.size(ind)
             
