@@ -17,7 +17,7 @@ thresh_t = 10**20.3
 ### the array to store added column density in
 
 rank_str = str(rank)
-rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/" +rank_str + "/", MPI, comm,  thresh = 0.0, kernel='tophot',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34."+rank_str+".hdf5")
+rr = RandSpectra(34, "/rhome/mqezl001/bigdata/TNG/TNG100-1/output/snapdir_034/" +rank_str + "/", MPI, comm,  thresh = 0.0, kernel='tophat',ndla = 1000, numlos=1000,savedir="/rhome/mqezl001/bigdata/TNG/TNG100-1/postprocessing/randspectra/Snap_034/parallel", savefile="spectra_34."+rank_str+".hdf5")
 
 #### Calculate spectra for 100 hdf5 files
 rr.get_tau("H",1,1215)
