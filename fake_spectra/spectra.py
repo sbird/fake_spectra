@@ -620,7 +620,7 @@ class Spectra(object):
         col_den = self.compute_spectra(elem,ion,1215,False)
         cdsum=np.sum(col_den, axis=1)
         # A variable for comm.Reduce()
-        cdsum_added = np.zeros_like(cdsum, dtype='d')
+        cdsum_added = np.zeros_like(cdsum)
         #ind = self.filter_DLA(col_den, thresh)
         
         ### Call manager rank here
