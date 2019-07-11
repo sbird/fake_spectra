@@ -101,10 +101,14 @@ class AbstractSnapshot(object):
 
     def get_units(self):
         """Get the base scales for the unit system."""
-        length = self.get_header_attr("UnitLength_in_cm")
-        mass = self.get_header_attr("UnitMass_in_g")
-        vel = self.get_header_attr("UnitVelocity_in_cm_per_s")
-        units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
+        try:
+            length = self.get_header_attr("UnitLength_in_cm")
+            mass = self.get_header_attr("UnitMass_in_g")
+            vel = self.get_header_attr("UnitVelocity_in_cm_per_s")
+            units = unitsystem.UnitSystem(UnitLength_in_cm=length, UnitMass_in_g=mass, UnitVelocity_in_cm_per_s=vel)
+        except KeyError:
+            print("Warning: Using default (kpc,10^10Msun, km/s) units.")
+            units = unitsystem.UnitSystem()
         return units
 
     def get_peculiar_velocity(self, part_type, segment):
