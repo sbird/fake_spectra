@@ -13,7 +13,7 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 tss = time.asctime()
-print('Rank =', rank, 'started at :', tts)
+print('Rank =', rank, 'started at :', tts, flush=True)
 
 numlos = 10000
 ndla = 1000
@@ -33,4 +33,4 @@ rr.save_file()
 del rr
 
 tsd = time.asctime()
-print('Rank =', rank, 'was Done at :', tsd)
+print('Rank =', rank, 'was Done at :', tsd, flush = True)
