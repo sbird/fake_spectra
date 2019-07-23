@@ -29,6 +29,8 @@ rr.get_tau("H",1,1215)
 rr.get_tau("H",1,1025)
 rr.get_col_density("H",1)
 rr.get_col_density("H",-1)
+rr.get_col_density("Z", -1)
+
 rr.save_file()
 del rr
 
