@@ -478,6 +478,9 @@ class Spectra(object):
         if get_tau or (ion != -1 and elem != 'H'):
             temp = self.snapshot_set.get_temp(0,segment=fn, units=self.units).astype(np.float32)
             temp = temp[ind]
+            #Some codes occasionally output negative temperatures, fix them
+            it = np.where(temp <= 0)
+            temp[it] = 1
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
