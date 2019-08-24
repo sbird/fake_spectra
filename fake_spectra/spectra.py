@@ -403,18 +403,20 @@ class Spectra(object):
 
     def _interpolate_single_file(self,nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
-        for nfirstseg in range(1, self.snapshot_set.get_n_segments()):
-            (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
-            if amumass is not False:
-                break
+        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion,get_tau)
         if load_all_data_first:
-            for nseg in range(nfirstseg, self.snapshot_set.get_n_segments()):
+            for nseg in range(1, self.snapshot_set.get_n_segments()):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
-                pos = np.concatenate((pos, pos_), axis=0)
-                if get_tau:
-                    vel = np.concatenate((vel, vel_), axis=0)
+                # We cannot concatenate onto empty arrays,
+                #so if the first segment contained no particles we must rename
+                if amumass is False:
+                    pos = pos_, vel = vel_
+                else:
+                    pos = np.concatenate((pos, pos_), axis=0)
+                    if get_tau:
+                        vel = np.concatenate((vel, vel_), axis=0)
                 elem_den = np.append(elem_den, elem_den_)
                 if len(temp) > 1:
                     temp = np.append(temp, temp_)
