@@ -412,7 +412,8 @@ class Spectra(object):
                 # We cannot concatenate onto empty arrays,
                 #so if the first segment contained no particles we must rename
                 if amumass is False:
-                    pos = pos_, vel = vel_
+                    pos = pos_
+                    vel = vel_
                 else:
                     pos = np.concatenate((pos, pos_), axis=0)
                     if get_tau:
