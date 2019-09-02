@@ -414,14 +414,17 @@ class Spectra(object):
                 if amumass is False:
                     pos = pos_
                     vel = vel_
+                    temp = temp_
+                    elem_den = elem_den_
+                    hh = hh_
                 else:
                     pos = np.concatenate((pos, pos_), axis=0)
                     if get_tau:
                         vel = np.concatenate((vel, vel_), axis=0)
-                elem_den = np.append(elem_den, elem_den_)
-                if len(temp) > 1:
-                    temp = np.append(temp, temp_)
-                hh = np.append(hh, hh_)
+                    elem_den = np.append(elem_den, elem_den_)
+                    if np.size(temp) > 1:
+                        temp = np.append(temp, temp_)
+                    hh = np.append(hh, hh_)
                 amumass = amumass_
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
