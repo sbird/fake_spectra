@@ -422,7 +422,7 @@ class Spectra(object):
                     if get_tau:
                         vel = np.concatenate((vel, vel_), axis=0)
                     elem_den = np.append(elem_den, elem_den_)
-                    if np.size(temp) > 1:
+                    if get_tau or (ion != -1 and elem != 'H'):
                         temp = np.append(temp, temp_)
                     hh = np.append(hh, hh_)
                 amumass = amumass_
