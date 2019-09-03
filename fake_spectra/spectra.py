@@ -48,7 +48,7 @@ try:
 except NameError:
     xrange = range
 
-class Spectra(object):
+class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
         Arguments:
             num - Snapshot number
