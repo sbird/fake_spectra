@@ -14,7 +14,7 @@
 /* The (unnormalized) cubic kernel from Price 2011: arxiv 1012.1885 , eq. 6
  * We define the support over h < 1, rather than h < 2 used there.
  * This changes the values of the constants, but the kernel value is the same.*/
-inline double sph_kernel(const double q)
+inline double sph_cubic_kernel(const double q)
 {
     const double norm = 32./4/M_PI;
     if (q >= 1)
@@ -24,6 +24,23 @@ inline double sph_kernel(const double q)
     else
         return norm*(2*pow(1.- q,3));
 }
+
+/* The normalized quintic kernel from Price 2011: arxiv 1012.1885 , eq. 8
+ * We define the support over h < 1, rather than h < 3 used there.
+ * This changes the values of the constants, but the kernel value is the same.*/
+inline double sph_kernel(const double q)
+{
+    const double norm = 9./40/M_PI;
+    if (q >= 1)
+        return 0;
+    if(q < (1./3))
+        return norm*6*(11-90*q*q+405*q*q*q*q-405*q*q*q*q*q);
+    if(q < (2/3) && q >= (1/3))
+        return norm*(pow(3.-3*q,5)-6*pow(2.-3*q,5));        
+    else
+        return norm*(243*pow(1.- q,5));
+}
+
 
 
 /* Compute the Voigt profile, which is the real part of the 
