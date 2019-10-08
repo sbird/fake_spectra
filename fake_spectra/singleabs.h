@@ -145,7 +145,7 @@ class SingleAbsorber
             //Integration region goes from -vhigh to vhigh, where vhigh is precomputed kernel support
             const double deltav=2.*m_vhigh/NGRID;
             //Because we are integrating over the whole sph kernel,
-            //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
+            //the first and last terms will have q = 1, sph_quintic_kernel = 0, so don't need to compute them.
             double total = 0;
             for(int i=1; i<NGRID; ++i)
             {
@@ -156,7 +156,7 @@ class SingleAbsorber
                 const double T0 = vdiff/btherm;
                 double tbin = profile(T0, aa);
                 if(kernel == SPH_CUBIC_SPLINE)
-                    tbin*=sph_kernel(q);
+                    tbin*=sph_quintic_kernel(q);
                 else if(kernel == TOP_HAT_KERNEL)
                     tbin *= 3./4./M_PI;
                 total+=tbin;
