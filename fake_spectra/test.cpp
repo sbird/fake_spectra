@@ -38,11 +38,11 @@ BOOST_AUTO_TEST_CASE(check_sph_kern)
 {
     //First check the kernel is working
     const double norm = 32./4/M_PI;
-    FLOATS_NEAR_TO(sph_kernel(1),0);
-    FLOATS_NEAR_TO(sph_kernel(0),norm);
-    FLOATS_NEAR_TO(sph_kernel(0.5),0.25*norm);
-    FLOATS_NEAR_TO(sph_kernel(0.25),0.71875*norm);
-    FLOATS_NEAR_TO(sph_kernel(0.75),0.03125*norm);
+    FLOATS_NEAR_TO(sph_quintic_kernel(1),0);
+    FLOATS_NEAR_TO(sph_quintic_kernel(0),norm);
+    FLOATS_NEAR_TO(sph_quintic_kernel(0.5),0.25*norm);
+    FLOATS_NEAR_TO(sph_quintic_kernel(0.25),0.71875*norm);
+    FLOATS_NEAR_TO(sph_quintic_kernel(0.75),0.03125*norm);
 }
 
 BOOST_AUTO_TEST_CASE(check_sph_kern_frac)
