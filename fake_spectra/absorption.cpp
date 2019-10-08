@@ -58,18 +58,18 @@ double sph_cubic_kern_frac(double zlow, double zhigh, const double smooth, const
     if (zlow > zhigh)
         return 0;
     const double qlow = sqrt(dr2+zlow*zlow)/smooth;
-    double total = sph_kernel(qlow)/2.;
+    double total = sph_cubic_kernel(qlow)/2.;
     const double deltaz=(zhigh-zlow)/NGRID;
     for(int i=1; i<NGRID; ++i)
     {
         const double zz = i*deltaz+zlow;
         const double q = sqrt(dr2+zz*zz)/smooth;
 
-        total+=sph_kernel(q);
+        total+=sph_cubic_kernel(q);
     }
     double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
 
-    total += sph_kernel(qhigh)/2.;
+    total += sph_cubic_kernel(qhigh)/2.;
     return deltaz*total;
 }
 
