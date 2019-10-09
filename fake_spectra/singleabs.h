@@ -9,7 +9,7 @@
 #define TOP_HAT_KERNEL 0
 #define SPH_CUBIC_SPLINE 1
 #define VORONOI_MESH 2
-
+#define SPH_QUINTIC_SPLINE 3
 
 /* The (unnormalized) cubic kernel from Price 2011: arxiv 1012.1885 , eq. 6
  * We define the support over h < 1, rather than h < 2 used there.
@@ -157,6 +157,8 @@ class SingleAbsorber
                 double tbin = profile(T0, aa);
                 if(kernel == SPH_CUBIC_SPLINE)
                     tbin*=sph_cubic_kernel(q);
+                else if(kernel == SPH_QUINTIC_SPLINE)
+                    tbin*=sph_quintic_kernel(q);
                 else if(kernel == TOP_HAT_KERNEL)
                     tbin *= 3./4./M_PI;
                 total+=tbin;

@@ -73,6 +73,28 @@ double sph_cubic_kern_frac(double zlow, double zhigh, const double smooth, const
     return deltaz*total;
 }
 
+double sph_quintic_kern_frac(double zlow, double zhigh, const double smooth, const double dr2, const double zrange)
+{
+    //Truncate bin size to support of kernel
+    zlow = std::max(zlow, -zrange);
+    zhigh = std::min(zhigh, zrange);
+    if (zlow > zhigh)
+        return 0;
+    const double qlow = sqrt(dr2+zlow*zlow)/smooth;
+    double total = sph_quintic_kernel(qlow)/2.;
+    const double deltaz=(zhigh-zlow)/NGRID;
+    for(int i=1; i<NGRID; ++i)
+    {
+        const double zz = i*deltaz+zlow;
+        const double q = sqrt(dr2+zz*zz)/smooth;
+
+        total+=sph_quintic_kernel(q);
+    }
+    double qhigh = sqrt(dr2+zhigh*zhigh)/smooth;
+
+    total += sph_quintic_kernel(qhigh)/2.;
+    return deltaz*total;
+}
 /* Find the fraction of the total particle density in this pixel by integrating a top hat kernel
  * over the z direction. This assumes that rho = rho_0, a constant, within the cell.
  * Arguments:
@@ -115,11 +137,14 @@ kern_frac_func get_kern_frac(const int kernel)
 {
     if(kernel == TOP_HAT_KERNEL)
         return tophat_kern_frac;
-    else
-    {
-        if(kernel == SPH_CUBIC_SPLINE) return sph_cubic_kern_frac;
-        else return arepo_kern_frac;
-    }
+    else if(kernel == SPH_CUBIC_SPLINE)
+        return sph_cubic_kern_frac;
+    else if(kernel == VORONOI_MESH)
+        return arepo_kern_frac;
+    else if(kernel == SPH_QUINTIC_SPLINE)
+        return sph_quintic_kern_frac;
+    /* Default*/
+    return tophat_kern_frac;
 }
 
 //Factor of 1e5 in bfac converts from cm/s to km/s
