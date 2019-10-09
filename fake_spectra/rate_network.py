@@ -83,8 +83,8 @@ class RateNetwork(object):
 
     def get_temp(self, density, ienergy, helium=0.24):
         """Get the equilibrium temperature at given internal energy.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+           Density is gas density in (physical) protons/cm^3
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction"""
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
@@ -92,7 +92,8 @@ class RateNetwork(object):
 
     def get_cooling_rate(self, density, ienergy, helium=0.24, photoheating=False):
         """Get the total cooling rate for a temperature and density. Negative means heating.
-           Density is gas denstiy in protons/cm^3. Internal energy is ergs/g.
+           Density is gas density in (physical) protons/cm^3
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
            Returns net heating/cooling rate in erg/s/g.
         """
         ne = self.get_equilib_ne(density, ienergy, helium)
@@ -131,8 +132,8 @@ class RateNetwork(object):
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
         starting with ne = nH and continuing until convergence.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+        Density is gas density in (physical) protons/cm^3
+        Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction.
         """
         #Get hydrogen number density
@@ -148,8 +149,8 @@ class RateNetwork(object):
 
     def get_neutral_fraction(self, density, ienergy, helium=0.24):
         """Get the neutral hydrogen fraction at a given temperature and density.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+        Density is gas density in (physical) protons/cm^3
+        Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction.
         """
         ne = self.get_equilib_ne(density, ienergy, helium=helium)
@@ -235,10 +236,11 @@ class RateNetwork(object):
 
     def _get_temp(self, nebynh, ienergy, helium=0.24):
         """Compute temperature (in K) from internal energy and electron density.
-           Uses: internal energy
+           Uses: internal energy in (km/s)^2, internal gadget units.
                  electron abundance per H atom (ne/nH)
                  hydrogen mass fraction (0.76)
-           Internal energy is in J/kg, internal gadget units, == 10^-10 ergs/g.
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
+           The code takes internal Gadget units
            Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
            T = U (γ-1) μ m_P / k_B
            where k_B is the Boltzmann constant

@@ -125,8 +125,10 @@ class Spectra:
                     self.kernel_int = 2
                 elif kernel == "tophat":
                     self.kernel_int = 0
+                elif kernel == "quintic":
+                    self.kernel_int = 3
                 else:
-                    #SPH kernel
+                    #Cubic SPH kernel
                     self.kernel_int = 1
         except IOError:
             pass
