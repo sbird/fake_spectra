@@ -125,12 +125,14 @@ class GasProperties(object):
         which are based on Rahmati 2012 if UVB_SELF_SHIELDING is on.
         Above the star formation density use the Rahmati fitting formula directly,
         as Arepo reports values for the eEOS. """
+        
+        units = self.absnap.get_units()
         #nH0 = self._code_neutral_fraction(part_type=part_type, segment=segment)
         density = self.absnap.get_data(part_type, "Density", segment)
-        units = self.absnap.get_units()
+        conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
+        
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
-        ne = self.absnap.get_data(part_type, "ElectronAbundance", segment)
-        nH0 = self.rtn.get_neutral_fraction(density, ienergy, ne)
+        nH0 = self.rtn.get_neutral_fraction(density*conv, ienergy)
         if not self.sf_neutral:
             return nH0
         #Above star-formation threshold, we want a neutral fraction which includes
