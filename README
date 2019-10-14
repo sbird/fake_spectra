@@ -1,8 +1,6 @@
-This branch is to run fake_spectra on a single fof group on TNG simukations.
-So in randspectra call, argument like 
-file_num =447
-is needed.
-
+This branch is to run fake_spectra on TNG Simulations.
+You need to group the snapshot files 27 by 27 hdf5 files and name the folders from 0 to 15.
+It will use 16 ranks in MPI.
 
 
 -------------------------------------------------
