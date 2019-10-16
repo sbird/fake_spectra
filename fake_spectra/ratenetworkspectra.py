@@ -26,14 +26,17 @@ class RateNetworkGas(gas_properties.GasProperties):
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
-        #expecting units of atoms/cm^3
+        #expecting units of atoms/cm^3, but gadget is in (km/s)^2, so we need unit conversion,also
+        #rate_network.py needs density to be physical. So, when we pass to rate_network it will be multiplied by conv
         density = np.log(self.get_code_rhoH(part_type, segment))
-        #expecting units of 10^-10 ergs/g
-        ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
+        conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
+        
+        #expecting units of 10^-10 ergs/g, but units of gadget is (km/s)^2 = 10^10 erg/g. units.UnitInernalEnergy = 10^10 
+        ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs)
         if np.any((np.max(self.densgrid) < density)+(np.min(self.densgrid) > density)):
             if np.any((np.max(self.ienergygrid) < ienergy)*(np.min(self.ienergygrid) > ienergy)):
                 raise ValueError("Interpolation out of range!")
-        nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
+        nH0 = np.exp(_interpolate_2d(density*conv, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
         return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy, density0):
