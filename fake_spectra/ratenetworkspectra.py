@@ -30,6 +30,13 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = np.log(self.get_code_rhoH(part_type, segment))
         #expecting units of 10^-10 ergs/g
         ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
+        #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
+        if self.sf_neutral:
+            conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
+            ind = np.where(density > self.PhysDensThresh/0.76/conv)
+            meanweight = 4.0 / (1 + 3 * 0.76)
+            EgySpecCold = 1 / (meanweight * (5./3.-1)) * (self.units.boltzmann / self.units.protonmass) * 1000
+            ienergy[ind] = EgySpecCold * self.units.UnitInternalEnergy_in_cgs/1e10
         if np.any((np.max(self.densgrid) < density)+(np.min(self.densgrid) > density)):
             if np.any((np.max(self.ienergygrid) < ienergy)*(np.min(self.ienergygrid) > ienergy)):
                 raise ValueError("Interpolation out of range!")
@@ -58,8 +65,8 @@ class RateNetworkGas(gas_properties.GasProperties):
 
 class RateNetworkSpectra(spectra.Spectra):
     """Generate spectra with a neutral fraction from a rate network"""
-    def __init__(self, *args, photo_factor = 1, selfshield=False, **kwargs):
+    def __init__(self, *args, photo_factor = 1, sf_neutral=True, selfshield=True, **kwargs):
         kwargs["gasprop"]=RateNetworkGas
-        kwargs["sf_neutral"] = False
+        kwargs["sf_neutral"] = sf_neutral
         kwargs["gasprop_args"] = {"photo_factor": photo_factor, "selfshield" : selfshield}
         super().__init__(*args, **kwargs)
