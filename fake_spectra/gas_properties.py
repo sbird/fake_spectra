@@ -131,7 +131,7 @@ class GasProperties(object):
         density = self.absnap.get_data(part_type, "Density", segment)
         conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         
-        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs
+        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)
         nH0 = self.rtn.get_neutral_fraction(density*conv, ienergy)
         if not self.sf_neutral:
             return nH0
