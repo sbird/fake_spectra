@@ -149,7 +149,7 @@ class RateNetwork(object):
     def get_neutral_fraction(self, density, ienergy, helium=0.24):
         """Get the neutral hydrogen fraction at a given temperature and density.
         density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+        Internal energy is in ergs/g.
         helium is a mass fraction.
         """
         nebynh = self.get_ne_by_nh(density, ienergy)
