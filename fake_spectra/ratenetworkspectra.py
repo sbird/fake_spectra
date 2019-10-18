@@ -30,6 +30,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
+        ienergy = self._get_ienergy_rescaled(density, ienergy)
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
         if self.sf_neutral:
             conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
@@ -45,7 +46,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
         return nH0
 
-    def _get_ienergy_rescaled(self, density, ienergy, density0):
+    def _get_ienergy_rescaled(self, density, ienergy):
         """Get the internal energy, rescaled to give the desired equation of state.
         Technically the e. of s. normally used is:
             T = T_0 (rho / rho_0)^(gamma-1)
@@ -59,10 +60,13 @@ class RateNetworkGas(gas_properties.GasProperties):
         it lies off the new one by a similar amount; the dispersion is preserved!
         """
         #Adjust temperature by desired factor, to give desired equation of state.
+        omegab = 0.0445
+        rhoc = self.units.rho_crit(self.hubble) * (1+self.redshift)**3
+        overden = self.units.protonmass * density /(omegab * rhoc)
         ienergy *= self.temp_factor
         #Adjust slope by same factor: note use gamma_factor -1 so gamma_factor = 1 means no change.
         if self.gamma_factor != 1.:
-            ienergy *= (density/density0)**self.gamma_factor-1.
+            ienergy *= (overden)**self.gamma_factor-1.
         return ienergy
 
 class RateNetworkSpectra(spectra.Spectra):
