@@ -41,9 +41,9 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = np.log(density)
         ienergy = np.log(ienergy)
         if (np.max(self.densgrid) < np.max(density)) or (np.min(self.densgrid) > np.min(density)):
-            raise ValueError("Density out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.densgrid), np.max(self.densgrid), np.min(density), np.max(density))
+            raise ValueError("Density out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.densgrid), np.max(self.densgrid), np.min(density), np.max(density)))
         if (np.max(self.ienergygrid) < np.max(ienergy)) or (np.min(self.ienergygrid) > np.min(ienergy)):
-            raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(ienergy), np.max(ienergy))
+            raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(ienergy), np.max(ienergy)))
         nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
         return nH0
 
