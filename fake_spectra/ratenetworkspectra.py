@@ -27,9 +27,9 @@ class RateNetworkGas(gas_properties.GasProperties):
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
         #expecting units of atoms/cm^3
-        density = np.log(self.get_code_rhoH(part_type, segment))
+        density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
-        ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
+        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
         if self.sf_neutral:
             conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
@@ -37,6 +37,8 @@ class RateNetworkGas(gas_properties.GasProperties):
             meanweight = 4.0 / (1 + 3 * 0.76)
             EgySpecCold = 1 / (meanweight * (5./3.-1)) * (self.units.boltzmann / self.units.protonmass) * 1000
             ienergy[ind] = EgySpecCold * self.units.UnitInternalEnergy_in_cgs/1e10
+        density = np.log(density)
+        ienergy = np.log(ienergy)
         if (np.max(self.densgrid) < np.max(density)) or (np.min(self.densgrid) > np.min(density)) or
             (np.max(self.ienergygrid) < np.max(ienergy)) or (np.min(self.ienergygrid) > np.min(ienergy)):
                 raise ValueError("Interpolation out of range!")
