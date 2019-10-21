@@ -13,10 +13,6 @@ import numpy as np
 import scipy.interpolate.interpolate as intp
 
 from . import unitsystem
-from . import rate_network
-
-
-
 
 class GasProperties(object):
     """Class implementing the neutral fraction ala Rahmati 2012.
@@ -30,14 +26,12 @@ class GasProperties(object):
         Should only be true if used with a Springel-Hernquist star formation model in a version of Gadget/Arepo which incorrectly
         sets the neutral fraction in the star forming gas to less than unity.
         """
-
     def __init__(self, redshift, absnap, hubble = 0.71, fbar=0.17, units=None, sf_neutral=True):
         if units is not None:
             self.units = units
         else:
             self.units = unitsystem.UnitSystem()
         self.absnap = absnap
-        self.rtn = rate_network.RateNetwork(redshift)
         self.f_bar = fbar
         self.redshift = redshift
         self.sf_neutral = sf_neutral
@@ -118,21 +112,13 @@ class GasProperties(object):
     def _code_neutral_fraction(self, part_type, segment):
         """Get the neutral fraction from the code"""
         return self.absnap.get_data(part_type, "NeutralHydrogenFraction", segment=segment)
-        
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen *fraction* using values given by Arepo
         which are based on Rahmati 2012 if UVB_SELF_SHIELDING is on.
         Above the star formation density use the Rahmati fitting formula directly,
         as Arepo reports values for the eEOS. """
-        
-        units = self.absnap.get_units()
-        #nH0 = self._code_neutral_fraction(part_type=part_type, segment=segment)
-        density = self.absnap.get_data(part_type, "Density", segment)
-        conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
-        
-        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)
-        nH0 = self.rtn.get_neutral_fraction(density*conv, ienergy)
+        nH0 = self._code_neutral_fraction(part_type=part_type, segment=segment)
         if not self.sf_neutral:
             return nH0
         #Above star-formation threshold, we want a neutral fraction which includes
@@ -149,7 +135,7 @@ class GasProperties(object):
         #So just assume that at the threshold all gas is in cold clouds.
         #In reality, this should be about 90% of gas in cold clouds, so
         #we will overpredict the neutral fraction by a small amount.
-        #density = self.absnap.get_data(part_type, "Density", segment=segment)
+        density = self.absnap.get_data(part_type, "Density", segment=segment)
         conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         ind = np.where(density > self.PhysDensThresh/0.76/conv)
         if self.redshift_coverage:
