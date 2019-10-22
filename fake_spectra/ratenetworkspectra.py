@@ -8,7 +8,7 @@ from .rate_network import RateNetwork
 
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
-    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=False, photo_factor=1, temp_factor=1, gamma_factor=1):
+    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=True, photo_factor=1, temp_factor=1, gamma_factor=1):
         super().__init__(redshift, absnap, hubble=hubble, fbar=fbar, units=units, sf_neutral=sf_neutral)
         self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, selfshield=selfshield, treecool_file="data/TREECOOL_ep_2018p")
         self.temp_factor = temp_factor
