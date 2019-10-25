@@ -264,7 +264,8 @@ class RateNetwork(object):
         if np.any(nebynh < 0):
             nebynh[np.where(nebynh < 0)] = 0
         hy_mass = 1 - helium
-        muienergy = 4 / (hy_mass * (3 + 4*nebynh) + 1)*ienergy*1e10
+        meanweight = 4./(1 + (3 + 4 * nebynh) * hy_mass)
+        muienergy = meanweight *ienergy*1e10
         #Boltzmann constant (cgs)
         boltzmann=1.38066e-16
         gamma=5./3
