@@ -37,7 +37,7 @@ class RateNetworkGas(gas_properties.GasProperties):
             ind = np.where(density > self.PhysDensThresh/0.76/conv)
             meanweight = 4.0 / (1 + 3 * 0.76)
             EgySpecCold = 1 / (meanweight * (5./3.-1)) * (self.units.boltzmann / self.units.protonmass) * 1000
-            ienergy[ind] = EgySpecCold * self.units.UnitInternalEnergy_in_cgs/1e10
+            ienergy[ind] = EgySpecCold/1e10
         density = np.log(density)
         ienergy = np.log(ienergy)
         if (np.max(self.densgrid) < np.max(density)) or (np.min(self.densgrid) > np.min(density)):
