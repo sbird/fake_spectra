@@ -157,11 +157,20 @@ class RateNetwork(object):
         temp = self._get_temp(ne/nh, ienergy, helium)
         return self._nH0(nh, temp, ne) / nh
 
+
+    def _photofac(self, ne, nh, temp):
+        """Get the photoionization correction factor divided by the electron density.
+        Adjusted to work when ne ~ 0."""
+        photofac = np.zeros_like(ne)
+        ii = np.where(ne > 1e-50)
+        photofac[ii] = self.photo_factor*self._self_shield_corr(nh[ii], temp[ii])/ne[ii]
+        return photofac
+
     def _nH0(self, nh, temp, ne):
         """The neutral hydrogen number density. Eq. 33 of KWH."""
         alphaHp = self.recomb.alphaHp(temp)
         GammaeH0 = self.collisional * self.recomb.GammaeH0(temp)
-        photorate = self.photo.gH0(self.redshift)/ne*self.photo_factor*self._self_shield_corr(nh, temp)
+        photorate = self.photo.gH0(self.redshift)* self._photofac(ne, nh, temp)
         return nh * alphaHp/ (alphaHp + GammaeH0 + photorate)
 
     def _nHp(self, nh, temp, ne):
@@ -172,22 +181,22 @@ class RateNetwork(object):
         """The ionised helium number density, divided by the helium number fraction. Eq. 35 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
         alphaHepp = self.recomb.alphaHepp(temp)
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
+        photofac = self._photofac(ne, nh, temp)
+        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
+        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
         return nh / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
 
     def _nHe0(self, nh, temp, ne):
         """The neutral helium number density, divided by the helium number fraction. Eq. 36 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
+        photofac = self._photofac(ne, nh, temp)
+        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
         return self._nHep(nh, temp, ne) * alphaHep / GammaHe0
 
     def _nHepp(self, nh, temp, ne):
         """The doubly ionised helium number density, divided by the helium number fraction. Eq. 37 of KWH."""
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
+        photofac = self._photofac(ne, nh, temp)
+        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
         alphaHepp = self.recomb.alphaHepp(temp)
         return self._nHep(nh, temp, ne) * GammaHep / alphaHepp
 
@@ -651,7 +660,8 @@ from scipy._lib._util import _asarray_validated, _lazywhere
 
 def _del2(p0, p1, d):
     """del2 convergence accelerator"""
-    return p0 - np.square(p1 - p0) / d
+    pp = p0 - np.square(p1 - p0) / d
+    return np.maximum(pp, np.zeros_like(pp))
 
 def _relerr(actual, desired):
     """Compute absolute error. In the original code this is relative error."""
@@ -668,8 +678,6 @@ def _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel):
             p = _lazywhere(d != 0, (p0, p1, d), f=_del2, fillvalue=p2)
         else:
             p = p1
-        if p < 0:
-            p = 0
         relerr = _lazywhere(p0 != 0, (p, p0), f=_relerr, fillvalue=p)
         if np.all(np.abs(relerr) < xtol):
             return p
