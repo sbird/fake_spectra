@@ -21,8 +21,10 @@ class RateNetworkGas(gas_properties.GasProperties):
         self.densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
         self.ienergygrid = np.linspace(elim[0], elim[1], sz)
         dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
-        self.lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
+        self.lh0grid = np.zeros_like(dgrid)
         #We assume primordial helium
+        for i in range(2*sz):
+            self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
