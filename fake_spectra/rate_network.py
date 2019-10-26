@@ -137,8 +137,12 @@ class RateNetwork(object):
         """
         #Get hydrogen number density
         nh = density * (1-helium)
-        rooted = lambda ne: self._ne(nh, self._get_temp(ne/nh, ienergy, helium=helium), ne, helium=helium)
-        ne = fixed_point(rooted, nh,xtol=self.converge)
+        def rooted(ne, nh, ienergy):
+            return self._ne(nh, self._get_temp(ne/nh, ienergy, helium=helium), ne, helium=helium)
+        try:
+            ne = np.array([fixed_point(rooted, nh[i], args=(nh[i], ienergy[i]),xtol=self.converge) for i in range(np.size(nh))])
+        except TypeError:
+            ne = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
         assert np.all(np.abs(rooted(ne, nh, ienergy) - ne) < 1.5*self.converge)
         return ne
 
@@ -161,9 +165,14 @@ class RateNetwork(object):
     def _photofac(self, ne, nh, temp):
         """Get the photoionization correction factor divided by the electron density.
         Adjusted to work when ne ~ 0."""
-        photofac = np.zeros_like(ne)
-        ii = np.where(ne > 1e-40)
-        photofac[ii] = self.photo_factor*self._self_shield_corr(nh[ii], temp[ii])/ne[ii]
+        if np.size(ne) > 1:
+            photofac = np.zeros_like(ne)
+            ii = np.where(ne > 1e-40)
+            photofac[ii] = self.photo_factor*self._self_shield_corr(nh[ii], temp[ii])/ne[ii]
+        else:
+            photofac = 0
+            if ne > 1e-40:
+                photofac = self.photo_factor*self._self_shield_corr(nh, temp)/ne
         return photofac
 
     def _nH0(self, nh, temp, ne):
