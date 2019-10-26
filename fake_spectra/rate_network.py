@@ -44,7 +44,7 @@ class RateNetwork(object):
         collisional - Flag to enable collisional ionizations.
         treecool_file - File to read a UV background from. Matches format used by Gadget.
     """
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="Sherwood", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-6, selfshield=True, cool="Sherwood", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
         elif recomb == "B06":
@@ -139,7 +139,7 @@ class RateNetwork(object):
         nh = density * (1-helium)
         rooted = lambda ne: self._ne(nh, self._get_temp(ne/nh, ienergy, helium=helium), ne, helium=helium)
         ne = fixed_point(rooted, nh,xtol=self.converge)
-        assert np.all(np.abs(rooted(ne) - ne) < self.converge)
+        assert np.all(np.abs(rooted(ne, nh, ienergy) - ne) < 1.5*self.converge)
         return ne
 
     def get_ne_by_nh(self, density, ienergy, helium=0.24):
@@ -162,7 +162,7 @@ class RateNetwork(object):
         """Get the photoionization correction factor divided by the electron density.
         Adjusted to work when ne ~ 0."""
         photofac = np.zeros_like(ne)
-        ii = np.where(ne > 1e-50)
+        ii = np.where(ne > 1e-40)
         photofac[ii] = self.photo_factor*self._self_shield_corr(nh[ii], temp[ii])/ne[ii]
         return photofac
 
@@ -663,24 +663,19 @@ def _del2(p0, p1, d):
     pp = p0 - np.square(p1 - p0) / d
     return np.maximum(pp, np.zeros_like(pp))
 
-def _relerr(actual, desired):
-    """Compute absolute error. In the original code this is relative error."""
-    return np.abs(actual - desired)
-
 def _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel):
     """Helper function from scipy optimize"""
     p0 = x0
     for i in range(maxiter):
         p1 = func(p0, *args)
-        if use_accel:
+        if np.all(np.abs(p1-p0) < xtol):
+            return p1
+        if use_accel and i < 50:
             p2 = func(p1, *args)
             d = p2 - 2.0 * p1 + p0
             p = _lazywhere(d != 0, (p0, p1, d), f=_del2, fillvalue=p2)
         else:
             p = p1
-        relerr = _lazywhere(p0 != 0, (p, p0), f=_relerr, fillvalue=p)
-        if np.all(np.abs(relerr) < xtol):
-            return p
         p0 = p
     msg = "Failed to converge after %d iterations, value is %s" % (maxiter, p)
     raise RuntimeError(msg)
