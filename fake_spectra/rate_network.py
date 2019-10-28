@@ -680,7 +680,7 @@ def _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel):
     p0 = x0
     for i in range(maxiter):
         p1 = func(p0, *args)
-        if np.all(np.abs(p1-p0) < xtol):
+        if np.all(np.abs(p1-p0) < xtol/2.):
             return p1
         if use_accel and i < maxiter//2:
             p2 = func(p1, *args)
