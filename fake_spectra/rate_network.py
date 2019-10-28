@@ -142,7 +142,7 @@ class RateNetwork(object):
             return self._nebynh(nh, self._get_temp(nebynh, ienergy, helium=helium), nebynh, helium=helium)
         try:
             nebynh = np.array([fixed_point(rooted, nh[i], args=(nh[i], ienergy[i]),xtol=self.converge) for i in range(np.size(nh))])
-        except TypeError:
+        except TypeError, IndexError:
             nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
         assert np.all(np.abs(rooted(nebynh, nh, ienergy) - nebynh) < self.converge)
         return nebynh * nh
