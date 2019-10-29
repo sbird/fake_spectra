@@ -8,21 +8,29 @@ from .rate_network import RateNetwork
 
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
-    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=True, photo_factor=1, temp_factor=1, gamma_factor=1):
+    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, temp_factor=1, gamma_factor=1, **kwargs):
         super().__init__(redshift, absnap, hubble=hubble, fbar=fbar, units=units, sf_neutral=sf_neutral)
-        self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, selfshield=selfshield, treecool_file="data/TREECOOL_ep_2018p")
+        self.rates = RateNetwork(redshift, f_bar = fbar, **kwargs)
         self.temp_factor = temp_factor
         self.gamma_factor = gamma_factor
-        self.build_interp(dlim=(-15, 17), elim=(1, 26))
+        self.maxdens = self.PhysDensThresh/0.76
+        dmax = 5
+        dsz=1000
+        if self.sf_neutral:
+            dmax = np.log(self.maxdens)
+            dsz = 500
+        self.build_interp(dlim=(-15, dmax), elim=(2, 21),tsz=500, dsz=dsz)
 
-    def build_interp(self, dlim, elim, sz=750):
+    def build_interp(self, dlim, elim, tsz=500, dsz=1000):
         """Build the interpolator"""
         #Build interpolation
-        self.densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
-        self.ienergygrid = np.linspace(elim[0], elim[1], sz)
+        self.densgrid = np.linspace(dlim[0], dlim[1], dsz)
+        self.ienergygrid = np.linspace(elim[0], elim[1], tsz)
         dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
-        self.lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
+        self.lh0grid = np.zeros_like(dgrid)
         #We assume primordial helium
+        for i in range(dsz):
+            self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
@@ -31,20 +39,29 @@ class RateNetworkGas(gas_properties.GasProperties):
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
         ienergy = self._get_ienergy_rescaled(density, ienergy)
+        ldensity = np.log(density)
+        lienergy = np.log(ienergy)
+        #Clamp the temperatures : hot gas has the same neutral fraction of 0 anyway.
+        ie = np.where(lienergy >= np.max(self.ienergygrid))
+        lienergy[ie] = np.max(self.ienergygrid)*0.99
+        ie = np.where(lienergy <= np.min(self.ienergygrid))
+        lienergy[ie] = np.min(self.ienergygrid)*0.99
+        nH0 = np.ones_like(density)
+        ii = np.where(ldensity < np.max(self.densgrid))
+        if (np.max(self.ienergygrid) < np.max(lienergy[ii])) or (np.min(self.ienergygrid) > np.min(lienergy[ii])):
+            raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(lienergy[ii]), np.max(lienergy[ii])))
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
-        if self.sf_neutral:
-            conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
-            ind = np.where(density > self.PhysDensThresh/0.76/conv)
-            meanweight = 4.0 / (1 + 3 * 0.76)
-            EgySpecCold = 1 / (meanweight * (5./3.-1)) * (self.units.boltzmann / self.units.protonmass) * 1000
-            ienergy[ind] = EgySpecCold * self.units.UnitInternalEnergy_in_cgs/1e10
-        density = np.log(density)
-        ienergy = np.log(ienergy)
-        if (np.max(self.densgrid) < np.max(density)) or (np.min(self.densgrid) > np.min(density)):
-            raise ValueError("Density out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.densgrid), np.max(self.densgrid), np.min(density), np.max(density)))
-        if (np.max(self.ienergygrid) < np.max(ienergy)) or (np.min(self.ienergygrid) > np.min(ienergy)):
-            raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(ienergy), np.max(ienergy)))
-        nH0 = np.exp(_interpolate_2d(density, ienergy, self.densgrid, self.ienergygrid, self.lh0grid))
+        nH0[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, self.lh0grid))
+        ii2 = np.where(ldensity >= np.max(self.densgrid))
+        if np.size(ii2) > 0:
+            if self.sf_neutral:
+                if self.redshift_coverage:
+                    ssnH0 = self._neutral_fraction(density[ii2], 1e4)
+                    nH0[ii2] = ssnH0
+                else:
+                    nH0[ii2] = 1.
+            else:
+                nH0[ii2] = self.rates.get_neutral_fraction(density[ii2], ienergy[ii2])
         return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy):
