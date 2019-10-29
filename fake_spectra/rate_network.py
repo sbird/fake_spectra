@@ -140,10 +140,7 @@ class RateNetwork(object):
         nh = density * (1-helium)
         def rooted(nebynh, nh, ienergy):
             return self._nebynh(nh, self._get_temp(nebynh, ienergy, helium=helium), nebynh, helium=helium)
-        try:
-            nebynh = np.array([fixed_point(rooted, nh[i], args=(nh[i], ienergy[i]),xtol=self.converge) for i in range(np.size(nh))])
-        except (TypeError, IndexError):
-            nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
+        nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
         assert np.all(np.abs(rooted(nebynh, nh, ienergy) - nebynh) < self.converge)
         return nebynh * nh
 
