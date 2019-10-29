@@ -105,8 +105,8 @@ def test_heatingcooling_rate():
 
 def testRateNetworkGas():
     """Test that the spline is working."""
-    gasprop = ratenetworkspectra.RateNetworkGas(3, None)
-    dlim = (np.log(1e-7), np.log(3))
+    gasprop = ratenetworkspectra.RateNetworkGas(3, None, sf_neutral=False)
+    dlim = (np.log(1e-6), np.log(3))
     elim = (np.log(20), np.log(3e6))
     randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
     randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
