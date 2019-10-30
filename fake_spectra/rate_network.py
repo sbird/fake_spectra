@@ -44,7 +44,7 @@ class RateNetwork(object):
         collisional - Flag to enable collisional ionizations.
         treecool_file - File to read a UV background from. Matches format used by Gadget.
     """
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-6, selfshield=True, cool="Sherwood", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="Sherwood", recomb="V96", collisional=True, treecool_file="data/TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
         elif recomb == "B06":
@@ -140,10 +140,7 @@ class RateNetwork(object):
         nh = density * (1-helium)
         def rooted(nebynh, nh, ienergy):
             return self._nebynh(nh, self._get_temp(nebynh, ienergy, helium=helium), nebynh, helium=helium)
-        try:
-            nebynh = np.array([fixed_point(rooted, nh[i], args=(nh[i], ienergy[i]),xtol=self.converge) for i in range(np.size(nh))])
-        except (TypeError, IndexError):
-            nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
+        nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
         assert np.all(np.abs(rooted(nebynh, nh, ienergy) - nebynh) < self.converge)
         return nebynh * nh
 
