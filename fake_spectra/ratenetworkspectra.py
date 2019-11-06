@@ -45,7 +45,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         ie = np.where(lienergy >= np.max(self.ienergygrid))
         lienergy[ie] = np.max(self.ienergygrid)*0.99
         ie = np.where(lienergy <= np.min(self.ienergygrid))
-        lienergy[ie] = np.min(self.ienergygrid)*0.99
+        lienergy[ie] = np.min(self.ienergygrid)*1.01
         nH0 = np.ones_like(density)
         ii = np.where(ldensity < np.max(self.densgrid))
         if (np.max(self.ienergygrid) < np.max(lienergy[ii])) or (np.min(self.ienergygrid) > np.min(lienergy[ii])):
