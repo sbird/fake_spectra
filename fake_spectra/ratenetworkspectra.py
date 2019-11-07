@@ -62,6 +62,7 @@ class RateNetworkGas(gas_properties.GasProperties):
                     nH0[ii2] = 1.
             else:
                 nH0[ii2] = self.rates.get_neutral_fraction(density[ii2], ienergy[ii2])
+        assert np.all(np.logical_not(np.isnan(nH0)))
         return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy):
@@ -85,6 +86,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         #Adjust slope by same factor: note use gamma_factor -1 so gamma_factor = 1 means no change.
         if self.gamma_factor != 1.:
             ienergy *= (overden)**self.gamma_factor-1.
+        assert np.all(np.logical_not(np.isnan(ienergy)))
         return ienergy
 
 class RateNetworkSpectra(spectra.Spectra):
