@@ -85,8 +85,9 @@ class RateNetworkGas(gas_properties.GasProperties):
         ienergy *= self.temp_factor
         #Adjust slope by same factor: note use gamma_factor -1 so gamma_factor = 1 means no change.
         if self.gamma_factor != 1.:
-            ienergy *= (overden)**self.gamma_factor-1.
+            ienergy *= (overden)**(self.gamma_factor-1.)
         assert np.all(np.logical_not(np.isnan(ienergy)))
+        assert np.all(ienergy > 0)
         return ienergy
 
 class RateNetworkSpectra(spectra.Spectra):
