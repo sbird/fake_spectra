@@ -77,7 +77,8 @@ class Spectra:
             kernel - Interpolation method to use. The default is to select the method based on the type of simulation:
                      this will use a Voronoi mesh build if we are Arepo and an SPH kernel for Gadget.
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
-                     kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
+                     kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
+                     and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
@@ -127,9 +128,13 @@ class Spectra:
                     self.kernel_int = 0
                 elif kernel == "quintic":
                     self.kernel_int = 3
-                else:
+                elif kernel == "cubic":
                     #Cubic SPH kernel
                     self.kernel_int = 1
+                elif kernel == "sph":
+                    self.kernel_int = 1
+                else:
+                    raise ValueError("Unrecognised kernel %d" % kernel)
         except IOError:
             pass
         if savedir is None:
