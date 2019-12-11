@@ -802,6 +802,87 @@ class Spectra:
         if noise and self.snr > 0:
             tau = self.add_noise(self.snr, tau, number)
         return tau
+    
+    
+    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
+        """Get the optical depth for a particular element out of:
+           (He, C, N, O, Ne, Mg, Si, Fe)
+           and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
+        """
+        try:
+            if force_recompute:
+                raise KeyError
+            self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
+            ntau = self.tau_obs[(elem, ion)]
+        except KeyError:
+            #Compute tau for each line
+            nlines = len(self.lines[(elem,ion)])
+            tau = np.zeros([nlines, self.NumLos,self.nbins])
+            for ll in range(nlines):
+                line = list(self.lines[(elem,ion)].keys())[ll]
+                tau_loc = self.compute_spectra(elem, ion, line, True)
+                tau[ll,:,:] = tau_loc
+                del tau_loc
+            #Maximum tau in each spectra with each line,
+            #after convolving with a Gaussian for instrumental broadening.
+            maxtaus = np.max(spec_utils.res_corr(tau, self.dvbin, self.spec_res), axis=-1)
+            #Array for line indices
+            ntau = np.empty([self.NumLos, self.nbins])
+            #Use the maximum unsaturated optical depth
+            for ii in xrange(self.NumLos):
+                # we want unsaturated lines, defined as those with tau < 3
+                #which is the maximum tau in the sample of Neeleman 2013
+                #Also use lines with some absorption: tau > 0.1, roughly twice noise level.
+                ind = np.where(np.logical_and(maxtaus[:,ii] < 3, maxtaus[:,ii] > 0.1))
+                if np.size(ind) > 0:
+                    line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
+                else:
+                    #We have no lines in the desired region: here use something slightly saturated.
+                    #In reality the observers will use a different ion
+                    ind2 = np.where(maxtaus[:,ii] > 0.1)
+                    if np.size(ind2) > 0:
+                        line = np.where(maxtaus[:,ii] == np.min(maxtaus[ind2,ii]))
+                    else:
+                        #We have no observable lines: this spectra are metal-poor
+                        #and will be filtered anyway.
+                        line = np.where(maxtaus[:,ii] == np.max(maxtaus[:,ii]))
+                if np.size(line) > 1:
+                    line = (line[0][0],)
+                ntau[ii,:] = tau[line,ii,:]
+            self.tau_obs[(elem, ion)] = ntau
+        if number >= 0:
+            ntau = ntau[number,:]
+        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
+        ntau = spec_utils.res_corr(ntau, self.dvbin, self.spec_res)
+        #Add noise
+        if noise and self.snr > 0:
+            ntau = self.add_noise(self.snr, ntau, number)
+        return ntau
+
+    def vel_width(self, elem, ion):
+        """
+           Find the velocity width of an ion.
+           This is the width in velocity space containing 90% of the optical depth
+           over the absorber.
+           elem - element to look at
+           ion - ionisation state of this element.
+        """
+        try:
+            return self.vel_widths[(elem, ion)]
+        except KeyError:
+            tau = self.get_observer_tau(elem, ion)
+            (low, high, offset) = self.find_absorber_width(elem, ion)
+            #  Size of a single velocity bin
+            vel_width = np.zeros(np.shape(tau)[0])
+            #deal with periodicity by making sure the deepest point is in the middle
+            for ll in np.arange(0, np.shape(tau)[0]):
+                tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
+                (nnlow, nnhigh) = self._vel_width_bound(tau_l)
+                vel_width[ll] = self.dvbin*(nnhigh-nnlow)
+            #Return the width
+            self.vel_widths[(elem, ion)] = vel_width
+            return self.vel_widths[(elem, ion)]
+
 
     def _vel_single_file(self,fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""
