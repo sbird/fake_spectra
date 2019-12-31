@@ -48,7 +48,7 @@ try:
 except NameError:
     xrange = range
 
-class Spectra(object):
+class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
         Arguments:
             num - Snapshot number
@@ -77,7 +77,8 @@ class Spectra(object):
             kernel - Interpolation method to use. The default is to select the method based on the type of simulation:
                      this will use a Voronoi mesh build if we are Arepo and an SPH kernel for Gadget.
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
-                     kernel (a good back up for large Arepo simulations) or "sph" for an SPH kernel.
+                     kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
+                     and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
     def __init__(self,num, base, MPI, comm,cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
@@ -129,9 +130,15 @@ class Spectra(object):
                     self.kernel_int = 2
                 elif kernel == "tophat":
                     self.kernel_int = 0
-                else:
-                    #SPH kernel
+                elif kernel == "quintic":
+                    self.kernel_int = 3
+                elif kernel == "cubic":
+                    #Cubic SPH kernel
                     self.kernel_int = 1
+                elif kernel == "sph":
+                    self.kernel_int = 1
+                else:
+                    raise ValueError("Unrecognised kernel %d" % kernel)
         except IOError:
             pass
         if savedir is None:
@@ -416,13 +423,22 @@ class Spectra(object):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
-                pos = np.concatenate((pos, pos_), axis=0)
-                if get_tau:
-                    vel = np.concatenate((vel, vel_), axis=0)
-                elem_den = np.append(elem_den, elem_den_)
-                if len(temp) > 1:
-                    temp = np.append(temp, temp_)
-                hh = np.append(hh, hh_)
+                # We cannot concatenate onto empty arrays,
+                #so if the first segment contained no particles we must rename
+                if amumass is False:
+                    pos = pos_
+                    vel = vel_
+                    temp = temp_
+                    elem_den = elem_den_
+                    hh = hh_
+                else:
+                    pos = np.concatenate((pos, pos_), axis=0)
+                    if get_tau:
+                        vel = np.concatenate((vel, vel_), axis=0)
+                    elem_den = np.append(elem_den, elem_den_)
+                    if get_tau or (ion != -1 and elem != 'H'):
+                        temp = np.append(temp, temp_)
+                    hh = np.append(hh, hh_)
                 amumass = amumass_
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0],self.nbins],dtype=np.float32)
@@ -485,6 +501,9 @@ class Spectra(object):
         if get_tau or (ion != -1 and elem != 'H'):
             temp = self.snapshot_set.get_temp(0,segment=fn, units=self.units).astype(np.float32)
             temp = temp[ind]
+            #Some codes occasionally output negative temperatures, fix them
+            it = np.where(temp <= 0)
+            temp[it] = 1
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
@@ -834,6 +853,87 @@ class Spectra(object):
         if noise and self.snr > 0:
             tau = self.add_noise(self.snr, tau, number)
         return tau
+    
+    
+    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
+        """Get the optical depth for a particular element out of:
+           (He, C, N, O, Ne, Mg, Si, Fe)
+           and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
+        """
+        try:
+            if force_recompute:
+                raise KeyError
+            self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
+            ntau = self.tau_obs[(elem, ion)]
+        except KeyError:
+            #Compute tau for each line
+            nlines = len(self.lines[(elem,ion)])
+            tau = np.zeros([nlines, self.NumLos,self.nbins])
+            for ll in range(nlines):
+                line = list(self.lines[(elem,ion)].keys())[ll]
+                tau_loc = self.compute_spectra(elem, ion, line, True)
+                tau[ll,:,:] = tau_loc
+                del tau_loc
+            #Maximum tau in each spectra with each line,
+            #after convolving with a Gaussian for instrumental broadening.
+            maxtaus = np.max(spec_utils.res_corr(tau, self.dvbin, self.spec_res), axis=-1)
+            #Array for line indices
+            ntau = np.empty([self.NumLos, self.nbins])
+            #Use the maximum unsaturated optical depth
+            for ii in xrange(self.NumLos):
+                # we want unsaturated lines, defined as those with tau < 3
+                #which is the maximum tau in the sample of Neeleman 2013
+                #Also use lines with some absorption: tau > 0.1, roughly twice noise level.
+                ind = np.where(np.logical_and(maxtaus[:,ii] < 3, maxtaus[:,ii] > 0.1))
+                if np.size(ind) > 0:
+                    line = np.where(maxtaus[:,ii] == np.max(maxtaus[ind,ii]))
+                else:
+                    #We have no lines in the desired region: here use something slightly saturated.
+                    #In reality the observers will use a different ion
+                    ind2 = np.where(maxtaus[:,ii] > 0.1)
+                    if np.size(ind2) > 0:
+                        line = np.where(maxtaus[:,ii] == np.min(maxtaus[ind2,ii]))
+                    else:
+                        #We have no observable lines: this spectra are metal-poor
+                        #and will be filtered anyway.
+                        line = np.where(maxtaus[:,ii] == np.max(maxtaus[:,ii]))
+                if np.size(line) > 1:
+                    line = (line[0][0],)
+                ntau[ii,:] = tau[line,ii,:]
+            self.tau_obs[(elem, ion)] = ntau
+        if number >= 0:
+            ntau = ntau[number,:]
+        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
+        ntau = spec_utils.res_corr(ntau, self.dvbin, self.spec_res)
+        #Add noise
+        if noise and self.snr > 0:
+            ntau = self.add_noise(self.snr, ntau, number)
+        return ntau
+
+    def vel_width(self, elem, ion):
+        """
+           Find the velocity width of an ion.
+           This is the width in velocity space containing 90% of the optical depth
+           over the absorber.
+           elem - element to look at
+           ion - ionisation state of this element.
+        """
+        try:
+            return self.vel_widths[(elem, ion)]
+        except KeyError:
+            tau = self.get_observer_tau(elem, ion)
+            (low, high, offset) = self.find_absorber_width(elem, ion)
+            #  Size of a single velocity bin
+            vel_width = np.zeros(np.shape(tau)[0])
+            #deal with periodicity by making sure the deepest point is in the middle
+            for ll in np.arange(0, np.shape(tau)[0]):
+                tau_l = np.roll(tau[ll,:],offset[ll])[low[ll]:high[ll]]
+                (nnlow, nnhigh) = self._vel_width_bound(tau_l)
+                vel_width[ll] = self.dvbin*(nnhigh-nnlow)
+            #Return the width
+            self.vel_widths[(elem, ion)] = vel_width
+            return self.vel_widths[(elem, ion)]
+
 
     def _vel_single_file(self,fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""

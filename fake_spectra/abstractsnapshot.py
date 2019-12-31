@@ -263,6 +263,8 @@ class HDF5Snapshot(AbstractSnapshot):
            The types understood are defined in absorption.h and are currently:
                0 - Top hat kernel (for Arepo)
                1 - SPH cubic spline kernel (for Gadget).
+               2 - A partial reconstruction of the Voronoi mesh, for Arepo.
+               3 - SPH quintic spline kernel (for modern SPH Gadget)
         """
         #We are an older Arepo version if there is a Volume key
         if "Volume" in self._f_handle["PartType0"].keys():
@@ -333,18 +335,24 @@ class BigFileSnapshot(AbstractSnapshot):
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.
-           Currently only the SPH cubic spline is understood.
-            Further additions should match the types defined in allvars.h of MP-Gadget, which are:
+           SPH cubic and quintic splines are implemented. Values are:
+               0 - Top hat kernel (for Arepo)
+               1 - SPH cubic spline kernel (for Gadget).
+               2 - A partial reconstruction of the Voronoi mesh, for Arepo.
+               3 - SPH quintic spline kernel (for modern SPH Gadget)
+            The types defined in allvars.h of MP-Gadget are:
                 DENSITY_KERNEL_CUBIC_SPLINE = 1,
                 DENSITY_KERNEL_QUINTIC_SPLINE = 2,
                 DENSITY_KERNEL_QUARTIC_SPLINE = 4,
         """
         try:
             kernel = self.get_header_attr("DensityKernel")
+            if kernel == 2:
+                return 3
         except KeyError:
             kernel = 1
         #Other types are not yet supported.
-        assert kernel == 1
+        assert kernel == 1 or kernel == 3
         return kernel
 
     def get_peculiar_velocity(self, part_type, segment):

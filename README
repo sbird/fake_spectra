@@ -27,6 +27,9 @@ Required Python libraries:
 - numpy (core functionality)
 - h5py (for saving)
 
+Required C libraries:
+- GSL
+
 Optional libraries:
 - matplotlib (if you want to plot)
 - bigfile (to install, do 'pip install --user bigfile') for reading BigFile snapshot outputs from Yu Feng's MP-Gadget.
