@@ -80,7 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = [0.], CE=[0.],spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = None, CE= None,spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
