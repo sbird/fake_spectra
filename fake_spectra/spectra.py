@@ -80,7 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = 0., spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = None, CE= None,spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -107,8 +107,10 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-        #If greater than zero, will add noise to spectra when they are loaded.
+        #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
         self.snr = snr
+        # The stdev for calculating Continuum Error. The same comments as snr.
+        self.CE = CE
         self.spec_res = spec_res
         self.cdir = cdir
         #Minimum length of spectra within which to look at metal absorption (in km/s)
@@ -325,7 +327,7 @@ class Spectra:
             raise ValueError("Not supported")
         f.close()
 
-    def add_noise(self, snr, tau, seed):
+    def add_noise(self, snr, tau, spec_num):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         flux = np.exp(-tau)
         if np.size(np.shape(flux)) == 1:
@@ -335,16 +337,58 @@ class Spectra:
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            np.random.seed(seed)
-            flux += np.random.normal(0, 1./snr, self.nbins)
+            np.random.seed(spec_num)
+            flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
         else:
             for ii in xrange(lines):
                 np.random.seed(ii)
-                flux[ii]+=np.random.normal(0,1./snr, self.nbins)
+                flux[ii]+=np.random.normal(0,1./snr[ii], self.nbins)
         #Make sure we don't have negative flux
         ind = np.where(flux > 0)
         tau[ind] = -np.log(flux[ind])
 #         assert np.all(np.logical_not(np.isnan(tau)))
+        return tau
+
+
+    def add_cont_error(self, CE, tau, spec_num, u_delta=0.6, l_delta=-0.6):
+        """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
+        in observations"""
+
+        flux = np.exp(-tau)
+        if np.size(np.shape(flux)) == 1:
+            lines = 1
+        else:
+            lines = np.shape(flux)[0]
+        #This is to get around the type rules
+        if lines == 1:
+            #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
+            np.random.seed(2*spec_num)
+            delta = np.random.normal(0, CE[spec_num])
+            
+            # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
+            while (delta < l_delta) or (delta > u_delta):
+                delta = np.random.normal(0, CE[spec_num])
+
+            flux /= (1.0 + delta)
+
+        else :
+            
+            delta = np.empty(lines)
+
+            for ii in xrange(lines):
+                
+                np.random.seed(2*ii)
+                delta[ii] = np.random.normal(0, CE[ii])
+
+                while (delta[ii] < l_delta) or (delta[ii] > u_delta) :
+                    delta[ii] = np.random.normal(0, CE[ii])
+
+                flux[ii] /= (1.0 + delta[ii])
+            
+        #make sure we don't have negative flux
+        ind = np.where(flux > 0)
+        tau[ind] = -np.log(flux[ind])
+        
         return tau
 
     def load_savefile(self,savefile=None):
@@ -779,7 +823,7 @@ class Spectra:
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
-    def get_tau(self, elem, ion,line, number = -1, force_recompute=False, noise=True):
+    def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
         """Get the optical depth in each pixel along the sightline for a given line."""
         try:
             if force_recompute:
@@ -799,8 +843,12 @@ class Spectra:
             if np.any(corrflux <= 0):
                 raise Exception
             tau = - np.log(corrflux)
-        if noise and self.snr > 0:
+        if snr is not None :
             tau = self.add_noise(self.snr, tau, number)
+            
+            if CE is not None :
+                tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
+
         return tau
     
     
