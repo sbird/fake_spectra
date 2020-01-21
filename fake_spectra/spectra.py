@@ -107,8 +107,9 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-        #If greater than zero, will add noise to spectra when they are loaded.You should pass an array with the size of ndla (each spectrum has a different snr)
+        #If is None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
         self.snr = snr
+        # The stdev for calculating Continuum Error. You should pass an array with the same size as snr.
         self.CE = CE
         self.spec_res = spec_res
         self.cdir = cdir
@@ -360,7 +361,7 @@ class Spectra:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
-            #This ensures that we always get the same noise gor the same spectrum and is differen from seed for rand noise
+            #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
             
@@ -822,7 +823,7 @@ class Spectra:
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
-    def get_tau(self, elem, ion,line, number = -1, force_recompute=False, noise=True, cont_noise = True):
+    def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
         """Get the optical depth in each pixel along the sightline for a given line."""
         try:
             if force_recompute:
@@ -842,10 +843,10 @@ class Spectra:
             if np.any(corrflux <= 0):
                 raise Exception
             tau = - np.log(corrflux)
-        if noise and np.any(self.snr) > 0:
+        if snr is not None :
             tau = self.add_noise(self.snr, tau, number)
             
-            if cont_noise :
+            if CE is not None :
                 tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
 
         return tau
