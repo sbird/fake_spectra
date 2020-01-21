@@ -349,7 +349,7 @@ class Spectra:
         return tau
 
 
-    def add_cont_error(self, CE, tau, spec_num):
+    def add_cont_error(self, CE, tau, spec_num, u_delta=0.6, l_delta=-0.6):
         """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
         in observations"""
 
@@ -363,8 +363,9 @@ class Spectra:
             #This ensures that we always get the same noise gor the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
-
-            while (delta <-0.6) or (delta > 0.6):
+            
+            # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
+            while (delta < l_delta) or (delta > u_delta):
                 delta = np.random.normal(0, CE[spec_num])
 
             flux /= (1.0 + delta)
@@ -378,7 +379,7 @@ class Spectra:
                 np.random.seed(2*ii)
                 delta[ii] = np.random.normal(0, CE[ii])
 
-                while (delta[ii] < -0.6) or (delta[ii] > 0.6) :
+                while (delta[ii] < l_delta) or (delta[ii] > u_delta) :
                     delta[ii] = np.random.normal(0, CE[ii])
 
                 flux[ii] /= (1.0 + delta[ii])
@@ -845,7 +846,7 @@ class Spectra:
             tau = self.add_noise(self.snr, tau, number)
             
             if cont_noise :
-                tau = self.add_cont_error(self.CE, tau, number)
+                tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
 
         return tau
     
