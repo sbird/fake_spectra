@@ -107,9 +107,9 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-        #If is None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
+        #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
         self.snr = snr
-        # The stdev for calculating Continuum Error. You should pass an array with the same size as snr.
+        # The stdev for calculating Continuum Error. The same comments as snr.
         self.CE = CE
         self.spec_res = spec_res
         self.cdir = cdir
