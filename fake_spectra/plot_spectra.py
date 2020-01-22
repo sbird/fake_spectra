@@ -37,7 +37,7 @@ class PlottingSpectra(spectra.Spectra):
             spec_num - number of the spectrum, in the catalogue, to plot
             flux - if False, print tau, if True print e^-tau
         """
-        tau = self.get_tau(elem, ion, line, spec_num, noise=True)
+        tau = self.get_tau(elem, ion, line, spec_num)
         peak = np.where(tau == np.max(tau))[0][0]
         szt = int(np.size(tau)/2)
         tau_l = np.roll(tau, szt - peak+int(offset*self.dvbin))
