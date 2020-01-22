@@ -843,10 +843,10 @@ class Spectra:
             if np.any(corrflux <= 0):
                 raise Exception
             tau = - np.log(corrflux)
-        if snr is not None :
+        if self.snr is not None :
             tau = self.add_noise(self.snr, tau, number)
             
-            if CE is not None :
+            if self.CE is not None :
                 tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
 
         return tau
