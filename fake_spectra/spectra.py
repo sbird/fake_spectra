@@ -346,6 +346,11 @@ class Spectra:
         #Make sure we don't have negative flux
         ind = np.where(flux > 0)
         tau[ind] = -np.log(flux[ind])
+        
+        #Make sure we don't have flux larger than 1, this can only happen after adding noise.
+        ind2 = np.where(flux > 1.0)
+        tau[ind2] = 0.0
+        
 #         assert np.all(np.logical_not(np.isnan(tau)))
         return tau
 
