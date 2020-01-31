@@ -80,7 +80,9 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = [0.], CE=[0.],spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = None, CE= None,spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+>>>>>>> upstream/master
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -107,8 +109,11 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-        #If greater than zero, will add noise to spectra when they are loaded.You should pass an array with the size of ndla (each spectrum has a different snr)
+
+        #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
         self.snr = snr
+        # The stdev for calculating Continuum Error. The same comments as snr.
+
         self.CE = CE
         self.spec_res = spec_res
         self.cdir = cdir
@@ -360,7 +365,9 @@ class Spectra:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
-            #This ensures that we always get the same noise gor the same spectrum and is differen from seed for rand noise
+
+            #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
+
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
             
@@ -822,7 +829,9 @@ class Spectra:
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
-    def get_tau(self, elem, ion,line, number = -1, force_recompute=False, noise=True, cont_noise = True):
+
+    def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
+
         """Get the optical depth in each pixel along the sightline for a given line."""
         try:
             if force_recompute:
@@ -842,10 +851,12 @@ class Spectra:
             if np.any(corrflux <= 0):
                 raise Exception
             tau = - np.log(corrflux)
-        if noise and np.any(self.snr) > 0:
+
+        if self.snr is not None :
             tau = self.add_noise(self.snr, tau, number)
             
-            if cont_noise :
+            if self.CE is not None :
+
                 tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
 
         return tau
