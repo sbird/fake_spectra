@@ -80,9 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-
     def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = None, CE= None,spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
-
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -109,11 +107,9 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-
         #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
         self.snr = snr
         # The stdev for calculating Continuum Error. The same comments as snr.
-
         self.CE = CE
         self.spec_res = spec_res
         self.cdir = cdir
@@ -331,9 +327,9 @@ class Spectra:
             raise ValueError("Not supported")
         f.close()
 
-    def add_noise(self, snr, tau, spec_num):
+    def add_noise(self, snr, flux, spec_num):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
-        flux = np.exp(-tau)
+        #flux = np.exp(-tau)
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
@@ -348,26 +344,25 @@ class Spectra:
                 np.random.seed(ii)
                 flux[ii]+=np.random.normal(0,1./snr[ii], self.nbins)
         #Make sure we don't have negative flux
-        ind = np.where(flux > 0)
-        tau[ind] = -np.log(flux[ind])
+        #ind = np.where(flux > 0)
+        #tau[ind] = -np.log(flux[ind])
+        
 #         assert np.all(np.logical_not(np.isnan(tau)))
-        return tau
+        return flux
 
 
-    def add_cont_error(self, CE, tau, spec_num, u_delta=0.6, l_delta=-0.6):
+    def add_cont_error(self, CE, flux, spec_num, u_delta=0.6, l_delta=-0.6):
         """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
         in observations"""
 
-        flux = np.exp(-tau)
+        #flux = np.exp(-tau)
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
-
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
-
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
             
@@ -392,10 +387,10 @@ class Spectra:
                 flux[ii] /= (1.0 + delta[ii])
             
         #make sure we don't have negative flux
-        ind = np.where(flux > 0)
-        tau[ind] = -np.log(flux[ind])
+        #ind = np.where(flux > 0)
+        #tau[ind] = -np.log(flux[ind])
         
-        return tau
+        return flux 
 
     def load_savefile(self,savefile=None):
         """Load data from a file"""
@@ -829,9 +824,7 @@ class Spectra:
         phys = self.dvbin/self.velfac*self.rscale
         return colden/phys
 
-
     def get_tau(self, elem, ion,line, number = -1, force_recompute=False):
-
         """Get the optical depth in each pixel along the sightline for a given line."""
         try:
             if force_recompute:
@@ -848,18 +841,18 @@ class Spectra:
         if self.spec_res > 0:
             tau[np.where(tau > 700)] = 700
             corrflux = spec_utils.res_corr(np.exp(-tau), self.dvbin, self.spec_res)
-            if np.any(corrflux <= 0):
-                raise Exception
-            tau = - np.log(corrflux)
-
+            flux = corrflux
+            #if np.any(corrflux <= 0):
+                #raise Exception
+            #tau = - np.log(corrflux)
         if self.snr is not None :
-            tau = self.add_noise(self.snr, tau, number)
+            #tau = self.add_noise(self.snr, tau, number)
+            flux = self.add_noise(self.snr, flux, number)
             
             if self.CE is not None :
+                flux = self.add_cont_error(CE = self.CE, flux=flux, spec_num = number)
 
-                tau = self.add_cont_error(CE = self.CE, tau = tau, spec_num = number)
-
-        return tau
+        return flux
     
     
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
