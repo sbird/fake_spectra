@@ -845,12 +845,13 @@ class Spectra:
             #if np.any(corrflux <= 0):
                 #raise Exception
             #tau = - np.log(corrflux)
+        
+        if self.CE is not None :
+            flux = self.add_cont_error(CE = self.CE, flux=flux, spec_num = number)
+
         if self.snr is not None :
             #tau = self.add_noise(self.snr, tau, number)
             flux = self.add_noise(self.snr, flux, number)
-            
-            if self.CE is not None :
-                flux = self.add_cont_error(CE = self.CE, flux=flux, spec_num = number)
 
         return flux
     
