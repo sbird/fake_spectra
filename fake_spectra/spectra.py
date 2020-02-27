@@ -80,7 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr = None, CE= None,spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -107,10 +107,7 @@ class Spectra:
         self.num_important = {}
         self.discarded=0
         self.npart=0
-        #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
-        self.snr = snr
-        # The stdev for calculating Continuum Error. The same comments as snr.
-        self.CE = CE
+
         self.spec_res = spec_res
         self.cdir = cdir
         #Minimum length of spectra within which to look at metal absorption (in km/s)
@@ -327,7 +324,7 @@ class Spectra:
             raise ValueError("Not supported")
         f.close()
 
-    def add_noise(self, snr, flux, spec_num):
+    def add_noise(self, snr, flux, spec_num=-1):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         #flux = np.exp(-tau)
         if np.size(np.shape(flux)) == 1:
@@ -351,7 +348,7 @@ class Spectra:
         return flux
 
 
-    def add_cont_error(self, CE, flux, spec_num, u_delta=0.6, l_delta=-0.6):
+    def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
         """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
         in observations"""
 
@@ -842,18 +839,11 @@ class Spectra:
             tau[np.where(tau > 700)] = 700
             corrflux = spec_utils.res_corr(np.exp(-tau), self.dvbin, self.spec_res)
             flux = corrflux
-            #if np.any(corrflux <= 0):
-                #raise Exception
-            #tau = - np.log(corrflux)
-        
-        if self.CE is not None :
-            flux = self.add_cont_error(CE = self.CE, flux=flux, spec_num = number)
+            if np.any(corrflux <= 0):
+                raise Exception
+            tau = - np.log(corrflux) 
 
-        if self.snr is not None :
-            #tau = self.add_noise(self.snr, tau, number)
-            flux = self.add_noise(self.snr, flux, number)
-
-        return flux
+        return tau
     
     
     def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
