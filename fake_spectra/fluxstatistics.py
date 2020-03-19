@@ -10,7 +10,7 @@ from scipy.optimize import brentq
 from ._spectra_priv import _rescale_mean_flux
 
 def obs_mean_tau(redshift):
-    """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
+    """The mean flux from 0711.1862: effective optical depth is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
