@@ -59,7 +59,7 @@ class Spectra:
             res - Pixel width of the spectrum in km/s
             spec_res - Resolution of the simulated spectrograph in km/s. Note this is not the pixel width.
                        Spectra will be convolved with a Gaussian of this rms on loading from disc.
-            snr - If nonzero, add noise for the requested signal to noise for the spectra, when loading from disc.
+            snr - If not None, add noise for the requested signal to noise for the spectra, when loading from disc.
             cdir - Directory containing cloudy tables.
             savefile - name of file to save spectra to.
             savedir - Directory of file to save spectra to.
@@ -337,7 +337,10 @@ class Spectra:
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            np.random.seed(spec_num)
+            if spec_num < 0:
+                np.random.seed(0)
+            else:
+                np.random.seed(spec_num)
             flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
         else:
             for ii in xrange(lines):
