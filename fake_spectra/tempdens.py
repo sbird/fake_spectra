@@ -28,7 +28,7 @@ def mean_density(hub, redshift, unit, omegab=0.0465):
 
 def fit_temp_dens_relation(logoverden, logT):
     """Fit a temperature density relation."""
-    ind = np.where((0 < logoverden) * (logoverden <  1.0) * (0.1 < logT) * (logT < 5.0))
+    ind = np.where((logoverden > 0.0) * (logoverden <  1.0) * (logT > 0.1) * (logT < 5.0))
 
     logofor = logoverden[ind]
     logtfor = logT[ind]
