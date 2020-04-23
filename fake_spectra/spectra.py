@@ -1247,3 +1247,213 @@ class Spectra:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:],avg_flux_power[1:]
+
+    def spline_fit(self, tau, chi_min=3., vel_seg_min=10., ini_break_spacing=50.):
+        """
+        Fit flux spectra (converge chi^2) using a cubic spline with adaptive breakpoints.
+            
+        chi_min = minimum change in chi^2 to accept a new breakpoint
+        vel_seg_min = segment size limit (km/sec) i.e. resolution minimum
+        ini_break_spacing = initial breakpoint spacing (km/sec)
+        
+        Returns: splines for each sightline (tau.shape)
+        Note -- splines may return flux outside the 0 < F < 1 range
+        """
+        from scipy.interpolate import LSQUnivariateSpline
+        def chi_squared(expected, observed):
+        # observed is the fit, expected is the original spectrum
+            return(np.sum(((expected - observed)/np.std(expected))**2))
+        
+        # array of velocities (km/sec), i.e. x-axis
+        vel = np.linspace(0, self.vmax, tau.shape[1])
+        vel_stepsize = vel[1]-vel[0] # velocity bin size (km/sec)
+        if vel_stepsize >= vel_seg_min:
+            raise Exception("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
+        
+        # index spacing to get ~velocity breakpoint spacing
+        ind_break_spacing = int(np.round(ini_break_spacing/vel_stepsize))
+        
+        all_spline_flux = np.zeros(tau.shape)
+        for j in range(self.NumLos):
+        
+            flux = np.exp(-tau[j]) # flux for current sight line
+        
+            # initial interior breakpoints
+            interior_inds = np.arange(ind_break_spacing, vel.size, ind_break_spacing)
+            # ensure the last segment is larger than vel_seg_min
+            # 'segments' are the data between pairs of breakpoints
+            if (vel[-1] - vel[interior_inds[-1]]) < vel_seg_min:
+                interior_inds = interior_inds[:-1]
+           
+            # initialize number of unconverged segments (to start while loop)
+            n_unconverged = 1
+            while n_unconverged > 0: # while there are unconverged segments
+                # fit the spline using the current step breakpoints
+                current_spline = LSQUnivariateSpline(vel, flux, vel[interior_inds], k=3, ext=3)
+        
+                # indices for breakpoints, with start and end (interior + boundary points)
+                all_inds = np.concatenate([[0], interior_inds, [vel.size]])
+                # indices for breakpoints for maximal next step
+                # (i.e. with breakpoints added between current pairs)
+                next_inds = np.sort(np.concatenate([all_inds, (all_inds[:-1] + all_inds[1:])//2]))[1:-1]
+                # fit the spline using the next step breakpoints, next_inds
+                next_spline = LSQUnivariateSpline(vel, flux, vel[next_inds], k=3, ext=3)
+        
+                # initialize array to contain new breakpoints to be added
+                new_bp = np.empty(0, dtype=int)
+                for i in range(all_inds.size-1): # for each segment
+                    # current segment velocities
+                    seg_vel = vel[all_inds[i]:all_inds[i+1]+1]
+                    # current segment flux
+                    seg_flux = flux[all_inds[i]:all_inds[i+1]+1]
+                    # current segment spline flux
+                    seg_spline_flux = current_spline(seg_vel)
+        
+                    # chi squared for current spline versus input flux
+                    chisq = chi_squared(seg_flux, seg_spline_flux)
+                    # chisq for SAME segments, with added breakpoints
+                    next_chisq = chi_squared(seg_flux, next_spline(seg_vel)) 
+        
+                    # segments sizes that would result from including proposed breakpoint
+                    new_segs = np.array([seg_vel.max()-vel[next_inds[2*i]], vel[next_inds[2*i]]-seg_vel.min()])
+                    # if chisq changes more than chi_min AND new segments > vel_seg_min
+                    if (chisq-next_chisq) > chi_min and new_segs[0] >= vel_seg_min and new_segs[1] >= vel_seg_min:
+                        # add a breakpoint ~halfway in the segment (nearest index)
+                        new_bp = np.append(new_bp, int(np.round(all_inds[i]/2 + all_inds[i+1]/2)))
+        
+                # number of segments that were improved with additional breakpoints
+                n_unconverged = new_bp.size
+        
+                if n_unconverged > 0: # if there is at least 1 breakpoint to add
+                    # add that breakpoint to the list of breakpoints and sort
+                    interior_inds = np.sort(np.append(interior_inds, new_bp))
+                
+            # add current sight line spline to array of splines
+            all_spline_flux[j] = current_spline(vel)
+                
+        return(all_spline_flux)
+
+        
+    def renormalize_flux(self, flux, section_size):
+        """
+        Renormalize flux into sections approximately section_size.
+    
+        flux = input flux, np.exp(-tau)
+        section_size = desired section size
+    
+        Return: array of renormalized flux, arranged by section
+        (i.e. the first section for all sight lines, then the 2nd section . . .)
+        """
+
+        # velocity step size (resolution, km/sec)
+        vel_stepsize = self.vmax/(flux.shape[1]-1)
+
+        if section_size < vel_stepsize/self.velfac or section_size > self.box:
+            raise Exception("Section size must be greater than spatial resolution and <= box size.\n"+
+                        "Spatial resolution is "+str(vel_stepsize/slf.velfac)+", box size is "+str(self.box))
+
+        # number of (non-integer) sections that could fit into the box
+        n_sections = self.box/section_size
+        # number of indices for each section to get ~section_size
+        n_inds = int(np.floor(self.vmax/(n_sections*vel_stepsize)))
+
+        # initialize array for storing section flux
+        # shape is [num_sight_lines * n_sections_per_sight_line, section length + 1]
+        flux_sections = np.zeros([flux.shape[0]*int(np.floor(n_sections)), n_inds+1])
+
+        # running counter for the flux_sections array index (where to store)
+        fs_ind = 0 
+        for i in range(int(np.floor(n_sections))): # for each section
+        
+            for j in range(flux.shape[0]): # for each line of sight
+            
+                # store the ith section flux into the flux_sections array
+                flux_sections[fs_ind] = flux[j, i*n_inds:(i+1)*n_inds+1]
+                # and divide by the maximum in the section
+                flux_sections[fs_ind] = flux_sections[fs_ind]/flux_sections[fs_ind].max()
+                fs_ind = fs_ind + 1
+
+        return(flux_sections)
+        
+        
+    def compute_curvature(self, flux):
+        """
+        Compute mean absolute curvatures for a set of flux spectra.
+    
+        Returns: the mean absolute curvature for each spectra passed.
+        """
+
+        # velocities, needed for more accurate derivatives
+        vel = np.linspace(0, self.vmax, self.nbins)[0:flux.shape[1]]
+        # initialize an array for the mean absolute curvatures
+        curvature = np.zeros(flux.shape[0])
+
+        for i in range(curvature.size): # for each section
+
+            # limit flux to 0.1 < F < 0.9
+            flux_range = np.where(np.logical_and(flux[i] > 0.1, flux[i] < 0.9))[0]
+            # check that enough values actually fall in this range for a second derivative
+            if flux_range.size > 2:
+                # get first derivative
+                flux_p = np.gradient(flux[i, flux_range], vel[flux_range], edge_order=2)
+                # and get second derivative
+                flux_pp = np.gradient(flux_p, vel[flux_range], edge_order=2)
+
+                # compute the mean absolute curvature
+                curvature[i] = np.mean(np.abs(flux_pp/((1 + flux_p**2)**(3/2))))
+
+        # ensure only sections with non-zero curvature are returned
+        curvature = curvature[np.where(curvature > 0)]
+    
+        return(curvature)
+        
+        
+    def get_curvature(self, elem, ion, line, section_size=0, snr_input=None, chi=3., seg_res=10., ini_break=50.):
+        """
+        Calculate the mean absolute curvature for a set of sight lines. Renormalizes each sight line spectra
+        into sections of size section_size, then rescales them before computing the curvature.
+    
+        section_size = desired (spatial) size of spectra sections (spatial res <= section_size <= box size)
+        snr_input = Override the noise in the sight lines with this level of noise (array of size n_sightlines)
+        chi = minimum chi^2 change to accept a new breakpoint in spline fitting
+        seg_res = segment size limit (km/sec) i.e. resolution minimum for spline fitting
+        ini_break = initial breakpoint spacing (km/sec) for spline fitting
+    
+        Returns: mean absolute curvature for each section of each sight line.
+        """
+    
+        # check for noise in spectra, get spline fits accordingly
+        # if the sight lines have no noise and none is requested here, just return the flux
+        if self.snr is None and snr_input is None:
+            flux = np.exp(-self.get_tau(elem, ion, line))
+        
+        # if there is noise in the sight lines and nothing is specfied here, use sight line noise and fit spline
+        elif self.snr is not None and snr_input is None:
+            tau = self.get_tau(elem, ion, line)
+            flux = self.spline_fit(tau, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
+        
+        # if a noise input is specified here, use that, then fit spline
+        else:
+            self.snr = snr_input
+            tau = self.get_tau(elem, ion, line)
+            flux = self.spline_fit(tau, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
+        # note that calling get_tau multiple types on the same object will add noise each time!
+        
+        if section_size == 0: # if no section size is passed, assume boxsize
+            section_size = self.box
+        # renormalize in section_size chunks (i.e. divide spectra and normalize)
+        flux_sections = self.renormalize_flux(flux, section_size)
+  
+        # rescale the renormalized sections
+        # tau should be nearly all the optical depths (minus where flux <= 0)
+        tau = -np.log(flux_sections[np.where(flux_sections > 0)])
+        # get the scaling factor
+        scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)))
+        # scale the positive flux
+        # non-positive flux will be removed in the call to compute_curvature
+        flux_sections[np.where(flux_sections > 0)] = flux_sections[np.where(flux_sections > 0)]**scale
+    
+        # compute mean absolute curvature for each rescaled, renormalized section
+        curvature = self.compute_curvature(flux_sections)
+    
+        return(curvature)
