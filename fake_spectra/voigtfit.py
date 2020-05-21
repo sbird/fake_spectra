@@ -334,8 +334,37 @@ def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215, tol=0.05):
     following Rudie 2012 and Schaye 1999."""
     n_vals, b_params = get_voigt_systems(taus, dvbin, elem=elem, ion=ion, line=line, verbose=False, close=-1., b_param=True)
     used = np.where((b_params > 8)*(b_params < 100)*(n_vals < 10**(14.5))*(n_vals > 10**(12.5)))
-    ln_vals = np.log10(n_vals[used])
-    lb_params = np.log10(b_params[used])
+    sort = np.argsort(np.log10(n_vals[used]))
+    ln_vals = np.log10(n_vals[used])[sort]
+    lb_params = np.log10(b_params[used])[sort]
+    
+    ###################### sigma rejection ###########################
+    # will add each bin to final_retained as we iterate through
+    # this works because the values are sorted
+    final_retained = np.empty(0, dtype=bool)
+
+    for i in range(8):
+        bin_edges = np.where((ln_vals >= 12.5+i*0.25)*(ln_vals < 12.5+(i+1)*0.25))
+        # current bin
+        bin_range = ((ln_vals >= 12.5+i*0.25)*(ln_vals < 12.5+(i+1)*0.25)*(10**lb_params < 40))
+        n_removed = 1
+        while n_removed > 0:
+            dev = np.std(lb_params[bin_range]) # stddev in the bin, for this iteration
+            mean = np.mean(lb_params[bin_range]) # mean in the bin, for this iteration
+            # keep includes all points, but we will only add those in the bin to final_retained
+            keep = (abs(lb_params - mean) < 2*dev)
+            n_removed = np.sum(bin_range) - np.sum(bin_range*keep)
+            # only points which have true for all test so far will still be true
+            bin_range = bin_range*keep
+
+        # switch previously omitted points which are above the mean to true, including points over 40
+        bin_range[(bin_range == False)*(lb_params > mean)] = True
+        final_retained = np.append(final_retained, bin_range[bin_edges[0][0]:bin_edges[0][-1]+1])  
+
+    ln_vals = ln_vals[final_retained]
+    lb_params = lb_params[final_retained]
+    #################################################################
+    
     # The fit proceeds iteratively.
     result = np.array([np.log10(18), 0.17])
     # First fit log b = log b_0  + (Gamma -1 ) * ( log NHI - log NHI,0)
