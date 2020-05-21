@@ -112,9 +112,6 @@ class Profiles(object):
         #Do the fit for the width
         optargs = (amplitude, f_rolled)
         result = optimize.minimize_scalar(self.fun_min, bracket=(10., 120.), bounds=(1., 120.), method='bounded', args=optargs)
-        #The documentation says this is how you test success, but I guess it lies!
-        #if not result.success:
-        #    raise RuntimeError(result.mesg)
         fitted = self.profile(result.x, mean, amplitude)
         assert np.argmax(fitted) == peak_index
         newf = f-fitted
@@ -337,7 +334,7 @@ def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215):
     sort = np.argsort(np.log10(n_vals[used]))
     ln_vals = np.log10(n_vals[used])[sort]
     lb_params = np.log10(b_params[used])[sort]
-    
+
     ###################### sigma rejection ###########################
     # will add each bin to final_retained as we iterate through
     # this works because the values are sorted
@@ -358,13 +355,13 @@ def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215):
             bin_range = bin_range*keep
 
         # switch previously omitted points which are above the mean to true, including points over 40
-        bin_range[(bin_range == False)*(lb_params > mean)] = True
-        final_retained = np.append(final_retained, bin_range[bin_edges[0][0]:bin_edges[0][-1]+1])  
+        bin_range[(bin_range is False)*(lb_params > mean)] = True
+        final_retained = np.append(final_retained, bin_range[bin_edges[0][0]:bin_edges[0][-1]+1])
 
     ln_vals = ln_vals[final_retained]
     lb_params = lb_params[final_retained]
     #################################################################
-    
+
     # The fit proceeds iteratively.
     result = np.array([np.log10(18), 0.17])
     # First fit log b = log b_0 + (Gamma -1) * (log NHI - log NHI,0)
