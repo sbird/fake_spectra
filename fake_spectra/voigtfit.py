@@ -61,7 +61,7 @@ class Profiles(object):
         #Initial mask includes the whole spectrum
         mask = np.where(fitted_tau > -1)
         #Do the fit iteratively, stopping when the largest peak is likely unimportant.
-        while np.max(fitted_tau[mask]) > realtol:
+        while np.max(fitted_tau[mask]) > realtol and mask[0].size != 0:
             (fitted_tau, mean, amplitude, stddev) = self.iterate_new_spectrum(fitted_tau, mask=mask)
             #We only want to fit to regions that are not already saturated in the fit.
             self.means.append(mean)
@@ -70,13 +70,14 @@ class Profiles(object):
             mask = np.where(self.profile_multiple(self.stddev, self.means, self.amplitudes) < sattau)
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
-        result = optimize.minimize(self.fun_min_multiple, inputs, tol=realtol, method='Nelder-Mead')
+        result = optimize.minimize(self.fun_min_multiple, inputs, tol=realtol/tol*0.25, method='Nelder-Mead')
         total = np.min([2, np.size(self.stddev)])
+        prior_result = result.fun*2
         for maxpk in range(3, np.size(self.stddev)+1):
             inputs = np.hstack([self.stddev[:maxpk], self.means[:maxpk], self.amplitudes[:maxpk]])
-            new_result = optimize.minimize(self.fun_min_multiple, inputs, tol=realtol, method='Nelder-Mead')
-            #If the extra peak does not substantially improve the fit, stop.
-            if new_result.fun > result.fun*signif:
+            new_result = optimize.minimize(self.fun_min_multiple, inputs, tol=realtol/tol*0.25, method='Nelder-Mead')
+            #If the addition of the previous two peaks does not substantially improve the fit, stop.
+            if new_result.fun/prior_result > signif:
                 total = maxpk-1
                 break
             #If it did improve the fit, but didn't converge, stop anyway.
@@ -86,6 +87,7 @@ class Profiles(object):
                 break
             #Otherwise, add the extra peak and continue
             total = maxpk
+            prior_result = result.fun
             result = new_result
         assert np.size(result.x) == total*3
         self.stddev_new = np.abs(result.x[0:total])
@@ -109,7 +111,7 @@ class Profiles(object):
         f_rolled = np.roll(f, maxx)
         #Do the fit for the width
         optargs = (amplitude, f_rolled)
-        result = optimize.minimize_scalar(self.fun_min, bracket=(10., 100.), bounds=(1., 100.), method='bounded', args=optargs)
+        result = optimize.minimize_scalar(self.fun_min, bracket=(10., 120.), bounds=(1., 120.), method='bounded', args=optargs)
         #The documentation says this is how you test success, but I guess it lies!
         #if not result.success:
         #    raise RuntimeError(result.mesg)
