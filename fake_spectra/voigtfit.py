@@ -243,6 +243,7 @@ class Profiles(object):
         pos = self.get_positions()
         sorter = np.argsort(pos)
         colden = self.get_column_densities()[sorter]
+        self.stddev_new = self.stddev_new[sorter]
         pos = pos[sorter]
         #Get maximum and minimum extent of absorbers: this starts off as just their peaks.
         maxpos = np.array(pos)
