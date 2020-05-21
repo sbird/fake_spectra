@@ -318,16 +318,16 @@ def get_voigt_systems(taus, dvbin, elem="H", ion=1, line=1215, verbose=False, cl
         return n_vals, b_params
     return n_vals
 
-def _opt_power_fit(inputs, lb_params, ln_vals):
-    """Fit log b = log b_0  + (Gamma -1 ) * ( log NHI - log NHI,0)
-    for log b_0 and Gamma-1. log NHI, 0 = 13.6"""
-    lb0 = inputs[0]
-    gamm1 = inputs[1]
-    return np.sum((lb_params - lb0 + gamm1 * (ln_vals - 13.6))**2)
-
 def _power_fit(ln, lb0, gamm1):
     """A power law fit given some parameters"""
     return lb0 + gamm1 * (ln - 13.6)
+
+def _opt_power_fit(inputs, lb_params, ln_vals):
+    """Fit log b = log b_0  + (Gamma-1) * (log NHI - log NHI,0)
+    for log b_0 and Gamma-1. log NHI,0 = 13.6"""
+    lb0 = inputs[0]
+    gamm1 = inputs[1]
+    return np.sum(abs(lb_params - _power_fit(ln_vals, lb0, gamm1)))
 
 def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215, tol=0.05):
     """Get the power law betweeen the 'minimum' b parameter and column density,
