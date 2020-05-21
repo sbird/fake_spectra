@@ -290,7 +290,7 @@ class _SingleProfileHelper(object):
         """Call the fit"""
         stime = time.time()
         prof = Profiles(tau_t, self.dvbin, elem=self.elem, ion=self.ion, line=self.line)
-        prof.do_fit()
+        prof.do_fit(tol=1e-4, signif=0.95, sattau=4)
         n_this, _ = prof.get_systems(self.close)
         ftime = time.time()
         if self.verbose:
