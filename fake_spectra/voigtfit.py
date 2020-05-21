@@ -329,7 +329,7 @@ def _opt_power_fit(inputs, lb_params, ln_vals):
     gamm1 = inputs[1]
     return np.sum(abs(lb_params - _power_fit(ln_vals, lb0, gamm1)))
 
-def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215, tol=0.05):
+def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215):
     """Get the power law betweeen the 'minimum' b parameter and column density,
     following Rudie 2012 and Schaye 1999."""
     n_vals, b_params = get_voigt_systems(taus, dvbin, elem=elem, ion=ion, line=line, verbose=False, close=-1., b_param=True)
@@ -367,30 +367,31 @@ def get_b_param_dist(taus, dvbin, elem="H", ion=1, line=1215, tol=0.05):
     
     # The fit proceeds iteratively.
     result = np.array([np.log10(18), 0.17])
-    # First fit log b = log b_0  + (Gamma -1 ) * ( log NHI - log NHI,0)
-    # for Gamma -1 and b_0 with NHI,0 = 13.6.
-    newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4)
-    while np.sum((newresult/result - 1.)**2) > tol:
+    # First fit log b = log b_0 + (Gamma -1) * (log NHI - log NHI,0)
+    # for Gamma-1 and b_0 with NHI,0 = 13.6.
+    newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4).x
+    n_discarded = n_vals.size - used[0].size
+    while n_discarded > 0:
         result = newresult
-        #Find dispersion
         # Points with b > 1 sigma above the fit are discarded and the fit is made again
-        # until convergence.
+        # until convergence (i.e. no more points are removed in a step).
         residuals = lb_params - _power_fit(ln_vals, result[0], result[1])
-        sigma_fit = np.sqrt(np.var(residuals))
+        sigma_fit = np.sum(abs(np.mean(residuals) - residuals))/residuals.size
         #remove points more than 1 sigma *above* fit. Note absence of np.abs!
         used = np.where(residuals <= sigma_fit)
+        n_discarded = ln_vals.size - used[0].size
         lb_params = lb_params[used]
         ln_vals = ln_vals[used]
         #Make fit
-        newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4)
+        newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4).x
     # Now all points > 1 sigma *below* the fit are removed and the fit is made again.
     residuals = lb_params - _power_fit(ln_vals, result[0], result[1])
-    sigma_fit = np.sqrt(np.var(residuals))
-    #remove points more than 1 sigma *above* fit. Note absence of np.abs!
+    sigma_fit = np.sum(abs(np.mean(residuals) - residuals))/residuals.size
+    #remove points more than 1 sigma *below* fit. Note absence of np.abs!
     used = np.where(residuals > -1*sigma_fit)
     lb_params = lb_params[used]
     ln_vals = ln_vals[used]
     #Make fit
-    newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4)
+    newresult = optimize.minimize(_opt_power_fit, result, args=(lb_params, ln_vals), tol=1e-4).x
     #Return the new b_min and Gamma.
     return (10**newresult[0], newresult[1])
