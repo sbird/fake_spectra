@@ -141,6 +141,8 @@ class Profiles(object):
         if tau[0] < tau[-1] and tau[0] < tau[1]:
             mins = np.append(mins, 0)
         assert np.size(mins) > 0
+        # only use minima that are low enough compared to peak (~0.08 different in flux)
+        mins = mins[np.where(np.abs(amplitude - tau[mins]) > np.log(1./0.92))]
         minn = np.max(np.append(mins[np.where(mins < midpt)], 0))
         maxx = np.min(np.append(mins[np.where(mins > midpt)], np.size(tau)))
         assert minn < midpt and maxx > midpt
