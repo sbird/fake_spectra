@@ -684,7 +684,6 @@ class Spectra:
         cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
         #Filter
         #Note: line does nothing
-<<<<<<< HEAD
         col_den = self.compute_spectra(elem,ion,1215,False)
         cdsum=np.sum(col_den, axis=1)
         # make sure array elements are contiguous
