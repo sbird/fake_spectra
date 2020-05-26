@@ -28,7 +28,7 @@ def mean_density(hub, redshift, unit, omegab=0.0465):
 
 def fit_temp_dens_relation(logoverden, logT):
     """Fit a temperature density relation."""
-    ind = np.where((0 < logoverden) * (logoverden <  1.0) * (0.1 < logT) * (logT < 5.0))
+    ind = np.where((logoverden > 0.0) * (logoverden <  1.0) * (logT > 0.1) * (logT < 5.0))
 
     logofor = logoverden[ind]
     logtfor = logT[ind]
@@ -45,6 +45,12 @@ def fit_temp_dens_relation(logoverden, logT):
     if res[-1] <= 0:
         print(res[3])
     return 10**params[0], params[1] + 1
+
+def get_temp_meandensity(overden, Temp):
+    """Get the temperature at the mean density following Puchwein 2018, 1801.04931.
+    Median temperature between 0.95 and 1.05 x mean cosmic baryon density"""
+    ind = np.where((overden > 0.95)*(overden < 1.05))
+    return np.median(Temp[ind])
 
 def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
     """Make a temperature density plot of neutral hydrogen or gas.
@@ -70,11 +76,13 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
 
     dens = rates.get_code_rhoH(0, -1)
 
+    mean_dens = mean_density(hubble, redshift, unit=unit, omegab=snap.get_omega_baryon())
+    T00 = get_temp_meandensity(dens/mean_dens, temp)
+    print("z=%f T0(K) = %f" %(redshift, T00))
     logdens = np.log10(dens)
     logT = np.log10(temp)
-    mean_dens = mean_density(hubble, redshift, unit=unit, omegab=snap.get_omega_baryon())
     (T0, gamma) = fit_temp_dens_relation(logdens - np.log10(mean_dens), logT)
-    print("z=%f T0(K) = %f, gamma = %g" % (redshift, T0, gamma))
+    print("z=%f [fit] T0(K) = %f, gamma = %g" % (redshift, T0, gamma))
 
     if plot:
         if nhi:
