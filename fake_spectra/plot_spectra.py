@@ -15,7 +15,7 @@ except NameError:
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, label="", snr=0., load_halo=True,**kwargs):
+    def __init__(self,num, base, cofm=None, axis=None, label="", snr=None, load_halo=True,**kwargs):
         spectra.Spectra.__init__(self,num, base, cofm=cofm, axis=axis, snr=snr, load_halo=load_halo, **kwargs)
         self.label=label
 
@@ -37,7 +37,7 @@ class PlottingSpectra(spectra.Spectra):
             spec_num - number of the spectrum, in the catalogue, to plot
             flux - if False, print tau, if True print e^-tau
         """
-        tau = self.get_tau(elem, ion, line, spec_num, noise=True)
+        tau = self.get_tau(elem, ion, line, spec_num)
         peak = np.where(tau == np.max(tau))[0][0]
         szt = int(np.size(tau)/2)
         tau_l = np.roll(tau, szt - peak+int(offset*self.dvbin))

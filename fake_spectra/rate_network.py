@@ -5,7 +5,6 @@ import os.path
 import math
 import numpy as np
 import scipy.interpolate as interp
-import scipy.optimize
 
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
@@ -83,8 +82,8 @@ class RateNetwork(object):
 
     def get_temp(self, density, ienergy, helium=0.24):
         """Get the equilibrium temperature at given internal energy.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+           Density is gas density in (physical) protons/cm^3
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction"""
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
@@ -92,27 +91,29 @@ class RateNetwork(object):
 
     def get_cooling_rate(self, density, ienergy, helium=0.24, photoheating=False):
         """Get the total cooling rate for a temperature and density. Negative means heating.
-           Density is gas denstiy in protons/cm^3. Internal energy is ergs/g.
+           Density is gas density in (physical) protons/cm^3
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
            Returns net heating/cooling rate in erg/s/g.
         """
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
-        temp = self._get_temp(ne/nh, ienergy, helium)
-        nH0 = self._nH0(nh, temp, ne) /nh
-        nHp = self._nHp(nh, temp, ne) / nh
+        nebynh = ne / nh
+        temp = self._get_temp(nebynh, ienergy, helium)
+        nH0 = self._nH0(nh, temp, nebynh)
+        nHp = self._nHp(nh, temp, nebynh)
         yy = helium / 4 / (1 - helium)
-        nHe0 = self._nHe0(nh, temp, ne) * yy /nh
-        nHep = self._nHep(nh, temp, ne) * yy / nh
-        nHepp = self._nHepp(nh, temp, ne) * yy /nh
+        nHe0 = self._nHe0(nh, temp, nebynh) * yy
+        nHep = self._nHep(nh, temp, nebynh) * yy
+        nHepp = self._nHepp(nh, temp, nebynh) * yy
         #This is the collisional excitation and ionisation rate.
-        LambdaCollis = ne/nh * (self.cool.CollisionalH0(temp) * nH0 +
-                             self.cool.CollisionalHe0(temp) * nHe0 +
-                             self.cool.CollisionalHeP(temp) * nHep)
-        LambdaRecomb = ne/nh * (self.cool.RecombHp(temp) * nHp +
-                             self.cool.RecombHeP(temp) * nHep +
-                             self.cool.RecombHePP(temp) * nHepp)
-        LambdaFF = ne/nh * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
-        LambdaCmptn = ne/nh**2 * self.cool.InverseCompton(temp, self.redshift)
+        LambdaCollis = nebynh * (self.cool.CollisionalH0(temp) * nH0 +
+                                self.cool.CollisionalHe0(temp) * nHe0 +
+                                self.cool.CollisionalHeP(temp) * nHep)
+        LambdaRecomb = nebynh * (self.cool.RecombHp(temp) * nHp +
+                                self.cool.RecombHeP(temp) * nHep +
+                                self.cool.RecombHePP(temp) * nHepp)
+        LambdaFF = nebynh * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
+        LambdaCmptn = nebynh**2 * self.cool.InverseCompton(temp, self.redshift)
         Lambda = LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
         Heating = 0
         if photoheating:
@@ -131,16 +132,17 @@ class RateNetwork(object):
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
         starting with ne = nH and continuing until convergence.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+        Density is gas density in (physical) protons/cm^3
+        Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction.
         """
         #Get hydrogen number density
         nh = density * (1-helium)
-        rooted = lambda ne: self._ne(nh, self._get_temp(ne/nh, ienergy, helium=helium), ne, helium=helium)
-        ne = scipy.optimize.fixed_point(rooted, nh,xtol=self.converge)
-        assert np.all(np.abs(rooted(ne) - ne) < self.converge)
-        return ne
+        def rooted(nebynh, nh, ienergy):
+            return self._nebynh(nh, self._get_temp(nebynh, ienergy, helium=helium), nebynh, helium=helium)
+        nebynh = fixed_point(rooted, nh, args=(nh, ienergy),xtol=self.converge)
+        assert np.all(np.abs(rooted(nebynh, nh, ienergy) - nebynh) < self.converge)
+        return nebynh * nh
 
     def get_ne_by_nh(self, density, ienergy, helium=0.24):
         """Same as above, but get electrons per proton."""
@@ -148,53 +150,71 @@ class RateNetwork(object):
 
     def get_neutral_fraction(self, density, ienergy, helium=0.24):
         """Get the neutral hydrogen fraction at a given temperature and density.
-        density is gas density in protons/cm^3
-        Internal energy is in J/kg == 10^-10 ergs/g.
+        Density is gas density in (physical) protons/cm^3
+        Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
         helium is a mass fraction.
         """
         ne = self.get_equilib_ne(density, ienergy, helium=helium)
         nh = density * (1-helium)
         temp = self._get_temp(ne/nh, ienergy, helium)
-        return self._nH0(nh, temp, ne) / nh
+        return self._nH0(nh, temp, ne/nh)
 
-    def _nH0(self, nh, temp, ne):
-        """The neutral hydrogen number density. Eq. 33 of KWH."""
+
+    def _photofac(self, nebynh, nh, temp):
+        """Get the photoionization correction factor divided by the electron density.
+        Adjusted to work when ne ~ 0.
+        Arguments:
+            ne - electron abundance per atom
+            nh - proton abundance
+            temp - temperature"""
+        if np.size(nebynh) > 1:
+            photofac = np.zeros_like(nebynh)
+            ii = np.where(nebynh > 1e-40)
+            photofac[ii] = self.photo_factor*self._self_shield_corr(nh[ii], temp[ii])/(nebynh[ii]*nh[ii])
+        else:
+            photofac = 0
+            if nebynh > 1e-40:
+                photofac = self.photo_factor*self._self_shield_corr(nh, temp)/(nebynh*nh)
+        return photofac
+
+    def _nH0(self, nh, temp, nebynh):
+        """The neutral hydrogen number density per hydrogen atom. Eq. 33 of KWH."""
         alphaHp = self.recomb.alphaHp(temp)
         GammaeH0 = self.collisional * self.recomb.GammaeH0(temp)
-        photorate = self.photo.gH0(self.redshift)/ne*self.photo_factor*self._self_shield_corr(nh, temp)
-        return nh * alphaHp/ (alphaHp + GammaeH0 + photorate)
+        photorate = self.photo.gH0(self.redshift)* self._photofac(nebynh, nh, temp)
+        return alphaHp/ (alphaHp + GammaeH0 + photorate)
 
-    def _nHp(self, nh, temp, ne):
+    def _nHp(self, nh, temp, nebynh):
         """The ionised hydrogen number density. Eq. 34 of KWH."""
-        return nh - self._nH0(nh, temp, ne)
+        return 1 - self._nH0(nh, temp, nebynh)
 
-    def _nHep(self, nh, temp, ne):
+    def _nHep(self, nh, temp, nebynh):
         """The ionised helium number density, divided by the helium number fraction. Eq. 35 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
         alphaHepp = self.recomb.alphaHepp(temp)
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
-        return nh / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
+        photofac = self._photofac(nebynh, nh, temp)
+        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
+        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
+        return 1. / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
 
-    def _nHe0(self, nh, temp, ne):
+    def _nHe0(self, nh, temp, nebynh):
         """The neutral helium number density, divided by the helium number fraction. Eq. 36 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
-        return self._nHep(nh, temp, ne) * alphaHep / GammaHe0
+        photofac = self._photofac(nebynh, nh, temp)
+        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
+        return self._nHep(nh, temp, nebynh) * alphaHep / GammaHe0
 
-    def _nHepp(self, nh, temp, ne):
+    def _nHepp(self, nh, temp, nebynh):
         """The doubly ionised helium number density, divided by the helium number fraction. Eq. 37 of KWH."""
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
+        photofac = self._photofac(nebynh, nh, temp)
+        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
         alphaHepp = self.recomb.alphaHepp(temp)
-        return self._nHep(nh, temp, ne) * GammaHep / alphaHepp
+        return self._nHep(nh, temp, nebynh) * GammaHep / alphaHepp
 
-    def _ne(self, nh, temp, ne, helium=0.24):
-        """The electron number density. Eq. 38 of KWH."""
+    def _nebynh(self, nh, temp, nebynh, helium=0.24):
+        """The electron number density per hydrogen atom. Eq. 38 of KWH."""
         yy = helium / 4 / (1 - helium)
-        return self._nHp(nh, temp, ne) + yy * self._nHep(nh, temp, ne) + 2* yy * self._nHepp(nh, temp, ne)
+        return self._nHp(nh, temp, nebynh) + yy * self._nHep(nh, temp, nebynh) + 2* yy * self._nHepp(nh, temp, nebynh)
 
     def _self_shield_corr(self, nh, temp):
         """Photoionisation rate as  a function of density from Rahmati 2012, eq. 14.
@@ -235,10 +255,11 @@ class RateNetwork(object):
 
     def _get_temp(self, nebynh, ienergy, helium=0.24):
         """Compute temperature (in K) from internal energy and electron density.
-           Uses: internal energy
+           Uses: internal energy in (km/s)^2, internal gadget units.
                  electron abundance per H atom (ne/nH)
                  hydrogen mass fraction (0.76)
-           Internal energy is in J/kg, internal gadget units, == 10^-10 ergs/g.
+           Internal energy is in (km/s)^2 (internal gadget units) == 10^10 ergs/g.
+           The code takes internal Gadget units
            Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
            T = U (γ-1) μ m_P / k_B
            where k_B is the Boltzmann constant
@@ -260,7 +281,8 @@ class RateNetwork(object):
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
         hy_mass = 1 - helium
-        muienergy = 4 / (hy_mass * (3 + 4*nebynh) + 1)*ienergy*1e10
+        meanweight = 4./(1 + (3 + 4 * nebynh) * hy_mass)
+        muienergy = meanweight *ienergy*1e10
         #Boltzmann constant (cgs)
         boltzmann=1.38066e-16
         gamma=5./3
@@ -641,3 +663,74 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         little = (temp/zz**2 <= 3.2e5)
         lt = np.log10(temp/zz**2)
         return little * (0.79464 + 0.1243*lt) + np.logical_not(little) * ( 2.13164 - 0.1240 * lt)
+
+#Fixed point optimization routines from scipy, modified to enforce positivity and use absolute error
+from scipy._lib._util import _asarray_validated, _lazywhere
+
+def _del2(p0, p1, d):
+    """del2 convergence accelerator"""
+    pp = p0 - np.square(p1 - p0) / d
+    return np.maximum(pp, np.zeros_like(pp))
+
+def _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel):
+    """Helper function from scipy optimize"""
+    p0 = x0
+    for i in range(maxiter):
+        p1 = func(p0, *args)
+        if np.all(np.abs(p1-p0) < xtol/2.):
+            return p1
+        if use_accel and i < maxiter//2:
+            p2 = func(p1, *args)
+            d = p2 - 2.0 * p1 + p0
+            p = _lazywhere(d != 0, (p0, p1, d), f=_del2, fillvalue=p2)
+        else:
+            p = p1
+        p0 = p
+    msg = "Failed to converge after %d iterations, value is %s" % (maxiter, p)
+    raise RuntimeError(msg)
+
+
+def fixed_point(func, x0, args=(), xtol=1e-8, maxiter=500, method='del2'):
+    """
+    Find a fixed point of the function.
+
+    Given a function of one or more variables and a starting point, find a
+    fixed-point of the function: i.e. where ``func(x0) == x0``.
+
+    Parameters
+    ----------
+    func : function
+        Function to evaluate.
+    x0 : array_like
+        Fixed point of function.
+    args : tuple, optional
+        Extra arguments to `func`.
+    xtol : float, optional
+        Convergence tolerance, defaults to 1e-08.
+    maxiter : int, optional
+        Maximum number of iterations, defaults to 500.
+    method : {"del2", "iteration"}, optional
+        Method of finding the fixed-point, defaults to "del2"
+        which uses Steffensen's Method with Aitken's ``Del^2``
+        convergence acceleration [1]_. The "iteration" method simply iterates
+        the function until convergence is detected, without attempting to
+        accelerate the convergence.
+
+    References
+    ----------
+    .. [1] Burden, Faires, "Numerical Analysis", 5th edition, pg. 80
+
+    Examples
+    --------
+    >>> from scipy import optimize
+    >>> def func(x, c1, c2):
+    ...    return np.sqrt(c1/(x+c2))
+    >>> c1 = np.array([10,12.])
+    >>> c2 = np.array([3, 5.])
+    >>> optimize.fixed_point(func, [1.2, 1.3], args=(c1,c2))
+    array([ 1.4920333 ,  1.37228132])
+
+    """
+    use_accel = {'del2': True, 'iteration': False}[method]
+    x0 = _asarray_validated(x0, as_inexact=True)
+    return _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel)
