@@ -46,7 +46,7 @@ class Profiles(object):
         midpt = np.size(self.wavelengths)//2
         self.lambda_diff = (self.wavelengths - midpt*self.dvbin)
 
-    def do_fit(self, tol=1e-4, signif=0.9, sattau=4):
+    def do_fit(self, tol=1e-4, signif=0.95, sattau=4):
         """Do the fit.
         tol - stop peak finding when the largest peak is tol * max(1,max(self.tau))
         As we iteratively remove peaks, small peaks are increasingly likely to just be fitting errors
@@ -58,7 +58,7 @@ class Profiles(object):
         #We do not care about very small peaks; this includes both peaks which are small in absolute value
         #and peaks which are small in a relative sense.
         realtol = tol * np.max([1, np.max(self.tau)])
-        #Initial mask includes the whole spectrum
+        #Initialize mask using the whole spectrum for fitting the first peak
         mask = np.where(fitted_tau > -1)
         #Do the fit iteratively, stopping when the largest peak is likely unimportant.
         while np.max(fitted_tau[mask]) > realtol and mask[0].size != 0:
@@ -70,6 +70,8 @@ class Profiles(object):
             mask = np.where(self.profile_multiple(self.stddev, self.means, self.amplitudes) < sattau)
         #Do a global re-fit of all peaks
         inputs = np.hstack([self.stddev[:2], self.means[:2], self.amplitudes[:2]])
+        # tolerance for global re-fit should be larger than for single profiles -- set to 25% of largest peak
+        # or 0.25, whichever is greater
         result = optimize.minimize(self.fun_min_multiple, inputs, tol=realtol/tol*0.25, method='Nelder-Mead')
         total = np.min([2, np.size(self.stddev)])
         prior_result = result.fun*2
@@ -287,7 +289,7 @@ class _SingleProfileHelper(object):
         """Call the fit"""
         stime = time.time()
         prof = Profiles(tau_t, self.dvbin, elem=self.elem, ion=self.ion, line=self.line)
-        prof.do_fit(tol=1e-4, signif=0.95, sattau=4)
+        prof.do_fit()
         n_this, _ = prof.get_systems(self.close)
         ftime = time.time()
         if self.verbose:
