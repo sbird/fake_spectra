@@ -82,6 +82,7 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
         mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
     mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
+    # compute in batches, purely for computational efficiency
     for i in range(10):
         end = min((i+1)*nspec//10, nspec)
         dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.
