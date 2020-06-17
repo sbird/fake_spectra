@@ -724,6 +724,8 @@ class Spectra:
 
             col_den = self.compute_spectra(elem,ion,1215,False)
             cdsum = np.sum(col_den, axis = 1)
+            # make sure array elements are contiguous
+            cdsum = np.ascontiguousarray(cdsum, np.float32)
             cdsum_added = np.zeros_like(cdsum)
             #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
 
