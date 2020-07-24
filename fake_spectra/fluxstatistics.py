@@ -27,7 +27,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
         scaling factor for tau"""
     if np.size(tau) == 0:
         return 0
-    return _rescale_mean_flux(tau, mean_flux_desired, np.size(tau), tol, thresh)
+    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol, thresh)
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
