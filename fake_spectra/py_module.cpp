@@ -271,6 +271,10 @@ extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
       return NULL;
     }
     Tau = PyArray_GETCONTIGUOUS(Tau);
+    if(check_type(Tau,NPY_DOUBLE)){
+      PyErr_SetString(PyExc_TypeError, "Optical depth must have 64-bit float type\n");
+      return NULL;
+    }
     const double * tau =(double *) PyArray_DATA(Tau);
     const double newscale = get_mean_flux_scale(tau, mean_flux_desired, nbins, tol, thresh);
     Py_DECREF(Tau);

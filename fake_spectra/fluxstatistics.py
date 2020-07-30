@@ -27,7 +27,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
         scaling factor for tau"""
     if np.size(tau) == 0:
         return 0
-    return _rescale_mean_flux(tau, mean_flux_desired, np.size(tau), tol, thresh)
+    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol, thresh)
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
@@ -82,6 +82,7 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=True):
         mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
     mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
+    # compute in batches, purely for computational efficiency
     for i in range(10):
         end = min((i+1)*nspec//10, nspec)
         dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.

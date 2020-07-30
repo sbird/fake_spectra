@@ -196,8 +196,12 @@ class Spectra:
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         try:
-            # velocity bin size (kms^-1)
-            self.dvbin = self.vmax / (1.*self.nbins)
+            # Check if desired pixel size matches with self.nbins
+            if np.around(self.vmax/res) != self.nbins :
+                raise AttributeError
+            else:
+                # velocity bin size (kms^-1)
+                self.dvbin = self.vmax / (1.*self.nbins)
         except AttributeError:
             #This will occur if we are not loading from a savefile
             self.dvbin = res # velocity bin size (kms^-1)

@@ -8,14 +8,14 @@ It will use 16 ranks in MPI.
 
 This is a small code for generating and analyzing simulated spectra from
 Arepo/Gadget HDF5 simulation output. It is fast, parallel and written in C++ and Python 3.
-It really has two parts: 
+It really has two parts:
 1) a C++/python 3 code which generates and analyses arbitrary spectra
-2) A (slightly) maintained C++ command line program, extract, that generates 
+2) A (slightly) maintained C++ command line program, extract, that generates
 Lyman-alpha spectra and outputs them to a binary file.
 
 If you are reading these instructions, I will assume you are using the first part:
-the second program is for compatibility with older spectral extraction codes, 
-of which this is a rewrite, and so anyone who wants it should already know 
+the second program is for compatibility with older spectral extraction codes,
+of which this is a rewrite, and so anyone who wants it should already know
 how to use it.
 
 == Installation ==
@@ -54,9 +54,9 @@ python3 setup.py install --user
 On some systems you may have to add the directory it installs to
 (usually $HOME/.local/lib) to your $PYTHONPATH
 
-At time of writing, the code should compile with python2, once 
-python3-config in the Makefile is replaced with python2-config. 
-However, I do not guarantee bug-free operation, and strongly 
+At time of writing, the code should compile with python2, once
+python3-config in the Makefile is replaced with python2-config.
+However, I do not guarantee bug-free operation, and strongly
 recommend using python 3.
 
 The test suite for the C++ module (only required during development)
@@ -68,12 +68,30 @@ The main spectral generation routines are used can be called with:
 import fake_spectra.spectra
 spectra.Spectra(...)
 
-However, this requires you to specify the positions of each sightline.
+Spectra takes two arguments: cofm and axis. If both are set to None,
+the code will load them from a savefile. If there is no savefile you
+must specify them. If N is the number of sightlines, axis has N entries.
+axis specifies in which direction the sightline goes through the box.
+Each entry of axis may be 1,2,3, with 1 being the x-axis, 2 being
+the y-axis and 3 being the z-axis. In other words, axis is a
+*1-indexed* array due to the original FORTRAN heritage of the code.
+
+cofm is an Nx3 array. The column of cofm corresponding to axis is ignored:
+it is left specified only so that you can easily generate sightlines
+going through different axes in one call. Hence the following:
+
+cofm = [[1,2,3], [4,5,6]], axis = 1
+
+generates sightlines along the x-axis at y,z = 2,3 and y,z=5,6.
+It produces identical output to
+
+cofm = [[4,2,3], [1,5,6]], axis = 1
+
 I have created a number of convenient wrappers for common configurations.
 Two of these are:
 
-randspectra.py - Generate spectra at random locations. Can optionally discard spectra that
-do not meet an HI column density threshold.
+randspectra.py - Generate spectra at random locations along the x axis.
+Can optionally discard spectra that do not meet an HI column density threshold.
 halospectra.py - Generate spectra through the center of halos.
 
 Spectral generation routines take two arguments, base and num, which
@@ -87,7 +105,7 @@ For neutral gas, pass ion 1. For the sum of all ionic species, pass ion -1.
 Optical depths can be generated for arbitrary lines with the method get_tau(elem, ion, line)
 Line data is loaded from a copy of atom.dat taken from VPFIT.
 
-Thus, to generate randomly positioned Lyman-series spectra and associated HI column densities, 
+Thus, to generate randomly positioned Lyman-series spectra and associated HI column densities,
 one would use this script:
 
 from fake_spectra.randspectra import RandSpectra

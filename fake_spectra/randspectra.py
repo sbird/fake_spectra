@@ -15,7 +15,7 @@ class RandSpectra(spectra.Spectra):
         self.box = f.get_header_attr("BoxSize")
         del f
         self.NumLos = numlos
-        #All through y axis
+        #All through x axis (Fortran convention, 1 for x, 2 for y, 3 for z)
         axis = np.ones(self.NumLos)
         #Sightlines at random positions
         #Re-seed for repeatability
