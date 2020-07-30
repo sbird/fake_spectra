@@ -13,11 +13,11 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base):
+def AbstractSnapshotFactory(num, base, comm):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base)
+        return HDF5Snapshot(num, base, comm)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
@@ -155,7 +155,9 @@ class AbstractSnapshot(object):
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base):
+    def __init__(self, num, base, comm):
+        #MPI communicator
+        self.comm = comm
         self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
@@ -169,6 +171,8 @@ class HDF5Snapshot(AbstractSnapshot):
             num - snapshot number
             base - simulation directory
             """
+        rank = self.comm.Get_rank()
+        size = self.comm.Get_size()
         fname = base
         snap=str(num).rjust(3,'0')
         #new_fname = os.path.join(base, "snapdir_"+snap)
@@ -183,7 +187,14 @@ class HDF5Snapshot(AbstractSnapshot):
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
-        return [fff for fff in fnames if h5py.is_hdf5(fff) ]
+        num_files = len(fnames)
+        # a list if file names for each rank
+        fnames_rank = fnames[rank*files_per_rank : (rank+1)*files_per_rank]
+        #some ranks get 1 more snapshot file
+        remained = int(num_files - (files_per_rank*size))
+        if rank in range(1,remained+1):
+            fnames_rank.append(fnames[files_per_rank*size + rank-1 ])
+        return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
 
     def get_data(self, part_type, blockname, segment):
         """Get the data for a particular particle type.
