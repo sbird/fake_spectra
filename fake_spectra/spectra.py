@@ -125,7 +125,7 @@ class Spectra:
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm)
                 #Set up the kernel
                 if kernel is None:
                     self.kernel_int = self.snapshot_set.get_kernel()
