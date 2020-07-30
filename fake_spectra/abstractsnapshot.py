@@ -188,6 +188,7 @@ class HDF5Snapshot(AbstractSnapshot):
             raise IOError("No files found")
         fnames.sort()
         num_files = len(fnames)
+        files_per_rank = int(num_files/size)
         # a list if file names for each rank
         fnames_rank = fnames[rank*files_per_rank : (rank+1)*files_per_rank]
         #some ranks get 1 more snapshot file
