@@ -61,7 +61,7 @@ class Profiles(object):
         #Initialize mask using the whole spectrum for fitting the first peak
         mask = np.where(fitted_tau > -1)
         #Do the fit iteratively, stopping when the largest peak is likely unimportant.
-        while np.max(fitted_tau[mask]) > realtol and mask[0].size != 0:
+        while mask[0].size != 0 and np.max(fitted_tau[mask]) > realtol:
             (fitted_tau, mean, amplitude, stddev) = self.iterate_new_spectrum(fitted_tau, mask=mask)
             #We only want to fit to regions that are not already saturated in the fit.
             self.means.append(mean)
