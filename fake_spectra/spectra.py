@@ -331,7 +331,6 @@ class Spectra:
 
     def add_noise(self, snr, flux, spec_num=-1):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
-        #flux = np.exp(-tau)
         noise_array = np.array([])
         if np.size(np.shape(flux)) == 1:
             lines = 1
@@ -348,12 +347,6 @@ class Spectra:
                 noise = np.random.normal(0, 1./snr[ii], self.nbins)
                 noise_array = np.append(noise_array, noise)
                 flux[ii]+= noise
-    
-        #Make sure we don't have negative flux
-        #ind = np.where(flux > 0)
-        #tau[ind] = -np.log(flux[ind])
-        
-#         assert np.all(np.logical_not(np.isnan(tau)))
         return (flux, noise_array)
 
 
@@ -361,7 +354,6 @@ class Spectra:
         """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
         in observations"""
 
-        #flux = np.exp(-tau)
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
@@ -391,12 +383,7 @@ class Spectra:
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
 
-                flux[ii,:] /= (1.0 + delta[ii])
-
-        #make sure we don't have negative flux
-        #ind = np.where(flux > 0)
-        #tau[ind] = -np.log(flux[ind])
-        
+                flux[ii,:] /= (1.0 + delta[ii])        
         return (flux , delta)
 
 
