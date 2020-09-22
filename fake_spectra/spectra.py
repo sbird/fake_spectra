@@ -356,7 +356,8 @@ class Spectra:
 
 
     def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
-        """Adding the Continuum error to spectra.
+        """Adding the Continuum error to spectra. If you want to add both random noise and continuum error, first add 
+        the continuum error and then the random noise.
         Parameters:
         CE : the stdev of the gaussian noise 
         flux : an array of spectra (flux)  we want to add noise to
