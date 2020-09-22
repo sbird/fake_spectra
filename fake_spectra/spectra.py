@@ -364,7 +364,6 @@ class Spectra:
         spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
         u_delta, l_delta : upper and lower limit of the delta parameter
         """
-
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
@@ -375,25 +374,17 @@ class Spectra:
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
-
             # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
             while (delta < l_delta) or (delta > u_delta):
                 delta = np.random.normal(0, CE[spec_num])
-
             flux /= (1.0 + delta)
-
         else:
-
             delta = np.empty(lines)
-
             for ii in xrange(lines):
-
                 np.random.seed(2*ii)
                 delta[ii] = np.random.normal(0, CE[ii])
-
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
-
                 flux[ii,:] /= (1.0 + delta[ii])        
         return (flux , delta)
 
