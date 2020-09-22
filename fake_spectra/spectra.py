@@ -330,7 +330,12 @@ class Spectra:
         f.close()
 
     def add_noise(self, snr, flux, spec_num=-1):
-        """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
+        """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth
+        Parameters:
+        snr : an array of signal to noise ratio (constant along each sightine)
+        flux : an array of spectra (flux)  we want to add noise to
+        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        """
         noise_array = np.array([])
         if np.size(np.shape(flux)) == 1:
             lines = 1
@@ -351,8 +356,13 @@ class Spectra:
 
 
     def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
-        """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
-        in observations"""
+        """Adding the Continuum error to spectra.
+        Parameters:
+        CE : the stdev of the gaussian noise 
+        flux : an array of spectra (flux)  we want to add noise to
+        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        u_delta, l_delta : upper and lower limit of the delta parameter
+        """
 
         if np.size(np.shape(flux)) == 1:
             lines = 1
