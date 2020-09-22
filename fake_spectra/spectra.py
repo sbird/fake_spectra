@@ -332,6 +332,7 @@ class Spectra:
     def add_noise(self, snr, flux, spec_num=-1):
         """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
         #flux = np.exp(-tau)
+        noise_array = np.array([])
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
@@ -339,21 +340,21 @@ class Spectra:
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            if spec_num < 0:
-                np.random.seed(0)
-            else:
-                np.random.seed(spec_num)
+            np.random.seed(spec_num)
             flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
         else:
             for ii in xrange(lines):
                 np.random.seed(ii)
-                flux[ii] += np.random.normal(0, 1./snr[ii], self.nbins)
+                noise = np.random.normal(0, 1./snr[ii], self.nbins)
+                noise_array = np.append(noise_array, noise)
+                flux[ii]+= noise
+    
         #Make sure we don't have negative flux
         #ind = np.where(flux > 0)
         #tau[ind] = -np.log(flux[ind])
         
 #         assert np.all(np.logical_not(np.isnan(tau)))
-        return flux
+        return (flux, noise_array)
 
 
     def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
@@ -367,6 +368,7 @@ class Spectra:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
+            delta_array = np.array([])
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
@@ -389,13 +391,13 @@ class Spectra:
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
 
-                flux[ii] /= (1.0 + delta[ii])
+                flux[ii,:] /= (1.0 + delta[ii])
 
         #make sure we don't have negative flux
         #ind = np.where(flux > 0)
         #tau[ind] = -np.log(flux[ind])
         
-        return flux 
+        return (flux , delta)
 
 
     def load_savefile(self, savefile=None):
