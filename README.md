@@ -31,20 +31,21 @@ Optional libraries:
 All these libraries can be installed with pip.
 
 The easiest way to install the code is with pip:
-
+```
 pip3 install --user fake_spectra
+```
 
 If you need to use a pre-release version for any reason, you need this git repo.
 
 First you need to check out the submodules:
-
+```
 git submodule update --init
-
+```
 Then compile it using:
-
+```
 python3 setup.py build
 python3 setup.py install --user
-
+```
 On some systems you may have to add the directory it installs to
 (usually $HOME/.local/lib) to your $PYTHONPATH
 
@@ -58,10 +59,10 @@ requires Boost::Test and can be used with "make test"
 
 == Usage ==
 The main spectral generation routines are used can be called with:
-
+```
 import fake_spectra.spectra
 spectra.Spectra(...)
-
+```
 Spectra takes two arguments: cofm and axis. If both are set to None,
 the code will load them from a savefile. If there is no savefile you
 must specify them. If N is the number of sightlines, axis has N entries.
@@ -90,7 +91,7 @@ halospectra.py - Generate spectra through the center of halos.
 
 Spectral generation routines take two arguments, base and num, which
 specify where they should look for snapshot output. They will search:
-$(base)/snapdir_$(num)/snap_$(num).hdf5
+`$(base)/snapdir_$(num)/snap_$(num).hdf5`
 Note that num is padded with zeros to three characters, so passing '40' will result in '040'.
 
 Column densities can be generated for arbitrary ions with the method get_col_density(elem, ion)
@@ -102,6 +103,7 @@ Line data is loaded from a copy of atom.dat taken from VPFIT.
 Thus, to generate randomly positioned Lyman-series spectra and associated HI column densities,
 one would use this script:
 
+```
 from fake_spectra.randspectra import RandSpectra
 
 rr = RandSpectra(5, "MySim", thresh=0.)
@@ -111,6 +113,7 @@ rr.get_tau("H",1,1025)
 rr.get_col_density("H",1)
 #Save spectra to file
 rr.save_file()
+```
 
 Note that the wavelength of the transition always rounds down,
 so lyman alpha at 1215.67 A is 1215, not 1216!
@@ -119,14 +122,17 @@ Generated spectra will be saved into HDF5 files, for ease of later analysis.
 Each spectral generation routine saves spectra to a differently named file.
 
 To load them again, use the PlottingSpectra routines:
-
+```
 from fake_spectra.plot_spectra import PlottingSpectra
 
-ps = PlottingSpectra(5,"MySim", savefile="mysavefile.hdf5")
+ps = PlottingSpectra(num=5,base="MySim", label="My label",savefile="mysavefile.hdf5")
 ps.plot_cddf("H",1)
+```
 
 You can also compute the temperature-density relation and mean IGM temperature with the tempdens module:
 
+```
 from fake_spectra.tempdens import fit_td_rel_plot
 
 fit_td_rel_plot(5, "MySim", plot=True)
+```
