@@ -91,7 +91,7 @@ halospectra.py - Generate spectra through the center of halos.
 
 Spectral generation routines take two arguments, base and num, which
 specify where they should look for snapshot output. They will search:
-$(base)/snapdir_$(num)/snap_$(num).hdf5
+`$(base)/snapdir_$(num)/snap_$(num).hdf5`
 Note that num is padded with zeros to three characters, so passing '40' will result in '040'.
 
 Column densities can be generated for arbitrary ions with the method get_col_density(elem, ion)
