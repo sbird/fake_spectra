@@ -15,7 +15,7 @@ except NameError:
 
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
-    def __init__(self,num, base, cofm=None, axis=None, load_halo=True,**kwargs):
+    def __init__(self,num, base, label, cofm=None, axis=None, load_halo=True,**kwargs):
         spectra.Spectra.__init__(self,num, base, cofm=cofm, axis=axis, load_halo=load_halo, **kwargs)
         self.label=label
 
