@@ -13,11 +13,6 @@ class GriddedSpectra(spectra.Spectra):
             savefile="gridded_spectra.hdf5", reload_file=True,
             axis=1, **kwargs):
 
-        print('------- PRINT KWARGS -------')
-        for key, value in kwargs.items():
-            print("{0} = {1}".format(key, value))
-        print('------- END KWARGS -------')
-
         # get box size from file (either HDF5 or BigFile)
         f = absn.AbstractSnapshotFactory(num, base)
         self.box = f.get_header_attr("BoxSize")
