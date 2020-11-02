@@ -92,14 +92,8 @@ class RateNetworkGas(gas_properties.GasProperties):
 
 class RateNetworkSpectra(spectra.Spectra):
     """Generate spectra with a neutral fraction from a rate network"""
-    def __init__(self, *args, photo_factor = 1, sf_neutral=True,
-            selfshield=True, temp_factor = 1, gamma_factor = 1,
-            hubble = 0.71, fbar = 0.17,
-            treecool_file = "data/TREECOOL_ep_2018p", **kwargs):
+    def __init__(self, *args, photo_factor = 1, sf_neutral=True, selfshield=True, **kwargs):
         kwargs["gasprop"]=RateNetworkGas
         kwargs["sf_neutral"] = sf_neutral
-        kwargs["gasprop_args"] = {"photo_factor" : photo_factor,
-            "selfshield" : selfshield, "temp_factor" : temp_factor,
-            "gamma_factor" : gamma_factor, "hubble" : hubble,
-            "fbar" : fbar, "treecool_file" : treecool_file}
+        kwargs["gasprop_args"] = {"photo_factor": photo_factor, "selfshield" : selfshield}
         super().__init__(*args, **kwargs)
