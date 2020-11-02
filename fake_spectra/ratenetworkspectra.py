@@ -92,8 +92,11 @@ class RateNetworkGas(gas_properties.GasProperties):
 
 class RateNetworkSpectra(spectra.Spectra):
     """Generate spectra with a neutral fraction from a rate network"""
-    def __init__(self, *args, photo_factor = 1, sf_neutral=True, selfshield=True, **kwargs):
+    def __init__(self, *args, photo_factor = 1, sf_neutral=True,
+            selfshield=True, temp_factor = 1, gamma_factor = 1, **kwargs):
         kwargs["gasprop"]=RateNetworkGas
         kwargs["sf_neutral"] = sf_neutral
-        kwargs["gasprop_args"] = {"photo_factor": photo_factor, "selfshield" : selfshield}
+        kwargs["gasprop_args"] = {"photo_factor" : photo_factor,
+            "selfshield" : selfshield, "temp_factor" : temp_factor,
+            "gamma_factor" : gamma_factor}
         super().__init__(*args, **kwargs)
