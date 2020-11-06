@@ -30,21 +30,17 @@ class GriddedSpectra(spectra.Spectra):
         # decide axis to use to extract skewers (x axis by default)
         grid_axes = axis*np.ones(nspec*nspec)
 
-        # separation between skewes in the grid (per side)
-        dx=self.box/(1.*nspec)
-        # allocate memory for all 3D positions
-        grid_cofm = np.empty([nspec*nspec, 3])
-        for nn in range(nspec):
-            for mm in range(nspec):
-                ii=nn*nspec+mm
-                # define grid positions depending on axis
-                if axis==1:
-                    grid_cofm[ii] = np.array([0, nn, mm]) * dx
-                elif axis==2:
-                    grid_cofm[ii] = np.array([nn, 0, mm]) * dx
-                elif axis==3:
-                    grid_cofm[ii] = np.array([nn, mm, 0]) * dx
-                else:
-                    raise ValueError('wrong axis number {}'.format(axis))
+        # figure out grid of positions for this particular axis
+        if axis==1:
+            grid_id=[np.array([0,nn,mm]) for nn in range(nspec) for mm in range(nspec)]
+        elif axis==2:
+            grid_id=[np.array([nn,0,mm]) for nn in range(nspec) for mm in range(nspec)]
+        elif axis==3:
+            grid_id=[np.array([nn,mm,0]) for nn in range(nspec) for mm in range(nspec)]
+        else:
+            raise ValueError('wrong axis number {}'.format(axis))
 
-        return grid_axes, grid_cofm
+        # separation between skewers in the grid (per side)
+        dx=self.box/(1.*nspec)
+
+        return grid_axes, dx*np.array(grid_id)
