@@ -188,18 +188,20 @@ class Spectra:
         self.velfac = self.rscale * Hz / 3.085678e24
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
-        try:
-            # Check if desired pixel size matches with self.nbins
-            if np.around(self.vmax/res) != self.nbins :
-                raise AttributeError
-            else:
-                # velocity bin size (kms^-1)
-                self.dvbin = self.vmax / (1.*self.nbins)
-        except AttributeError:
-            #This will occur if we are not loading from a savefile
-            self.dvbin = res # velocity bin size (kms^-1)
-            #Number of bins to achieve the required resolution
-            self.nbins = int(self.vmax / self.dvbin)
+        # specify pixel width and number of pixels in spectra
+        if reload_file:
+            # nbins must be an integer (could consider making it an even number)
+            #self.nbins=2*int(0.5*self.vmax/res)
+            self.nbins=int(self.vmax/res)
+            # velocity bin size (kms^-1)
+            self.dvbin = self.vmax / (1.*self.nbins)
+        else:
+            # self.nbins already set from file
+            self.dvbin = self.vmax / (1.*self.nbins)
+            # check if you asked for different pixel width (could drop this)
+            if not np.isclose(self.dvbin,res,rtol=1e-4):
+                print('WARNING: pixel width read = {} km/s'.format(self.dvbin))
+                print('does not match value asked = {} km/s'.format(res))
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
