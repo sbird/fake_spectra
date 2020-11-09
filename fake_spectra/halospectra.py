@@ -16,7 +16,7 @@ except NameError:
 
 class HaloSpectra(spectra.Spectra):
     """Generate spectra from simulation snapshot which are near to galactic halos."""
-    def __init__(self,num, base, repeat = 1, min_mass = 1e9, max_mass=1e11, res = 1., offset=1., savefile="halo_spectra.hdf5", savedir=None, cdir=None):
+    def __init__(self,num, base, repeat = 1, min_mass = 1e9, max_mass=1e11, res = None, offset=1., savefile="halo_spectra.hdf5", savedir=None, cdir=None):
         if savedir is None:
             savedir = path.join(base,"snapdir_"+str(num).rjust(3,'0'))
         self.savefile = path.join(savedir,savefile)

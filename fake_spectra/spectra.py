@@ -80,7 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base,cofm, axis, res=None, cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -188,18 +188,21 @@ class Spectra:
         self.velfac = self.rscale * Hz / 3.085678e24
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
-        try:
-            # Check if desired pixel size matches with self.nbins
-            if np.around(self.vmax/res) != self.nbins :
-                raise AttributeError
-            else:
-                # velocity bin size (kms^-1)
-                self.dvbin = self.vmax / (1.*self.nbins)
-        except AttributeError:
-            #This will occur if we are not loading from a savefile
-            self.dvbin = res # velocity bin size (kms^-1)
-            #Number of bins to achieve the required resolution
-            self.nbins = int(self.vmax / self.dvbin)
+        # specify pixel width and number of pixels in spectra
+        if reload_file:
+            # if reloading from snapshot, pixel width must have been defined
+            if res is None:
+                raise ValueError('pixel width (res) not provided')
+            # nbins must be an integer
+            self.nbins=int(self.vmax/res)
+            # velocity bin size (kms^-1)
+            self.dvbin = self.vmax / (1.*self.nbins)
+        else:
+            # self.nbins already set from file
+            self.dvbin = self.vmax / (1.*self.nbins)
+            # check if you asked for different pixel width
+            if res is not None:
+                assert np.isclose(self.dvbin,res,rtol=1e-4),'pixel width error'
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
