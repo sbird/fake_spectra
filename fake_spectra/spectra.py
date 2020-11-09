@@ -202,7 +202,7 @@ class Spectra:
             self.dvbin = self.vmax / (1.*self.nbins)
             # check if you asked for different pixel width
             if res is not None:
-                assert np.isclose(self.dvbin,res,rtol=1e-4),'pixel width error'
+                assert np.isclose(self.dvbin,res,rtol=1e-2),'pixel width error'
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
