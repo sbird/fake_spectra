@@ -9,7 +9,7 @@ from . import spectra
 class GriddedSpectra(spectra.Spectra):
     """Generate regular grid of spectra along a given axis."""
 
-    def __init__(self,num, base, nspec=200, res = 90., 
+    def __init__(self,num, base, nspec=200, res = None,
             savefile="gridded_spectra.hdf5", reload_file=True,
             axis=1, **kwargs):
 
