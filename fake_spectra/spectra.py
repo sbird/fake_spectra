@@ -836,16 +836,6 @@ class Spectra:
             self.tau[(elem, ion, line)] = tau
         if number >= 0:
             tau = tau[number, :]
-        #Correct for the spectrograph resolution in flux space.
-        #We need to cap the optical depth to avoid divide-by-zero
-        if self.spec_res > 0:
-            tau[np.where(tau > 700)] = 700
-            corrflux = spec_utils.res_corr(np.exp(-tau), self.dvbin, self.spec_res)
-            flux = corrflux
-            if np.any(corrflux <= 0):
-                raise Exception
-            tau = - np.log(corrflux) 
-
         return tau
 
 
