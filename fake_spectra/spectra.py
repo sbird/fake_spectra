@@ -832,7 +832,7 @@ class Spectra:
             tau = self.tau[(elem, ion, line)]
         except KeyError:
             tau = self.compute_spectra(elem, ion, line, True)
-            self.tau[(elefm, ion, line)] = tau
+            self.tau[(elem, ion, line)] = tau
         if number >= 0:
             tau = tau[number, :]
         return tau
