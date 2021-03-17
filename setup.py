@@ -122,9 +122,9 @@ cmodule = [
 
 setup(
     name="fake_spectra",
-    version='2.1.1',
+    version='2.1.2',
     author="Simeon Bird",
-    author_email="spb@ias.edu",
+    author_email="spb@ucr.edu",
     #Use the subclass which adds openmp flags as appropriate
 #     cmdclass = {'build_ext': build_ext_subclass },
     url="http://github.com/sbird/fake_spectra",

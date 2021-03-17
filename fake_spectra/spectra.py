@@ -80,7 +80,7 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self, num, base, cofm, axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, snr=None, CE=None, spec_res=0, load_halo=False, units=None, sf_neutral=True, quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self,num, base,cofm, axis, res=None, cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
@@ -105,12 +105,10 @@ class Spectra:
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
         self.cofm_final = False
         self.num_important = {}
-        self.discarded = 0
-        self.npart = 0
-        #If is not None, will add noise to spectra when they are loaded.You should pass an array with the size of spectra number.
-        self.snr = snr
-        # The stdev for calculating Continuum Error. The same comments as snr.
-        self.CE = CE
+
+        self.discarded=0
+        self.npart=0
+
         self.spec_res = spec_res
         self.cdir = cdir
         #Minimum length of spectra within which to look at metal absorption (in km/s)
@@ -190,18 +188,21 @@ class Spectra:
         self.velfac = self.rscale * Hz / 3.085678e24
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
-        try:
-            # Check if desired pixel size matches with self.nbins
-            if np.around(self.vmax/res) != self.nbins :
-                raise AttributeError
-            else:
-                # velocity bin size (kms^-1)
-                self.dvbin = self.vmax / (1.*self.nbins)
-        except AttributeError:
-            #This will occur if we are not loading from a savefile
-            self.dvbin = res # velocity bin size (kms^-1)
-            #Number of bins to achieve the required resolution
-            self.nbins = int(self.vmax / self.dvbin)
+        # specify pixel width and number of pixels in spectra
+        if reload_file:
+            # if reloading from snapshot, pixel width must have been defined
+            if res is None:
+                raise ValueError('pixel width (res) not provided')
+            # nbins must be an integer
+            self.nbins=int(self.vmax/res)
+            # velocity bin size (kms^-1)
+            self.dvbin = self.vmax / (1.*self.nbins)
+        else:
+            # self.nbins already set from file
+            self.dvbin = self.vmax / (1.*self.nbins)
+            # check if you asked for different pixel width
+            if res is not None:
+                assert np.isclose(self.dvbin,res,rtol=1e-2),'pixel width error'
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
@@ -331,9 +332,14 @@ class Spectra:
             raise ValueError("Not supported")
         f.close()
 
-    def add_noise(self, snr, tau, spec_num):
-        """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth"""
-        flux = np.exp(-tau)
+    def add_noise(self, snr, flux, spec_num=-1):
+        """Compute a Gaussian noise vector from the flux variance and the SNR, as computed from optical depth
+        Parameters:
+        snr : an array of signal to noise ratio (constant along each sightine)
+        flux : an array of spectra (flux)  we want to add noise to
+        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        """
+        noise_array = np.array([])
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
@@ -341,62 +347,50 @@ class Spectra:
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            if spec_num < 0:
-                np.random.seed(0)
-            else:
-                np.random.seed(spec_num)
+            np.random.seed(spec_num)
             flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
         else:
             for ii in xrange(lines):
                 np.random.seed(ii)
-                flux[ii] += np.random.normal(0, 1./snr[ii], self.nbins)
-        #Make sure we don't have negative flux
-        ind = np.where(flux > 0)
-        tau[ind] = -np.log(flux[ind])
-#         assert np.all(np.logical_not(np.isnan(tau)))
-        return tau
+                noise = np.random.normal(0, 1./snr[ii], self.nbins)
+                noise_array = np.append(noise_array, noise)
+                flux[ii]+= noise
+        return (flux, noise_array)
 
 
-    def add_cont_error(self, CE, tau, spec_num, u_delta=0.6, l_delta=-0.6):
-        """Compute a Gaussian noise vector from the flux variance and the CE. It is due to continuum fitting error
-        in observations"""
-
-        flux = np.exp(-tau)
+    def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
+        """Adding the Continuum error to spectra. If you want to add both random noise and continuum error, first add 
+        the continuum error and then the random noise.
+        Parameters:
+        CE : the stdev of the gaussian noise 
+        flux : an array of spectra (flux)  we want to add noise to
+        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        u_delta, l_delta : upper and lower limit of the delta parameter
+        """
         if np.size(np.shape(flux)) == 1:
             lines = 1
         else:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
+            delta_array = np.array([])
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
-
             # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
             while (delta < l_delta) or (delta > u_delta):
                 delta = np.random.normal(0, CE[spec_num])
-
             flux /= (1.0 + delta)
-
         else:
-
             delta = np.empty(lines)
-
             for ii in xrange(lines):
-
                 np.random.seed(2*ii)
                 delta[ii] = np.random.normal(0, CE[ii])
-
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
+                flux[ii,:] /= (1.0 + delta[ii])        
+        return (flux , delta)
 
-                flux[ii] /= (1.0 + delta[ii])
-
-        #make sure we don't have negative flux
-        ind = np.where(flux > 0)
-        tau[ind] = -np.log(flux[ind])
-
-        return tau
 
     def load_savefile(self, savefile=None):
         """Load data from a file"""
@@ -842,20 +836,6 @@ class Spectra:
             self.tau[(elem, ion, line)] = tau
         if number >= 0:
             tau = tau[number, :]
-        #Correct for the spectrograph resolution in flux space.
-        #We need to cap the optical depth to avoid divide-by-zero
-        if self.spec_res > 0:
-            tau[np.where(tau > 700)] = 700
-            corrflux = spec_utils.res_corr(np.exp(-tau), self.dvbin, self.spec_res)
-            if np.any(corrflux <= 0):
-                raise Exception
-            tau = - np.log(corrflux)
-        if self.snr is not None:
-            tau = self.add_noise(self.snr, tau, number)
-
-            if self.CE is not None:
-                tau = self.add_cont_error(CE=self.CE, tau=tau, spec_num=number)
-
         return tau
 
 
