@@ -1,9 +1,3 @@
-This branch is to run fake_spectra on TNG Simulations.
-You need to group the snapshot files 27 by 27 hdf5 files and name the folders from 0 to 15.
-It will use 16 ranks in MPI.
-
-
--------------------------------------------------
 = Flux extractor =
 
 This is a small code for generating and analyzing simulated spectra from
