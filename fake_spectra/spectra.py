@@ -699,9 +699,8 @@ class Spectra:
             if self.rank == 0 :
                 ind = self.filter_DLA(cdsum_added, thresh)
                 size_ind = np.size(ind[0])
+            size_ind = self.comm.bcast(size_ind, root=0)
 
-        size_ind = self.comm.bcast(size_ind, root=0)
-            
             if self.rank != 0 :
                 ind = np.zeros(size_ind, dtype=np.int)
             self.comm.Bcast(ind, root=0)
@@ -734,7 +733,6 @@ class Spectra:
                 if self.rank == 0 :
                     ind = self.filter_DLA(cdsum_added, thresh)
                     size_ind = np.size(ind[0])
-
                 size_ind = self.comm.bcast(size_ind, root=0)
 
                 if self.rank != 0:
