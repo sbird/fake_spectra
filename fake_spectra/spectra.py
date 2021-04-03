@@ -80,16 +80,20 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base, MPI, comm,cofm,axis, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
 
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
         self.base = base
-
-        self.MPI = MPI
-        self.comm = comm
-        self.rank = comm.Get_rank()
+        # Adpot the MPI communiactor if desired
+        if MPI is not None:
+            self.MPI = MPI
+            self.comm = MPI.COMM_WORLD
+            self.rank = self.comm.Get_rank()
+        else :
+            self.comm = None
+            self.rank = None
         #Create the unit system
         if units is not None:
             self.units = units
@@ -123,7 +127,7 @@ class Spectra:
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
                 #Set up the kernel
                 if kernel is None:
                     self.kernel_int = self.snapshot_set.get_kernel()
@@ -678,32 +682,33 @@ class Spectra:
         #Declare variables
         found = 0
         wanted = ndla
-        size_ind = None
         cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem,ion,1215,False)
         cdsum=np.sum(col_den, axis=1)
-        # make sure array elements are contiguous
-        cdsum = np.ascontiguousarray(cdsum, np.float32)
-        # A variable for comm.Reduce()
-        cdsum_added = np.zeros_like(cdsum)
-        #ind = self.filter_DLA(col_den, thresh)
-        
-        ### Call manager rank here
-        self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
-        
-        if self.rank == 0 :
-            ind = self.filter_DLA(cdsum_added, thresh)
-            ind = ind[0]
-            size_ind = np.size(ind)
-        
-        size_ind = self.comm.bcast(size_ind, root=0)
 
-        if self.rank != 0 :
-            ind = np.zeros(size_ind, dtype=np.int)
+        if self.MPI is not None:
+            # make sure array elements are contiguous
+            cdsum = np.ascontiguousarray(cdsum, np.float32)
+            # A variable for comm.Reduce()
+            cdsum_added = np.zeros_like(cdsum)
+            ### Call manager rank here
+            self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
+            size_ind = None
+            if self.rank == 0 :
+                ind = self.filter_DLA(cdsum_added, thresh)
+                size_ind = np.size(ind[0])
+
+        size_ind = self.comm.bcast(size_ind, root=0)
+            
+            if self.rank != 0 :
+                ind = np.zeros(size_ind, dtype=np.int)
+            self.comm.Bcast(ind, root=0)
         
-        self.comm.Bcast(ind, root=0)
+        else :
+            ind = self.filter_DLA(cdsum, thresh)
+
         H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
@@ -713,34 +718,31 @@ class Spectra:
         self.discarded = self.NumLos-np.size(ind)
 
         print("Discarded: ", self.discarded)
-        #dom = 0
         while found < wanted:
-        #while dom<1000:
-            size_ind = None
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-
             col_den = self.compute_spectra(elem,ion,1215,False)
             cdsum = np.sum(col_den, axis = 1)
-            # make sure array elements are contiguous
-            cdsum = np.ascontiguousarray(cdsum, np.float32)
-            cdsum_added = np.zeros_like(cdsum)
-            #print('\n Col Density is :{sd}'.format(sd=np.sum(col_den, axis=1)))
-
-            ### Call manager rank here
-            self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
-                        
-            if self.rank == 0 :
-                ind = self.filter_DLA(cdsum_added, thresh)
-                ind = ind[0]
-                size_ind = np.size(ind)
             
-            size_ind = self.comm.bcast(size_ind, root=0)
+            if self.MPI is not None:
+                # make sure array elements are contiguous
+                cdsum = np.ascontiguousarray(cdsum, np.float32)
+                cdsum_added = np.zeros_like(cdsum)
+                ### Call manager rank here
+                self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
+                size_ind = None
+                if self.rank == 0 :
+                    ind = self.filter_DLA(cdsum_added, thresh)
+                    size_ind = np.size(ind[0])
 
-            if self.rank != 0:
-                ind = np.zeros(size_ind, dtype=np.int)
+                size_ind = self.comm.bcast(size_ind, root=0)
 
-            self.comm.Bcast(ind, root=0)            
+                if self.rank != 0:
+                    ind = np.zeros(size_ind, dtype=np.int)
+                self.comm.Bcast(ind, root=0)            
+            
+            else:
+                ind = self.filter_DLA(cdsum, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found, :]
@@ -764,12 +766,9 @@ class Spectra:
         """Find a bunch more sightlines: should be overridden by child classes"""
         raise NotImplementedError
 
-    def filter_DLA(self, col_den, thresh=10**20.3):
+    def filter_DLA(self, cdsum, thresh=10**20.3):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
-        #sum the column densities over the entire spectrum.
-        #cdsum = np.sum(col_den, axis=1)
-        cdsum = col_den
         
         if np.size(thresh) > 1:
             ind = np.where(np.logical_and(cdsum > thresh[0], cdsum < thresh[1]))
@@ -825,9 +824,9 @@ class Spectra:
         if arepo or nsegments == 1:
             return result
         #Do remaining files
-        for nn in xrange(1,nsegments):
-            tresult =  self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            #print("Interpolation %.1f percent done" % (100*nn/nsegments))
+        for nn in xrange(1, nsegments):
+            tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
+            print("Interpolation %.1f percent done" % (100*nn/nsegments))
             #Add new file
             result += tresult
             del tresult

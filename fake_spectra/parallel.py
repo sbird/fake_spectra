@@ -1,7 +1,11 @@
-import fake_spectra_parallel
-from fake_spectra_parallel.randspectra import RandSpectra
-from fake_spectra_parallel.plot_spectra import PlottingSpectra
-from fake_spectra_parallel.ratenetworkspectra import RateNetworkGas
+""" 
+- An example on how to use MPI capability of the fake_spectra
+- This example has been used on TNG300-1 to get many spectra with and without removing DLAs in a very short time
+- Current version of the MPI feature only supports the Illustris simulations with hdf5 outputs
+"""
+import fake_spectra
+from fake_spectra.randspectra import RandSpectra
+from fake_spectra.ratenetworkspectra import RateNetworkGas
 from mpi4py import MPI
 import numpy as np
 import time
@@ -15,7 +19,7 @@ def get_spec(num, base, savefile, savedir, res, numlos, thresh):
    tss = time.asctime()
    print('Rank =', rank, 'started!', tss, flush=True)
    
-   rr = RandSpectra(num = num, numlos=numlos, ndla=numlos, thresh=thresh, res=res, base= base , MPI = MPI, comm = comm, savedir=savedir, savefile='spectra_'+str(rank)+'.hdf5', gasprop=RateNetworkGas, gasprop_args={"selfshield":True, "treecool_file":"./TREECOOL_ep_2018p", "cool":"KWH","recomb":"Cen92"}, kernel='tophat')
+   rr = RandSpectra(num = num, numlos=numlos, ndla=numlos, thresh=thresh, res=res, base= base , MPI = MPI, savedir=savedir, savefile='spectra_'+str(rank)+'.hdf5', gasprop=RateNetworkGas, gasprop_args={"selfshield":True, "treecool_file":"./TREECOOL_ep_2018p", "cool":"KWH","recomb":"Cen92"}, kernel='tophat')
 
    rr.get_tau("H",1,1215)
    rr.get_col_density("H",1)

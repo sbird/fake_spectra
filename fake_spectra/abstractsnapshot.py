@@ -170,13 +170,17 @@ class HDF5Snapshot(AbstractSnapshot):
         Input:
             num - snapshot number
             base - simulation directory
-            """
-        rank = self.comm.Get_rank()
-        size = self.comm.Get_size()
+            file_num - file number in the snapshot"""
         fname = base
         snap=str(num).rjust(3,'0')
-        #new_fname = os.path.join(base, "snapdir_"+snap)
-        new_fname = base
+
+        if self.comm is not None:
+            rank = self.comm.Get_rank()
+            size = self.comm.Get_size()
+            new_fname = base
+        else :
+            new_fname = os.path.join(base, "snapdir_"+snap)
+
         #Check for snapshot directory
         if os.path.exists(new_fname):
             fname = new_fname
@@ -187,15 +191,20 @@ class HDF5Snapshot(AbstractSnapshot):
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
-        num_files = len(fnames)
-        files_per_rank = int(num_files/size)
-        # a list if file names for each rank
-        fnames_rank = fnames[rank*files_per_rank : (rank+1)*files_per_rank]
-        #some ranks get 1 more snapshot file
-        remained = int(num_files - (files_per_rank*size))
-        if rank in range(1,remained+1):
-            fnames_rank.append(fnames[files_per_rank*size + rank-1 ])
-        return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
+        
+        if self.comm is None:
+            return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
+        
+        else:
+            num_files = len(fnames)
+            files_per_rank = int(num_files/size)
+            # a list if file names for each rank
+            fnames_rank = fnames[rank*files_per_rank : (rank+1)*files_per_rank]
+            #some ranks get 1 more snapshot file
+            remained = int(num_files - (files_per_rank*size))
+            if rank in range(1,remained+1):
+                fnames_rank.append(fnames[files_per_rank*size + rank-1 ])
+            return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
 
     def get_data(self, part_type, blockname, segment):
         """Get the data for a particular particle type.
