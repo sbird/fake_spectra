@@ -59,7 +59,6 @@ class Spectra:
             res - Pixel width of the spectrum in km/s
             spec_res - Resolution of the simulated spectrograph in km/s. Note this is not the pixel width.
                        Spectra will be convolved with a Gaussian of this rms on loading from disc.
-            snr - If not None, add noise for the requested signal to noise for the spectra, when loading from disc.
             cdir - Directory containing cloudy tables.
             savefile - name of file to save spectra to.
             savedir - Directory of file to save spectra to.
@@ -1232,7 +1231,7 @@ class Spectra:
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:], avg_flux_power[1:]
 
-    def spline_fit(self, tau, chi_min=3., vel_seg_min=10., ini_break_spacing=50.):
+    def spline_fit(self, flux_i, chi_min=3., vel_seg_min=10., ini_break_spacing=50.):
         """
         Fit flux spectra (converge chi^2) using a cubic spline with adaptive breakpoints.
 
@@ -1249,7 +1248,7 @@ class Spectra:
             return np.sum(((expected - observed)/np.std(expected))**2)
 
         # array of velocities (km/sec), i.e. x-axis
-        vel = np.linspace(0, self.vmax, tau.shape[1])
+        vel = np.linspace(0, self.vmax, flux_i.shape[1])
         vel_stepsize = vel[1]-vel[0] # velocity bin size (km/sec)
         if vel_stepsize >= vel_seg_min:
             raise Exception("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
@@ -1257,10 +1256,10 @@ class Spectra:
         # index spacing to get ~velocity breakpoint spacing
         ind_break_spacing = int(np.round(ini_break_spacing/vel_stepsize))
 
-        all_spline_flux = np.zeros(tau.shape)
+        all_spline_flux = np.zeros(flux_i.shape)
         for j in range(self.NumLos):
 
-            flux = np.exp(-tau[j]) # flux for current sight line
+            flux = flux_i[j] # flux for current sight line
 
             # initial interior breakpoints
             interior_inds = np.arange(ind_break_spacing, vel.size, ind_break_spacing)
@@ -1397,7 +1396,7 @@ class Spectra:
         into sections of size section_size, then rescales them before computing the curvature.
 
         section_size = desired (spatial) size of spectra sections (spatial res <= section_size <= box size)
-        snr_input = Override the noise in the sight lines with this level of noise (array of size n_sightlines)
+        snr_input = snr for the flux (array of size n_sightlines)
         chi = minimum chi^2 change to accept a new breakpoint in spline fitting
         seg_res = segment size limit (km/sec) i.e. resolution minimum for spline fitting
         ini_break = initial breakpoint spacing (km/sec) for spline fitting
@@ -1406,21 +1405,14 @@ class Spectra:
         """
 
         # check for noise in spectra, get spline fits accordingly
-        # if the sight lines have no noise and none is requested here, just return the flux
-        if self.snr is None and snr_input is None:
+        # if no noise is requested, just return the flux
+        if snr_input is None:
             flux = np.exp(-self.get_tau(elem, ion, line))
 
-        # if there is noise in the sight lines and nothing is specfied here, use sight line noise and fit spline
-        elif self.snr is not None and snr_input is None:
-            tau = self.get_tau(elem, ion, line)
-            flux = self.spline_fit(tau, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
-
-        # if a noise input is specified here, use that, then fit spline
-        else:
-            self.snr = snr_input
-            tau = self.get_tau(elem, ion, line)
-            flux = self.spline_fit(tau, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
-        # note that calling get_tau multiple types on the same object will add noise each time!
+        # if a noise input is specified here, add that, then fit spline
+        else: 
+            flux_i = self.add_noise(snr_input, np.exp(-self.get_tau(elem, ion, line)))[0]
+            flux = self.spline_fit(flux_i, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
 
         if section_size == 0: # if no section size is passed, assume boxsize
             section_size = self.box
