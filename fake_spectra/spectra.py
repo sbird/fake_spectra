@@ -816,7 +816,7 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         # arepo

@@ -332,11 +332,11 @@ class BigFileSnapshot(AbstractSnapshot):
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
-    def get_n_segments(self, part_type, cunck_size = 256.**3):
+    def get_n_segments(self, part_type, chunck_size = 256.**3):
         """Return the number of segments on each rank that we chop the data into """ 
         # first get number of particles per rank
-        self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(slef.size,))).astype(int)
-        rmainder = self.get_npart()[part_type]%self.size
+        self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
+        remainder = self.get_npart()[part_type]%self.size
         if remainder !=0 :
             self.parts_rank[0:remainder] += 1
         return int(np.max([1,self.parts_rank[self.rank]/chunck_size]))
