@@ -13,7 +13,7 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base, comm):
+def AbstractSnapshotFactory(num, base, comm=None):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
