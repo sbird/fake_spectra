@@ -10,13 +10,9 @@ from . import spectra
 class RandSpectra(spectra.Spectra):
     """Generate metal line spectra from simulation snapshot"""
     def __init__(self, num, base,  MPI = None, seed = 23, ndla = 1000, numlos=5000, thresh=10**20.3, savefile="rand_spectra_DLA.hdf5", elem="H", ion=1, **kwargs):
-        # Establish MPI communicator if desired
-        if MPI is not None:
-            comm = MPI.COMM_WORLD
-        else :
-            comm = None
+
         #Load halos to push lines through them
-        f = absn.AbstractSnapshotFactory(num, base, comm)
+        f = absn.AbstractSnapshotFactory(num, base)
         self.box = f.get_header_attr("BoxSize")
         del f
         self.NumLos = numlos
