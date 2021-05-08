@@ -336,7 +336,7 @@ class BigFileSnapshot(AbstractSnapshot):
         """Return the number of segments on each rank that we chop the data into """ 
         # first get number of particles per rank
         self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
-        remainder = self.get_npart()[part_type]%self.size
+        remainder = int(self.get_npart()[part_type]%self.size)
         if remainder !=0 :
             self.parts_rank[0:remainder] += 1
         return int(np.max([1,self.parts_rank[self.rank]/chunck_size]))

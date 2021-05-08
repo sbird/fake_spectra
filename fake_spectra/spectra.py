@@ -157,7 +157,7 @@ class Spectra:
         #Snapshot data
         if reload_file:
             if not quiet:
-                print("Reloading from snapshot (will save to: ", self.savefile, " )")
+                print("Reloading from snapshot (will save to: ", self.savefile, " )", flush=True)
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -825,7 +825,7 @@ class Spectra:
         #Do remaining files
         for nn in xrange(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments))
+            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
             #Add new file
             result += tresult
             del tresult

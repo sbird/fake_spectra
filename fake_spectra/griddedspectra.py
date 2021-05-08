@@ -20,7 +20,7 @@ class GriddedSpectra(spectra.Spectra):
         # get position of skewers in the grid
         grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
         # call constructor of base class
-        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=None,
+        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI,
                 res=res,savefile=savefile,reload_file=reload_file,**kwargs)
 
 
