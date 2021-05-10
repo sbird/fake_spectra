@@ -355,20 +355,17 @@ class BigFileSnapshot(AbstractSnapshot):
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
-    def _segment_to_partlist(self, part_type, segment, chunck_size= 256.**3):
+    def _segment_to_partlist(self, part_type, segment):
         """Get the first and last particle in a segment."""
         if segment < 0:
             return (0, None)
         n_segments = self.get_n_segments(part_type)
-        one_segment = int(self.parts_rank[self.rank]//chunck_size)
+        one_segment = int(self.parts_rank[self.rank]/n_segments)
         if self.rank ==0 :
             first_part_rank = 0
         else:
             first_part_rank = np.sum(self.parts_rank[0:self.rank])
-        if segment < n_segments -1:
-            return (first_part_rank+one_segment*segment, first_part_rank+one_segment*(segment+1))
-        #Last segment has no end
-        return (first_part_rank+one_segment*segment, None)
+        return (first_part_rank+one_segment*segment, first_part_rank+one_segment*(segment+1))
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.
