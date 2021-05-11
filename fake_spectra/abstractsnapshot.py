@@ -193,7 +193,7 @@ class HDF5Snapshot(AbstractSnapshot):
         fnames.sort()
         
         if self.comm is None:
-            return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
+            return [fff for fff in fnames if h5py.is_hdf5(fff) ]
         
         else:
             num_files = len(fnames)
@@ -233,9 +233,11 @@ class HDF5Snapshot(AbstractSnapshot):
         mass_bar = np.sum(self._f_handle["PartType0"]["Masses"])
         return mass_bar/(mass_bar+mass_dm)*self.get_header_attr("Omega0")
 
-    def get_n_segments(self):
+    def get_n_segments(self, part_type=None):
         """Return the number of segments. Number of files on HDF5,
-           but may be whatever in convenient for bigfile."""
+           but may be whatever in convenient for bigfile. part_type
+           is not used here, it is gotten just for compatibility.
+        """
         return len(self._files)
 
     def get_blocklen(self, part_type, blockname, segment):

@@ -820,26 +820,24 @@ class Spectra:
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
+        if arepo :
+           nsegments=1
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
-        # arepo
-        if (arepo==False) and (nsegments!=1):
-            return result
+        #Do remaining files
+        for nn in xrange(1, nsegments):
+            tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
+            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
+            #Add new file
+            result += tresult
+            del tresult
+        if self.MPI is None :
+           return result
         else :
-            #Do remaining files
-            for nn in xrange(1, nsegments):
-                tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-                print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
-                #Add new file
-                result += tresult
-                del tresult
-            if self.MPI is None :
-                return result
-            else :
-                # Add the spectra over all ranks
-                result = np.ascontiguousarray(result, np.float32)
-                result_all_ranks = np.zeros_like(result, dtype=np.float32)
-                self.comm.Allreduce(result, result_all_ranks, op=self.MPI.SUM)
-                return result_all_ranks
+           # Add the spectra over all ranks
+           result = np.ascontiguousarray(result, np.float32)
+           result_all_ranks = np.zeros_like(result, dtype=np.float32)
+           self.comm.Allreduce(result, result_all_ranks, op=self.MPI.SUM)
+           return result_all_ranks
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
