@@ -688,29 +688,8 @@ class Spectra:
         cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
         #Filter
         #Note: line does nothing
-        col_den = self.compute_spectra(elem,ion,1215,False)
-        cdsum=np.sum(col_den, axis=1)
-
-        if self.MPI is not None:
-            # make sure array elements are contiguous
-            cdsum = np.ascontiguousarray(cdsum, np.float32)
-            # A variable for comm.Reduce()
-            cdsum_added = np.zeros_like(cdsum)
-            ### Call manager rank here
-            self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
-            size_ind = None
-            if self.rank == 0 :
-                ind = self.filter_DLA(cdsum_added, thresh)
-                size_ind = np.size(ind[0])
-            size_ind = self.comm.bcast(size_ind, root=0)
-
-            if self.rank != 0 :
-                ind = np.zeros(size_ind, dtype=np.int)
-            self.comm.Bcast(ind, root=0)
-        
-        else :
-            ind = self.filter_DLA(cdsum, thresh)
-
+        col_den = self.compute_spectra(elem, ion, 1215, False)
+        ind = self.filter_DLA(col_den, thresh)
         H1_DLA = np.empty_like(col_den)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
@@ -718,41 +697,19 @@ class Spectra:
         H1_DLA[found:top] = col_den[ind][:top, :]
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
-
         print("Discarded: ", self.discarded)
         while found < wanted:
             #Get a bunch of new spectra
             self.cofm = self.get_cofm()
-            col_den = self.compute_spectra(elem,ion,1215,False)
-            cdsum = np.sum(col_den, axis = 1)
-            
-            if self.MPI is not None:
-                # make sure array elements are contiguous
-                cdsum = np.ascontiguousarray(cdsum, np.float32)
-                cdsum_added = np.zeros_like(cdsum)
-                ### Call manager rank here
-                self.comm.Reduce(cdsum, cdsum_added, op=self.MPI.SUM, root=0)
-                size_ind = None
-                if self.rank == 0 :
-                    ind = self.filter_DLA(cdsum_added, thresh)
-                    size_ind = np.size(ind[0])
-                size_ind = self.comm.bcast(size_ind, root=0)
-
-                if self.rank != 0:
-                    ind = np.zeros(size_ind, dtype=np.int)
-                self.comm.Bcast(ind, root=0)            
-            
-            else:
-                ind = self.filter_DLA(cdsum, thresh)
+            col_den = self.compute_spectra(elem, ion, 1215, False)
+            ind = self.filter_DLA(col_den, thresh)
             #Update saves
             top = np.min([wanted, found+np.size(ind)])
             cofm_DLA[found:top] = self.cofm[ind][:top-found, :]
             H1_DLA[found:top] = col_den[ind][:top-found, :]
             found += np.size(ind)
             self.discarded += self.NumLos-np.size(ind)
-
             print("Discarded: ", self.discarded)
-            
         #Correct proportions in case we find slightly more than we need
         self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
@@ -770,7 +727,8 @@ class Spectra:
     def filter_DLA(self, cdsum, thresh=10**20.3):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
-        
+        #sum the column densities over the entire spectrum.
+        cdsum = np.sum(col_den, axis=1)
         if np.size(thresh) > 1:
             ind = np.where(np.logical_and(cdsum > thresh[0], cdsum < thresh[1]))
         else:
