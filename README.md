@@ -27,6 +27,7 @@ Required C libraries:
 Optional libraries:
 - matplotlib (if you want to plot)
 - bigfile (to install, do 'pip install --user bigfile') for reading BigFile snapshot outputs from Yu Feng's MP-Gadget.
+- mpi4py (Only if you want to use MPI feature in this package, it is very helpful for high resolution spectra in big simulations)
 
 All these libraries can be installed with pip.
 
@@ -105,8 +106,10 @@ one would use this script:
 
 ```
 from fake_spectra.randspectra import RandSpectra
+# Only if you want the MPI feature; otherwise, MPI is None by default
+from mpi4py import MPI
 
-rr = RandSpectra(5, "MySim", thresh=0.)
+rr = RandSpectra(5, "MySim", MPI=MPI, thresh=0.)
 rr.get_tau("H",1,1215)
 #Lyman-beta
 rr.get_tau("H",1,1025)
@@ -114,9 +117,28 @@ rr.get_col_density("H",1)
 #Save spectra to file
 rr.save_file()
 ```
+If you want a set of spectra on a regular grid (`60*60` in this example), instead of `RandSpectra()` call :
+
+```
+from fake_spectra.griddedspectra import GriddedSpectra
+# Only if you want the MPI feature; otherwise, MPI is None by default
+from mpi4py import MPI
+
+gs = GriddedSpectra(5, "MySim", nspec=60, MPI=MPI, thresh=0.0)
+gs.get_tau("H",1,1025)
+...
+
+```
 
 Note that the wavelength of the transition always rounds down,
 so lyman alpha at 1215.67 A is 1215, not 1216!
+
+In order to use the `MPI feature`, you need to run the code with `mpirun` or `mpiexec` or ... :
+
+```
+mpirun -n 10 python script_above.py
+
+```
 
 Generated spectra will be saved into HDF5 files, for ease of later analysis.
 Each spectral generation routine saves spectra to a differently named file.
