@@ -322,13 +322,10 @@ class Spectra:
                     gg.create_group(str(key[ii]))
                     gg = gg[str(key[ii])]
             #Delete old dataset if present
-            #I commented this line to save both ion = -1 and ion = 1 in output spectra
-            """
             try:
                 del gg[str(key[-1])]
             except KeyError:
                 pass
-            """
             #Save the dataset
             gg.create_dataset(str(key[-1]), data=value)
 
@@ -724,7 +721,7 @@ class Spectra:
         """Find a bunch more sightlines: should be overridden by child classes"""
         raise NotImplementedError
 
-    def filter_DLA(self, cdsum, thresh=10**20.3):
+    def filter_DLA(self, col_den, thresh=10**20.3):
         """Find sightlines with a DLA"""
         #DLAs are huge objects in redshift space (several 10s of A wide), so we want to
         #sum the column densities over the entire spectrum.
