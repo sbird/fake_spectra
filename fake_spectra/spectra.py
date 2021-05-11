@@ -241,66 +241,67 @@ class Spectra:
         """
         Saves spectra to a file, because they are slow to generate.
         File is by default to be $snap_dir/snapdir_$snapnum/spectra_rank.hdf5.
+        Only rank = 0 does the saving.
         """
-        #We should make sure we have loaded all lazy-loaded things first.
-        self._load_all_multihash(self.tau_obs, "tau_obs")
-        self._load_all_multihash(self.tau, "tau")
-        self._load_all_multihash(self.colden, "colden")
-        try:
-            self._load_all_multihash(self.velocity, "velocity")
-        except IOError:
-            pass
-        #Make sure the directory exists
-        if not path.exists(path.dirname(self.savefile)):
-            os.mkdir(path.dirname(self.savefile))
-        #Make a backup.
-        if path.exists(self.savefile):
-            shutil.move(self.savefile, self.savefile+".backup")
-        try:
-            f = h5py.File(self.savefile, 'w')
-        except IOError:
-            raise IOError("Could not open ", self.savefile, " for writing")
-        self._save_file(f)
+        if self.rank == 0:
+            #We should make sure we have loaded all lazy-loaded things first.
+            self._load_all_multihash(self.tau_obs, "tau_obs")
+            self._load_all_multihash(self.tau, "tau")
+            self._load_all_multihash(self.colden, "colden")
+            try:
+                self._load_all_multihash(self.velocity, "velocity")
+            except IOError:
+                pass
+            #Make sure the directory exists
+            if not path.exists(path.dirname(self.savefile)):
+                os.mkdir(path.dirname(self.savefile))
+            #Make a backup.
+            if path.exists(self.savefile):
+                shutil.move(self.savefile, self.savefile+".backup")
+            try:
+                f = h5py.File(self.savefile, 'w')
+            except IOError:
+                raise IOError("Could not open ", self.savefile, " for writing")
+            self._save_file(f)
 
     def _save_file(self, f):
         """Saves to an open file handle, so it can be called by child classes which may want to save extra data."""
-        if save.rank == 0 :
-            grp = f.create_group("Header")
-            grp.attrs["redshift"] = self.red
-            grp.attrs["nbins"] = self.nbins
-            grp.attrs["hubble"] = self.hubble
-            grp.attrs["box"] = self.box
-            grp.attrs["omegam"] = self.OmegaM
-            grp.attrs["omegab"] = self.omegab
-            grp.attrs["omegal"] = self.OmegaLambda
-            grp.attrs["discarded"] = self.discarded
-            grp.attrs["npart"] = self.npart
-            grp = f.create_group("spectra")
-            grp["cofm"] = self.cofm
-            grp["axis"] = self.axis
-            #Observer tau is the strongest unsaturated line
-            grp_grid = f.create_group("tau_obs")
-            self._save_multihash(self.tau_obs, grp_grid)
-            #Optical depth in specific lines
-            grp_grid = f.create_group("tau")
-            self._save_multihash(self.tau, grp_grid)
-            #Column density
-            grp_grid = f.create_group("colden")
-            self._save_multihash(self.colden, grp_grid)
-            #Velocity
-            grp_grid = f.create_group("velocity")
-            self._save_multihash(self.velocity, grp_grid)
-            #Temperature
-            grp_grid = f.create_group("temperature")
-            self._save_multihash(self.temp, grp_grid)
-            #Number of particles important for each spectrum
-            grp_grid = f.create_group("num_important")
-            self._save_multihash(self.num_important, grp_grid)
-            #Density weighted density for each spectrum:
-            #see get_dens_weighted_density for a description of what this is.
-            grp_grid = f.create_group("density_weight_density")
-            self._save_multihash(self.dens_weight_dens, grp_grid)
-            f.close()
+        grp = f.create_group("Header")
+        grp.attrs["redshift"] = self.red
+        grp.attrs["nbins"] = self.nbins
+        grp.attrs["hubble"] = self.hubble
+        grp.attrs["box"] = self.box
+        grp.attrs["omegam"] = self.OmegaM
+        grp.attrs["omegab"] = self.omegab
+        grp.attrs["omegal"] = self.OmegaLambda
+        grp.attrs["discarded"] = self.discarded
+        grp.attrs["npart"] = self.npart
+        grp = f.create_group("spectra")
+        grp["cofm"] = self.cofm
+        grp["axis"] = self.axis
+        #Observer tau is the strongest unsaturated line
+        grp_grid = f.create_group("tau_obs")
+        self._save_multihash(self.tau_obs, grp_grid)
+        #Optical depth in specific lines
+        grp_grid = f.create_group("tau")
+        self._save_multihash(self.tau, grp_grid)
+        #Column density
+        grp_grid = f.create_group("colden")
+        self._save_multihash(self.colden, grp_grid)
+        #Velocity
+        grp_grid = f.create_group("velocity")
+        self._save_multihash(self.velocity, grp_grid)
+        #Temperature
+        grp_grid = f.create_group("temperature")
+        self._save_multihash(self.temp, grp_grid)
+        #Number of particles important for each spectrum
+        grp_grid = f.create_group("num_important")
+        self._save_multihash(self.num_important, grp_grid)
+        #Density weighted density for each spectrum:
+        #see get_dens_weighted_density for a description of what this is.
+        grp_grid = f.create_group("density_weight_density")
+        self._save_multihash(self.dens_weight_dens, grp_grid)
+        f.close()
 
     def _load_all_multihash(self, array, array_name):
         """Do all allowed lazy-loading for an array.
