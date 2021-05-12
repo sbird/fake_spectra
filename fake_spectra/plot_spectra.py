@@ -132,9 +132,9 @@ class PlottingSpectra(spectra.Spectra):
         plt.ylabel(r"T (K)")
         plt.ylim(0,2e4)
 
-    def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue", moment=False, dX=True):
+    def plot_cddf(self,elem = "H", ion = 1, dlogN=0.2, minN=13, maxN=23., color="blue", moment=False, dX=True, line=True):
         """Plots the column density distribution function. """
-        (NHI,f_N)=self.column_density_function(elem, ion, dlogN,minN-1,maxN+1,dX=dX)
+        (NHI,f_N)=self.column_density_function(elem, ion, dlogN,minN-1,maxN+1,dX=dX, line=line)
         if moment:
             f_N *= NHI
         plt.loglog(NHI,f_N,color=color, label=self.label)
