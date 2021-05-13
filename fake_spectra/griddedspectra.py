@@ -9,7 +9,7 @@ from . import spectra
 class GriddedSpectra(spectra.Spectra):
     """Generate regular grid of spectra along a given axis."""
 
-    def __init__(self,num, base, nspec=200, res = None,
+    def __init__(self,num, base, nspec=200, MPI=None, res = None,
             savefile="gridded_spectra.hdf5", reload_file=True,
             axis=1, **kwargs):
 
@@ -20,7 +20,7 @@ class GriddedSpectra(spectra.Spectra):
         # get position of skewers in the grid
         grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
         # call constructor of base class
-        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,
+        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI,
                 res=res,savefile=savefile,reload_file=reload_file,**kwargs)
 
 

@@ -13,16 +13,16 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base):
+def AbstractSnapshotFactory(num, base, comm=None):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base)
+        return HDF5Snapshot(num, base, comm)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
         try:
-            return BigFileSnapshot(num, base)
+            return BigFileSnapshot(num, base, comm)
         except (IOError,bigfile.BigFileError):
             raise IOError("Not a bigfile or HDF5 snapshot: ",base)
 
@@ -155,7 +155,9 @@ class AbstractSnapshot(object):
 
 class HDF5Snapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base):
+    def __init__(self, num, base, comm):
+        #MPI communicator
+        self.comm = comm
         self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
@@ -171,7 +173,14 @@ class HDF5Snapshot(AbstractSnapshot):
             file_num - file number in the snapshot"""
         fname = base
         snap=str(num).rjust(3,'0')
-        new_fname = os.path.join(base, "snapdir_"+snap)
+
+        if self.comm is not None:
+            rank = self.comm.Get_rank()
+            size = self.comm.Get_size()
+            new_fname = base
+        else :
+            new_fname = os.path.join(base, "snapdir_"+snap)
+
         #Check for snapshot directory
         if os.path.exists(new_fname):
             fname = new_fname
@@ -182,7 +191,20 @@ class HDF5Snapshot(AbstractSnapshot):
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
-        return [fff for fff in fnames if h5py.is_hdf5(fff) ]
+        
+        if self.comm is None:
+            return [fff for fff in fnames if h5py.is_hdf5(fff) ]
+        
+        else:
+            num_files = len(fnames)
+            files_per_rank = int(num_files/size)
+            # a list if file names for each rank
+            fnames_rank = fnames[rank*files_per_rank : (rank+1)*files_per_rank]
+            #some ranks get 1 more snapshot file
+            remained = int(num_files - (files_per_rank*size))
+            if rank in range(1,remained+1):
+                fnames_rank.append(fnames[files_per_rank*size + rank-1 ])
+            return [fff for fff in fnames_rank if h5py.is_hdf5(fff) ]
 
     def get_data(self, part_type, blockname, segment):
         """Get the data for a particular particle type.
@@ -211,9 +233,11 @@ class HDF5Snapshot(AbstractSnapshot):
         mass_bar = np.sum(self._f_handle["PartType0"]["Masses"])
         return mass_bar/(mass_bar+mass_dm)*self.get_header_attr("Omega0")
 
-    def get_n_segments(self):
+    def get_n_segments(self, part_type=None):
         """Return the number of segments. Number of files on HDF5,
-           but may be whatever in convenient for bigfile."""
+           but may be whatever in convenient for bigfile. part_type
+           is not used here, it is gotten just for compatibility.
+        """
         return len(self._files)
 
     def get_blocklen(self, part_type, blockname, segment):
@@ -278,7 +302,15 @@ class HDF5Snapshot(AbstractSnapshot):
 
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base):
+    def __init__(self, num, base, comm=None):
+        self.comm = comm
+        if self.comm is not None :
+            self.rank = comm.Get_rank()
+            self.size = comm.Get_size()
+        else :
+            self.size = 1
+            self.rank = 0
+        self.parts_rank = None
         fname = base
         snap=str(num).rjust(3,'0')
         new_fname = os.path.join(base, "PART_"+snap)
@@ -302,10 +334,16 @@ class BigFileSnapshot(AbstractSnapshot):
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
-    def get_n_segments(self):
-        """Return the number of segments. Number of files on HDF5,
-           but may be whatever in convenient for bigfile."""
-        return int(np.max([1,np.sum(self.get_npart())/(2*256.**3)]))
+    def get_n_segments(self, part_type, chunk_size = 256.**3):
+        """Distribute particles among ranks. Also, break the load on each rank into segments containing
+        chunk_size particles and return number of these segments for each rank""" 
+        #Store number of particles on each rank in an array
+        self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
+        remainder = int(self.get_npart()[part_type]%self.size)
+        # Some ranks would get one more particle
+        if remainder !=0 :
+            self.parts_rank[0:remainder] += 1
+        return int(np.max([1,self.parts_rank[self.rank]/chunk_size]))
 
     def get_blocklen(self, part_type, blockname, segment):
         """Get the length of a block"""
@@ -325,12 +363,16 @@ class BigFileSnapshot(AbstractSnapshot):
         """Get the first and last particle in a segment."""
         if segment < 0:
             return (0, None)
-        n_segments = self.get_n_segments()
-        one_segment = int(self.get_npart()[part_type]//n_segments)
-        if segment < n_segments -1:
-            return (one_segment*segment, one_segment*(segment+1))
-        #Last segment has no end
-        return (one_segment*segment, None)
+        # Get number of segments on this rank which we break particles into
+        n_segments = self.get_n_segments(part_type)
+        # Length of one segment
+        one_segment = int(self.parts_rank[self.rank]/n_segments)
+        if self.rank ==0 :
+            first_part_rank = 0
+        else:
+            # First particle for this rank depends on particles be taken by previous ranks
+            first_part_rank = np.sum(self.parts_rank[0:self.rank])
+        return (first_part_rank+one_segment*segment, first_part_rank+one_segment*(segment+1))
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.

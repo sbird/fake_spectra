@@ -45,7 +45,9 @@ class RateNetworkGas(gas_properties.GasProperties):
         ie = np.where(lienergy >= np.max(self.ienergygrid))
         lienergy[ie] = np.max(self.ienergygrid)*0.99
         ie = np.where(lienergy <= np.min(self.ienergygrid))
+
         lienergy[ie] = np.min(self.ienergygrid)*1.01
+
         nH0 = np.ones_like(density)
         ii = np.where(ldensity < np.max(self.densgrid))
         if (np.max(self.ienergygrid) < np.max(lienergy[ii])) or (np.min(self.ienergygrid) > np.min(lienergy[ii])):
@@ -62,7 +64,9 @@ class RateNetworkGas(gas_properties.GasProperties):
                     nH0[ii2] = 1.
             else:
                 nH0[ii2] = self.rates.get_neutral_fraction(density[ii2], ienergy[ii2])
+
         assert np.all(np.logical_not(np.isnan(nH0)))
+
         return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy):
@@ -85,9 +89,11 @@ class RateNetworkGas(gas_properties.GasProperties):
         ienergy *= self.temp_factor
         #Adjust slope by same factor: note use gamma_factor -1 so gamma_factor = 1 means no change.
         if self.gamma_factor != 1.:
+
             ienergy *= (overden)**(self.gamma_factor-1.)
         assert np.all(np.logical_not(np.isnan(ienergy)))
         assert np.all(ienergy > 0)
+
         return ienergy
 
 class RateNetworkSpectra(spectra.Spectra):

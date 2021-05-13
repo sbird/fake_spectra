@@ -79,11 +79,22 @@ class Spectra:
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
     """
-    def __init__(self,num, base,cofm, axis, res=None, cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+    def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5", savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
         self.num = num
         self.base = base
+        # Adpot the MPI communiactor if desired
+        self.MPI = MPI
+        if MPI is not None:
+            self.comm = MPI.COMM_WORLD
+            self.rank = self.comm.Get_rank()
+            self.size = self.comm.Get_size()
+        else :
+            self.comm = None
+            self.rank = 0
+            self.size = 1
         #Create the unit system
         if units is not None:
             self.units = units
@@ -117,7 +128,7 @@ class Spectra:
         self.tautail = 1e-7
         try:
             if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base)
+                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
                 #Set up the kernel
                 if kernel is None:
                     self.kernel_int = self.snapshot_set.get_kernel()
@@ -146,7 +157,7 @@ class Spectra:
         #Snapshot data
         if reload_file:
             if not quiet:
-                print("Reloading from snapshot (will save to: ", self.savefile, " )")
+                print("Reloading from snapshot (will save to: ", self.savefile, " )", flush=True)
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -230,26 +241,28 @@ class Spectra:
         """
         Saves spectra to a file, because they are slow to generate.
         File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
+        Rank = 0 saves the full spectra.
         """
-        #We should make sure we have loaded all lazy-loaded things first.
-        self._load_all_multihash(self.tau_obs, "tau_obs")
-        self._load_all_multihash(self.tau, "tau")
-        self._load_all_multihash(self.colden, "colden")
-        try:
-            self._load_all_multihash(self.velocity, "velocity")
-        except IOError:
-            pass
-        #Make sure the directory exists
-        if not path.exists(path.dirname(self.savefile)):
-            os.mkdir(path.dirname(self.savefile))
-        #Make a backup.
-        if path.exists(self.savefile):
-            shutil.move(self.savefile, self.savefile+".backup")
-        try:
-            f = h5py.File(self.savefile, 'w')
-        except IOError:
-            raise IOError("Could not open ", self.savefile, " for writing")
-        self._save_file(f)
+        if self.rank == 0:
+            #We should make sure we have loaded all lazy-loaded things first.
+            self._load_all_multihash(self.tau_obs, "tau_obs")
+            self._load_all_multihash(self.tau, "tau")
+            self._load_all_multihash(self.colden, "colden")
+            try:
+                self._load_all_multihash(self.velocity, "velocity")
+            except IOError:
+                pass
+            #Make sure the directory exists
+            if not path.exists(path.dirname(self.savefile)):
+                os.mkdir(path.dirname(self.savefile))
+            #Make a backup.
+            if path.exists(self.savefile):
+                shutil.move(self.savefile, self.savefile+".backup")
+            try:
+                f = h5py.File(self.savefile, 'w')
+            except IOError:
+                raise IOError("Could not open ", self.savefile, " for writing")
+            self._save_file(f)
 
     def _save_file(self, f):
         """Saves to an open file handle, so it can be called by child classes which may want to save extra data."""
@@ -659,7 +672,7 @@ class Spectra:
         mass_frac[np.where(mass_frac <= 0)] = 0
         assert mass_frac.dtype == np.float32
         return mass_frac
-
+    
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
@@ -760,20 +773,26 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
+        if arepo :
+           nsegments=1
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
-        # arepo
-        if arepo or nsegments == 1:
-            return result
         #Do remaining files
         for nn in xrange(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments))
+            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
             #Add new file
             result += tresult
             del tresult
-        return result
+        if self.MPI is None :
+           return result
+        else :
+           # Make sure the data is contiguous in memory
+           result = np.ascontiguousarray(result, np.float32)
+           # Each rank constructs a portion of the spectrum. Add all the portions
+           self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
+           return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
