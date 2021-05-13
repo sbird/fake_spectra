@@ -343,7 +343,7 @@ class BigFileSnapshot(AbstractSnapshot):
         # Some ranks would get one more particle
         if remainder !=0 :
             self.parts_rank[0:remainder] += 1
-        return int(np.max([1,self.parts_rank[self.rank]/chunck_size]))
+        return int(np.max([1,self.parts_rank[self.rank]/chunk_size]))
 
     def get_blocklen(self, part_type, blockname, segment):
         """Get the length of a block"""

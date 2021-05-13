@@ -791,7 +791,7 @@ class Spectra:
            # Make sure the data is contiguous in memory
            result = np.ascontiguousarray(result, np.float32)
            # Each rank constructs a portion of the spectrum. Add all the portions
-           self.comm.Allreduce(self.MPI.IN_PlACE, result, op=self.MPI.SUM)
+           self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
            return result
 
     def equivalent_width(self, elem, ion, line):
