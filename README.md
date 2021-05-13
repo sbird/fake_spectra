@@ -1,7 +1,7 @@
 = Flux extractor =
 
 This is a small code for generating and analyzing simulated spectra from
-Arepo/Gadget HDF5 simulation output. It is fast, parallel and written in C++ and Python 3.
+Arepo/Gadget HDF5 simulation output. It is fast, parallel (Open-MP and MPI) and written in C++ and Python 3.
 It really has two parts:
 1) a C++/python 3 code which generates and analyses arbitrary spectra
 2) A (slightly) maintained C++ command line program, extract, that generates
