@@ -334,11 +334,13 @@ class BigFileSnapshot(AbstractSnapshot):
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
-    def get_n_segments(self, part_type, chunck_size = 256.**3):
-        """Return the number of segments on each rank that we chop the data into """ 
-        # first get number of particles per rank
+    def get_n_segments(self, part_type, chunk_size = 256.**3):
+        """Distribute particles among ranks. Also, break the load on each rank into segments containing
+        chunk_size particles and return number of these segments for each rank""" 
+        #Store number of particles on each rank in an array
         self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
         remainder = int(self.get_npart()[part_type]%self.size)
+        # Some ranks would get one more particle
         if remainder !=0 :
             self.parts_rank[0:remainder] += 1
         return int(np.max([1,self.parts_rank[self.rank]/chunck_size]))
@@ -361,11 +363,14 @@ class BigFileSnapshot(AbstractSnapshot):
         """Get the first and last particle in a segment."""
         if segment < 0:
             return (0, None)
+        # Get number of segments on this rank which we break particles into
         n_segments = self.get_n_segments(part_type)
+        # Length of one segment
         one_segment = int(self.parts_rank[self.rank]/n_segments)
         if self.rank ==0 :
             first_part_rank = 0
         else:
+            # First particle for this rank depends on particles be taken by previous ranks
             first_part_rank = np.sum(self.parts_rank[0:self.rank])
         return (first_part_rank+one_segment*segment, first_part_rank+one_segment*(segment+1))
 

@@ -86,8 +86,8 @@ class Spectra:
         self.num = num
         self.base = base
         # Adpot the MPI communiactor if desired
+        self.MPI = MPI
         if MPI is not None:
-            self.MPI = MPI
             self.comm = MPI.COMM_WORLD
             self.rank = self.comm.Get_rank()
             self.size = self.comm.Get_size()
@@ -240,8 +240,8 @@ class Spectra:
     def save_file(self):
         """
         Saves spectra to a file, because they are slow to generate.
-        File is by default to be $snap_dir/snapdir_$snapnum/spectra_rank.hdf5.
-        Only rank = 0 does the saving.
+        File is by default to be $snap_dir/snapdir_$snapnum/spectra.hdf5.
+        Rank = 0 saves the full spectra.
         """
         if self.rank == 0:
             #We should make sure we have loaded all lazy-loaded things first.
@@ -788,11 +788,11 @@ class Spectra:
         if self.MPI is None :
            return result
         else :
-           # Add the spectra over all ranks
+           # Make sure the data is contiguous in memory
            result = np.ascontiguousarray(result, np.float32)
-           result_all_ranks = np.zeros_like(result, dtype=np.float32)
-           self.comm.Allreduce(result, result_all_ranks, op=self.MPI.SUM)
-           return result_all_ranks
+           # Each rank constructs a portion of the spectrum. Add all the portions
+           self.comm.Allreduce(self.MPI.IN_PlACE, result, op=self.MPI.SUM)
+           return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""

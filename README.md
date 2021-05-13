@@ -140,6 +140,11 @@ mpirun -n 10 python script_above.py
 
 ```
 
+The MPI feature doese NOT work on Voronoi meshes due to dependency of particles and
+the whole snapshot needs to be loaded on memory. So, for large simulations like Arepo 
+to use the MPI feature you have to manually pass the `kernel="tophat"` to `RandSpectra()` 
+or `GriddedSpectra()`. This choice of kernel is accurate. For more see [here](https://github.com/sbird/fake_spectra/blob/d0ec14e049fdced086fd9de9b9f16afddc1c71bc/fake_spectra/spectra.py#L76)
+
 Generated spectra will be saved into HDF5 files, for ease of later analysis.
 Each spectral generation routine saves spectra to a differently named file.
 
