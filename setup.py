@@ -122,7 +122,7 @@ cmodule = [
 
 setup(
     name="fake_spectra",
-    version='2.1.2',
+    version='2.2.0',
     author="Simeon Bird",
     author_email="spb@ucr.edu",
     #Use the subclass which adds openmp flags as appropriate
