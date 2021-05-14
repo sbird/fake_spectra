@@ -371,10 +371,10 @@ class Spectra:
 
 
     def add_cont_error(self, CE, flux, spec_num=-1, u_delta=0.6, l_delta=-0.6):
-        """Adding the Continuum error to spectra. If you want to add both random noise and continuum error, first add 
+        """Adding the Continuum error to spectra. If you want to add both random noise and continuum error, first add
         the continuum error and then the random noise.
         Parameters:
-        CE : the stdev of the gaussian noise 
+        CE : the stdev of the gaussian noise
         flux : an array of spectra (flux)  we want to add noise to
         spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
         u_delta, l_delta : upper and lower limit of the delta parameter
@@ -400,7 +400,7 @@ class Spectra:
                 delta[ii] = np.random.normal(0, CE[ii])
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
-                flux[ii,:] /= (1.0 + delta[ii])        
+                flux[ii,:] /= (1.0 + delta[ii])
         return (flux , delta)
 
 
@@ -672,7 +672,7 @@ class Spectra:
         mass_frac[np.where(mass_frac <= 0)] = 0
         assert mass_frac.dtype == np.float32
         return mass_frac
-    
+
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
         """
         Replace those sightlines which do not contain sightlines above a given column density with new sightlines, until all sightlines are above the column density.
@@ -1429,7 +1429,7 @@ class Spectra:
             flux = np.exp(-self.get_tau(elem, ion, line))
 
         # if a noise input is specified here, add that, then fit spline
-        else: 
+        else:
             flux_i = self.add_noise(snr_input, np.exp(-self.get_tau(elem, ion, line)))[0]
             flux = self.spline_fit(flux_i, chi_min=chi, vel_seg_min=seg_res, ini_break_spacing=ini_break)
 
