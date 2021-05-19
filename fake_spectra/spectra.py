@@ -776,7 +776,7 @@ class Spectra:
         nsegments = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
         if arepo :
-           nsegments=1
+            nsegments=1
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         #Do remaining files
         for nn in xrange(1, nsegments):
@@ -786,13 +786,13 @@ class Spectra:
             result += tresult
             del tresult
         if self.MPI is None :
-           return result
+            return result
         else :
-           # Make sure the data is contiguous in memory
-           result = np.ascontiguousarray(result, np.float32)
-           # Each rank constructs a portion of the spectrum. Add all the portions
-           self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
-           return result
+            # Make sure the data is contiguous in memory
+            result = np.ascontiguousarray(result, np.float32)
+            # Each rank constructs a portion of the spectrum. Add all the portions
+            self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
+            return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
@@ -1451,4 +1451,3 @@ class Spectra:
         curvature = self.compute_curvature(flux_sections)
 
         return curvature
-
