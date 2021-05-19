@@ -170,8 +170,8 @@ class Spectra:
             try:
                 self.npart = self.snapshot_set.get_npart()
                 #If we got here without a snapshot_set, we really have an IOError
-            except AttributeError:
-                raise IOError("Unable to load snapshot ", num, base)
+            except AttributeError as ae:
+                raise IOError("Unable to load snapshot ", num, base) from ae
             self.box = self.snapshot_set.get_header_attr("BoxSize")
             self.atime = self.snapshot_set.get_header_attr("Time")
             self.red = 1/self.atime - 1.
@@ -260,8 +260,8 @@ class Spectra:
                 shutil.move(self.savefile, self.savefile+".backup")
             try:
                 f = h5py.File(self.savefile, 'w')
-            except IOError:
-                raise IOError("Could not open ", self.savefile, " for writing")
+            except IOError as io:
+                raise IOError("Could not open ", self.savefile, " for writing") from io
             self._save_file(f)
 
     def _save_file(self, f):
@@ -408,8 +408,8 @@ class Spectra:
         #Name of savefile
         try:
             f = h5py.File(savefile, 'r')
-        except IOError:
-            raise IOError("Could not read saved data from: "+savefile+". If the file does not exist, try using reload_file=True")
+        except IOError as io:
+            raise IOError("Could not read saved data from: "+savefile+". If the file does not exist, try using reload_file=True") from io
         grid_file = f["Header"]
         self.red = grid_file.attrs["redshift"]
         self.atime = 1./(1+self.red)
