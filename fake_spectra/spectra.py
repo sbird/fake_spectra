@@ -905,11 +905,6 @@ class Spectra:
             self.tau_obs[(elem, ion)] = ntau
         if number >= 0:
             ntau = ntau[number, :]
-        # Convolve lines by a Gaussian filter of the resolution of the spectrograph.
-        ntau = spec_utils.res_corr(ntau, self.dvbin, self.spec_res)
-        #Add noise
-        if noise and self.snr > 0:
-            ntau = self.add_noise(self.snr, ntau, number)
         return ntau
 
     def vel_width(self, elem, ion):
