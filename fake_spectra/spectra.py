@@ -385,7 +385,6 @@ class Spectra:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
-            delta_array = np.array([])
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
             np.random.seed(2*spec_num)
             delta = np.random.normal(0, CE[spec_num])
@@ -787,12 +786,11 @@ class Spectra:
             del tresult
         if self.MPI is None :
             return result
-        else :
-            # Make sure the data is contiguous in memory
-            result = np.ascontiguousarray(result, np.float32)
-            # Each rank constructs a portion of the spectrum. Add all the portions
-            self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
-            return result
+        # Make sure the data is contiguous in memory
+        result = np.ascontiguousarray(result, np.float32)
+        # Each rank constructs a portion of the spectrum. Add all the portions
+        self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
+        return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
@@ -856,8 +854,7 @@ class Spectra:
             tau = tau[number, :]
         return tau
 
-
-    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False, noise=True):
+    def get_observer_tau(self, elem, ion, number=-1, force_recompute=False):
         """Get the optical depth for a particular element out of:
            (He, C, N, O, Ne, Mg, Si, Fe)
            and some ion number, choosing the line which causes the maximum optical depth to be closest to unity.
@@ -906,31 +903,6 @@ class Spectra:
         if number >= 0:
             ntau = ntau[number, :]
         return ntau
-
-    def vel_width(self, elem, ion):
-        """
-           Find the velocity width of an ion.
-           This is the width in velocity space containing 90% of the optical depth
-           over the absorber.
-           elem - element to look at
-           ion - ionisation state of this element.
-        """
-        try:
-            return self.vel_widths[(elem, ion)]
-        except KeyError:
-            tau = self.get_observer_tau(elem, ion)
-            (low, high, offset) = self.find_absorber_width(elem, ion)
-            #  Size of a single velocity bin
-            vel_width = np.zeros(np.shape(tau)[0])
-            #deal with periodicity by making sure the deepest point is in the middle
-            for ll in np.arange(0, np.shape(tau)[0]):
-                tau_l = np.roll(tau[ll, :], offset[ll])[low[ll]:high[ll]]
-                (nnlow, nnhigh) = self._vel_width_bound(tau_l)
-                vel_width[ll] = self.dvbin*(nnhigh-nnlow)
-            #Return the width
-            self.vel_widths[(elem, ion)] = vel_width
-            return self.vel_widths[(elem, ion)]
-
 
     def _vel_single_file(self, fn, elem, ion):
         """Get the column density weighted interpolated velocity field for a single file"""
