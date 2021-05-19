@@ -549,7 +549,7 @@ class Spectra:
         den = den[ind]
         #Only need temp for ionic density, and tau later
         if get_tau or (ion != -1 and elem != 'H'):
-            temp = self.gasprop.get_temp(0, segment=fn, units=self.units).astype(np.float32)
+            temp = self.gasprop.get_temp(0, segment=fn).astype(np.float32)
             temp = temp[ind]
             #Some codes occasionally output negative temperatures, fix them
             it = np.where(temp <= 0)

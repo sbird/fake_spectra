@@ -100,7 +100,7 @@ class GasProperties(object):
 
     def get_temp(self,part_type, segment):
         """Compute temperature (in K) from internal energy."""
-        return self.absnap.get_temp(part_type, segment=segment)
+        return self.absnap.get_temp(part_type, segment=segment, units=self.units)
 
     def get_code_rhoH(self,part_type, segment):
         """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""
