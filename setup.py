@@ -99,7 +99,7 @@ except subprocess.CalledProcessError as e:
 if check_for_openmp():
     extra_compile_args += ['-fopenmp',]
     #gcc specific
-    extra_link_args += ['-lgomp',]
+    extra_link_args += ['-lgomp', '-lpthread',]
 
 cmodule = [
         Extension("fake_spectra._spectra_priv",
