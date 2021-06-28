@@ -100,6 +100,9 @@ if check_for_openmp():
     extra_compile_args += ['-fopenmp',]
     #gcc specific
     extra_link_args += ['-lgomp',]
+    #for compiling on stampede2 cluster
+    if os.uname()[1].split('.')[1] == 'stampede2':
+        extra_link_args += ['-lpthread',]
 
 cmodule = [
         Extension("fake_spectra._spectra_priv",
