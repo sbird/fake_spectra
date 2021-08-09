@@ -13,12 +13,18 @@ class GriddedSpectra(spectra.Spectra):
             savefile="gridded_spectra.hdf5", reload_file=True,
             axis=1, **kwargs):
 
-        # get box size from file (either HDF5 or BigFile)
-        f = absn.AbstractSnapshotFactory(num, base)
-        self.box = f.get_header_attr("BoxSize")
-        del f
-        # get position of skewers in the grid
-        grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
+        if reload_file==False:
+            # if reading skewers from file, no need to read the snapshot
+            grid_cofm=None
+            grid_axes=None
+        else:
+            # get box size from file (either HDF5 or BigFile)
+            f = absn.AbstractSnapshotFactory(num, base)
+            self.box = f.get_header_attr("BoxSize")
+            del f
+            # get position of skewers in the grid
+            grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
+
         # call constructor of base class
         spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI,
                 res=res,savefile=savefile,reload_file=reload_file,**kwargs)
