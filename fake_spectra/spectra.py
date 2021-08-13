@@ -230,6 +230,9 @@ class Spectra:
             # check if you asked for different pixel width
             if res is not None:
                 assert np.isclose(self.dvbin,res,rtol=1e-2),'pixel width error'
+            # check if you asked for different H(z) than the one in the file
+            if use_external_Hz:
+                assert np.isclose(self.Hz,use_external_Hz,rtol=1e-4),'Hz error'
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
