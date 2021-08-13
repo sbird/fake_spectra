@@ -67,7 +67,7 @@ class Spectra:
             units - If not None, UnitSystem instance which overrides the default units read from the simulation.
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
             quiet - Whether to output debug messages
-            load_snapshot - Whether to load the snapshot
+            load_snapshot - Does nothing, preserved for backwards compatibility
             gasprop - Name (not instance!) of class to compute neutral fractions and temperatures.
                       It should inherit from gas_properties.GasProperties and provide get_reproc_HI
                       for neutral fractions and get_temp for temperatures.
@@ -132,24 +132,23 @@ class Spectra:
         #than this to a pixel, stop the integration.
         self.tautail = 1e-7
         try:
-            if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
-                #Set up the kernel
-                if kernel is None:
-                    self.kernel_int = self.snapshot_set.get_kernel()
-                elif kernel == "voronoi":
-                    self.kernel_int = 2
-                elif kernel == "tophat":
-                    self.kernel_int = 0
-                elif kernel == "quintic":
-                    self.kernel_int = 3
-                elif kernel == "cubic":
-                    #Cubic SPH kernel
-                    self.kernel_int = 1
-                elif kernel == "sph":
-                    self.kernel_int = 1
-                else:
-                    raise ValueError("Unrecognised kernel %d" % kernel)
+            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
+            #Set up the kernel
+            if kernel is None:
+                self.kernel_int = self.snapshot_set.get_kernel()
+            elif kernel == "voronoi":
+                self.kernel_int = 2
+            elif kernel == "tophat":
+                self.kernel_int = 0
+            elif kernel == "quintic":
+                self.kernel_int = 3
+            elif kernel == "cubic":
+                #Cubic SPH kernel
+                self.kernel_int = 1
+            elif kernel == "sph":
+                self.kernel_int = 1
+            else:
+                raise ValueError("Unrecognised kernel %d" % kernel)
         except IOError:
             pass
         if savedir is None:
