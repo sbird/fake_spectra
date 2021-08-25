@@ -67,7 +67,7 @@ class Spectra:
             units - If not None, UnitSystem instance which overrides the default units read from the simulation.
             sf_neutral - bug fix for certain Gadget versions. See gas_properties.py
             quiet - Whether to output debug messages
-            load_snapshot - Whether to load the snapshot
+            load_snapshot - Does nothing, preserved for backwards compatibility
             gasprop - Name (not instance!) of class to compute neutral fractions and temperatures.
                       It should inherit from gas_properties.GasProperties and provide get_reproc_HI
                       for neutral fractions and get_temp for temperatures.
@@ -78,10 +78,13 @@ class Spectra:
                      Other options are "voronoi" which forces the Voronoi kernel, "tophat" which forces a flat tophat
                      kernel (a good back up for large Arepo simulations) "quintic" for a quintic SPh kernel as used in modern SPH
                      and "cubic" or "sph" for an old-school cubic SPH kernel.
+            use_external_Hz - user provided value for H(z) [km/s/Mpc] to be used
+                     when converting comoving to velocity units.
+                     If not proviced, will assume flat LCDM and compute it.
     """
     def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5",
                  savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,
-                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None):
+                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
 
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
@@ -129,24 +132,23 @@ class Spectra:
         #than this to a pixel, stop the integration.
         self.tautail = 1e-7
         try:
-            if load_snapshot:
-                self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
-                #Set up the kernel
-                if kernel is None:
-                    self.kernel_int = self.snapshot_set.get_kernel()
-                elif kernel == "voronoi":
-                    self.kernel_int = 2
-                elif kernel == "tophat":
-                    self.kernel_int = 0
-                elif kernel == "quintic":
-                    self.kernel_int = 3
-                elif kernel == "cubic":
-                    #Cubic SPH kernel
-                    self.kernel_int = 1
-                elif kernel == "sph":
-                    self.kernel_int = 1
-                else:
-                    raise ValueError("Unrecognised kernel %d" % kernel)
+            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
+            #Set up the kernel
+            if kernel is None:
+                self.kernel_int = self.snapshot_set.get_kernel()
+            elif kernel == "voronoi":
+                self.kernel_int = 2
+            elif kernel == "tophat":
+                self.kernel_int = 0
+            elif kernel == "quintic":
+                self.kernel_int = 3
+            elif kernel == "cubic":
+                #Cubic SPH kernel
+                self.kernel_int = 1
+            elif kernel == "sph":
+                self.kernel_int = 1
+            else:
+                raise ValueError("Unrecognised kernel %d" % kernel)
         except IOError:
             pass
         if savedir is None:
@@ -156,6 +158,7 @@ class Spectra:
             if not path.exists(savedir):
                 savedir = path.join(base, "SPECTRA_"+str(num).rjust(3, '0'))
         self.savefile = path.join(savedir, savefile)
+
         #Snapshot data
         if reload_file:
             if not quiet:
@@ -188,16 +191,27 @@ class Spectra:
             except KeyError:
                 if not quiet:
                     print('No units found. Using kpc/kms/10^10Msun by default')
+            #user defined Hubble parameter at the relevant redshift [km/s/Mpc]
+            if use_external_Hz:
+                self.Hz=use_external_Hz
+                if not quiet:
+                    print('Use external value of H(z)=',self.Hz)
+            else:
+                #if not specified, H(z) will be computed later
+                self.Hz=None
         else:
+            if not quiet:
+                print("Reading pre-computed spectra (from file", self.savefile, " )", flush=True)
             self.load_savefile(self.savefile)
+
         # Conversion factors from internal units
         self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble
-        # Convert length to physical cm
-        # Calculate the length scales to be used in the box: Hz in km/s/Mpc
-        Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Convert comoving internal units to physical km/s.
+        if self.Hz is None:
+            #Assume flat LCDM cosmology to compute H(z) (in km/s/Mpc)
+            self.Hz = 100.0*self.hubble * np.sqrt(self.OmegaM/self.atime**3 + self.OmegaLambda)
         #Numerical constant is 1 Mpc in cm.
-        self.velfac = self.rscale * Hz / 3.085678e24
+        self.velfac = self.rscale * self.Hz / 3.085678e24
         self.vmax = self.box * self.velfac # box size (physical kms^-1)
         self.NumLos = np.size(self.axis)
         # specify pixel width and number of pixels in spectra
@@ -215,6 +229,9 @@ class Spectra:
             # check if you asked for different pixel width
             if res is not None:
                 assert np.isclose(self.dvbin,res,rtol=1e-2),'pixel width error'
+            # check if you asked for different H(z) than the one in the file
+            if use_external_Hz:
+                assert np.isclose(self.Hz,use_external_Hz,rtol=1e-4),'Hz error'
         #Species we can use: Z is total metallicity
         self.species = ['H', 'He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe', 'Z']
         #Solar abundances from Asplund 2009 / Grevasse 2010 (which is used in Cloudy 13, Hazy Table 7.4).
@@ -278,6 +295,7 @@ class Spectra:
         grp.attrs["omegal"] = self.OmegaLambda
         grp.attrs["discarded"] = self.discarded
         grp.attrs["npart"] = self.npart
+        grp.attrs["Hz"] = self.Hz
         grp = f.create_group("spectra")
         grp["cofm"] = self.cofm
         grp["axis"] = self.axis
@@ -464,6 +482,11 @@ class Spectra:
         grp = f["spectra"]
         self.cofm = np.array(grp["cofm"])
         self.axis = np.array(grp["axis"])
+        # older files might not have Hz stored
+        if "Hz" in grid_file.attrs:
+            self.Hz = grid_file.attrs["Hz"]
+        else:
+            self.Hz = None
         f.close()
 
     def _interpolate_single_file(self, nsegment, elem, ion, ll, get_tau, load_all_data_first=False):

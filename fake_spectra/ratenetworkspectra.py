@@ -28,11 +28,21 @@ class RateNetworkGas(gas_properties.GasProperties):
         self.ienergygrid = np.linspace(elim[0], elim[1], tsz)
         dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
         self.lh0grid = np.zeros_like(dgrid)
+        self.tempgrid = np.zeros_like(dgrid)
         #We assume primordial helium
         for i in range(dsz):
             self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
+            self.tempgrid[:,i] = np.log(self.rates.get_temp(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
 
-    def get_reproc_HI(self, part_type, segment):
+    def get_temp(self,part_type, segment):
+        """Compute temperature (in K) from internal energy using the rate network."""
+        temp, ii2, density, ienergy = self._get_interp(part_type, segment, nhi=False)
+        if np.size(ii2) > 0:
+            temp[ii2] = self.rates.get_temp(density[ii2], ienergy[ii2])
+        assert np.all(np.logical_not(np.isnan(temp)))
+        return temp
+
+    def _get_interp(self, part_type, segment, nhi=True):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
         #expecting units of atoms/cm^3
         density = self.get_code_rhoH(part_type, segment)
@@ -48,13 +58,23 @@ class RateNetworkGas(gas_properties.GasProperties):
 
         lienergy[ie] = np.min(self.ienergygrid)*1.01
 
-        nH0 = np.ones_like(density)
+        out = np.ones_like(density)
         ii = np.where(ldensity < np.max(self.densgrid))
         if (np.max(self.ienergygrid) < np.max(lienergy[ii])) or (np.min(self.ienergygrid) > np.min(lienergy[ii])):
             raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(lienergy[ii]), np.max(lienergy[ii])))
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
-        nH0[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, self.lh0grid))
+        if nhi:
+            zgrid = self.lh0grid
+        else:
+            zgrid = self.tempgrid
+        out[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, zgrid))
         ii2 = np.where(ldensity >= np.max(self.densgrid))
+        return out,ii2,density,ienergy
+
+    def get_reproc_HI(self, part_type, segment):
+        """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
+        #expecting units of atoms/cm^3
+        nH0, ii2, density, ienergy = self._get_interp(part_type, segment, nhi=True)
         if np.size(ii2) > 0:
             if self.sf_neutral:
                 if self.redshift_coverage:
@@ -66,7 +86,6 @@ class RateNetworkGas(gas_properties.GasProperties):
                 nH0[ii2] = self.rates.get_neutral_fraction(density[ii2], ienergy[ii2])
 
         assert np.all(np.logical_not(np.isnan(nH0)))
-
         return nH0
 
     def _get_ienergy_rescaled(self, density, ienergy):
