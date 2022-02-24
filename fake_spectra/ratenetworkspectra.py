@@ -38,7 +38,10 @@ class RateNetworkGas(gas_properties.GasProperties):
         """Compute temperature (in K) from internal energy using the rate network."""
         temp, ii2, density, ienergy = self._get_interp(part_type, segment, nhi=False)
         if np.size(ii2) > 0:
-            temp[ii2] = self.rates.get_temp(density[ii2], ienergy[ii2])
+            if self.sf_neutral:
+                temp[ii2] = 1e4*np.ones_like(ii2)
+            else:
+                temp[ii2] = self.rates.get_temp(density[ii2], ienergy[ii2])
         assert np.all(np.logical_not(np.isnan(temp)))
         return temp
 
