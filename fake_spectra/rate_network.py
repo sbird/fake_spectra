@@ -190,12 +190,13 @@ class RateNetwork(object):
 
     def _nHep(self, nh, temp, nebynh):
         """The ionised helium number density, divided by the helium number fraction. Eq. 35 of KWH."""
-        alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
-        alphaHepp = self.recomb.alphaHepp(temp)
-        photofac = self._photofac(nebynh, nh, temp)
-        GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
-        return 1. / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
+        #alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
+        #alphaHepp = self.recomb.alphaHepp(temp)
+        #photofac = self._photofac(nebynh, nh, temp)
+        #GammaHe0 = self.collisional * self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)*photofac
+        #GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
+        #return 1. / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
+        return self._nHp(nh,temp,nebynh)
 
     def _nHe0(self, nh, temp, nebynh):
         """The neutral helium number density, divided by the helium number fraction. Eq. 36 of KWH."""
@@ -206,10 +207,11 @@ class RateNetwork(object):
 
     def _nHepp(self, nh, temp, nebynh):
         """The doubly ionised helium number density, divided by the helium number fraction. Eq. 37 of KWH."""
-        photofac = self._photofac(nebynh, nh, temp)
-        GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
-        alphaHepp = self.recomb.alphaHepp(temp)
-        return self._nHep(nh, temp, nebynh) * GammaHep / alphaHepp
+        #photofac = self._photofac(nebynh, nh, temp)
+        #GammaHep = self.collisional * self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)*photofac
+        #alphaHepp = self.recomb.alphaHepp(temp)
+        #return self._nHep(nh, temp, nebynh) * GammaHep / alphaHepp
+        return np.zeros_like(nh)
 
     def _nebynh(self, nh, temp, nebynh, helium=0.24):
         """The electron number density per hydrogen atom. Eq. 38 of KWH."""
