@@ -30,6 +30,7 @@ jobs:
         sudo apt install -y libgsl-dev libboost-test-dev
     - name: Build
       run: |
+        git submodule update --init --recursive
         python3 -m build
     - name: Unit tests
       run: |
