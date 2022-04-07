@@ -1,5 +1,4 @@
 wheel
 numpy
 scipy
-runtests
 h5py
