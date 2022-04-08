@@ -32,6 +32,7 @@ jobs:
       run: |
         git submodule update --init --recursive
         python3 -m build
+        python3 setup.py install --user
     - name: Unit tests
       run: |
         pytest
