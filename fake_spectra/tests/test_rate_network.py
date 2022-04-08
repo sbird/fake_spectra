@@ -1,6 +1,5 @@
 """Tests for the rate network."""
 
-import time
 import numpy as np
 from fake_spectra import rate_network
 from fake_spectra import ratenetworkspectra
@@ -59,15 +58,12 @@ def testRateNetwork():
     neuts2 = rates2.get_neutral_fraction(dens, 100.)/(0.76*dens)
     ii = np.where(dens < 1e-4)
     assert np.all(np.abs(neuts[ii]/neuts2[ii] -1.) < 2e-2)
-    before = time.clock()
     ntests = 100
     for i in range(ntests):
         nH_bench = ((1.*i)/ntests-1e-6)
         for j in range(ntests):
             uu_bench = ((2.e5*j)/ntests + 200.)
             rates2.get_temp(nH_bench, uu_bench)
-    after = time.clock()
-    print(after-before)
 
 def test_heatingcooling_rate():
     """Test the cooling rate."""
