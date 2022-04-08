@@ -64,7 +64,6 @@ def testRateNetwork():
         for j in range(ntests):
             uu_bench = ((2.e5*j)/ntests + 200.)
             rates2.get_temp(nH_bench, uu_bench)
-    print(after-before)
 
 def test_heatingcooling_rate():
     """Test the cooling rate."""
