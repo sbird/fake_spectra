@@ -19,7 +19,13 @@ class RateNetworkGas(gas_properties.GasProperties):
         if self.sf_neutral:
             dmax = np.log(self.maxdens)
             dsz = 500
-        self.build_interp(dlim=(-16, dmax), elim=(2, 21),tsz=500, dsz=dsz)
+        #Low redshift gas hits lower densities: in practice low redshift
+        #spectra are probably at z=0 so no need for anything sophisticated.
+        if redshift >= 1:
+            dmin = -16
+        else:
+            dmin = -20
+        self.build_interp(dlim=(dmin, dmax), elim=(2, 21),tsz=500, dsz=dsz)
 
     def build_interp(self, dlim, elim, tsz=500, dsz=1000):
         """Build the interpolator"""
