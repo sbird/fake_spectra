@@ -4,7 +4,7 @@
 #  for macos. We partially adopted this from [galpy package](https://github.com/jobovy/galpy/blob/main/.github/workflows/build_macosx_windows_wheels.yml)
 
 
-name: Build and upload macos wheels
+name: Upload Python Package
 
 on:
   release:
