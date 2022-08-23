@@ -7,26 +7,16 @@ import os
 import subprocess
 import shutil
 
-def check_for_openmp():
+def check_for_openmp(compiler):
     """Check  whether the default compiler supports OpenMP.
 
     This routine is adapted from yt, thanks to Nathan
     Goldbaum. See https://github.com/pynbody/pynbody/issues/124"""
 
-    if os.getenv('DISABLE_OPENMP') is not None:
-        return False
-
     # Create a temporary directory
     tmpdir = tempfile.mkdtemp()
     curdir = os.getcwd()
     os.chdir(tmpdir)
-
-    # Get compiler invocation
-    compiler = os.environ.get('CC',
-                              distutils.sysconfig.get_config_var('CC'))
-
-    # make sure to use just the compiler name without flags
-    compiler = compiler.split()[0]
 
     # Attempt to compile a test script.
     # See http://openmp.org/wp/openmp-compilers/
@@ -55,33 +45,13 @@ def check_for_openmp():
     if exit_code == 0:
         return True
     else:
-        import multiprocessing, platform
-        cpus = multiprocessing.cpu_count()
-        if cpus>1:
-            print ("""WARNING
-
-OpenMP support is not available in your default C compiler, even though
-your machine has more than one core available.
-
-Some routines in pynbody are parallelized using OpenMP and these will
-only run on one core with your current configuration.
-""")
-            if platform.uname()[0]=='Darwin':
-                print ("""Since you are running on Mac OS, it's likely that the problem here
-is Apple's Clang, which does not support OpenMP at all. The easiest
-way to get around this is to download the latest version of gcc from
-here: http://hpc.sourceforge.net. After downloading, just point the
-CC environment variable to the real gcc and OpenMP support should
-get enabled automatically. Something like this -
-
-sudo tar -xzf /path/to/download.tar.gz /
-export CC='/usr/local/bin/gcc'
-python setup.py clean
-python setup.py build
-
-""")
-            print ("""Continuing your build without OpenMP...\n""")
-
+        print ("""WARNING
+               OpenMP support is not available in your default C compiler.
+               fake_spectra will only run on one core and will be slow.
+               This is especially common with Apple's Clang, which does not support OpenMP.
+               Instead you can use the conda toolchain as described here:
+               https://scikit-learn.org/dev/developers/advanced_installation.html#macos-compilers-from-conda-forge
+               """)
         return False
 
 extra_compile_args=['-ffast-math',]
@@ -96,14 +66,19 @@ except subprocess.CalledProcessError as e:
     print(e.output)
     raise
 
-if check_for_openmp():
+# Get compiler invocation
+compiler = os.environ.get('CC', distutils.sysconfig.get_config_var('CC'))
+# make sure to use just the compiler name without flags
+compiler = compiler.split()[0]
+
+if check_for_openmp(compiler):
     extra_compile_args += ['-fopenmp',]
-    #gcc specific
-    extra_link_args += ['-lgomp',]
-    if os.uname()[1].__contains__('.'):
-        #for compiling on stampede2 cluster
-        if os.uname()[1].split('.')[1] == 'stampede2':
-            extra_link_args += ['-lpthread',]
+    extra_link_args += ['-fopenmp',]
+    #icc and gcc have extra libraries that need to be linked.
+    if compiler  == "icc":
+        extra_link_args += ['-lpthread',]
+    elif compiler == "gcc":
+        extra_link_args += ['-lgomp',]
 
 cmodule = [
         Extension("fake_spectra._spectra_priv",
