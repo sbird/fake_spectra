@@ -20,7 +20,7 @@ def testMeanFlux():
 
 def testCalcPdf():
     """Test that we calculate the pdf of the flux correctly"""
-    nn = np.arange(1,101)
+    nn = np.arange(1,101,dtype=np.double)
     tau = np.log(nn)
     (bins,hist) = stat.flux_pdf(tau, 20)
     print(bins)
@@ -28,6 +28,7 @@ def testCalcPdf():
     assert bins[-1] == 1.-1./40.
     assert np.min(hist) == 0.
     assert np.max(hist) > 1.
+    print(hist)
     assert np.all(np.abs(hist - np.array([ 16. ,   2.2,   0.6,   0.2,   0.2,   0.2,   0.2,   0. ,   0. , 0. ,   0.2,   0. ,   0. ,   0. ,   0. ,   0. ,   0. ,   0. , 0. ,   0.2])) < 1e-3)
 
 def testPowerspectrum():
