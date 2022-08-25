@@ -1,6 +1,6 @@
 """Some utility functions for the spectra."""
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d
 
 def res_corr(flux, dvbin, fwhm=8):
     """
