@@ -23,11 +23,13 @@ jobs:
         cache: 'pip'
     - name: Install dependencies
       run: |
+        sudo apt update
+        # Install HDF5 to avoid failure of building h5py
+        sudo apt-get install libhdf5-dev 
+        sudo apt install -y libgsl-dev libboost-test-dev
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install build pytest
-        sudo apt update
-        sudo apt install -y libgsl-dev libboost-test-dev
     - name: Build
       run: |
         git submodule update --init --recursive
