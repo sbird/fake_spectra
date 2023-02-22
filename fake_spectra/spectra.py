@@ -429,66 +429,67 @@ class Spectra:
         #Name of savefile
         try:
             f = h5py.File(savefile, 'r')
+            grid_file = f["Header"]
+            self.red = grid_file.attrs["redshift"]
+            self.atime = 1./(1+self.red)
+            self.OmegaM = grid_file.attrs["omegam"]
+            self.nbins = grid_file.attrs["nbins"]
+            self.omegab = grid_file.attrs["omegab"]
+            self.OmegaLambda = grid_file.attrs["omegal"]
+            self.hubble = grid_file.attrs["hubble"]
+            self.npart = np.array(grid_file.attrs["npart"])
+            self.box = grid_file.attrs["box"]
+            self.discarded = grid_file.attrs["discarded"]
+            grp = f["colden"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.colden[(elem, int(ion))] = np.array([0])
+            grp = f["tau_obs"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.tau_obs[(elem, int(ion))] = np.array([0])
+            grp = f["tau"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    for line in grp[elem][ion].keys():
+                        self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
+            try:
+                grp = f["velocity"]
+                for elem in grp.keys():
+                    for ion in grp[elem].keys():
+                        self.velocity[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["temperature"]
+                for elem in grp.keys():
+                    for ion in grp[elem].keys():
+                        self.temp[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["density_weight_density"]
+                for elem in grp.keys():
+                    for ion in grp[elem].keys():
+                        self.dens_weight_dens[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            grp = f["num_important"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
+            grp = f["spectra"]
+            self.cofm = np.array(grp["cofm"])
+            self.axis = np.array(grp["axis"])
+            # older files might not have Hz stored
+            if "Hz" in grid_file.attrs:
+                self.Hz = grid_file.attrs["Hz"]
+            else:
+                self.Hz = None
         except IOError as io:
             raise IOError("Could not read saved data from: "+savefile+". If the file does not exist, try using reload_file=True") from io
-        grid_file = f["Header"]
-        self.red = grid_file.attrs["redshift"]
-        self.atime = 1./(1+self.red)
-        self.OmegaM = grid_file.attrs["omegam"]
-        self.nbins = grid_file.attrs["nbins"]
-        self.omegab = grid_file.attrs["omegab"]
-        self.OmegaLambda = grid_file.attrs["omegal"]
-        self.hubble = grid_file.attrs["hubble"]
-        self.npart = np.array(grid_file.attrs["npart"])
-        self.box = grid_file.attrs["box"]
-        self.discarded = grid_file.attrs["discarded"]
-        grp = f["colden"]
-        for elem in grp.keys():
-            for ion in grp[elem].keys():
-                self.colden[(elem, int(ion))] = np.array([0])
-        grp = f["tau_obs"]
-        for elem in grp.keys():
-            for ion in grp[elem].keys():
-                self.tau_obs[(elem, int(ion))] = np.array([0])
-        grp = f["tau"]
-        for elem in grp.keys():
-            for ion in grp[elem].keys():
-                for line in grp[elem][ion].keys():
-                    self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
-        try:
-            grp = f["velocity"]
-            for elem in grp.keys():
-                for ion in grp[elem].keys():
-                    self.velocity[(elem, int(ion))] = np.array([0])
-        except KeyError:
-            pass
-        try:
-            grp = f["temperature"]
-            for elem in grp.keys():
-                for ion in grp[elem].keys():
-                    self.temp[(elem, int(ion))] = np.array([0])
-        except KeyError:
-            pass
-        try:
-            grp = f["density_weight_density"]
-            for elem in grp.keys():
-                for ion in grp[elem].keys():
-                    self.dens_weight_dens[(elem, int(ion))] = np.array([0])
-        except KeyError:
-            pass
-        grp = f["num_important"]
-        for elem in grp.keys():
-            for ion in grp[elem].keys():
-                self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
-        grp = f["spectra"]
-        self.cofm = np.array(grp["cofm"])
-        self.axis = np.array(grp["axis"])
-        # older files might not have Hz stored
-        if "Hz" in grid_file.attrs:
-            self.Hz = grid_file.attrs["Hz"]
-        else:
-            self.Hz = None
-        f.close()
+        finally:
+            f.close()
 
     def _interpolate_single_file(self, nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
