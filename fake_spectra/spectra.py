@@ -1205,12 +1205,47 @@ class Spectra:
             spos = cofm[:, :2]
         return spos
 
+    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=2):
+        """Filter out the DLA regions from a single spectrum"""
+        #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 2.
+        #She corrects the wings using a Voigt profile, but that seems difficult.
+        tot = 0
+        while np.max(tt) > tau_thresh:
+            maxx = np.argmax(tt)
+            j = 0
+#             print("m %g, w %d" % (np.max(tt), maxx))
+            while tt[maxx-j] > thresh2:
+                tt[maxx-j] = taueff
+                #Note python indexing means no need to deal with periodicity
+                j += 1
+            tot += j
+            j = 1
+            if maxx + j >= self.nbins:
+                j -= self.nbins
+            while tt[maxx+j] > thresh2:
+                tt[maxx+j] = taueff
+                j += 1
+                if maxx + j >= self.nbins:
+                    j-= self.nbins
+            tot += j
+#         assert np.max(tt) < tau_thresh*1.01
+        return tt,tot
+
     def _filter_tau(self, tau, tau_thresh=None):
-        """Filter optical depths to remove sightlines with optically thick absorbers."""
+        """Filter optical depths to remove sightlines with optically thick absorbers. Note this is permanent!"""
         if tau_thresh is not None:
             tausum = np.max(tau, axis=1)
-            ii = np.where(tausum < tau_thresh)
-            tau = tau[ii]
+            #Tried to exclude the DLA sightlines when computing mean flux, made very small difference.
+            taueff = -1*np.log(np.mean(np.exp(-tau)))
+            ii = np.where(tausum > tau_thresh)
+            #print("Filtering spectra", np.shape(ii))
+            tot = 0
+            for i in ii[0]:
+                (tt, tot2) = self._filter_single_tau_complex(tau[i], taueff, tau_thresh=tau_thresh)
+                tau[i] = tt
+                tot += tot2
+            #print("filter frac all=%g dlalines=%g" % (tot / np.size(tau), tot/np.size(ii)/self.nbins))
+            assert np.max(tau) < tau_thresh*1.01
         return tau
 
     def get_mean_flux(self, elem="H", ion=1, line=1215, tau_thresh=None):
