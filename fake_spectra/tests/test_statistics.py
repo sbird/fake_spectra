@@ -61,7 +61,7 @@ def testFluxPower():
         #Construct some optical depths offset from each other
         taus = np.zeros((9,bb))
         taus = np.vstack([inn,]*10)
-        bins, power = stat.flux_power(taus, vmax=1.,spec_res = 0.01)
+        bins, power = stat.flux_power(taus, vmax=1.,spec_res = 0.01, window=True)
         power/=12.5569
         wind = stat._window_function(bins[1:],R=0.01,dv=1/np.size(xx))
         assert np.all(np.abs(power[1:]*wind**2 - ff[1:]) < 0.01*ff[1:])
