@@ -1224,7 +1224,7 @@ class Spectra:
         tau = self._filter_tau(tau, tau_thresh=tau_thresh)
         return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired=mean_flux_desired)
 
-    def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=True, tau_thresh=None):
+    def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
