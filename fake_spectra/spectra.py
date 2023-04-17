@@ -1206,7 +1206,15 @@ class Spectra:
         return spos
 
     def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=2):
-        """Filter out the DLA regions from a single spectrum"""
+        """Filter out the DLA regions from a single spectrum. The algorithm is the same as Chabanier 2019.
+        We find each DLA, identified using a maximum optical depth cut (tau_thresh).
+        We then replace optically thick absorption around the DLA as long as the absorption is larger than
+        a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
+
+        Arguments: tt: optical depth array from a single spectrum.
+        taueff: effective tau. The DLA will be replaced with constant absorption at this value.
+        tau_thresh: optical depth threshold at which to enable filtering.
+        thresh2: how far out from the center should we replace the filtered values"""
         #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 2.
         #She corrects the wings using a Voigt profile, but that seems difficult.
         tot = 0
@@ -1232,7 +1240,8 @@ class Spectra:
         return tt,tot
 
     def _filter_tau(self, tau, tau_thresh=None):
-        """Filter optical depths to remove sightlines with optically thick absorbers. Note this is permanent!"""
+        """Filter optical depths to remove sightlines with optically thick absorbers.
+        Note this alters the input tau array."""
         if tau_thresh is not None:
             tausum = np.max(tau, axis=1)
             #Tried to exclude the DLA sightlines when computing mean flux, made very small difference.
