@@ -7,14 +7,12 @@ import math
 import numpy as np
 from scipy.optimize import brentq
 
-from ._spectra_priv import _rescale_mean_flux
-
 def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: effective optical depth is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
+def mean_flux(tau, mean_flux_desired, tol=1e-5):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -27,7 +25,17 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
         scaling factor for tau"""
     if np.size(tau) == 0:
         return 0
-    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol, thresh)
+    scale, newscale = 0, 1
+    while abs(newscale - scale) > tol * newscale:
+        scale = newscale
+        flux = np.exp(-scale * tau)
+        # Newton-Raphson iteration
+        newscale = scale + (np.mean(flux) - mean_flux_desired) / np.mean(flux * tau)
+        # If the new scale is less than or equal to 0, set it to a very small positive value.
+        if newscale <= 0:
+            newscale = 1e-10
+    return newscale
+
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""

@@ -232,55 +232,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     return for_return;
 }
 
-double get_mean_flux_scale(const double * tau, const double mean_flux_desired, const long long nbins, const double tol, const double thresh)
-{
-    double scale, newscale=1;
-    do {
-        scale=newscale;
-        double mean_flux=0;
-        double tau_mean_flux=0;
-        long long nbins_used = 0;
-        #pragma omp parallel for reduction(+:mean_flux, tau_mean_flux, nbins_used)
-        for(long long i=0; i< nbins; i++)
-        {
-            if(tau[i] > thresh)
-                continue;
-            const double temp=exp(-scale*tau[i]);
-            mean_flux+=temp;
-            tau_mean_flux+=temp*tau[i];
-            nbins_used++;
-        }
-        /*Newton-Raphson*/
-        newscale=scale+(mean_flux-mean_flux_desired * nbins_used)/tau_mean_flux;
-        /*We don't want the absorption to change sign and become emission; 
-         * 0 is too far. */
-        if(newscale <= 0) {
-            newscale=1e-10;
-        }
-    }while(fabs(newscale-scale) > tol*newscale);
-    return newscale;
-}
-extern "C" PyObject * Py_mean_flux(PyObject *self, PyObject *args)
-{
-    PyArrayObject *Tau;
-    double mean_flux_desired, tol, thresh;
-    long long nbins;
-    if(!PyArg_ParseTuple(args, "O!dLdd", &PyArray_Type,&Tau, &mean_flux_desired, &nbins, &tol, &thresh) )
-    {
-      PyErr_SetString(PyExc_AttributeError, "Incorrect arguments: use tau (array), mean_flux_desired (double), nbins (int), tol (double), thresh (double)\n");
-      return NULL;
-    }
-    Tau = PyArray_GETCONTIGUOUS(Tau);
-    if(check_type(Tau,NPY_DOUBLE)){
-      PyErr_SetString(PyExc_TypeError, "Optical depth must have 64-bit float type\n");
-      return NULL;
-    }
-    const double * tau =(double *) PyArray_DATA(Tau);
-    const double newscale = get_mean_flux_scale(tau, mean_flux_desired, nbins, tol, thresh);
-    Py_DECREF(Tau);
-    return Py_BuildValue("d",newscale);
-}
-
 void gsl_handler (const char * reason, const char * file, int line, int gsl_errno)
 {
     return;
@@ -365,9 +316,6 @@ static PyMethodDef spectrae[] = {
    "return a list of booleans for those particles near "
    "a sightline."
    "   Arguments: box, pos, h, axis, cofm"},
-  {"_rescale_mean_flux",Py_mean_flux,METH_VARARGS,
-   "Compute the scale factor for spectra to have the desired mean flux."
-   ""},
   {"_interpolate_2d",Py_interpolate_2d,METH_VARARGS,
    "Do 2D interpolation in parallel in C."
    ""},
