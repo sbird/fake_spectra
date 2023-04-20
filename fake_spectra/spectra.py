@@ -1218,11 +1218,12 @@ class Spectra:
         #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 2.
         #She corrects the wings using a Voigt profile, but that seems difficult.
         tot = 0
+        assert thresh2 < taueff
         while np.max(tt) > tau_thresh:
             maxx = np.argmax(tt)
             j = 0
 #             print("m %g, w %d" % (np.max(tt), maxx))
-            while tt[maxx-j] > thresh2:
+            while tt[maxx-j] > thresh2 and (maxx -j > -self.nbins):
                 tt[maxx-j] = taueff
                 #Note python indexing means no need to deal with periodicity
                 j += 1
