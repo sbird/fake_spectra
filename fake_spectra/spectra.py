@@ -1205,25 +1205,25 @@ class Spectra:
             spos = cofm[:, :2]
         return spos
 
-    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=2):
+    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=0.25):
         """Filter out the DLA regions from a single spectrum. The algorithm is the same as Chabanier 2019.
         We find each DLA, identified using a maximum optical depth cut (tau_thresh).
         We then replace optically thick absorption around the DLA as long as the absorption is larger than
-        a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
+        mean optical depth + a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
 
         Arguments: tt: optical depth array from a single spectrum.
         taueff: effective tau. The DLA will be replaced with constant absorption at this value.
         tau_thresh: optical depth threshold at which to enable filtering.
         thresh2: how far out from the center should we replace the filtered values"""
-        #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 2.
-        #She corrects the wings using a Voigt profile, but that seems difficult.
+        #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 0.25
+        #She corrects the wings using a Voigt profile, but that seems tricky.
         tot = 0
-        assert thresh2 < taueff
+        newthresh = taueff + thresh2
         while np.max(tt) > tau_thresh:
             maxx = np.argmax(tt)
-            j = 0
 #             print("m %g, w %d" % (np.max(tt), maxx))
-            while tt[maxx-j] > thresh2 and (maxx -j > -self.nbins):
+            j = 0
+            while tt[maxx-j] > newthresh:
                 tt[maxx-j] = taueff
                 #Note python indexing means no need to deal with periodicity
                 j += 1
@@ -1231,7 +1231,7 @@ class Spectra:
             j = 1
             if maxx + j >= self.nbins:
                 j -= self.nbins
-            while tt[maxx+j] > thresh2:
+            while tt[maxx+j] > newthresh:
                 tt[maxx+j] = taueff
                 j += 1
                 if maxx + j >= self.nbins:
