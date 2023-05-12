@@ -581,7 +581,7 @@ class Spectra:
             it = np.where(temp <= 0)
             temp[it] = 1
         #Find the mass fraction in this ion
-        #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^2 kpc/h
+        #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^3 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
         elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, ind)
         #Special case H1:
