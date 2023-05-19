@@ -81,7 +81,7 @@ jobs:
           name: fake_spectra-wheels-macos-latest
           path: dist/*.whl
       - name: Publish distribution to PyPI
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1.8
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
