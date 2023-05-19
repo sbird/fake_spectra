@@ -85,7 +85,7 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: dist/
+          packages-dir: dist/
           long-description: |
             Code for generating artificial spectra for cosmological simulation codes.
 
