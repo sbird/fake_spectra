@@ -86,8 +86,6 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: dist/
-          long-description: |
-            Code for generating artificial spectra for cosmological simulation codes.
 
   TestMacWheel:
     name: Test the published macos wheel

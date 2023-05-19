@@ -108,6 +108,8 @@ setup(
 #     cmdclass = {'build_ext': build_ext_subclass },
     url="http://github.com/sbird/fake_spectra",
     description="Analysis tools for generating artificial spectra from simulations.",
+    long_description="Analysis tools for generating artificial spectra for SPH or meshless cosmological simulation codes, including AREPO, Gadget, SIMBA, etc",
+    long_description_content_type = "text/plain",
     packages = ['fake_spectra', 'fake_spectra.tests', 'fake_spectra.cloudy_tables'],
     requires=['numpy', 'h5py','scipy'],
     package_data = {
