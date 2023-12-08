@@ -8,3 +8,8 @@ tags
 build
 */*/__pycache__/*
 */__pycache__/*
+fake_spectra.egg-info/top_level.txt
+fake_spectra.egg-info/SOURCES.txt
+fake_spectra.egg-info/PKG-INFO
+fake_spectra.egg-info/dependency_links.txt
+fake_spectra/_spectra_priv.cpython-39-x86_64-linux-gnu.so

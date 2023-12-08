@@ -1289,6 +1289,25 @@ class Spectra:
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:], avg_flux_power[1:]
 
+    def get_flux_power_3D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None):
+        """Get the power spectrum of (variations in) the flux along the line of sight.
+        This is: P_F(k_F) = <d_F d_F>
+                 d_F = e^-tau / mean(e^-tau) - 1
+        Arguments:
+            mean_flux_desired: if not None, the spectral optical depths will be rescaled
+                to match the desired mean flux.
+            window: if True, the flux power spectrum is divided by the window function for the pixel width.
+                    This interacts poorly with mean flux rescaling.
+            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling."""
+        tau = self.get_tau(elem, ion, line)
+        #Remove sightlines which contain a strong absorber
+        tau = self._filter_tau(tau, tau_thresh=tau_thresh)
+        #Mean flux rescaling does not commute with the spectrum resolution correction!
+        if mean_flux_desired is not None and window is True and self.spec_res > 0:
+            raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
+        (kf, kxy, avg_flux_power) = fstat.flux_power_3d(tau, self.vmax, self.box, mean_flux_desired=mean_flux_desired)
+        return kf[1:], kxy[1:], avg_flux_power[1:]
+
     def spline_fit(self, flux_i, chi_min=3., vel_seg_min=10., ini_break_spacing=50.):
         """
         Fit flux spectra (converge chi^2) using a cubic spline with adaptive breakpoints.
