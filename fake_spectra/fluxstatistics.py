@@ -5,6 +5,7 @@ Useful for lyman alpha forest work."""
 
 import math
 import numpy as np
+from datetime import datetime
 from scipy.interpolate import RegularGridInterpolator
 from nbodykit.lab import FFTPower
 from nbodykit.lab import ArrayMesh
@@ -99,28 +100,40 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
         mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
     return kf,mean_flux_power
 
-def _3d_powerspectrum(dflux, boxsize, los, Nmu):
-    """Compute the 3D power spectrum of the input using nbodykit"""
-    power = FFTPower(dflux, BoxSize=boxsize, mode='2d', dk=self.dk,
-                            los=los, Nmu=self.Nmu, save_3d_power=self.save_3d_power)
+def _3d_powerspectrum(dflux, boxsize, los, dk=None, Nmu=30):
+    """Compute the 3D power spectrum of the input using nbodykit
+    Parameters:
+    dfux - 3D array of flux variations
+    boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+                the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
+    los - line of sight direction, i.e. [0,0,1] for z-axis
+    dk - bin width in k
+    Nmu - number of mu bins
+    Returns:
+    power - a dictionary with the p(k,mu) and the k and mu bins, keys:['power','k','mu']
+    """
+    dflux = ArrayMesh(dflux, Nmesh=dflux.shape, BoxSize=boxsize)
+    power = FFTPower(dflux, BoxSize=boxsize, mode='2d', los= los, dk=dk, Nmu=Nmu,
+                     save_3d_power=False)
+    return power.power
 
-
-def flux_power_3d(tau, vmax, boxsize, mean_flux_desired=None):
-    """Get the power spectrum of (variations in) the flux along the line of sight.
-        This is: P_F(k_F) = <d_F d_F>
+def flux_power_3d(tau, boxsize, mean_flux_desired=None):
+    """Get the power spectrum of (variations in) the flux in 3D which is binned in (k,mu).
+        This is: P_3D(k) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
+                 Then we bin P_3D(k) in k and mu.
         If mean_flux_desired is set, the spectral optical depths will be rescaled
         to match the desired mean flux.
         We compute the power spectrum along each sightline and then average the result.
         Arguments:
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
-	    vmax - velocity scale corresponding to maximal length of the sightline.
         boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
-                the units of the 3d power spectrum will be (this unit)^2 * km/s
+                the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
         Returns:
-            flux_power - flux power spectrum in km/s. Shape is (npix)
-            bins - the frequency space bins of the power spectrum, in s/km.
+            k, mu - the k and mu bins of the power spectrum
+            flux_power - flux power spectrum in `boxsize` units
+            Note: The first row corresponds to k=0, so you can remove it later
     """
     scale = 1.
     if mean_flux_desired is not None:
@@ -130,9 +143,9 @@ def flux_power_3d(tau, vmax, boxsize, mean_flux_desired=None):
         mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
     nd = np.sqrt(nspec/3).astype(int)
-    mean_flux_power = np.zeros((npix, npix, npix), dtype=tau.dtype)
     # compute in batches, purely for computational efficiency
     for i in range(3):
+        print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
         end = min((i+1)*nspec//3, nspec)
         dflux = (np.exp(-scale*tau[i*nspec//3:end])/mean_flux_desired - 1. ).reshape(nd, nd, npix)
         #Interpolate onto a regular grid
@@ -141,21 +154,24 @@ def flux_power_3d(tau, vmax, boxsize, mean_flux_desired=None):
         dflux_interp = interp(np.stack((xg.flatten(), yg.flatten(), zg.flatten()), axis=-1)).reshape(npix, npix, npix)
         del dflux
         # Calculate flux power for the interpolated flux field
-        print(f'Calculating the 3D power spectrum for axis {i}', flush=True)
+        print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
         los = [0, 0, 0]
         los[i] = 1
-        flux_power_peraxis = _3d_powerspectrum(dflux_interp, los=los)
-        #Take the mean and convert units.
-        mean_flux_power += boxsize*boxsize*vmax*flux_power_peraxis
-    # Avergaing the 3D power spectrum obtained with the spectra laong the 3 axes
+        power = _3d_powerspectrum(dflux_interp, boxsize=boxsize, los=los)
+        #The units of the P(k,mu) is same as the `boxsize` argument
+        if i==0:
+            mean_flux_power = power['power']
+        else:
+            mean_flux_power += power['power']
+    # Avergaing the 3D power spectrum obtained with the spectra along the 3 axes
     mean_flux_power/= 3
-    kf = _flux_power_bins(boxsize, npix)
-
-    #Divide out the window function
-    if window and spec_res > 0:
-        mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
-    return kf, kf, mean_flux_power
-
+    # nobodykit calculates the power in boxsize unit
+    k = power['k']
+    mu = power['mu']
+    # We do not do any window correction along los or the transverse directions
+    # We have seen this effect been marginal for the 1D power spectrum becase
+    # the spatial resolution is much larger than the observations
+    return k, mu, mean_flux_power
 
 def _flux_power_bins(vmax, npix):
     """

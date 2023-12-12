@@ -1305,8 +1305,9 @@ class Spectra:
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
-        (kf, kxy, avg_flux_power) = fstat.flux_power_3d(tau, self.vmax, self.box, mean_flux_desired=mean_flux_desired)
-        return kf[1:], kxy[1:], avg_flux_power[1:]
+        (k, mu, avg_flux_power) = fstat.flux_power_3d(tau, self.box, mean_flux_desired)
+        # The fist row is the k=0, which we ommit
+        return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
 
     def spline_fit(self, flux_i, chi_min=3., vel_seg_min=10., ini_break_spacing=50.):
         """
