@@ -1302,9 +1302,6 @@ class Spectra:
         tau = self.get_tau(elem, ion, line)
         #Remove sightlines which contain a strong absorber
         tau = self._filter_tau(tau, tau_thresh=tau_thresh)
-        #Mean flux rescaling does not commute with the spectrum resolution correction!
-        if mean_flux_desired is not None and window is True and self.spec_res > 0:
-            raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
         (k, mu, avg_flux_power) = fstat.flux_power_3d(tau, self.box, mean_flux_desired, dk=dk, Nmu=Nmu)
         # The fist row is the k=0, which we ommit
         return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
