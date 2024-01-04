@@ -1289,7 +1289,7 @@ class Spectra:
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:], avg_flux_power[1:]
 
-    def get_flux_power_3D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None):
+    def get_flux_power_3D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, tau_thresh=None, dk=None, Nmu=6):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -1305,7 +1305,7 @@ class Spectra:
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
-        (k, mu, avg_flux_power) = fstat.flux_power_3d(tau, self.box, mean_flux_desired)
+        (k, mu, avg_flux_power) = fstat.flux_power_3d(tau, self.box, mean_flux_desired, dk=dk, Nmu=Nmu)
         # The fist row is the k=0, which we ommit
         return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
 

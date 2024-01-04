@@ -6,9 +6,10 @@ Useful for lyman alpha forest work."""
 import math
 import numpy as np
 from datetime import datetime
-from scipy.interpolate import RegularGridInterpolator
+
 from nbodykit.lab import FFTPower
-from nbodykit.lab import ArrayMesh
+from nbodykit.source.catalog import ArrayCatalog
+from nbodykit import setup_logging
 from ._spectra_priv import _rescale_mean_flux
 
 def obs_mean_tau(redshift):
@@ -100,7 +101,7 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
         mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
     return kf,mean_flux_power
 
-def _3d_powerspectrum(dflux, boxsize, los, dk=None, Nmu=30):
+def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=6):
     """Compute the 3D power spectrum of the input using nbodykit
     Parameters:
     dfux - 3D array of flux variations
@@ -112,12 +113,11 @@ def _3d_powerspectrum(dflux, boxsize, los, dk=None, Nmu=30):
     Returns:
     power - a dictionary with the p(k,mu) and the k and mu bins, keys:['power','k','mu']
     """
-    dflux = ArrayMesh(dflux, Nmesh=dflux.shape, BoxSize=boxsize)
-    power = FFTPower(dflux, BoxSize=boxsize, mode='2d', los= los, dk=dk, Nmu=Nmu,
+    power = FFTPower(dflux_mesh, BoxSize=boxsize, mode='2d', los= los, dk=dk, Nmu=Nmu,
                      save_3d_power=False)
     return power.power
 
-def flux_power_3d(tau, boxsize, mean_flux_desired=None):
+def flux_power_3d(tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6):
     """Get the power spectrum of (variations in) the flux in 3D which is binned in (k,mu).
         This is: P_3D(k) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -142,22 +142,26 @@ def flux_power_3d(tau, boxsize, mean_flux_desired=None):
     else:
         mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
-    nd = np.sqrt(nspec/3).astype(int)
-    # compute in batches, purely for computational efficiency
+    nt = np.sqrt(nspec/3).astype(int)
+    x, y, z = np.meshgrid(np.arange(nt), np.arange(nt), np.arange(npix), indexing='ij')
+    x = x*boxsize/nt
+    y = y*boxsize/nt
+    z = z*boxsize/npix
+    coords = np.vstack((x.ravel(), y.ravel(), z.ravel())).T
     for i in range(3):
         print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
         end = min((i+1)*nspec//3, nspec)
-        dflux = (np.exp(-scale*tau[i*nspec//3:end])/mean_flux_desired - 1. ).reshape(nd, nd, npix)
         #Interpolate onto a regular grid
-        interp = RegularGridInterpolator((np.arange(nd), np.arange(nd), np.arange(npix)), dflux, bounds_error=False, fill_value=None)
-        xg, yg , zg = np.meshgrid(np.arange(npix), np.arange(npix), np.arange(npix), indexing='ij')
-        dflux_interp = interp(np.stack((xg.flatten(), yg.flatten(), zg.flatten()), axis=-1)).reshape(npix, npix, npix)
-        del dflux
+        setup_logging()
+        cat = ArrayCatalog({'Position': coords, 'Weight': tau[i*nspec//3:end].ravel()})
+        mesh = cat.to_mesh(Nmesh=[nt, nt, nt], BoxSize=boxsize, weight='Weight', resampler='cic')
+        get_df = lambda x, v: np.exp(-scale*v)/mean_flux_desired - 1
+        mesh = mesh.apply(get_df, mode='real', kind='index')
         # Calculate flux power for the interpolated flux field
         print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
         los = [0, 0, 0]
         los[i] = 1
-        power = _3d_powerspectrum(dflux_interp, boxsize=boxsize, los=los)
+        power = _3d_powerspectrum(mesh, boxsize=boxsize, los=los, dk=dk, Nmu=Nmu)
         #The units of the P(k,mu) is same as the `boxsize` argument
         if i==0:
             mean_flux_power = power['power']
