@@ -10,6 +10,7 @@ from datetime import datetime
 from nbodykit.lab import FFTPower
 from nbodykit.source.catalog import ArrayCatalog
 from nbodykit import setup_logging
+from nbodykit import CurrentMPIComm
 from ._spectra_priv import _rescale_mean_flux
 
 def obs_mean_tau(redshift):
@@ -117,7 +118,7 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=6):
                      save_3d_power=False)
     return power.power
 
-def flux_power_3d(tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6):
+def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6, quite=True):
     """Get the power spectrum of (variations in) the flux in 3D which is binned in (k,mu).
         This is: P_3D(k) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -126,6 +127,9 @@ def flux_power_3d(tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6):
         to match the desired mean flux.
         We compute the power spectrum along each sightline and then average the result.
         Arguments:
+        comm_nbodykit: MPI communicator for nbodykit, I prefer to have one communicator for each process, i.e.
+                        turning off parallelism in nbodykit cause it is already fast enough. You can set it as None
+                        if parallelism is not a concern to you.
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
         boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
@@ -135,47 +139,51 @@ def flux_power_3d(tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6):
             flux_power - flux power spectrum in `boxsize` units
             Note: The first row corresponds to k=0, so you can remove it later
     """
-    scale = 1.
-    if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired)
-        #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
-    else:
-        mean_flux_desired = np.mean(np.exp(-tau))
-    (nspec, npix) = np.shape(tau)
-    nt = np.sqrt(nspec/3).astype(int)
-    x, y, z = np.meshgrid(np.arange(nt), np.arange(nt), np.arange(npix), indexing='ij')
-    x = x*boxsize/nt
-    y = y*boxsize/nt
-    z = z*boxsize/npix
-    coords = np.vstack((x.ravel(), y.ravel(), z.ravel())).T
-    for i in range(3):
-        print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
-        end = min((i+1)*nspec//3, nspec)
-        #Interpolate onto a regular grid
-        setup_logging()
-        cat = ArrayCatalog({'Position': coords, 'Weight': tau[i*nspec//3:end].ravel()})
-        mesh = cat.to_mesh(Nmesh=[nt, nt, nt], BoxSize=boxsize, weight='Weight', resampler='cic')
-        get_df = lambda x, v: np.exp(-scale*v)/mean_flux_desired - 1
-        mesh = mesh.apply(get_df, mode='real', kind='index')
-        # Calculate flux power for the interpolated flux field
-        print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
-        los = [0, 0, 0]
-        los[i] = 1
-        power = _3d_powerspectrum(mesh, boxsize=boxsize, los=los, dk=dk, Nmu=Nmu)
-        #The units of the P(k,mu) is same as the `boxsize` argument
-        if i==0:
-            mean_flux_power = power['power']
+    with CurrentMPIComm.enter(comm_nbodykit):
+        scale = 1.
+        if mean_flux_desired is not None:
+            scale = mean_flux(tau, mean_flux_desired)
+            #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
         else:
-            mean_flux_power += power['power']
-    # Avergaing the 3D power spectrum obtained with the spectra along the 3 axes
-    mean_flux_power/= 3
-    # nobodykit calculates the power in boxsize unit
-    k = power['k']
-    mu = power['mu']
-    # We do not do any window correction along los or the transverse directions
-    # We have seen this effect been marginal for the 1D power spectrum becase
-    # the spatial resolution is much larger than the observations
-    return k, mu, mean_flux_power
+            mean_flux_desired = np.mean(np.exp(-tau))
+        (nspec, npix) = np.shape(tau)
+        nt = np.sqrt(nspec/3).astype(int)
+        x, y, z = np.meshgrid(np.arange(nt), np.arange(nt), np.arange(npix), indexing='ij')
+        x = x*boxsize/nt
+        y = y*boxsize/nt
+        z = z*boxsize/npix
+        coords = np.vstack((x.ravel(), y.ravel(), z.ravel())).T
+        for i in range(3):
+            if not quite:
+                print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
+            end = min((i+1)*nspec//3, nspec)
+            #Interpolate onto a regular grid
+            if not quite:
+                setup_logging()
+            cat = ArrayCatalog({'Position': coords, 'Weight': tau[i*nspec//3:end].ravel()})
+            mesh = cat.to_mesh(Nmesh=[nt, nt, nt], BoxSize=boxsize, weight='Weight', resampler='cic')
+            get_df = lambda x, v: np.exp(-scale*v)/mean_flux_desired - 1
+            mesh = mesh.apply(get_df, mode='real', kind='index')
+            # Calculate flux power for the interpolated flux field
+            if not quite:
+                print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
+            los = [0, 0, 0]
+            los[i] = 1
+            power = _3d_powerspectrum(mesh, boxsize=boxsize, los=los, dk=dk, Nmu=Nmu)
+            #The units of the P(k,mu) is same as the `boxsize` argument
+            if i==0:
+                mean_flux_power = power['power']
+            else:
+                mean_flux_power += power['power']
+        # Avergaing the 3D power spectrum obtained with the spectra along the 3 axes
+        mean_flux_power/= 3
+        # nobodykit calculates the power in boxsize unit
+        k = power['k']
+        mu = power['mu']
+        # We do not do any window correction along los or the transverse directions
+        # We have seen this effect been marginal for the 1D power spectrum becase
+        # the spatial resolution is much larger than the observations
+        return k, mu, mean_flux_power
 
 def _flux_power_bins(vmax, npix):
     """
