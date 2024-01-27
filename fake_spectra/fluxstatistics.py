@@ -102,10 +102,10 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
         mean_flux_power /= _window_function(kf, R=spec_res, dv=vmax/npix)**2
     return kf,mean_flux_power
 
-def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=6):
+def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
     """Compute the 3D power spectrum of the input using nbodykit
     Parameters:
-    dfux - 3D array of flux variations
+    dfux_mesh - 3D array of flux variations, type is `mesh` in `nbodykit`
     boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
                 the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
     los - line of sight direction, i.e. [0,0,1] for z-axis
@@ -114,11 +114,12 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=6):
     Returns:
     power - a dictionary with the p(k,mu) and the k and mu bins, keys:['power','k','mu']
     """
-    power = FFTPower(dflux_mesh, BoxSize=boxsize, mode='2d', los= los, dk=dk, Nmu=Nmu,
-                     save_3d_power=False)
+    power = FFTPower(dflux_mesh, BoxSize=boxsize, 
+                     mode='2d', los= los, dk=dk, 
+                     Nmu=Nmu)
     return power.power
 
-def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, Nmu=6, quite=True):
+def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, Nmu=10, quite=True):
     """Get the power spectrum of (variations in) the flux in 3D which is binned in (k,mu).
         This is: P_3D(k) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -128,12 +129,14 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         We compute the power spectrum along each sightline and then average the result.
         Arguments:
         comm_nbodykit: MPI communicator for nbodykit, I prefer to have one communicator for each process, i.e.
-                        turning off parallelism in nbodykit cause it is already fast enough. You can set it as None
-                        if parallelism is not a concern to you.
+                        turning off parallel processing in nbodykit cause it is already fast enough. 
+                        You can set it as None if parallelism is not a concern to you.
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
-        boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
-                the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
+            dk - bin width in k, units of h/cMpc
+            Nmu - number of mu bins, default is 10 which is usually used in 3D correlation function
+            quite - if you want to see ``nbodykit`'s loggings
+
         Returns:
             k, mu - the k and mu bins of the power spectrum
             flux_power - flux power spectrum in `boxsize` units

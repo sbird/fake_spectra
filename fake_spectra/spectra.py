@@ -1289,16 +1289,21 @@ class Spectra:
         (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
         return kf[1:], avg_flux_power[1:]
 
-    def get_flux_power_3D(self, comm_nbodykit=None, elem="H", ion=1, line=1215, mean_flux_desired=None, tau_thresh=None, dk=None, Nmu=6):
+    def get_flux_power_3D(self, comm_nbodykit=None, elem="H", ion=1, line=1215, mean_flux_desired=None, tau_thresh=None, dk=None, Nmu=10):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
         Arguments:
+            comm_nbodykit: the MPI communicator to use for the nbodykit FFT, usually you don't need to set this.
+            elem: element to use for the optical depth
+            ion: ion to use for the optical depth, i.e. 1 for HI
+            line: line to use for the optical depth, i.e. 1215 for Lyman alpha
             mean_flux_desired: if not None, the spectral optical depths will be rescaled
                 to match the desired mean flux.
-            window: if True, the flux power spectrum is divided by the window function for the pixel width.
-                    This interacts poorly with mean flux rescaling.
-            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling."""
+            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling.
+            dk: the k bin width to use for the power spectrum, in h/cMpc units. If None, the default is used which is 2pi/boxsize.
+            Nmu: the number of mu bins to use for the power spectrum, the default 10 is what usually used for 3D correlation functions.
+            """
         tau = self.get_tau(elem, ion, line)
         #Remove sightlines which contain a strong absorber
         tau = self._filter_tau(tau, tau_thresh=tau_thresh)
