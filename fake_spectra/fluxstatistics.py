@@ -123,7 +123,7 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
                      Nmu=Nmu)
     return power.power
 
-def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, Nmu=10, quite=True):
+def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, Nmu=10, quiet=True):
     """Get the power spectrum of (variations in) the flux in 3D which is binned in (k,mu).
         This is: P_3D(k) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -139,7 +139,7 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
             mean_flux_desired - Mean flux to rescale to.
             dk - bin width in k, units of h/cMpc
             Nmu - number of mu bins, default is 10 which is usually used in 3D correlation function
-            quite - if you want to see ``nbodykit`'s loggings
+            quiet - if you want to see ``nbodykit`'s loggings
 
         Returns:
             k, mu - the k and mu bins of the power spectrum
@@ -161,18 +161,18 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         z = z*boxsize/npix
         coords = np.vstack((x.ravel(), y.ravel(), z.ravel())).T
         for i in range(3):
-            if not quite:
+            if not quiet:
                 print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
             end = min((i+1)*nspec//3, nspec)
             #Interpolate onto a regular grid
-            if not quite:
+            if not quiet:
                 setup_logging()
             cat = ArrayCatalog({'Position': coords, 'Weight': tau[i*nspec//3:end].ravel()})
             mesh = cat.to_mesh(Nmesh=[nt, nt, nt], BoxSize=boxsize, weight='Weight', resampler='cic')
             get_df = lambda x, v: np.exp(-scale*v)/mean_flux_desired - 1
             mesh = mesh.apply(get_df, mode='real', kind='index')
             # Calculate flux power for the interpolated flux field
-            if not quite:
+            if not quiet:
                 print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
             los = [0, 0, 0]
             los[i] = 1
