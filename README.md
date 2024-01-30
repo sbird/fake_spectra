@@ -28,6 +28,7 @@ Optional libraries:
 - matplotlib (if you want to plot)
 - bigfile (to install, do 'pip install --user bigfile') for reading BigFile snapshot outputs from Yu Feng's MP-Gadget.
 - mpi4py (Only if you want to use MPI feature in this package, it is very helpful for high resolution spectra in big simulations)
+- `nbodykit`: only if you want to compute 3d flux powerspectrum from a set of spectra already generated with `griddedspectra.py`. The function for computing the 3d power is: `spectra.Spectra.get_flux_power_3D()`
 
 All these libraries can be installed with pip.
 
