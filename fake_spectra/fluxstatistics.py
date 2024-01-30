@@ -6,12 +6,16 @@ Useful for lyman alpha forest work."""
 import math
 import numpy as np
 from datetime import datetime
-
-from nbodykit.lab import FFTPower
-from nbodykit.source.catalog import ArrayCatalog
-from nbodykit import setup_logging
-from nbodykit import CurrentMPIComm
 from ._spectra_priv import _rescale_mean_flux
+
+# You need `nbodykit` only if you want to compute the 3D power spectrum with `flux_power_3d`
+try :
+    from nbodykit.lab import FFTPower
+    from nbodykit.source.catalog import ArrayCatalog
+    from nbodykit import setup_logging
+    from nbodykit import CurrentMPIComm
+except ImportError:
+    pass
 
 def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: effective optical depth is (0.0023±0.0007) (1+z)^(3.65±0.21)
