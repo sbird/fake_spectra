@@ -12,6 +12,7 @@ from ._spectra_priv import _rescale_mean_flux
 try :
     from nbodykit.lab import FFTPower
     from nbodykit.source.catalog import ArrayCatalog
+    from nbodykit.source.mesh import ArrayMesh
     from nbodykit import setup_logging
     from nbodykit import CurrentMPIComm
 except ImportError:
@@ -137,10 +138,8 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
                         You can set it as None if parallelism is not a concern to you.
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
-            dk - bin width in k, units of h/cMpc
-            Nmu - number of mu bins, default is 10 which is usually used in 3D correlation function
-            quiet - if you want to see ``nbodykit`'s loggings
-
+        boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+                the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
         Returns:
             k, mu - the k and mu bins of the power spectrum
             flux_power - flux power spectrum in `boxsize` units
@@ -150,7 +149,8 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         scale = 1.
         if mean_flux_desired is not None:
             scale = mean_flux(tau, mean_flux_desired)
-            #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
+            tau *= scale
+            print(f"rescaled: {scale}, mean_flux_desired = {mean_flux_desired}")
         else:
             mean_flux_desired = np.mean(np.exp(-tau))
         (nspec, npix) = np.shape(tau)
@@ -159,21 +159,23 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         x = x*boxsize/nt
         y = y*boxsize/nt
         z = z*boxsize/npix
+        print(f'original dimenstions {(nt, nt, npix)}', flush=True)
         coords = np.vstack((x.ravel(), y.ravel(), z.ravel())).T
         for i in range(3):
-            if not quiet:
-                print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
             end = min((i+1)*nspec//3, nspec)
-            #Interpolate onto a regular grid
-            if not quiet:
-                setup_logging()
-            cat = ArrayCatalog({'Position': coords, 'Weight': tau[i*nspec//3:end].ravel()})
-            mesh = cat.to_mesh(Nmesh=[nt, nt, nt], BoxSize=boxsize, weight='Weight', resampler='cic')
-            get_df = lambda x, v: np.exp(-scale*v)/mean_flux_desired - 1
-            mesh = mesh.apply(get_df, mode='real', kind='index')
-            # Calculate flux power for the interpolated flux field
-            if not quiet:
-                print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
+            # Turn on nbodkit's loging
+            setup_logging('debug')
+            # No interpoaltion is needed if the data is already on a uniform cube
+            if npix == nt:
+                mesh = ArrayMesh((np.exp(-tau[i*nspec//3:end])/mean_flux_desired -1 ).reshape((nt, nt, npix)), BoxSize=boxsize)
+                mesh = mesh.compute(Nmesh=(nt,nt,nt))
+            # Otherwise, do TSC interpoaltion to match the transverse resolution
+            else:
+                print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
+                cat = ArrayCatalog({'Position': coords, 'df': np.exp(-tau[i*nspec//3:end].ravel()) / mean_flux_desired - 1})
+                mesh = cat.to_mesh(Nmesh=[nt, nt, nt], value='df', BoxSize=boxsize, resampler='tsc', compensated=True, interlaced=True)            
+
+            print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
             los = [0, 0, 0]
             los[i] = 1
             power = _3d_powerspectrum(mesh, boxsize=boxsize, los=los, dk=dk, Nmu=Nmu)
