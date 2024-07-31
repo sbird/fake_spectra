@@ -1307,7 +1307,7 @@ class Spectra:
         tau = self.get_tau(elem, ion, line)
         #Remove sightlines which contain a strong absorber
         tau = self._filter_tau(tau, tau_thresh=tau_thresh)
-        (k, mu, avg_flux_power) = fstat.flux_power_3d(comm_nbodykit, tau, self.box, mean_flux_desired, dk=dk, Nmu=Nmu)
+        (k, mu, avg_flux_power) = fstat.flux_power_3d(comm_nbodykit, tau, self.box, mean_flux_desired, dk=dk, Nmu=Nmu, quiet=False)
         # The fist row is the k=0, which we ommit
         return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
 
