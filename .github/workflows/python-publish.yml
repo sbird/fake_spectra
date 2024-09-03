@@ -72,7 +72,7 @@ jobs:
         run: |
           git submodule update --init --recursive
           python -m build --sdist
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           path: tmp_dist/
       - run: find tmp_dist/ -mindepth 2 -type f -exec mv -i '{}' dist/ ';'
