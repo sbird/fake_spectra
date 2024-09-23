@@ -13,16 +13,16 @@ try:
 except ImportError:
     bigfile = False
 
-def AbstractSnapshotFactory(num, base, comm=None):
+def AbstractSnapshotFactory(num, base, MPI=None):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
-        return HDF5Snapshot(num, base, comm)
+        return HDF5Snapshot(num, base, MPI)
     except IOError:
         if bigfile is False:
             raise IOError("Not an HDF5 snapshot: ", base)
         try:
-            return BigFileSnapshot(num, base, comm)
+            return BigFileSnapshot(num, base, MPI)
         except (IOError,bigfile.BigFileError):
             raise IOError("Not a bigfile or HDF5 snapshot: ",base)
 
@@ -302,22 +302,29 @@ class HDF5Snapshot(AbstractSnapshot):
 
 class BigFileSnapshot(AbstractSnapshot):
     """Specialised class for loading HDF5 snapshots"""
-    def __init__(self, num, base, comm=None):
-        self.comm = comm
+    def __init__(self, num, base, MPI=None):
+        self.MPI = MPI
+        self.comm = self.MPI.COMM_WORLD
         if self.comm is not None :
-            self.rank = comm.Get_rank()
-            self.size = comm.Get_size()
+            self.rank = self.comm.Get_rank()
+            self.size = self.comm.Get_size()
         else :
             self.size = 1
             self.rank = 0
         self.parts_rank = None
+        # MPI load on each rank to be computed
+        self.offset = None
+        self.chunk_size = None
+        
         fname = base
         snap=str(num).rjust(3,'0')
         new_fname = os.path.join(base, "PART_"+snap)
         #Check for snapshot directory
         if os.path.exists(new_fname):
             fname = new_fname
-        self._f_handle = bigfile.BigFile(fname, 'r')
+        # self._f_handle = bigfile.BigFile(fname, 'r')
+        self._f_handle = self.MPI.File.Open(self.comm, fname, self.MPI.MODE_RDONLY)
+        
         if "Header" not in self._f_handle.blocks:
             raise IOError("No BigFile snapshot at",new_fname)
         AbstractSnapshot.__init__(self)
@@ -329,21 +336,36 @@ class BigFileSnapshot(AbstractSnapshot):
         if blockname in self.hdf_to_bigfile_map.keys():
             blockname = self.hdf_to_bigfile_map[blockname]
         try:
-            (start, end) = self._segment_to_partlist(part_type = part_type, segment=segment)
-            return self._f_handle[str(part_type)+"/"+blockname][start:end]
+            offset, current_seg_size = self.get_chunks_per_rank()
+            buffer = np.empty(current_seg_size, dtype='b') # NOTE: Think about the dtype
+            self._f_handle.Read_at(offset, buffer)
+            data = np.frombuffer(buffer, dtype=np.float64) # `NOTE`: Fix hard coding of the type
+            return data
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
 
-    def get_n_segments(self, part_type, chunk_size = 256.**3):
+    def get_chunks_per_rank(self, segment, seg_size=256.**3):
         """Distribute particles among ranks. Also, break the load on each rank into segments containing
         chunk_size particles and return number of these segments for each rank""" 
         #Store number of particles on each rank in an array
-        self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
-        remainder = int(self.get_npart()[part_type]%self.size)
-        # Some ranks would get one more particle
-        if remainder !=0 :
-            self.parts_rank[0:remainder] += 1
-        return int(np.max([1,self.parts_rank[self.rank]/chunk_size]))
+        # NOTE: We need to find a proper `seg_size`
+        file_size = self._f_handle.Get_size()
+        rank_data_size = file_size // self.size
+        # Handle any remaining bytes in the last process
+        if self.rank == self.size - 1:
+            rank_data_size += file_size % self.size
+
+        # Baseofsset is for the first segment of each rank
+        base_offset = self.rank * (file_size // self.size)
+        n_seg = rank_data_size // seg_size
+        last_seg_size = seg_size + (rank_data_size % n_seg)
+        segment_offset = segment * seg_size
+        if segment < n_seg - 1:     
+            current_seg_size = seg_size
+        else:
+            current_seg_size = last_seg_size
+        offset = base_offset + segment_offset
+        return offset, current_seg_size
 
     def get_blocklen(self, part_type, blockname, segment):
         """Get the length of a block"""
@@ -358,21 +380,6 @@ class BigFileSnapshot(AbstractSnapshot):
 
         except bigfile.BigFileError:
             raise KeyError("Not found:"+str(part_type)+"/"+blockname)
-
-    def _segment_to_partlist(self, part_type, segment):
-        """Get the first and last particle in a segment."""
-        if segment < 0:
-            return (0, None)
-        # Get number of segments on this rank which we break particles into
-        n_segments = self.get_n_segments(part_type)
-        # Length of one segment
-        one_segment = int(self.parts_rank[self.rank]/n_segments)
-        if self.rank ==0 :
-            first_part_rank = 0
-        else:
-            # First particle for this rank depends on particles be taken by previous ranks
-            first_part_rank = np.sum(self.parts_rank[0:self.rank])
-        return (first_part_rank+one_segment*segment, first_part_rank+one_segment*(segment+1))
 
     def get_kernel(self):
         """Get the integer corresponding to a density kernel for each particle.
