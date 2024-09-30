@@ -54,7 +54,7 @@ class GriddedSpectra(spectra.Spectra):
                 grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
 
         # call constructor of base class
-        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI, res=res,savefile=savefile,reload_file=reload_file,**kwargs)
+        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI, nbins=nbins, res=res,savefile=savefile,reload_file=reload_file,**kwargs)
 
 
     def get_axes_and_cofm(self,nspec,axis):
