@@ -523,22 +523,22 @@ class BigFileSnapshot(AbstractSnapshot):
         dtype = self._get_block_header_attr(part_type, blockname)['dtype']
         # The dimension of the block, i.e. (# Parts, nmembs)
         nmembs = self._get_block_header_attr(part_type, blockname)['nmemb']
-        
         # particles this rank is responsible for
         data = np.array([])
         for i, bl_id in enumerate(blob_ids):
-            nparts_blob = end_blobs[i] - start_blobs[i]
             # Offset in the blob file to start reading from
             offset = start_blobs[i] * nmembs * dtype.itemsize
             # The buffer to read the particles from this blob
-            buffer = np.empty( (end_blobs[i] - start_blobs[i])*3, dtype=dtype)
+            buffer = np.empty( (end_blobs[i] - start_blobs[i])*nmembs, dtype=dtype)
             # MPI-IO read the particles from the file
-            f_handle = self.MPI.File.Open(self.comm, blob_paths[i], self.MPI.MODE_RDONLY)
+            f_handle = self.MPI.File.Open(self.MPI.COMM_SELF, blob_paths[i], self.MPI.MODE_RDONLY)
             f_handle.Read_at(offset, buffer)
             data = np.append(data, np.frombuffer(buffer, dtype= dtype))
             f_handle.Close()
+            del f_handle
+            del buffer
         
-        data = data.reshape((data.size//3, 3))
+        data = data.reshape((data.size//nmembs, nmembs))
         return data
     
     def get_n_segments(self, part_type, chunk_size = 256.**3):
