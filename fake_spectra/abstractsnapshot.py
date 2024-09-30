@@ -531,6 +531,10 @@ class BigFileSnapshot(AbstractSnapshot):
             # The buffer to read the particles from this blob
             buffer = np.empty( (end_blobs[i] - start_blobs[i])*nmembs, dtype=dtype)
             # MPI-IO read the particles from the file
+            # Note: Since each file won't be openned by many ranks, 
+            # i.e. `comm.size < num blob files`, no need for collective 
+            # synchronization among COMM_WORLD and each rank opens the 
+            # blobs with COMM_SELF
             f_handle = self.MPI.File.Open(self.MPI.COMM_SELF, blob_paths[i], self.MPI.MODE_RDONLY)
             f_handle.Read_at(offset, buffer)
             data = np.append(data, np.frombuffer(buffer, dtype= dtype))
