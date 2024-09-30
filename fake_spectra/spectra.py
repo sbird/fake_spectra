@@ -94,10 +94,12 @@ class Spectra:
         # Adpot the MPI communiactor if desired
         self.MPI = MPI
         if MPI is not None:
+            self.MPI = MPI
             self.comm = MPI.COMM_WORLD
             self.rank = self.comm.Get_rank()
             self.size = self.comm.Get_size()
         else :
+            self.MPI = None
             self.comm = None
             self.rank = 0
             self.size = 1
@@ -133,7 +135,7 @@ class Spectra:
         #than this to a pixel, stop the integration.
         self.tautail = 1e-7
         try:
-            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
+            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, MPI=self.MPI)
             #Set up the kernel
             if kernel is None:
                 self.kernel_int = self.snapshot_set.get_kernel()
