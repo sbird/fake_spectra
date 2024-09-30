@@ -27,7 +27,8 @@ class AbstractSnapshot(object):
         self.hdf_to_bigfile_map = { "Coordinates" : "Position",
                                     "Velocities": "Velocity", "Masses": "Mass",
                                     "NeutralHydrogenAbundance": "NeutralHydrogenFraction",
-                                    "GFM_Metallicity": "Metallicity"
+                                    "GFM_Metallicity": "Metallicity",
+                                    "GFM_Metals": "Metals"
                                   }
         #This requires python 2.7
         self.bigfile_to_hdf_map = {v : k for (k,v) in self.hdf_to_bigfile_map.items()}
@@ -541,7 +542,7 @@ class BigFileSnapshot(AbstractSnapshot):
         data = data.reshape((data.size//3, 3))
         return data
     
-    def get_n_segments(self, part_type, chunk_size = 256.**3):
+    def get_n_segments(self, part_type, chunk_size = 512.**3):
         """Distribute particles among ranks. Also, break the load on each rank into segments containing
         chunk_size particles and return number of these segments for each rank""" 
         #Store number of particles on each rank in an array

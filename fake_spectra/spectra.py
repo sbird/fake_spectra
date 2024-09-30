@@ -57,6 +57,7 @@ class Spectra:
             axis - axis along which to put the sightline. Can be None if reloading from a savefile.
         Optional arguments:
             res - Pixel width of the spectrum in km/s
+            nbins - Number of pixels in the spectrum. If not provided, will be calculated from res.
             spec_res - Resolution of the simulated spectrograph in km/s. Note this is not the pixel width.
                        Spectra will be convolved with a Gaussian of this rms on loading from disc.
             cdir - Directory containing cloudy tables.
@@ -82,7 +83,7 @@ class Spectra:
                      when converting comoving to velocity units.
                      If not proviced, will assume flat LCDM and compute it.
     """
-    def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5",
+    def __init__(self, num, base, cofm, axis, MPI=None, nbins=None, res=1., cdir=None, savefile="spectra.hdf5",
                  savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,
                  quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
 
@@ -218,9 +219,14 @@ class Spectra:
         if reload_file:
             # if reloading from snapshot, pixel width must have been defined
             if res is None:
-                raise ValueError('pixel width (res) not provided')
-            # nbins must be an integer
-            self.nbins=int(self.vmax/res)
+                if nbins is not None:
+                   self.nbins = nbins
+                   res = self.vmax/(1.*nbins)
+                else:
+                   raise ValueError('pixel width (res) not provided')
+            if nbins is None:
+                # nbins must be an integer
+                self.nbins=int(self.vmax/res)
             # velocity bin size (kms^-1)
             self.dvbin = self.vmax / (1.*self.nbins)
         else:
