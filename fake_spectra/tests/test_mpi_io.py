@@ -1,4 +1,6 @@
 """
+CURRENTLY runs only on actual full simualations not the 
+test snapshot on github repo
 Unit tests for MPI I/O of the bigfile snapshots
 
 These tests should pass on any bigfile snapshot (the pathis 
@@ -6,23 +8,31 @@ specifed with `base`) with any number of particles and any
 number of MPI ranks.
 """
 import os
+import sys
 import unittest
 import numpy as np
+import argparse
 from mpi4py import MPI
 from fake_spectra.abstractsnapshot import AbstractSnapshotFactory
 
 class TestAbstractSnapshot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.comm = MPI.COMM_WORLD
-        cls.size = cls.comm.Get_size()
-        cls.rank = cls.comm.Get_rank()
 
-        cls.base = '../examle_bigfile/'
-        cls.snap = 272
+        assert cls.base is not None, "Base directory not set."
+        assert cls.snap is not None, "Snapshot number not set."
+
+        cls.base = os.path.abspath(cls.base)
+        print(os.getcwd())
+        assert os.path.isdir(cls.base), f'Test directory does not exist: {cls.base}'
+
         cls.part_type = 0
 
         cls.abs_snap = AbstractSnapshotFactory(cls.snap, cls.base, MPI=MPI, log_level='debug')
+        cls.rank = cls.abs_snap.rank
+        cls.size = cls.abs_snap.size
+        cls.comm = cls.abs_snap.comm
+        cls.MPI = cls.abs_snap.MPI
 
     def test_bigfile_header(self):
         """Test the bigfile Header
@@ -39,22 +49,24 @@ class TestAbstractSnapshot(unittest.TestCase):
         self.assertIsNotNone(npart)
         print(f'rank = {self.rank} | TotNumPart = {npart}', flush=True)
 
-    def test_block_path(self):
-        """Test the block path retrieval."""
+    def test_block_header(self):
+        """Test the block header retrieval."""
         for blockname in ['Position', 'Density']:
             block_path = self.abs_snap._get_block_path(self.part_type, blockname)
             self.assertIsNotNone(block_path)
             print(f"rank = {self.rank} | block path = {block_path}", flush=True)
 
-    def test_block_header(self):
-        """Test the block header retrieval."""
-        for blockname in ['Position', 'Density']:
             header = self.abs_snap._get_block_header_attr(self.part_type, blockname)
             self.assertTrue( 'dtype' in header.keys())
             self.assertTrue( 'nmemb' in header.keys())
             self.assertEqual( len(header['blob_names']), 
                             len(header['blob_part_start']), 
                             len(header['blob_part_end']))
+            blob_files = len([f for f in os.listdir(block_path) if os.path.isfile(os.path.join(block_path, f))])
+            # There is `header` file there
+            blob_files -= 1
+            blob_counts_from_header = len(header['blob_part_start'])
+            self.assertEqual(blob_files, blob_counts_from_header, f"not same number of blob files for {blockname} as promissed by the header")
 
     def test_segmenting(self):
         """Test segmenting of the data."""
@@ -75,7 +87,7 @@ class TestAbstractSnapshot(unittest.TestCase):
         )
 
         print(f'rank = {self.rank} | nseg: {nseg}, chunk_size: {chunk_size}', flush=True)
-        print(f'rank = {self.rank} | particle laod : {self.abs_snap.parts_rank}', flush=True)
+        print(f'rank = {self.rank} | particle load : {self.abs_snap.parts_rank}', flush=True)
 
     def test_part_list(self):
         """Test particle list for each segment."""
@@ -112,9 +124,14 @@ class TestAbstractSnapshot(unittest.TestCase):
         self.comm.Barrier()
         self.comm.Allreduce(self.MPI.IN_PLACE, end_seg_all_ranks, op=self.MPI.SUM)
         self.comm.Barrier()
-        for i in range(self.size-1):
-            self.assertEqual(end_seg_all_ranks[:,i], start_seg_all_ranks[:,i+1], 
-            f"Issues with particle laod continuity across ransk: end_seg for rank {i} is not the first of the rank {i+1}, {(end_seg_all_ranks[:,i], start_seg_all_ranks[:,i+1])}")
+        if self.rank == 0:
+            print(f'start_seg_all_ranks = {start_seg_all_ranks}', flush=True)
+            print(f'end_seg_all_ranks = {end_seg_all_ranks}', flush=True)
+            for i in range(self.size-1):
+                self.assertEqual(end_seg_all_ranks[i, -1], start_seg_all_ranks[i+1, 0], 
+                f"Issues with particle load continuity across ransk: end_seg for rank {i} is not the first of the rank {i+1} | {end_seg_all_ranks[i, -1]} != {start_seg_all_ranks[i+1, 0]}")
+        
+
 
     def test_blobs_for_each_segment(self):
         """Test blob file names for a segment."""
@@ -128,6 +145,7 @@ class TestAbstractSnapshot(unittest.TestCase):
                     segment=i, part_type=self.part_type, blockname=blockname
                 )
                 self.assertTrue((start_blob.dtype == int) & (end_blob.dtype == int))
+                # Make sure all ranks ahve blobs
                 self.assertGreater(len(blobs), 0, "No blob files found.")
                 for b in range(len(blobs)):
                     # check the existence of the blob file
@@ -155,4 +173,17 @@ class TestAbstractSnapshot(unittest.TestCase):
                 self.assertEqual(data.shape, (seg_end - seg_start, header['nmemb']))
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Unit tests for MPI I/O of the bigfile snapshots')
+    parser.add_argument('--base', type=str, default='example_bigfile', help='Base directory for snapshot files')
+    parser.add_argument('--snap', type=int, default=272, help='Snapshot number')
+    args, unknown = parser.parse_known_args()
+
+    # Set class variables
+    TestAbstractSnapshot.base = args.base
+    TestAbstractSnapshot.snap = args.snap
+
+    # Remove custom arguments from sys.argv so unittest doesn't get confused
+    sys.argv = [sys.argv[0]] + unknown
+
+    # Run the tests
     unittest.main()

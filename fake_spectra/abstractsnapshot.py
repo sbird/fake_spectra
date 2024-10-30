@@ -345,6 +345,7 @@ class BigFileSnapshot(AbstractSnapshot):
         if self.rank == 0:
             header = self._load_header(part_dir)
         if self.comm is not None:
+            self.comm.Barrier()
             header = self.comm.bcast(header, root=0)
         self.header = header
         # Laod block headers first to ensure a proper
