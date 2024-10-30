@@ -503,7 +503,7 @@ class Spectra:
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion, get_tau)
         if load_all_data_first:
-            for nseg in range(1, self.snapshot_set.get_n_segments()):
+            for nseg in range(1, self.snapshot_set.get_n_segments()[0]):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
@@ -619,7 +619,7 @@ class Spectra:
 
     def find_all_particles(self):
         """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments, _ = self.snapshot_set.get_n_segments()
         pp = np.empty([0, 3])
         hhh = np.array([])
         for i in range(nsegments):
@@ -694,9 +694,9 @@ class Spectra:
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
-            try:
+            try :
                 mass_frac = (self.snapshot_set.get_data(0, "GFM_Metals", segment=fn).astype(np.float32))[:, nelem]
-            except KeyError:
+            except :
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24], dtype=np.float32)
                 nvalues = self.snapshot_set.get_blocklen(0, "Density", segment=fn)
@@ -807,7 +807,7 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        nsegments = self.snapshot_set.get_n_segments(part_type=0)
+        nsegments, _  = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
         if arepo :
             nsegments=1
@@ -815,17 +815,20 @@ class Spectra:
         #Do remaining files
         for nn in xrange(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
+            print(f"rank = {self.rank} | ", "Interpolation %.1f percent done" % (100*nn/nsegments), ' | ', datetime.now().strftime("%H:%M:%S") , flush=True)
             #Add new file
             result += tresult
             del tresult
         if self.MPI is None :
             return result
-        # Make sure the data is contiguous in memory
-        result = np.ascontiguousarray(result, np.float32)
-        # Each rank constructs a portion of the spectrum. Add all the portions
-        self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
-        return result
+        else:
+            # Make sure the data is contiguous in memory
+            result = np.ascontiguousarray(result, np.float32)
+            # Each rank constructs a portion of the spectrum. Add all the portions
+            self.comm.Barrier()
+            self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
+            self.comm.Barrier()
+            return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
@@ -958,7 +961,7 @@ class Spectra:
         func should be something like _vel_single_file above (for velocity)
         and have the signature func(file, elem, ion)
         """
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments, _ = self.snapshot_set.get_n_segments()
         result = func(0, elem, ion)
         if nsegments > 1:
             #Do remaining files

@@ -9,7 +9,7 @@ import logging
 
 from . import unitsystem
 
-def AbstractSnapshotFactory(num, base, MPI=None, log_level='info'):
+def AbstractSnapshotFactory(num, base, MPI=None, log_level='debug'):
     """Function to get a snapshot in whichever format is present"""
     #First try to open it as an HDF5 snapshot
     try:
@@ -27,8 +27,7 @@ class AbstractSnapshot(object):
         self.hdf_to_bigfile_map = { "Coordinates" : "Position",
                                     "Velocities": "Velocity", "Masses": "Mass",
                                     "NeutralHydrogenAbundance": "NeutralHydrogenFraction",
-                                    "GFM_Metallicity": "Metallicity",
-                                    "GFM_Metals": "Metals"
+                                    "GFM_Metallicity": "Metallicity"
                                   }
         #This requires python 2.7
         self.bigfile_to_hdf_map = {v : k for (k,v) in self.hdf_to_bigfile_map.items()}
@@ -45,7 +44,7 @@ class AbstractSnapshot(object):
 
     def configure_logging(self, logging_level):
         """Sets up logging based on the provided logging level."""
-        self.logger = logging.getLogger('MockAbsorp')
+        self.logger = logging.getLogger('AbstractSnapshot')
         self.logger.setLevel(logging_level)
 
         console_handler = logging.StreamHandler()
@@ -168,7 +167,10 @@ class HDF5Snapshot(AbstractSnapshot):
     def __init__(self, num, base, MPI, log_level='info'):
         #MPI communicator
         self.MPI = MPI
-        self.comm = self.MPI.COMM_WORLD
+        if self.MPI is not None:
+            self.comm = self.MPI.COMM_WORLD
+        else:
+            self.comm = None
         self._files = sorted(self._get_all_files(num, base))
         self._files.reverse()
         self._f_handle = h5py.File(self._files[0], 'r')
@@ -324,6 +326,8 @@ class BigFileSnapshot(AbstractSnapshot):
             self.size = 1
             self.rank = 0
         AbstractSnapshot.__init__(self, log_level=log_level)
+        if self.rank == 0:
+            self.logger.debug(f'MPI ={self.MPI}, comm size = {self.size}')
         self.parts_rank = None
         # MPI load on each rank to be computed
         self.offset = None
@@ -343,14 +347,27 @@ class BigFileSnapshot(AbstractSnapshot):
         if self.comm is not None:
             header = self.comm.bcast(header, root=0)
         self.header = header
-        # Placeholfer to store the block headers
+        # Laod block headers first to ensure a proper
+        # MPI Bcast from root rank to others
         self.block_headers = {}
+        for blockname in ['Position', 'SmoothingLength', 
+                          'Velocity', 'Density',
+                          'InternalEnergy', 'ElectronAbundance',
+                          'GFM_Metals', 'NeutralHydrogenFraction']:
+            if blockname in self.hdf_to_bigfile_map.keys():
+                blockname = self.hdf_to_bigfile_map[blockname]
+            try:
+                _ = self._get_block_header_attr(part_type=0, blockname=blockname)
+            except:
+                self.logger.debug(f"Could not find the block header for {blockname} ")
+                continue
+
     
     def _load_header(self, fname):
         """Load the header of the BigFile snapshot
         To be called by only the root rank
-        Note: We don't use bigfile API for now to avoid MPI issues
-        with the python wrapper.
+        Note: We don't use bigfile API for now to avoid 
+        MPI issues with the python wrapper.
         Parameters:
             fname (str): The path to the BigFile snapshot
         """
@@ -403,6 +420,7 @@ class BigFileSnapshot(AbstractSnapshot):
     def _load_block_header(self, part_type, blockname):
         """Get the header of a block
         e.g. PART_272/0/Position/attr-v2
+        To be called by the root rank and then broadcasted to all
         """
         block_path = self._get_block_path(part_type, blockname)
         header = {'dtype': None,
@@ -420,7 +438,8 @@ class BigFileSnapshot(AbstractSnapshot):
         # https://github.com/MP-Gadget/bigfile/blob/master/src/bigfile.c#L586
         data = [] # Store all 3 columns as integers
         header_path = os.path.join(block_path, 'header')
-        assert os.path.exists(header_path)
+        if not os.path.exists(header_path):
+            return None
         with open(header_path) as f:
             lines = f.readlines()
         # Get the dtype, dimension, and numbed of blobs
@@ -469,7 +488,9 @@ class BigFileSnapshot(AbstractSnapshot):
             if self.rank == 0:
                 header = self._load_block_header(part_type, blockname)
             if self.comm is not None:
+                self.comm.Barrier()
                 header = self.comm.bcast(header, root=0)
+                self.comm.Barrier()
             self.block_headers[os.path.join(str(part_type), blockname)] = header
             return header
 
@@ -519,7 +540,6 @@ class BigFileSnapshot(AbstractSnapshot):
         Segment: which data segment to load."""
         if blockname in self.hdf_to_bigfile_map.keys():
             blockname = self.hdf_to_bigfile_map[blockname]
-        
         blob_ids, blob_paths, start_blobs, end_blobs = self._get_blobs_for_rank(segment, part_type, blockname)
         dtype = self._get_block_header_attr(part_type, blockname)['dtype']
         # The dimension of the block, i.e. (# Parts, nmembs)
@@ -540,15 +560,13 @@ class BigFileSnapshot(AbstractSnapshot):
             f_handle.Read_at(offset, buffer)
             data = np.append(data, np.frombuffer(buffer, dtype= dtype))
             f_handle.Close()
-            del f_handle
-            del buffer
         
         data = data.reshape((data.size//nmembs, nmembs))
         return data
     
-    def get_n_segments(self, part_type, chunk_size = 512.**3):
+    def get_n_segments(self, part_type, chunk_size = 256.**3):
         """Distribute particles among ranks. Also, break the load on each rank into segments containing
-        chunk_size particles and return number of these segments for each rank""" 
+        only chunk_size particles and return number of these segments for each rank""" 
         #Store number of particles on each rank in an array
         self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
         remainder = int(self.get_npart()[part_type]%self.size)
@@ -580,7 +598,7 @@ class BigFileSnapshot(AbstractSnapshot):
             segment (int): The segment number
         Returns:
             (int, int): The first and last particle in the
-                        segment for this rank.
+                        segment for this rank. `end` is exclusive
         """
         if segment < 0:
             return (0, None)

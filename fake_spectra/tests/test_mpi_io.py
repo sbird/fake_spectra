@@ -41,15 +41,15 @@ class TestAbstractSnapshot(unittest.TestCase):
 
     def test_block_path(self):
         """Test the block path retrieval."""
-        for dataset in ['Position', 'Density']:
-            block_path = self.abs_snap._get_block_path(self.part_type, dataset)
+        for blockname in ['Position', 'Density']:
+            block_path = self.abs_snap._get_block_path(self.part_type, blockname)
             self.assertIsNotNone(block_path)
             print(f"rank = {self.rank} | block path = {block_path}", flush=True)
 
     def test_block_header(self):
         """Test the block header retrieval."""
-        for dataset in ['Position', 'Density']:
-            header = self.abs_snap._get_block_header_attr(self.part_type, dataset)
+        for blockname in ['Position', 'Density']:
+            header = self.abs_snap._get_block_header_attr(self.part_type, blockname)
             self.assertTrue( 'dtype' in header.keys())
             self.assertTrue( 'nmemb' in header.keys())
             self.assertEqual( len(header['blob_names']), 
@@ -68,8 +68,7 @@ class TestAbstractSnapshot(unittest.TestCase):
         np.sum(self.abs_snap.parts_rank), npart,
         f"sum(parts_rank) != npart[{self.part_type}] ({npart})"
         )
-        # 2. make sure particle counts on all segments add up to the 
-        # total number of particles on each rank
+        # 2. Make sure on each rank, the number of segments is big enough
         self.assertGreaterEqual(
         nseg * chunk_size, self.abs_snap.parts_rank[self.rank],
         f"The last chunk should be smaller than or equal to the rest. Segmentaion on a single rank is wrong."
@@ -93,22 +92,40 @@ class TestAbstractSnapshot(unittest.TestCase):
         #2. check the size of the segments, i.e. <= chunk_size
         for i in range(len(segments)):
             self.assertLessEqual(end_seg[i] - start_seg[i], chunk_size)
-        #3. check of the sum of segments is equal to the total particles on this rank
+        #3. check of the sum of particle counts across all segments is 
+        # equal to the total particles on this rank
         self.assertEqual(
             end_seg[-1] - start_seg[0], self.abs_snap.parts_rank[self.rank],
             f"sum of segments != parts_rank[{self.rank}] ({self.abs_snap.parts_rank[self.rank]})"
         )
+        #4. Check if the first particle of the first particle of the first segment is the last
+        # particle of the last segment of the previous rank
+        start_seg_all_ranks = np.zeros((self.size, len(segments)), dtype=int)
+        start_seg_all_ranks[self.rank,:] = start_seg
+        end_seg_all_ranks = np.zeros((self.size, len(segments)), dtype=int)
+        end_seg_all_ranks[self.rank,:] = end_seg
+        self.comm.Barrier()
+        start_seg_all_ranks = np.ascontiguousarray(start_seg_all_ranks)
+        end_seg_all_ranks = np.ascontiguousarray(end_seg_all_ranks)
+        self.comm.Barrier()
+        self.comm.Allreduce(self.MPI.IN_PLACE, start_seg_all_ranks, op=self.MPI.SUM)
+        self.comm.Barrier()
+        self.comm.Allreduce(self.MPI.IN_PLACE, end_seg_all_ranks, op=self.MPI.SUM)
+        self.comm.Barrier()
+        for i in range(self.size-1):
+            self.assertEqual(end_seg_all_ranks[:,i], start_seg_all_ranks[:,i+1], 
+            f"Issues with particle laod continuity across ransk: end_seg for rank {i} is not the first of the rank {i+1}, {(end_seg_all_ranks[:,i], start_seg_all_ranks[:,i+1])}")
 
     def test_blobs_for_each_segment(self):
         """Test blob file names for a segment."""
         nseg, chunk_size = self.abs_snap.get_n_segments(self.part_type)
         segments = [0, 1, nseg-10, nseg-2, nseg - 1] # Don't change this
-        for dataset in ['Position', 'Density']:
+        for blockname in ['Position', 'Density']:
             for i in segments:
                 # Type check
                 seg_start, seg_end = self.abs_snap._segment_to_partlist(self.part_type, i)
                 blobs, blob_paths, start_blob, end_blob = self.abs_snap._get_blobs_for_rank(
-                    segment=i, part_type=self.part_type, blockname=dataset
+                    segment=i, part_type=self.part_type, blockname=blockname
                 )
                 self.assertTrue((start_blob.dtype == int) & (end_blob.dtype == int))
                 self.assertGreater(len(blobs), 0, "No blob files found.")
@@ -123,13 +140,13 @@ class TestAbstractSnapshot(unittest.TestCase):
 
     def test_data(self):
         """Test data retrieval."""
-        for dataset in ['Position', 'Density']:
-            header = self.abs_snap._get_block_header_attr(self.part_type, dataset)
+        for blockname in ['Position', 'Density']:
+            header = self.abs_snap._get_block_header_attr(self.part_type, blockname)
             nseg, _ = self.abs_snap.get_n_segments(self.part_type)
             indices = [0, 8, nseg - 2, nseg-1]
             for i in indices:
                 seg_start, seg_end = self.abs_snap._segment_to_partlist(self.part_type, i)
-                data = self.abs_snap.get_data(self.part_type, dataset, segment=i)
+                data = self.abs_snap.get_data(self.part_type, blockname, segment=i)
                 self.assertIsNotNone(data)
                 self.assertIsInstance(data, np.ndarray)
 
