@@ -696,7 +696,8 @@ class Spectra:
             #Get metallicity of this metal species
             try :
                 mass_frac = (self.snapshot_set.get_data(0, "GFM_Metals", segment=fn).astype(np.float32))[:, nelem]
-            except :
+            except Exception as e:
+                print(f"Error: {e}", flush=True)
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24], dtype=np.float32)
                 nvalues = self.snapshot_set.get_blocklen(0, "Density", segment=fn)
