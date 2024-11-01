@@ -57,6 +57,7 @@ class Spectra:
             axis - axis along which to put the sightline. Can be None if reloading from a savefile.
         Optional arguments:
             res - Pixel width of the spectrum in km/s
+            nbins - Number of pixels in the spectrum. If not provided, will be calculated from res.
             spec_res - Resolution of the simulated spectrograph in km/s. Note this is not the pixel width.
                        Spectra will be convolved with a Gaussian of this rms on loading from disc.
             cdir - Directory containing cloudy tables.
@@ -82,7 +83,7 @@ class Spectra:
                      when converting comoving to velocity units.
                      If not proviced, will assume flat LCDM and compute it.
     """
-    def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5",
+    def __init__(self, num, base, cofm, axis, MPI=None, nbins=None, res=1., cdir=None, savefile="spectra.hdf5",
                  savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,
                  quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
 
@@ -93,10 +94,12 @@ class Spectra:
         # Adpot the MPI communiactor if desired
         self.MPI = MPI
         if MPI is not None:
+            self.MPI = MPI
             self.comm = MPI.COMM_WORLD
             self.rank = self.comm.Get_rank()
             self.size = self.comm.Get_size()
         else :
+            self.MPI = None
             self.comm = None
             self.rank = 0
             self.size = 1
@@ -132,7 +135,7 @@ class Spectra:
         #than this to a pixel, stop the integration.
         self.tautail = 1e-7
         try:
-            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, comm=self.comm)
+            self.snapshot_set = absn.AbstractSnapshotFactory(num, base, MPI=self.MPI)
             #Set up the kernel
             if kernel is None:
                 self.kernel_int = self.snapshot_set.get_kernel()
@@ -218,9 +221,14 @@ class Spectra:
         if reload_file:
             # if reloading from snapshot, pixel width must have been defined
             if res is None:
-                raise ValueError('pixel width (res) not provided')
-            # nbins must be an integer
-            self.nbins=int(self.vmax/res)
+                if nbins is not None:
+                   self.nbins = nbins
+                   res = self.vmax/(1.*nbins)
+                else:
+                   raise ValueError('pixel width (res) not provided')
+            if nbins is None:
+                # nbins must be an integer
+                self.nbins=int(self.vmax/res)
             # velocity bin size (kms^-1)
             self.dvbin = self.vmax / (1.*self.nbins)
         else:
@@ -495,7 +503,7 @@ class Spectra:
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion, get_tau)
         if load_all_data_first:
-            for nseg in range(1, self.snapshot_set.get_n_segments()):
+            for nseg in range(1, self.snapshot_set.get_n_segments()[0]):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
@@ -611,7 +619,7 @@ class Spectra:
 
     def find_all_particles(self):
         """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments, _ = self.snapshot_set.get_n_segments()
         pp = np.empty([0, 3])
         hhh = np.array([])
         for i in range(nsegments):
@@ -686,9 +694,10 @@ class Spectra:
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
-            try:
+            try :
                 mass_frac = (self.snapshot_set.get_data(0, "GFM_Metals", segment=fn).astype(np.float32))[:, nelem]
-            except KeyError:
+            except Exception as e:
+                print(f"Error: {e}", flush=True)
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24], dtype=np.float32)
                 nvalues = self.snapshot_set.get_blocklen(0, "Density", segment=fn)
@@ -799,7 +808,7 @@ class Spectra:
         sigma_X is the cross-section for this transition.
         """
         #Get array sizes
-        nsegments = self.snapshot_set.get_n_segments(part_type=0)
+        nsegments, _  = self.snapshot_set.get_n_segments(part_type=0)
         arepo = (self.kernel_int == 2)
         if arepo :
             nsegments=1
@@ -807,17 +816,20 @@ class Spectra:
         #Do remaining files
         for nn in xrange(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
+            print(f"rank = {self.rank} | ", "Interpolation %.1f percent done" % (100*nn/nsegments), ' | ', datetime.now().strftime("%H:%M:%S") , flush=True)
             #Add new file
             result += tresult
             del tresult
         if self.MPI is None :
             return result
-        # Make sure the data is contiguous in memory
-        result = np.ascontiguousarray(result, np.float32)
-        # Each rank constructs a portion of the spectrum. Add all the portions
-        self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
-        return result
+        else:
+            # Make sure the data is contiguous in memory
+            result = np.ascontiguousarray(result, np.float32)
+            # Each rank constructs a portion of the spectrum. Add all the portions
+            self.comm.Barrier()
+            self.comm.Allreduce(self.MPI.IN_PLACE, result, op=self.MPI.SUM)
+            self.comm.Barrier()
+            return result
 
     def equivalent_width(self, elem, ion, line):
         """Calculate the equivalent width of a line in Angstroms"""
@@ -950,7 +962,7 @@ class Spectra:
         func should be something like _vel_single_file above (for velocity)
         and have the signature func(file, elem, ion)
         """
-        nsegments = self.snapshot_set.get_n_segments()
+        nsegments, _ = self.snapshot_set.get_n_segments()
         result = func(0, elem, ion)
         if nsegments > 1:
             #Do remaining files
