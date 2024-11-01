@@ -404,7 +404,7 @@ class BigFileSnapshot(AbstractSnapshot):
 
             return key, data
         header = {}
-        with open(os.path.join(fname, 'Header','attr-v2')) as f:
+        with open(os.path.join(fname, 'Header','attr-v2'),'r') as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -549,17 +549,25 @@ class BigFileSnapshot(AbstractSnapshot):
         for i, bl_id in enumerate(blob_ids):
             # Offset in the blob file to start reading from
             offset = start_blobs[i] * nmembs * dtype.itemsize
-            # The buffer to read the particles from this blob
-            buffer = np.empty( (end_blobs[i] - start_blobs[i])*nmembs, dtype=dtype)
-            # MPI-IO read the particles from the file
-            # Note: Since each file won't be openned by many ranks, 
-            # i.e. `comm.size < num blob files`, no need for collective 
-            # synchronization among COMM_WORLD and each rank opens the 
-            # blobs with COMM_SELF
-            f_handle = self.MPI.File.Open(self.MPI.COMM_SELF, blob_paths[i], self.MPI.MODE_RDONLY)
-            f_handle.Read_at(offset, buffer)
-            data = np.append(data, np.frombuffer(buffer, dtype= dtype))
-            f_handle.Close()
+            if self.MPI is None:
+                num_particles = end_blobs[i] - start_blobs[i]
+                nbytes = num_particles * dtype.itemsize * nmembs
+                with open(blob_paths[i], 'rb') as f_handle:
+                    f_handle.seek(offset)
+                    buffer = f_handle.read(nbytes)
+                    data = np.append(data, np.frombuffer(buffer, dtype=dtype))
+            else:
+                # The buffer to read the particles from this blob
+                buffer = np.empty( (end_blobs[i] - start_blobs[i])*nmembs, dtype=dtype)
+                # MPI-IO read the particles from the file
+                # Note: Since each file won't be openned by many ranks, 
+                # i.e. `comm.size < num blob files`, no need for collective 
+                # synchronization among COMM_WORLD and each rank opens the 
+                # blobs with COMM_SELF
+                f_handle = self.MPI.File.Open(self.MPI.COMM_SELF, blob_paths[i], self.MPI.MODE_RDONLY)
+                f_handle.Read_at(offset, buffer)
+                data = np.append(data, np.frombuffer(buffer, dtype= dtype))
+                f_handle.Close()
         
         data = data.reshape((data.size//nmembs, nmembs))
         return data

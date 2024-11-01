@@ -6,6 +6,7 @@ specifed with `base`) with any number of particles and any
 number of MPI ranks.
 """
 import os
+import sys
 import unittest
 import numpy as np
 from mpi4py import MPI
@@ -14,15 +15,21 @@ from fake_spectra.abstractsnapshot import AbstractSnapshotFactory
 class TestAbstractSnapshot(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.comm = MPI.COMM_WORLD
-        cls.size = cls.comm.Get_size()
-        cls.rank = cls.comm.Get_rank()
 
-        cls.base = '../examle_bigfile/'
-        cls.snap = 272
+        assert cls.base is not None, "Base directory not set."
+        assert cls.snap is not None, "Snapshot number not set."
+
+        cls.base = os.path.abspath(cls.base)
+        print(os.getcwd())
+        assert os.path.isdir(cls.base), f'Test directory does not exist: {cls.base}'
+
         cls.part_type = 0
 
         cls.abs_snap = AbstractSnapshotFactory(cls.snap, cls.base, MPI=MPI, log_level='debug')
+        cls.rank = cls.abs_snap.rank
+        cls.size = cls.abs_snap.size
+        cls.comm = cls.abs_snap.comm
+        cls.MPI = cls.abs_snap.MPI
 
     def test_bigfile_header(self):
         """Test the bigfile Header
@@ -155,4 +162,18 @@ class TestAbstractSnapshot(unittest.TestCase):
                 self.assertEqual(data.shape, (seg_end - seg_start, header['nmemb']))
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Unit tests for MPI I/O of the bigfile snapshots')
+    parser.add_argument('--base', type=str, default='example_bigfile', help='Base directory for snapshot files')
+    parser.add_argument('--snap', type=int, default=272, help='Snapshot number')
+    args, unknown = parser.parse_known_args()
+
+    # Set class variables
+    TestAbstractSnapshot.base = args.base
+    TestAbstractSnapshot.snap = args.snap
+
+    # Remove custom arguments from sys.argv so unittest doesn't get confused
+    sys.argv = [sys.argv[0]] + unknown
+
+    # Run the tests
     unittest.main()
+
