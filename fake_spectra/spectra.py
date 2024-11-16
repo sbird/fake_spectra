@@ -82,8 +82,8 @@ class Spectra:
                      when converting comoving to velocity units.
                      If not proviced, will assume flat LCDM and compute it.
     """
-    def __init__(self, num, base, cofm, axis, MPI=None, res=1., cdir=None, savefile="spectra.hdf5",
-                 savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True,
+    def __init__(self, num, base, cofm, axis, MPI=None, nbins=None, res=1., cdir=None, savefile="spectra.hdf5",
+                 savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True, turn_off_selfshield=False,
                  quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
 
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
@@ -123,6 +123,8 @@ class Spectra:
 
         self.discarded=0
         self.npart=0
+
+        self.turn_off_selfshield = turn_off_selfshield
 
         self.spec_res = spec_res
         self.cdir = cdir
@@ -218,9 +220,14 @@ class Spectra:
         if reload_file:
             # if reloading from snapshot, pixel width must have been defined
             if res is None:
-                raise ValueError('pixel width (res) not provided')
-            # nbins must be an integer
-            self.nbins=int(self.vmax/res)
+                if nbins is not None:
+                   self.nbins = nbins
+                   res = self.vmax/(1.*nbins)
+                else:
+                   raise ValueError('pixel width (res) not provided')
+            if nbins is None:
+                # nbins must be an integer
+                self.nbins=int(self.vmax/res)
             # velocity bin size (kms^-1)
             self.dvbin = self.vmax / (1.*self.nbins)
         else:
@@ -659,7 +666,11 @@ class Spectra:
     def _do_interpolation_work(self, pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
         #Factor of 10^-8 converts line width (lambda_X) from Angstrom to cm
-        return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, line.gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
+        if self.turn_off_selfshield:
+            gamma_X = 0
+        else:
+            gamma_X = line.gamma_X
+        return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh, axis=None, cofm=None):
         """Filter a particle list, returning an index list of those near sightlines"""
@@ -807,7 +818,7 @@ class Spectra:
         #Do remaining files
         for nn in xrange(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
-            print("Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
+            print(f"rank = {self.rank} | "+"Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
             #Add new file
             result += tresult
             del tresult
