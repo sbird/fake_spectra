@@ -9,8 +9,36 @@ from . import spectra
 class GriddedSpectra(spectra.Spectra):
     """Generate regular grid of spectra along a given axis."""
 
-    def __init__(self,num, base, nspec=200, MPI=None, res = None, savefile="gridded_spectra.hdf5", reload_file=True, axis=1, **kwargs):
-
+    def __init__(self,num, base, nspec=200, MPI=None, res = None, nbins=None, savefile="gridded_spectra.hdf5", reload_file=True, grid_axes=None, grid_cofm=None, axis=1, **kwargs):
+        """
+        Parameters
+        ----------
+        num : int, required
+            Snapshot number
+        base : str, required
+            Base directory of the snapshot, i.e. containing .hdf5 or PART_XXXX files
+        nspec : int, optional
+            Number of skewers per side of the grid in the transverse direction
+        MPI : object, optional
+            MPI communicator
+        res : float, required if `nbins` is not provided
+            Resolution of the skewers in km/s
+        nbins : int, required if `res` is not provided
+            Number of bins in the skewers
+        savefile : str, optional
+            Name of the file to save the spectra
+        reload_file : bool, optional
+            Try to load the spectra file if it exists
+        grid_axes : array of shape (nspec*nspec*nspec,3), optional
+            Axes of the grid. Onlly if not a unifrom grid across the box is desired.
+            if none, `get_axes_and_cofm` will be called to get the axes
+        grid_cofm : array of shape (nspec*nspec*nspec,3), optional
+            Centers of the grid. Onlly if not a unifrom grid across the box is desired
+            if none, `get_axes_and_cofm` will be called to get the centers
+        axis : int, optional
+            Axis along which to place the skewers. 
+            Only if `grid_axes` and `grid_cofm` are not provided.
+        """
         if reload_file is False:
             # if reading skewers from file, no need to read the snapshot
             grid_cofm=None
@@ -21,10 +49,11 @@ class GriddedSpectra(spectra.Spectra):
             self.box = f.get_header_attr("BoxSize")
             del f
             # get position of skewers in the grid
-            grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
+            if grid_cofm is None:
+                grid_axes, grid_cofm = self.get_axes_and_cofm(nspec,axis)
 
         # call constructor of base class
-        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI, res=res,savefile=savefile,reload_file=reload_file,**kwargs)
+        spectra.Spectra.__init__(self,num,base,cofm=grid_cofm,axis=grid_axes,MPI=MPI, res=res, nbins=nbins, savefile=savefile,reload_file=reload_file,**kwargs)
 
 
     def get_axes_and_cofm(self,nspec,axis):
