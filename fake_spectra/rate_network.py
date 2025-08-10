@@ -665,7 +665,7 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         return little * (0.79464 + 0.1243*lt) + np.logical_not(little) * ( 2.13164 - 0.1240 * lt)
 
 #Fixed point optimization routines from scipy, modified to enforce positivity and use absolute error
-from scipy._lib._util import _asarray_validated, _lazywhere
+from scipy._lib._util import _asarray_validated
 
 def _del2(p0, p1, d):
     """del2 convergence accelerator"""
@@ -682,7 +682,9 @@ def _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel):
         if use_accel and i < maxiter//2:
             p2 = func(p1, *args)
             d = p2 - 2.0 * p1 + p0
-            p = _lazywhere(d != 0, (p0, p1, d), f=_del2, fillvalue=p2)
+            p = np.full(p0.shape, p2, dtype=p0.dtype)
+            mask = np.asarray(d!=0, dtype=bool)
+            p[mask] = _del2(p0[mask], p1[mask], d[mask])
         else:
             p = p1
         p0 = p
@@ -731,6 +733,8 @@ def fixed_point(func, x0, args=(), xtol=1e-8, maxiter=500, method='del2'):
     array([ 1.4920333 ,  1.37228132])
 
     """
-    use_accel = {'del2': True, 'iteration': False}[method]
+    use_accel=False
+    if method == 'del2':
+        use_accel=True
     x0 = _asarray_validated(x0, as_inexact=True)
     return _fixed_point_helper(func, x0, args, xtol, maxiter, use_accel)
