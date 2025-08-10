@@ -5,7 +5,7 @@ name: tests
 on:
   push:
     branches: [ '*', $default-branch ]
-    tags: ['[0-9]*']   # anything looks like a version.
+    tags: ['v[0-9]*']   # anything looks like a version.
   pull_request:
     branches: [ $default-branch ]
 
