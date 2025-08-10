@@ -104,6 +104,7 @@ setup(
     version='2.2.3',
     author="Simeon Bird",
     author_email="spb@ucr.edu",
+    license = "MIT",
     #Use the subclass which adds openmp flags as appropriate
 #     cmdclass = {'build_ext': build_ext_subclass },
     url="http://github.com/sbird/fake_spectra",
@@ -121,7 +122,6 @@ setup(
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",
                    "Intended Audience :: Science/Research",
-                   "License :: OSI Approved :: MIT License",
                    "Programming Language :: Python :: 3",
                    "Topic :: Scientific/Engineering :: Astronomy",
                    "Topic :: Scientific/Engineering :: Visualization"]
