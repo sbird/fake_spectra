@@ -57,7 +57,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
-        ienergy = np.float32(self._get_ienergy_rescaled(density, ienergy))
+        ienergy = self._get_ienergy_rescaled(density, ienergy)
         ldensity = np.log(density)
         lienergy = np.log(ienergy)
         #Clamp the temperatures : hot gas has the same neutral fraction of 0 anyway.
@@ -76,7 +76,12 @@ class RateNetworkGas(gas_properties.GasProperties):
             zgrid = self.lh0grid
         else:
             zgrid = self.tempgrid
-        out[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, zgrid))
+
+        # cast ONLY the vectors you pass into the C-extension
+        x32 = np.ascontiguousarray(ldensity[ii], dtype=np.float32)
+        y32 = np.ascontiguousarray(lienergy[ii], dtype=np.float32)
+
+        out[ii] = np.exp(_interpolate_2d(x32, y32, self.densgrid, self.ienergygrid, zgrid))
         ii2 = np.where(ldensity >= np.max(self.densgrid))
         return out,ii2,density,ienergy
 
