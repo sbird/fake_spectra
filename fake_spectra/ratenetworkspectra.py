@@ -30,11 +30,11 @@ class RateNetworkGas(gas_properties.GasProperties):
     def build_interp(self, dlim, elim, tsz=500, dsz=1000):
         """Build the interpolator"""
         #Build interpolation
-        self.densgrid = np.linspace(dlim[0], dlim[1], dsz)
-        self.ienergygrid = np.linspace(elim[0], elim[1], tsz)
+        self.densgrid = np.linspace(dlim[0], dlim[1], dsz, dtype=np.float32)
+        self.ienergygrid = np.linspace(elim[0], elim[1], tsz, dtype=np.float32)
         dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
-        self.lh0grid = np.zeros_like(dgrid)
-        self.tempgrid = np.zeros_like(dgrid)
+        self.lh0grid = np.zeros_like(dgrid, dtype=np.float32)
+        self.tempgrid = np.zeros_like(dgrid, dtype=np.float32)
         #We assume primordial helium
         for i in range(dsz):
             self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
@@ -57,7 +57,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
-        ienergy = self._get_ienergy_rescaled(density, ienergy)
+        ienergy = np.float32(self._get_ienergy_rescaled(density, ienergy))
         ldensity = np.log(density)
         lienergy = np.log(ienergy)
         #Clamp the temperatures : hot gas has the same neutral fraction of 0 anyway.
