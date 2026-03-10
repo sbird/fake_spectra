@@ -207,7 +207,7 @@ class Spectra:
             self.load_savefile(self.savefile)
 
         # Conversion factors from internal units
-        self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble
+        self.rscale = np.float32((self.units.UnitLength_in_cm*self.atime)/self.hubble)
         #Convert comoving internal units to physical km/s.
         if self.Hz is None:
             #Assume flat LCDM cosmology to compute H(z) (in km/s/Mpc)

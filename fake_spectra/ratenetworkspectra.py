@@ -58,8 +58,8 @@ class RateNetworkGas(gas_properties.GasProperties):
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
         ienergy = self._get_ienergy_rescaled(density, ienergy)
-        ldensity = np.log(density)
-        lienergy = np.log(ienergy)
+        ldensity = np.log(density).astype(np.float32, copy=False)
+        lienergy = np.log(ienergy).astype(np.float32, copy=False)
         #Clamp the temperatures : hot gas has the same neutral fraction of 0 anyway.
         ie = np.where(lienergy >= np.max(self.ienergygrid))
         lienergy[ie] = np.max(self.ienergygrid)*0.99
@@ -76,6 +76,7 @@ class RateNetworkGas(gas_properties.GasProperties):
             zgrid = self.lh0grid
         else:
             zgrid = self.tempgrid
+
         out[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, zgrid))
         ii2 = np.where(ldensity >= np.max(self.densgrid))
         return out,ii2,density,ienergy
