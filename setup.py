@@ -101,7 +101,7 @@ cmodule = [
 
 setup(
     name="fake_spectra",
-    version='2.2.4',
+    version='2.2.5',
     author="Simeon Bird",
     author_email="spb@ucr.edu",
     license = "MIT",
