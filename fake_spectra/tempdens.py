@@ -81,16 +81,19 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
     print("z=%f T0(K) = %f" %(redshift, T00))
     logdens = np.log10(dens)
     logT = np.log10(temp)
-    (T0, gamma) = fit_temp_dens_relation(logdens - np.log10(mean_dens), logT)
+    logoverden = logdens - np.log10(mean_dens)
+    (T0, gamma) = fit_temp_dens_relation(logoverden, logT)
     print("z=%f [fit] T0(K) = %f, gamma = %g" % (redshift, T0, gamma))
-
+    
+    ind = np.where((logoverden > -2.0) * (logoverden <  2.0) * (logT > 0.1) * (logT < 5.0))
+    
     if plot:
         if nhi:
             nhi = rates.get_reproc_HI(0, -1)
         else:
             nhi = dens
 
-        hist, dedges, tedges = np.histogram2d(logdens-np.log10(mean_dens), logT, bins=nbins, weights=nhi, density=True)
+        hist, dedges, tedges = np.histogram2d(logoverden[ind], logT[ind], bins=nbins, weights=nhi[ind], density=True)
 
         plt.imshow(hist.T, interpolation='nearest', origin='low', extent=[dedges[0], dedges[-1], tedges[0], tedges[-1]], cmap=plt.cm.cubehelix_r, vmax=0.75, vmin=0.01)
 
@@ -106,4 +109,6 @@ def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):
         plt.ylim(3.4,5)
         plt.colorbar()
         plt.tight_layout()
+        #plt.savefig()
+        plt.show()
     return T0, gamma
