@@ -72,7 +72,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
         tol - tolerance within which to hit mean flux
         nthreads - threads to use for the sums (default: all available cores)
     returns:
-        scaling factor for tau"""
+        scaling factor for tau."""
     tau = np.ravel(np.asarray(tau, dtype=np.float64))
     nbins = np.size(tau)
     if nbins == 0:
@@ -98,7 +98,10 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
         #0 is too far.
         if newscale <= 0:
             newscale = 1e-10
-        if abs(newscale - scale) <= tol * newscale:
+        #Stop once the scale has converged. Written like this so that
+        #if there is a NaN in the data, the condition will be true and we will exit.
+        if not abs(newscale - scale) > tol * newscale:
+            assert not np.isnan(newscale)
             return newscale
 
 def _batch_pdf(tau_batch, scale, bins):

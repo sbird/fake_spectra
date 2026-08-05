@@ -1,9 +1,28 @@
 """Module to test the flux statistics computation"""
 
 import math
+import signal
 import numpy as np
 
 from fake_spectra import fluxstatistics as stat
+
+class _Hang(Exception):
+    """Raised by the alarm handler when mean_flux does not come back. Deliberately
+    not an AssertionError, so that _assert_rejects_nan cannot mistake a hang for
+    the assertion it is looking for."""
+
+def _alarm(_signum, _frame):
+    """Turn a hang into a failure"""
+    raise _Hang("mean_flux did not return")
+
+def _assert_rejects_nan(*args, **kwargs):
+    """mean_flux must come back rather than iterating forever, and having come
+    back it must refuse the NaN scale factor instead of returning it."""
+    try:
+        scale = stat.mean_flux(*args, **kwargs)
+    except AssertionError:
+        return
+    raise AssertionError("mean_flux returned %s instead of rejecting the nan" % scale)
 
 def testMeanFlux():
     """Test that we scale for the mean flux correctly"""
@@ -17,6 +36,42 @@ def testMeanFlux():
     assert abs(stat.mean_flux(tau, mf2,tol) - 2) < tol
     mf3 = np.mean(nn**(-0.5))
     assert abs(stat.mean_flux(tau, mf3,tol) - 0.5) < tol
+
+def testMeanFluxNan():
+    """A nan optical depth must not send the Newton-Raphson iteration round
+    forever waiting for a nan to converge. It cannot be scaled to a mean flux
+    either, so mean_flux asserts rather than handing back the nan: all that is
+    required here is that control comes back one way or the other."""
+    tol = 1e-4
+    nn = np.arange(1,101,dtype=np.double)
+    tau = np.log(nn)
+    #As in testMeanFlux, the mean flux is x^(-n) and mean_flux returns n.
+    mf2 = np.mean(nn**(-2.))
+    big = np.tile(tau, 20000)
+    #Fail rather than hang if the iteration stops terminating.
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, _alarm)
+        signal.alarm(30)
+    try:
+        #A few nans among otherwise good optical depths
+        _assert_rejects_nan(np.concatenate([tau, np.nan*np.ones(50)]), mf2, tol)
+        #Including on the threaded path, where the nans are not all in one chunk
+        _assert_rejects_nan(np.concatenate([big, np.nan*np.ones(1000)]), mf2, tol)
+        #Nothing but nans
+        _assert_rejects_nan(np.nan*np.ones(10), 0.7)
+        #An infinite optical depth absorbs everything but says nothing about how
+        #to scale, and the 0 * inf it makes is a nan. numpy rightly complains
+        #about that, so quieten it here.
+        with np.errstate(invalid='ignore'):
+            _assert_rejects_nan(np.array([np.inf, 1., 2.]), 0.7)
+        #An empty array has no nan in it and still returns.
+        assert stat.mean_flux(np.array([]), 0.7) == 0
+        #Good data is unaffected, on both the serial and the threaded path.
+        assert abs(stat.mean_flux(tau, mf2, tol) - 2) < tol
+        assert abs(stat.mean_flux(big, mf2, tol) - 2) < tol
+    finally:
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
 
 def testCalcPdf():
     """Test that we calculate the pdf of the flux correctly"""
