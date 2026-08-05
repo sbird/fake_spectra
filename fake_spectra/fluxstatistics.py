@@ -4,9 +4,10 @@ the power spectrum, the pdf and to normalise to a mean tau.
 Useful for lyman alpha forest work."""
 
 import math
+import os
 import numpy as np
 from datetime import datetime
-from ._spectra_priv import _rescale_mean_flux
+from concurrent.futures import ThreadPoolExecutor
 
 # You need `nbodykit` only if you want to compute the 3D power spectrum with `flux_power_3d`
 try :
@@ -23,7 +24,21 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5):
+#Threads for mean_flux, created on first use.
+_MF_POOL = None
+#Chunks smaller than this are not worth handing to another thread.
+_MF_MINCHUNK = 250000
+
+def _mean_flux_sums(tau, scale, out):
+    """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one chunk of tau.
+    The numpy ufuncs release the GIL, so chunks are summed in parallel."""
+    flux = np.multiply(tau, -scale, out=out)
+    np.exp(flux, out=flux)
+    mean_flux = np.sum(flux)
+    np.multiply(flux, tau, out=flux)
+    return mean_flux, np.sum(flux)
+
+def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -32,11 +47,39 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5):
         tau - optical depths to scale
         mean_flux_desired - mean flux desired
         tol - tolerance within which to hit mean flux
+        nthreads - threads to use for the sums (default: all available cores)
     returns:
         scaling factor for tau"""
-    if np.size(tau) == 0:
+    global _MF_POOL
+    tau = np.ravel(np.asarray(tau, dtype=np.float64))
+    nbins = np.size(tau)
+    if nbins == 0:
         return 0
-    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol)
+    if nthreads is None:
+        nthreads = len(os.sched_getaffinity(0))
+    nchunk = max(1, min(nthreads, nbins // _MF_MINCHUNK))
+    bounds = np.linspace(0, nbins, nchunk+1).astype(int)
+    chunks = [tau[bounds[i]:bounds[i+1]] for i in range(nchunk)]
+    #Scratch space, allocated once and reused by every iteration.
+    scratch = [np.empty_like(cc) for cc in chunks]
+    if nchunk > 1 and _MF_POOL is None:
+        _MF_POOL = ThreadPoolExecutor(max_workers=nthreads)
+    newscale = 1.
+    while True:
+        scale = newscale
+        #Farm out all but the first chunk, then do that one here.
+        futures = [_MF_POOL.submit(_mean_flux_sums, chunks[i], scale, scratch[i]) for i in range(1, nchunk)]
+        sums = [_mean_flux_sums(chunks[0], scale, scratch[0])] + [ff.result() for ff in futures]
+        flux = math.fsum([ss[0] for ss in sums])
+        tau_flux = math.fsum([ss[1] for ss in sums])
+        #Newton-Raphson
+        newscale = scale + (flux - mean_flux_desired * nbins)/tau_flux
+        #We don't want the absorption to change sign and become emission;
+        #0 is too far.
+        if newscale <= 0:
+            newscale = 1e-10
+        if abs(newscale - scale) <= tol * newscale:
+            return newscale
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
