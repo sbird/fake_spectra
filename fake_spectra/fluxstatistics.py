@@ -101,14 +101,51 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
         if abs(newscale - scale) <= tol * newscale:
             return newscale
 
-def flux_pdf(tau, nbins=20, mean_flux_desired=None):
-    """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
+def _batch_pdf(tau_batch, scale, bins):
+    """Histogram counts of the flux for one batch of optical depths. The
+    exponential and most of the histogram release the GIL, so batches given to
+    the thread pool run at the same time."""
+    flux = np.exp(-scale * tau_batch)
+    (counts, _) = np.histogram(flux, bins=bins)
+    return counts
+
+def flux_pdf(tau, nbins=20, mean_flux_desired=None, nthreads=None):
+    """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)
+        Arguments:
+            tau - optical depths
+            nbins - number of bins of the histogram
+            mean_flux_desired - if set, the optical depths are rescaled to it
+            nthreads - threads to use (default: all available cores)
+        Returns:
+            cbins - centre of each flux bin
+            fpdf - normalised histogram of the flux"""
+    nthreads = _nthreads(nthreads)
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired)
-    flux = np.exp(-scale * tau)
+        scale = mean_flux(tau, mean_flux_desired, nthreads=nthreads)
     bins = np.arange(nbins+1)/(1.*nbins)
-    (fpdf, _) = np.histogram(flux, bins=bins,density=True)
+    tau = np.ravel(tau)
+    ntau = np.size(tau)
+    # count in batches, purely for computational efficiency
+    nbatch = 10
+    if ntau < _FP_MINTHREAD:
+        #Not worth threading, nor splitting up: this is what it used to do.
+        nthreads = 1
+        nbatch = 1
+    bounds = [(i*ntau//nbatch, min((i+1)*ntau//nbatch, ntau)) for i in range(nbatch)]
+    if nthreads == 1:
+        parts = [_batch_pdf(tau[ss:ee], scale, bins) for (ss, ee) in bounds]
+    else:
+        pool = _get_pool(nthreads)
+        #In waves of nthreads, so that nthreads really does cap the threads used.
+        parts = []
+        for i in range(0, len(bounds), nthreads):
+            parts += list(pool.map(lambda bb: _batch_pdf(tau[bb[0]:bb[1]], scale, bins),
+                                   bounds[i:i+nthreads]))
+    counts = np.sum(parts, axis=0)
+    #Normalise to a probability density, exactly as np.histogram(density=True)
+    #does: by the bin width and the number of samples which landed in a bin.
+    fpdf = counts/np.diff(bins)/np.sum(counts)
     cbins = (bins[1:] + bins[:-1])/2.
     return cbins, fpdf
 
