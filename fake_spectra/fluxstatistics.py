@@ -252,8 +252,8 @@ def _flux_power_bins(vmax, npix):
             nbins - number of bins of *input spectrum* - not the fourier output!
         Returns: bin center in s/km
     """
-    #Get the frequency component
-    kf = np.fft.rfftfreq(npix)
+    #Get the frequency component, from the same library as the transform
+    kf = scipy.fft.rfftfreq(npix)
     #Units:
     #The largest frequency scale is the velocity scale of the box,
     #not 1/nbins as rfftfreq gives.

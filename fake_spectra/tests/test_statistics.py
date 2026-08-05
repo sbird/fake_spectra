@@ -64,6 +64,11 @@ def testFluxPowerSine():
         #A sine of amplitude a has power a^2/4 in its own bin and nothing anywhere else.
         assert np.argmax(power) == freq
         assert abs(power[freq] - amp**2/4) < 1e-12
+        #The bins must line up with the power: the peak is at the frequency we
+        #put in, in the 2 pi k / vmax convention flux_power returns.
+        assert np.shape(bins) == np.shape(power)
+        assert abs(bins[freq] - 2*math.pi*freq) < 1e-10
+        assert bins[0] == 0.
         assert np.max(np.abs(np.delete(power, freq))) < 1e-20
         #Every sightline has the mean flux, so there is nothing in the k=0 mode.
         assert power[0] < 1e-20
