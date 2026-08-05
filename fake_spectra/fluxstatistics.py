@@ -96,15 +96,6 @@ def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     cbins = (bins[1:] + bins[:-1])/2.
     return cbins, fpdf
 
-def _powerspectrum(inarray, axis=-1):
-    """Compute the power spectrum of the input using np.fft"""
-    rfftd = np.fft.rfft(inarray, axis=axis)
-    # Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
-    power = np.abs(rfftd)**2
-    #Normalise the FFT so it is independent of input size.
-    power /= np.shape(inarray)[axis]**2
-    return power
-
 def _window_function(k, *, R, dv):
     """The window function corresponding to the spectra response of the spectrograph.
     R is the spectrograph resolution.
