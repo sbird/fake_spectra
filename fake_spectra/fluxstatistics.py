@@ -25,9 +25,6 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-#Batches smaller than this are not worth threading the FFT over.
-_FFT_MINTHREAD = 1 << 20
-
 #Threads for mean_flux, created on first use.
 _MF_POOL = None
 #Chunks smaller than this are not worth handing to another thread.
@@ -136,10 +133,8 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
         end = min((i+1)*nspec//10, nspec)
         flux = np.exp(-scale*tau[start:end])
         # Calculate flux power for each spectrum in turn.
-        # scipy's fft threads over the transforms, np.fft does not. The threads
-        # spin between batches, so only ask for them when there is enough work.
-        workers = -1 if flux.size >= _FFT_MINTHREAD else 1
-        rfftd = scipy.fft.rfft(flux, axis=1, workers=workers, overwrite_x=True)
+        # scipy's fft threads over the transforms, np.fft does not.
+        rfftd = scipy.fft.rfft(flux, axis=1, workers=-1, overwrite_x=True)
         kzero[start:end] = rfftd[:, 0].real
         mean_flux_power += np.sum(np.abs(rfftd)**2, axis=0)
     if mean_flux_desired is None:
