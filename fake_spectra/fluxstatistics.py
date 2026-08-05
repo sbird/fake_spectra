@@ -130,19 +130,29 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
     if mean_flux_desired is not None:
         scale = mean_flux(tau, mean_flux_desired)
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
-    else:
-        mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
-    mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
+    mean_flux_power = np.zeros(npix//2+1, dtype=np.float64)
+    #The k=0 mode of each sightline is the flux summed over pixels, which is
+    #all we need to get the mean flux: no separate pass over tau required.
+    kzero = np.empty(nspec, dtype=np.float64)
     # compute in batches, purely for computational efficiency
     for i in range(10):
+        start = i*nspec//10
         end = min((i+1)*nspec//10, nspec)
-        dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.
+        flux = np.exp(-scale*tau[start:end])
         # Calculate flux power for each spectrum in turn
-        flux_power_perspectra = _powerspectrum(dflux, axis=1)
-        #Take the mean and convert units.
-        mean_flux_power += vmax*np.sum(flux_power_perspectra, axis=0)
-    mean_flux_power/= nspec
+        rfftd = np.fft.rfft(flux, axis=1)
+        kzero[start:end] = rfftd[:, 0].real
+        mean_flux_power += np.sum(np.abs(rfftd)**2, axis=0)
+    if mean_flux_desired is None:
+        mean_flux_desired = np.sum(kzero)/(nspec*npix)
+    #We want the power of d_F = F/mean(F) - 1. The FFT is linear, so dividing
+    #by the mean flux just rescales every mode and subtracting one shifts k=0
+    #alone: both can be applied to the summed power. The npix**2 normalises
+    #the FFT so it is independent of input size, and vmax converts the units.
+    mean_flux_power *= vmax/(npix**2 * nspec * mean_flux_desired**2)
+    mean_flux_power[0] = vmax*np.sum((kzero/mean_flux_desired - npix)**2)/(npix**2 * nspec)
+    mean_flux_power = mean_flux_power.astype(tau.dtype)
     assert np.shape(mean_flux_power) == (npix//2+1,)
     kf = _flux_power_bins(vmax, npix)
     #Divide out the window function
