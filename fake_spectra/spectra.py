@@ -1216,40 +1216,39 @@ class Spectra:
             spos = cofm[:, :2]
         return spos
 
-    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=0.25):
+    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=0.2):
         """Filter out the DLA regions from a single spectrum. The algorithm is the same as Chabanier 2019.
         We find each DLA, identified using a maximum optical depth cut (tau_thresh).
         We then replace optically thick absorption around the DLA as long as the absorption is larger than
-        mean optical depth + a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
+        a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
 
         Arguments: tt: optical depth array from a single spectrum.
         taueff: effective tau. The DLA will be replaced with constant absorption at this value.
         tau_thresh: optical depth threshold at which to enable filtering.
-        thresh2: how far out from the center should we replace the filtered values"""
-        #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 0.25
-        #She corrects the wings using a Voigt profile, but that seems tricky.
-        tot = 0
-        newthresh = taueff + thresh2
+        thresh2: threshold for masking the DLA pixels."""
+        #Masking algorithm:
+        #'Specifically, we mask all DLA pixels where the transmitted flux decreases by 20% or more
+        #and correct the transmitted flux of the remaining DLA pixels using a Voigt profile.' (2503.14741)
         while np.max(tt) > tau_thresh:
             maxx = np.argmax(tt)
 #             print("m %g, w %d" % (np.max(tt), maxx))
             j = 0
-            while tt[maxx-j] > newthresh:
+            while tt[maxx-j] > thresh2:
                 tt[maxx-j] = taueff
                 #Note python indexing means no need to deal with periodicity
                 j += 1
-            tot += j
+                if j >= nbins:
+                    return tt
             j = 1
             if maxx + j >= self.nbins:
                 j -= self.nbins
-            while tt[maxx+j] > newthresh:
+            while tt[maxx+j] > thresh2:
                 tt[maxx+j] = taueff
                 j += 1
                 if maxx + j >= self.nbins:
                     j-= self.nbins
-            tot += j
 #         assert np.max(tt) < tau_thresh*1.01
-        return tt,tot
+        return tt
 
     def _filter_tau(self, tau, tau_thresh=None):
         """Filter optical depths to remove sightlines with optically thick absorbers.
@@ -1260,11 +1259,9 @@ class Spectra:
             taueff = -1*np.log(np.mean(np.exp(-tau)))
             ii = np.where(tausum > tau_thresh)
             #print("Filtering spectra", np.shape(ii))
-            tot = 0
             for i in ii[0]:
-                (tt, tot2) = self._filter_single_tau_complex(tau[i], taueff, tau_thresh=tau_thresh)
+                tt = self._filter_single_tau_complex(tau[i], taueff, tau_thresh=tau_thresh)
                 tau[i] = tt
-                tot += tot2
             #print("filter frac all=%g dlalines=%g" % (tot / np.size(tau), tot/np.size(ii)/self.nbins))
             assert np.max(tau) < tau_thresh*1.01
         return tau
