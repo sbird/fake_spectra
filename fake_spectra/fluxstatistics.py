@@ -25,10 +25,32 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-#Threads for mean_flux, created on first use.
-_MF_POOL = None
+#Worker threads, created on first use and shared by everything in this module.
+_POOL = None
+_POOL_SIZE = 0
 #Chunks smaller than this are not worth handing to another thread.
 _MF_MINCHUNK = 250000
+#Nor is an array of optical depths smaller than this worth splitting up.
+_FP_MINTHREAD = 1 << 20
+
+def _nthreads(nthreads):
+    """Default to one thread per core we are allowed to run on."""
+    if nthreads is None:
+        return len(os.sched_getaffinity(0))
+    return max(1, nthreads)
+
+def _get_pool(nthreads):
+    """The module thread pool, grown if a later call wants more threads than an
+    earlier one. The numpy and scipy calls we hand it release the GIL, so its
+    threads do real work in parallel. Note nothing submitted to the pool may
+    itself submit to the pool: a fixed size pool waiting on itself deadlocks."""
+    global _POOL, _POOL_SIZE
+    if _POOL is None or _POOL_SIZE < nthreads:
+        if _POOL is not None:
+            _POOL.shutdown(wait=True)
+        _POOL = ThreadPoolExecutor(max_workers=nthreads)
+        _POOL_SIZE = nthreads
+    return _POOL
 
 def _mean_flux_sums(tau, scale, out):
     """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one chunk of tau.
@@ -51,25 +73,22 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
         nthreads - threads to use for the sums (default: all available cores)
     returns:
         scaling factor for tau"""
-    global _MF_POOL
     tau = np.ravel(np.asarray(tau, dtype=np.float64))
     nbins = np.size(tau)
     if nbins == 0:
         return 0
-    if nthreads is None:
-        nthreads = len(os.sched_getaffinity(0))
+    nthreads = _nthreads(nthreads)
     nchunk = max(1, min(nthreads, nbins // _MF_MINCHUNK))
     bounds = np.linspace(0, nbins, nchunk+1).astype(int)
     chunks = [tau[bounds[i]:bounds[i+1]] for i in range(nchunk)]
     #Scratch space, allocated once and reused by every iteration.
     scratch = [np.empty_like(cc) for cc in chunks]
-    if nchunk > 1 and _MF_POOL is None:
-        _MF_POOL = ThreadPoolExecutor(max_workers=nthreads)
+    pool = _get_pool(nthreads) if nchunk > 1 else None
     newscale = 1.
     while True:
         scale = newscale
         #Farm out all but the first chunk, then do that one here.
-        futures = [_MF_POOL.submit(_mean_flux_sums, chunks[i], scale, scratch[i]) for i in range(1, nchunk)]
+        futures = [pool.submit(_mean_flux_sums, chunks[i], scale, scratch[i]) for i in range(1, nchunk)]
         sums = [_mean_flux_sums(chunks[0], scale, scratch[0])] + [ff.result() for ff in futures]
         flux = math.fsum([ss[0] for ss in sums])
         tau_flux = math.fsum([ss[1] for ss in sums])
@@ -103,7 +122,17 @@ def _window_function(k, *, R, dv):
     sigma = R/(2*np.sqrt(2*np.log(2)))
     return np.exp(-0.5 * (k * sigma)**2) * np.sinc(k * dv/2/math.pi)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
+def _batch_power(tau_batch, scale, workers):
+    """Summed flux power, and the k=0 Fourier mode of each sightline, for one
+    batch of sightlines. Everything in here releases the GIL, so batches given
+    to the thread pool really do run at the same time."""
+    flux = np.exp(-scale*tau_batch)
+    # Calculate flux power for each spectrum in turn.
+    # scipy's fft threads over the transforms, np.fft does not.
+    rfftd = scipy.fft.rfft(flux, axis=1, workers=workers, overwrite_x=True)
+    return np.sum(np.abs(rfftd)**2, axis=0), np.array(rfftd[:, 0].real)
+
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, nthreads=None):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -114,13 +143,15 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
 	    vmax - velocity scale corresponding to maximal length of the sightline.
+            nthreads - threads to use (default: all available cores)
         Returns:
             flux_power - flux power spectrum in km/s. Shape is (npix)
             bins - the frequency space bins of the power spectrum, in s/km.
     """
+    nthreads = _nthreads(nthreads)
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired)
+        scale = mean_flux(tau, mean_flux_desired, nthreads=nthreads)
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
     (nspec, npix) = np.shape(tau)
     mean_flux_power = np.zeros(npix//2+1, dtype=np.float64)
@@ -128,15 +159,22 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
     #all we need to get the mean flux: no separate pass over tau required.
     kzero = np.empty(nspec, dtype=np.float64)
     # compute in batches, purely for computational efficiency
-    for i in range(10):
-        start = i*nspec//10
-        end = min((i+1)*nspec//10, nspec)
-        flux = np.exp(-scale*tau[start:end])
-        # Calculate flux power for each spectrum in turn.
-        # scipy's fft threads over the transforms, np.fft does not.
-        rfftd = scipy.fft.rfft(flux, axis=1, workers=-1, overwrite_x=True)
-        kzero[start:end] = rfftd[:, 0].real
-        mean_flux_power += np.sum(np.abs(rfftd)**2, axis=0)
+    bounds = [(i*nspec//10, min((i+1)*nspec//10, nspec)) for i in range(10)]
+    if nspec*npix < _FP_MINTHREAD:
+        nthreads = 1
+    if nthreads == 1:
+        #Let the transform have the threads if we are not using them ourselves.
+        parts = [_batch_power(tau[ss:ee], scale, -1) for (ss, ee) in bounds]
+    else:
+        pool = _get_pool(nthreads)
+        #In waves of nthreads, so that nthreads really does cap the threads used.
+        parts = []
+        for i in range(0, len(bounds), nthreads):
+            parts += list(pool.map(lambda bb: _batch_power(tau[bb[0]:bb[1]], scale, 1),
+                                   bounds[i:i+nthreads]))
+    for (ss, ee), (power, kzchunk) in zip(bounds, parts):
+        mean_flux_power += power
+        kzero[ss:ee] = kzchunk
     if mean_flux_desired is None:
         mean_flux_desired = np.sum(kzero)/(nspec*npix)
     #We want the power of d_F = F/mean(F) - 1. The FFT is linear, so dividing
