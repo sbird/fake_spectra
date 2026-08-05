@@ -23,7 +23,7 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
+def mean_flux(tau, mean_flux_desired, tol = 1e-5):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -36,7 +36,7 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
         scaling factor for tau"""
     if np.size(tau) == 0:
         return 0
-    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol, thresh)
+    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol)
 
 def flux_pdf(tau, nbins=20, mean_flux_desired=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
@@ -111,7 +111,7 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
     """Compute the 3D power spectrum of the input using nbodykit
     Parameters:
     dfux_mesh - 3D array of flux variations, type is `mesh` in `nbodykit`
-    boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+    boxsize - size of the box in units of interest (eg, comoving cMpc/h),
                 the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
     los - line of sight direction, i.e. [0,0,1] for z-axis
     dk - bin width in k
@@ -119,8 +119,8 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
     Returns:
     power - a dictionary with the p(k,mu) and the k and mu bins, keys:['power','k','mu']
     """
-    power = FFTPower(dflux_mesh, BoxSize=boxsize, 
-                     mode='2d', los= los, dk=dk, 
+    power = FFTPower(dflux_mesh, BoxSize=boxsize,
+                     mode='2d', los= los, dk=dk,
                      Nmu=Nmu)
     return power.power
 
@@ -134,11 +134,11 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         We compute the power spectrum along each sightline and then average the result.
         Arguments:
         comm_nbodykit: MPI communicator for nbodykit, I prefer to have one communicator for each process, i.e.
-                        turning off parallel processing in nbodykit cause it is already fast enough. 
+                        turning off parallel processing in nbodykit cause it is already fast enough.
                         You can set it as None if parallelism is not a concern to you.
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
-        boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+        boxsize - size of the box in units of interest (eg, comoving cMpc/h),
                 the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
         Returns:
             k, mu - the k and mu bins of the power spectrum
@@ -173,7 +173,7 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
             else:
                 print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
                 cat = ArrayCatalog({'Position': coords, 'df': np.exp(-tau[i*nspec//3:end].ravel()) / mean_flux_desired - 1})
-                mesh = cat.to_mesh(Nmesh=[nt, nt, nt], value='df', BoxSize=boxsize, resampler='tsc', compensated=True, interlaced=True)            
+                mesh = cat.to_mesh(Nmesh=[nt, nt, nt], value='df', BoxSize=boxsize, resampler='tsc', compensated=True, interlaced=True)
 
             print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
             los = [0, 0, 0]
