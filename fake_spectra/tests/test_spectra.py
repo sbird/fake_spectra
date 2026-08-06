@@ -148,3 +148,47 @@ def test_voigtfit():
         (ll, tfit) = prof.get_fitted_profile()
         #Check the fit is reasonable
         assert np.sum((tfit - tau)**2/(tau+0.5)**2)/np.size(tfit) < 0.05
+
+def test_hcd_isolated():
+    """Check that a single isolated HCD is fitted out and its core masked."""
+    nbins = 2048
+    dvbin = 5.
+    prof = voigtfit.HCDProfiles(nbins, dvbin)
+    amplitude = 5e6
+    tau = np.roll(prof.profile(prof.btherm, amplitude), 300)
+    (newtau, mask) = prof.do_hcd_fit(tau)
+    #The wings should be subtracted to nothing: the residual is 5e-3
+    assert np.max(newtau) < 1.
+    #The core, where the profile is saturated, should be masked
+    assert np.all(mask == (tau > 1))
+    #The peak of the profile is masked, the edges of the spectrum are not
+    assert mask[(nbins//2 + 300) % nbins]
+    assert not mask.all()
+
+def test_hcd_amplitude():
+    """Check that the fitted amplitude of an isolated HCD is recovered."""
+    prof = voigtfit.HCDProfiles(2048, 5.)
+    for amplitude in (1e6, 5e6, 1e7, 1e8):
+        tau = prof.profile(prof.btherm, amplitude)
+        (_, peak_index, fitted) = prof.iterate_new_spectrum(tau)
+        assert peak_index == 1024
+        assert np.abs(fitted / amplitude - 1) < 0.01
+
+def test_hcd_blended():
+    """Check that two blended HCDs are both found, and that a spectrum
+    without an HCD is left alone."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    rng = np.random.default_rng(23)
+    noise = rng.exponential(0.3, nbins)
+    tau = noise + np.roll(prof.profile(prof.btherm, 3e6), -600) + prof.profile(prof.btherm, 8e6)
+    (newtau, mask) = prof.do_hcd_fit(tau)
+    #Both cores are masked
+    assert mask[nbins//2]
+    assert mask[(nbins//2 - 600) % nbins]
+    #Both damping wings are gone: what is left is the noise
+    assert np.max(newtau) < 10 * np.max(noise)
+    #A spectrum with no HCD in it should be untouched
+    (newtau, mask) = prof.do_hcd_fit(noise)
+    assert not np.any(mask)
+    assert np.all(newtau == noise)

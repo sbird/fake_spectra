@@ -8,10 +8,124 @@ import math
 import time
 import multiprocessing
 import numpy as np
-import scipy.optimize as optimize
+from scipy import optimize
 import scipy.special
 
 from . import line_data
+
+class HCDProfiles(object):
+    """Class to fit a spectrum input (without noise) with a series of Voigt profiles.
+    Inputs: nbins - number of bins in each spectrum
+            dvbin - Size of velocity bin in km/s.
+            elem, ion, line - Line to fit and ion to use.
+    """
+    def __init__(self, nbins, dvbin, elem="H", ion=1, line=1215):
+        self.dvbin = dvbin
+        lines = line_data.LineData()
+        line = lines[(elem, ion)][line]
+        #The /10^13 converts from Angstrom to km, so this is km/s
+        self.voigt_fac = line.gamma_X*line.lambda_X/(4*math.pi)/1e13
+        #In km/s (the units of dvbin)
+        self.nbins = nbins
+        #Factor of 1e5 in bfac converts from cm/s to km/s
+        boltzmann = 1.3806504e-16  #ergs K-1 or cm2 g s-2 K-1
+        protonmass = 1.67262178e-24 # 1 a.m.u
+        bfac = np.sqrt(2.0*boltzmann/protonmass)/1e5
+        #For an HCD the width of the Gaussian is not important, set it to 10^4 K.
+        self.btherm = bfac*np.sqrt(1e4)
+        #Pre-compute the Voigt profile shape
+        self.voigt_shape = self.profile(self.btherm, 1)
+
+    def do_hcd_fit(self, tau_local, tau_thresh=1e6, masktau=1):
+        """Fit out HCDs, especially the damping wings.
+        The HCD is found and the wings are removed by subtracting a fitted Voigt profile in tau.
+        The central region is masked.
+        tau_thresh: minimum peak size to fit out.
+        masktau: region with a profile optical depth larger than this value will be masked after fit.
+
+        Returns:
+        Optical depth after fitting
+        The region that will be masked.
+        """
+        assert np.size(tau_local) == self.nbins
+        newtau = np.array(tau_local)
+        #Initialize mask using the whole spectrum for fitting the first peak.
+        #The central regions of the peak will be masked outright, the wings will be divided out.
+        mask = np.zeros_like(tau_local, dtype=bool)
+        #Do the fit iteratively, stopping when we have removed all the HCDs.
+        for j in range(0, 10):
+            if mask.all() or np.max(newtau[~mask]) < tau_thresh:
+                break
+            #This divides out the wings and returns a new spectrum.
+            (tau_fitted, peak_index, amplitude) = self.iterate_new_spectrum(newtau, mask=~mask)
+            #print("Fit out:", peak_index, amplitude)
+            #We only want to fit to regions that are not already saturated in the fit.
+            mask |= (tau_fitted > masktau)
+            #Subtract the Voigt profile
+            newtau = newtau - tau_fitted
+            #Noramlise away anything that ends up slightly negative
+            newtau[newtau < 0] = 0
+        #Fit did not converge
+        assert mask.all() or np.max(newtau[~mask]) < tau_thresh
+        return newtau, mask
+
+    def iterate_new_spectrum(self, tau, mask=None):
+        """Fit the largest peak and return a new spectrum with that peak removed."""
+        #Find largest peak in unmasked region
+        if mask is None:
+            peak_index = np.argmax(tau)
+        else:
+            peak_index = np.argmax(np.where(mask, tau, -np.inf))
+        amplitude = tau[peak_index]
+        #First roll the spectrum to avoid edge effects
+        maxx = (self.nbins//2) - peak_index
+        tau_rolled = np.roll(tau, maxx)
+        flux = np.exp(-tau_rolled)
+        #Do the fit for the width
+        optargs = (flux,)
+        result = optimize.minimize_scalar(self.fun_min, bounds=(0.1*amplitude, 5*amplitude), method='bounded', args=optargs)
+        amplitude = result.x
+        #Roll it back
+        tau_fitted = np.roll(self.voigt_shape * amplitude, -maxx)
+        return tau_fitted, peak_index, amplitude
+
+    def fun_min(self, amplitude, flux):
+        """Helper function to pass to scipy.optimise. Computes the differences
+        between the profile and the input spectrum.
+        As each spectrum should be localised, down-weight far-off points.
+        Function is assumed to be already rotated so that the max value is in the middle."""
+        voigt = np.exp(-self.voigt_shape * amplitude)
+        #Minimise the clipped absolute difference
+        fdiff = np.abs(flux - voigt)
+        fdiff[fdiff > 0.1] = 0.1
+        return np.sum(fdiff)
+
+    def profile(self, stddev, amplitude):
+        """Compute the Voigt profile, which is the real part of the
+           Faddeeva (complex probability) function of the variable
+           w = u + i a
+           So that F(w) = H(a,u) + i J(a,u) = exp(-w^2) erfc(-iw)
+           Arguments:
+           T0 = delta_v/btherm (velocity difference from the mean)
+           aa: voigt_fac/btherm
+           voigt_fac = gamma * lambda/(4*pi)/1e5 (a property of the line)
+           (note btherm is sqrt(2k T / M))
+           stddev = btherm
+           Normalise so that at x = mean, return amplitude.
+        """
+        #Normalise the input - it is easier than putting constraints on the solvers.
+        aa = 1j*self.voigt_fac/stddev
+        #Wavelength difference from central region
+        midpt = self.nbins//2
+        lambda_diff = (np.arange(0, self.nbins)- midpt)*self.dvbin
+        T0 = lambda_diff / stddev + aa
+        #This is the Fadeeva function
+        fadeeva = np.real(scipy.special.wofz(T0))
+        norm = np.real(scipy.special.wofz(aa))
+        #Note this normalisation means that the profile is normalised to unity at its peak,
+        #rather than having unity integral.
+        profile = fadeeva/norm*amplitude
+        return profile
 
 class Profiles(object):
     """Class to fit a spectrum input (without noise) with a series of profiles, Gaussian or Voigt.
