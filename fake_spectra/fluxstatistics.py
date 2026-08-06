@@ -61,7 +61,7 @@ def _mean_flux_sums(tau, scale, out):
     np.multiply(flux, tau, out=flux)
     return mean_flux, np.sum(flux)
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5, nthreads=None):
+def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
