@@ -174,6 +174,45 @@ def test_hcd_amplitude():
         assert peak_index == 1024
         assert np.abs(fitted / amplitude - 1) < 0.01
 
+def _forest(nbins, seed=7):
+    """A smooth, noiseless forest-like optical depth field with mean tau ~0.4."""
+    rng = np.random.default_rng(seed)
+    kk = np.fft.rfftfreq(nbins)
+    gauss = np.fft.irfft(np.fft.rfft(rng.normal(size=nbins))*np.exp(-0.5*(kk/0.01)**2), nbins)
+    return np.exp(gauss/np.std(gauss) - 1.)
+
+def test_hcd_forest():
+    """Check that absorption blended with the HCD does not bias the fitted amplitude.
+    The envelope estimator is used precisely because a least squares fit is biased
+    high here by a factor of a few: extra absorption is one-sided, so the only way
+    to account for it in a fit is to deepen the profile."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    amplitude = 8e6
+    hcd = prof.profile(prof.btherm, amplitude)
+    #A uniform absorbing floor, and a smoothly varying forest
+    for extra in (0.1, 0.3, 1.0, _forest(nbins)):
+        fitted = prof.iterate_new_spectrum(hcd + extra)[2]
+        assert np.abs(fitted / amplitude - 1) < 0.05
+    #End to end: the forest outside the mask must survive the subtraction intact
+    forest = _forest(nbins)
+    (newtau, mask) = prof.do_hcd_fit(hcd + forest)
+    #The mask should cover the core and not much more
+    assert (hcd > 1).sum() <= mask.sum() < 1.1 * (hcd > 1).sum()
+    #Nothing outside the mask should be over-subtracted down to zero optical depth
+    assert not np.any((newtau[~mask] == 0) & (forest[~mask] > 0.1))
+    assert np.abs(np.mean(np.exp(-newtau[~mask])) / np.mean(np.exp(-forest[~mask])) - 1) < 0.01
+
+def test_hcd_saturated():
+    """Check the fallback for an absorber saturated over the whole spectrum,
+    so that there is no unsaturated shoulder to fit to."""
+    prof = voigtfit.HCDProfiles(64, 5.)
+    amplitude = 1e8
+    tau = prof.profile(prof.btherm, amplitude)
+    #Even the least absorbed pixel in the spectrum is saturated
+    assert np.min(tau) > 100
+    assert np.abs(prof.iterate_new_spectrum(tau)[2] / amplitude - 1) < 0.05
+
 def test_hcd_blended():
     """Check that two blended HCDs are both found, and that a spectrum
     without an HCD is left alone."""

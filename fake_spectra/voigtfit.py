@@ -69,36 +69,44 @@ class HCDProfiles(object):
         assert mask.all() or np.max(newtau[~mask]) < tau_thresh
         return newtau, mask
 
-    def iterate_new_spectrum(self, tau, mask=None):
-        """Fit the largest peak and return a new spectrum with that peak removed."""
-        #Find largest peak in unmasked region
+    def iterate_new_spectrum(self, tau, mask=None, shoulder=(0.5, 50), quantile=5):
+        """Fit the largest peak and return the profile of just that peak.
+
+        The amplitude is estimated as a lower envelope rather than by minimising a
+        residual. Absorption from the forest, from neighbouring systems and from the
+        velocity structure of the HCD itself can only ever add to the optical depth,
+        never subtract from it, so tau/voigt_shape is an upper bound on the amplitude
+        at every pixel and a low quantile of it estimates the amplitude. A least
+        squares fit is instead biased high by a factor of a few, because the only way
+        it can account for the extra absorption is to make the profile deeper.
+
+        mask: pixels to use. Pixels belonging to an already fitted HCD must be
+              excluded, as their optical depth has been subtracted away.
+        shoulder: only use pixels where the optical depth of the profile is in this
+              range. The saturated core carries no information about the amplitude,
+              and the far wings are dominated by whatever else is in the spectrum.
+        quantile: percentile of the ratio to use, in percent.
+        """
         if mask is None:
-            peak_index = np.argmax(tau)
-        else:
-            peak_index = np.argmax(np.where(mask, tau, -np.inf))
-        amplitude = tau[peak_index]
-        #First roll the spectrum to avoid edge effects
+            mask = np.ones_like(tau, dtype=bool)
+        #Find largest peak in unmasked region
+        peak_index = np.argmax(np.where(mask, tau, -np.inf))
+        #First roll the spectrum so that the peak is in the middle, where voigt_shape is centered.
         maxx = (self.nbins//2) - peak_index
         tau_rolled = np.roll(tau, maxx)
-        flux = np.exp(-tau_rolled)
-        #Do the fit for the width
-        optargs = (flux,)
-        result = optimize.minimize_scalar(self.fun_min, bounds=(0.1*amplitude, 5*amplitude), method='bounded', args=optargs)
-        amplitude = result.x
+        mask_rolled = np.roll(mask, maxx)
+        #The peak optical depth is a good enough guess for finding the shoulder,
+        #as the profile is normalised to unity at its peak.
+        seed = tau_rolled[self.nbins//2]
+        shoulder_pix = mask_rolled * (self.voigt_shape * seed > shoulder[0]) * (self.voigt_shape * seed < shoulder[1])
+        #If the absorber is strong enough that it is saturated over the whole spectrum
+        #there is no shoulder: fall back to the least saturated pixels available.
+        if np.sum(shoulder_pix) < 10:
+            shoulder_pix = mask_rolled * (self.voigt_shape <= np.percentile(self.voigt_shape[mask_rolled], 10))
+        amplitude = np.percentile(tau_rolled[shoulder_pix] / self.voigt_shape[shoulder_pix], quantile)
         #Roll it back
         tau_fitted = np.roll(self.voigt_shape * amplitude, -maxx)
         return tau_fitted, peak_index, amplitude
-
-    def fun_min(self, amplitude, flux):
-        """Helper function to pass to scipy.optimise. Computes the differences
-        between the profile and the input spectrum.
-        As each spectrum should be localised, down-weight far-off points.
-        Function is assumed to be already rotated so that the max value is in the middle."""
-        voigt = np.exp(-self.voigt_shape * amplitude)
-        #Minimise the clipped absolute difference
-        fdiff = np.abs(flux - voigt)
-        fdiff[fdiff > 0.1] = 0.1
-        return np.sum(fdiff)
 
     def profile(self, stddev, amplitude):
         """Compute the Voigt profile, which is the real part of the
