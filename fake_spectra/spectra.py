@@ -1268,11 +1268,17 @@ class Spectra:
             scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired)
         mask = np.zeros_like(tau, dtype=bool)
         if tau_thresh is not None:
-            for i, tt in enumerate(tau):
-                mask[i,:] = self._mask_single_tau(tt, tau_thresh=tau_thresh/scale, thresh2=thresh2/scale)
-            assert np.any(~mask)
+            tau_thresh /= scale
+            thresh2 /= scale
+            #Only a sightline containing a strong absorber can be masked at all, and
+            #strong absorbers are rare, so find those sightlines in one vectorised
+            #pass rather than walking every sightline in python.
+            for i in np.nonzero(np.max(tau, axis=1) > tau_thresh)[0]:
+                mask[i,:] = self._mask_single_tau(tau[i], tau_thresh=tau_thresh, thresh2=thresh2)
+            assert not mask.all()
             if mean_flux_desired is not None:
-                scale = fstat.mean_flux(tau[~mask], mean_flux_desired=mean_flux_desired)
+                #Compressing the array is a full copy, so skip it if nothing is masked.
+                scale = fstat.mean_flux(tau[~mask] if mask.any() else tau, mean_flux_desired=mean_flux_desired)
         if mean_flux_desired is not None:
             tau = np.multiply(tau, scale)
             tau[mask] = -np.log(mean_flux_desired)
