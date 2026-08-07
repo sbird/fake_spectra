@@ -378,8 +378,8 @@ class Spectra:
         snr : an array of signal to noise ratio (constant along each sightine)
         flux : an array of spectra (flux)  we want to add noise to
         spec_num : the index to spectra we want to add noise to. Leave it as -1 to add the noise to all spectra.
+        Returns (flux, noise), where noise has the same shape as the flux passed in.
         """
-        noise_array = np.array([])
         lines = 1
         if np.size(np.shape(flux)) > 1:
             lines = np.shape(flux)[0]
@@ -387,13 +387,14 @@ class Spectra:
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
             np.random.seed(42 if spec_num < 0 else spec_num)
-            flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
+            noise_array = np.random.normal(0, 1./snr[spec_num], self.nbins)
+            flux += noise_array
         else:
+            noise_array = np.empty([lines, self.nbins])
             for ii in xrange(lines):
                 np.random.seed(ii)
-                noise = np.random.normal(0, 1./snr[ii], self.nbins)
-                noise_array = np.append(noise_array, noise)
-                flux[ii]+= noise
+                noise_array[ii] = np.random.normal(0, 1./snr[ii], self.nbins)
+                flux[ii] += noise_array[ii]
         return (flux, noise_array)
 
 
@@ -934,19 +935,20 @@ class Spectra:
             self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
             ntau = self.tau_obs[(elem, ion)]
         except KeyError:
-            #Compute tau for each line
+            #Compute tau for each line. compute_spectra is float32, so there is
+            #no point storing this in double: it is the largest array we make.
             nlines = len(self.lines[(elem, ion)])
-            tau = np.zeros([nlines, self.NumLos, self.nbins])
-            for ll in range(nlines):
-                line = list(self.lines[(elem, ion)].keys())[ll]
-                tau_loc = self.compute_spectra(elem, ion, line, True)
-                tau[ll, :, :] = tau_loc
-                del tau_loc
+            tau = np.zeros([nlines, self.NumLos, self.nbins], dtype=np.float32)
             #Maximum tau in each spectra with each line,
             #after convolving with a Gaussian for instrumental broadening.
-            maxtaus = np.max(spec_utils.res_corr(tau, self.dvbin, self.spec_res), axis=-1)
+            #Convolve one line at a time, so we never need a second copy of the whole array.
+            maxtaus = np.empty([nlines, self.NumLos])
+            for ll in range(nlines):
+                line = list(self.lines[(elem, ion)].keys())[ll]
+                tau[ll, :, :] = self.compute_spectra(elem, ion, line, True)
+                maxtaus[ll, :] = np.max(spec_utils.res_corr(tau[ll], self.dvbin, self.spec_res), axis=-1)
             #Array for line indices
-            ntau = np.empty([self.NumLos, self.nbins])
+            ntau = np.empty([self.NumLos, self.nbins], dtype=np.float32)
             #Use the maximum unsaturated optical depth
             for ii in xrange(self.NumLos):
                 # we want unsaturated lines, defined as those with tau < 3
