@@ -139,7 +139,7 @@ def calculator(H0, Omega_M, zz):
     a = np.logspace(np.log10(az), 0, n)
     a2H = a*a*np.sqrt(Omega_M/a**3+WR/(a**4)+WV)
     #Comoving distance
-    DCMR = np.trapz(1./a2H, a)
+    DCMR = np.trapezoid(1./a2H, a)
     #In Mpc
     DC_Mpc = (light/H0) * DCMR
     # angular size distance In Mpc

@@ -840,7 +840,7 @@ class Spectra:
         #lambda in Angstroms, dvbin in km/s,
         #so dl is in Angstrom
         dl = self.dvbin / light * line
-        eq_width = np.trapz(-np.expm1(-tau), dx=dl, axis=1)
+        eq_width = np.trapezoid(-np.expm1(-tau), dx=dl, axis=1)
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
 
@@ -1176,7 +1176,7 @@ class Spectra:
         #H0 in 1/s units
         h100 = self.units.h100*self.hubble
         #The 1+z factor converts lightspeed to comoving
-        omega_abs = self.lines.get_mass(elem)*self.units.protonmass/self.units.light*h100/self.units.rho_crit(self.hubble)*np.trapz(moment, bins)
+        omega_abs = self.lines.get_mass(elem)*self.units.protonmass/self.units.light*h100/self.units.rho_crit(self.hubble)*np.trapezoid(moment, bins)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem="H", ion=1):
