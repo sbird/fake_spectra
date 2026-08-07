@@ -58,7 +58,7 @@ class HCDProfiles(object):
                 break
             #This divides out the wings and returns a new spectrum.
             (tau_fitted, peak_index, amplitude) = self.iterate_new_spectrum(newtau, mask=~mask)
-            #print("Fit out:", peak_index, amplitude)
+            #print("Fit out:", peak_index, amplitude/np.max(tau_local))
             #We only want to fit to regions that are not already saturated in the fit.
             mask |= (tau_fitted > masktau)
             #Subtract the Voigt profile
@@ -69,23 +69,20 @@ class HCDProfiles(object):
         assert mask.all() or np.max(newtau[~mask]) < tau_thresh
         return newtau, mask
 
-    def iterate_new_spectrum(self, tau, mask=None, shoulder=(0.5, 50), quantile=5):
-        """Fit the largest peak and return the profile of just that peak.
+    def iterate_new_spectrum(self, tau, mask=None, window=0.5):
+        """Fit the largest peak and return the spectrum with the profile of the peak subtracted.
 
-        The amplitude is estimated as a lower envelope rather than by minimising a
-        residual. Absorption from the forest, from neighbouring systems and from the
-        velocity structure of the HCD itself can only ever add to the optical depth,
-        never subtract from it, so tau/voigt_shape is an upper bound on the amplitude
-        at every pixel and a low quantile of it estimates the amplitude. A least
-        squares fit is instead biased high by a factor of a few, because the only way
-        it can account for the extra absorption is to make the profile deeper.
+        We try to estimate the amplitude of the profile using the sum of the optical depth over
+        a profile window. The sum is used because it is independent of the internal absorber
+        structure.
 
-        mask: pixels to use. Pixels belonging to an already fitted HCD must be
+        A least squares fit to the flux is biased high by a factor of a few, as extra absorption
+        is one-sided and the only way a fit can account for it is to deepen the profile.
+
+        mask: pixels to use. Pixels belonging to an already fitted HCD should be
               excluded, as their optical depth has been subtracted away.
-        shoulder: only use pixels where the optical depth of the profile is in this
-              range. The saturated core carries no information about the amplitude,
-              and the far wings are dominated by whatever else is in the spectrum.
-        quantile: percentile of the ratio to use, in percent.
+        window: integrate over the pixels where the optical depth of the profile
+              exceeds this value, thus excluding other absorbers.
         """
         if mask is None:
             mask = np.ones_like(tau, dtype=bool)
@@ -95,15 +92,16 @@ class HCDProfiles(object):
         maxx = (self.nbins//2) - peak_index
         tau_rolled = np.roll(tau, maxx)
         mask_rolled = np.roll(mask, maxx)
-        #The peak optical depth is a good enough guess for finding the shoulder,
-        #as the profile is normalised to unity at its peak.
-        seed = tau_rolled[self.nbins//2]
-        shoulder_pix = mask_rolled * (self.voigt_shape * seed > shoulder[0]) * (self.voigt_shape * seed < shoulder[1])
-        #If the absorber is strong enough that it is saturated over the whole spectrum
-        #there is no shoulder: fall back to the least saturated pixels available.
-        if np.sum(shoulder_pix) < 10:
-            shoulder_pix = mask_rolled * (self.voigt_shape <= np.percentile(self.voigt_shape[mask_rolled], 10))
-        amplitude = np.percentile(tau_rolled[shoulder_pix] / self.voigt_shape[shoulder_pix], quantile)
+        #Start from the whole spectrum, then iterate to place the window.
+        amplitude = np.sum(tau_rolled[mask_rolled]) / np.sum(self.voigt_shape[mask_rolled])
+        #Converges immediately in practice, as the integral is insensitive to the exact window.
+        for _ in range(4):
+            wpix = mask_rolled * (self.voigt_shape * amplitude > window)
+            #Too little of the profile is in the spectrum to place a window:
+            #keep the estimate from the wider region.
+            if np.sum(wpix) < 3:
+                break
+            amplitude = np.sum(tau_rolled[wpix]) / np.sum(self.voigt_shape[wpix])
         #Roll it back
         tau_fitted = np.roll(self.voigt_shape * amplitude, -maxx)
         return tau_fitted, peak_index, amplitude

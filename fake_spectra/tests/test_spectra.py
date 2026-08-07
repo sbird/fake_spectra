@@ -183,9 +183,10 @@ def _forest(nbins, seed=7):
 
 def test_hcd_forest():
     """Check that absorption blended with the HCD does not bias the fitted amplitude.
-    The envelope estimator is used precisely because a least squares fit is biased
-    high here by a factor of a few: extra absorption is one-sided, so the only way
-    to account for it in a fit is to deepen the profile."""
+    The integral of the forest over a spectrum is negligible next to that of an HCD.
+    A least squares fit is instead biased high here by a factor of a few: extra
+    absorption is one-sided, so the only way a fit can account for it is to deepen
+    the profile."""
     nbins = 2048
     prof = voigtfit.HCDProfiles(nbins, 5.)
     amplitude = 8e6
@@ -193,7 +194,7 @@ def test_hcd_forest():
     #A uniform absorbing floor, and a smoothly varying forest
     for extra in (0.1, 0.3, 1.0, _forest(nbins)):
         fitted = prof.iterate_new_spectrum(hcd + extra)[2]
-        assert np.abs(fitted / amplitude - 1) < 0.05
+        assert np.abs(fitted / amplitude - 1) < 0.01
     #End to end: the forest outside the mask must survive the subtraction intact
     forest = _forest(nbins)
     (newtau, mask) = prof.do_hcd_fit(hcd + forest)
@@ -204,14 +205,28 @@ def test_hcd_forest():
     assert np.abs(np.mean(np.exp(-newtau[~mask])) / np.mean(np.exp(-forest[~mask])) - 1) < 0.01
 
 def test_hcd_saturated():
-    """Check the fallback for an absorber saturated over the whole spectrum,
-    so that there is no unsaturated shoulder to fit to."""
+    """Check an absorber saturated over the whole spectrum, so that the window
+    cannot be placed inside it."""
     prof = voigtfit.HCDProfiles(64, 5.)
     amplitude = 1e8
     tau = prof.profile(prof.btherm, amplitude)
     #Even the least absorbed pixel in the spectrum is saturated
     assert np.min(tau) > 100
     assert np.abs(prof.iterate_new_spectrum(tau)[2] / amplitude - 1) < 0.05
+
+def test_hcd_components():
+    """Check that a system whose column density is spread over several components is
+    recovered in full. The peak optical depth badly under-represents such a system,
+    but the integrated optical depth is unchanged by velocity structure."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    total = 8e6
+    for (ncomp, sep) in ((3, 40), (5, 30), (3, 100)):
+        tau = np.sum([np.roll(prof.profile(prof.btherm, total/ncomp), (i - ncomp//2)*sep)
+                      for i in range(ncomp)], axis=0)
+        #The peak is only a fraction of the total column
+        assert np.max(tau) < 0.4 * total
+        assert np.abs(prof.iterate_new_spectrum(tau)[2] / total - 1) < 0.01
 
 def test_hcd_blended():
     """Check that two blended HCDs are both found, and that a spectrum
