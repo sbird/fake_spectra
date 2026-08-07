@@ -1395,7 +1395,7 @@ class Spectra:
         ind_break_spacing = int(np.round(ini_break_spacing/vel_stepsize))
 
         all_spline_flux = np.zeros(flux_i.shape)
-        for j in range(self.NumLos):
+        for j in range(flux_i.shape[0]):
 
             flux = flux_i[j] # flux for current sight line
 
