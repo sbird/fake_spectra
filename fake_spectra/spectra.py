@@ -547,8 +547,13 @@ class Spectra:
         # print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self, fn, elem, ion, get_tau):
-        """Read the particle data for a single interpolation"""
+    def _read_particle_data(self, fn, elem, ion, get_tau, get_species_den=False):
+        """Read the particle data for a single interpolation.
+        If get_species_den is True, an extra array is returned containing the density of
+        this element in all ionisation states. It is on the same (filtered) particles as
+        the ionic density, so the two can be multiplied together."""
+        #Sentinel returned when there is nothing near a sightline.
+        empty = (False, False, False, False, False, False) + ((False,) if get_species_den else ())
         pos = self.snapshot_set.get_data(0, "Position", segment=fn).astype(np.float32)
         hh = self.snapshot_set.get_smooth_length(0, segment=fn).astype(np.float32)
 
@@ -563,7 +568,7 @@ class Spectra:
             ind = self.particles_near_lines(pos, hh, self.axis, self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
-            return (False, False, False, False, False, False)
+            return empty
         pos = pos[ind, :]
         hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
@@ -591,15 +596,19 @@ class Spectra:
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^3 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
         elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, ind)
+        #At this point elem_den is the density in all ionisation states of this element.
+        species_den = None
         #Special case H1:
         if elem == 'H' and ion == 1:
+            if get_species_den:
+                species_den = elem_den/amumass
             # Neutral hydrogen mass frac
             elem_den *= (self.gasprop.get_reproc_HI(0, segment=fn)[ind]).astype(np.float32)
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
             if np.size(ind2) == 0:
-                return (False, False, False, False, False, False)
+                return empty
             #Shrink arrays: we don't want to interpolate particles
             #with no mass in them
             temp = temp[ind2]
@@ -607,6 +616,9 @@ class Spectra:
             hh = hh[ind2]
             if get_tau:
                 vel = vel[ind2]
+            #Note this must be taken on the same particles as the ionic density below.
+            if get_species_den:
+                species_den = elem_den[ind2]/amumass
             elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, ind, ind2)
             del ind2
         #Get rid of ind so we have some memory for the interpolator
@@ -614,6 +626,11 @@ class Spectra:
         #Put density into number density of particles, from amu
         elem_den /= amumass
         #Do interpolation.
+        if get_species_den:
+            #For ion == -1 the ionic density is the species density.
+            if species_den is None:
+                species_den = elem_den
+            return (pos, vel, elem_den, temp, hh, amumass, species_den)
         return (pos, vel, elem_den, temp, hh, amumass)
 
     def find_all_particles(self):
@@ -1019,10 +1036,11 @@ class Spectra:
 
     def _densweightdens(self, fn, elem, ion):
         """Get the density weighted interpolated density field for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion, True)
+        #The species density must be on the same particles as the ionic density,
+        #so ask for both from a single read.
+        (pos, vel, elem_den, temp, hh, amumass, species_den) = self._read_particle_data(fn, elem, ion, True, get_species_den=True)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
-        (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1, True)
         line = self.lines[("H", 1)][1215]
         phys = np.float32(self.dvbin/self.velfac*self.rscale)
         dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/self.rscale), temp, hh, amumass, line, False)
