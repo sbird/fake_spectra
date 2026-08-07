@@ -377,17 +377,16 @@ class Spectra:
         Parameters:
         snr : an array of signal to noise ratio (constant along each sightine)
         flux : an array of spectra (flux)  we want to add noise to
-        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        spec_num : the index to spectra we want to add noise to. Leave it as -1 to add the noise to all spectra.
         """
         noise_array = np.array([])
-        if np.size(np.shape(flux)) == 1:
-            lines = 1
-        else:
+        lines = 1
+        if np.size(np.shape(flux)) > 1:
             lines = np.shape(flux)[0]
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            np.random.seed(spec_num)
+            np.random.seed(42 if spec_num < 0 else spec_num)
             flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
         else:
             for ii in xrange(lines):
@@ -408,14 +407,13 @@ class Spectra:
         spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
         u_delta, l_delta : upper and lower limit of the delta parameter
         """
-        if np.size(np.shape(flux)) == 1:
-            lines = 1
-        else:
+        lines = 1
+        if np.size(np.shape(flux)) > 1:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
-            np.random.seed(2*spec_num)
+            np.random.seed(2*(85 if spec_num < 0 else spec_num+1))
             delta = np.random.normal(0, CE[spec_num])
             # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
             while (delta < l_delta) or (delta > u_delta):
@@ -424,7 +422,7 @@ class Spectra:
         else:
             delta = np.empty(lines)
             for ii in xrange(lines):
-                np.random.seed(2*ii)
+                np.random.seed(2*ii+1)
                 delta[ii] = np.random.normal(0, CE[ii])
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
@@ -499,6 +497,12 @@ class Spectra:
                 else:
                     self.Hz = None
 
+    def _need_temp(self, elem, ion, get_tau):
+        """Do we need to load the temperature? It is used for the line width when computing tau,
+        and by the cloudy table for every ion except the HI special case, which has its own
+        neutral fraction. Note H is not special for ions other than HI."""
+        return get_tau or (ion != -1 and not (elem == 'H' and ion == 1))
+
     def _interpolate_single_file(self, nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion, get_tau)
@@ -520,7 +524,7 @@ class Spectra:
                     if get_tau:
                         vel = np.concatenate((vel, vel_), axis=0)
                     elem_den = np.append(elem_den, elem_den_)
-                    if get_tau or (ion != -1 and elem != 'H'):
+                    if self._need_temp(elem, ion, get_tau):
                         temp = np.append(temp, temp_)
                     hh = np.append(hh, hh_)
                 amumass = amumass_
@@ -587,7 +591,7 @@ class Spectra:
             amumass = 1
         den = den[ind]
         #Only need temp for ionic density, and tau later
-        if get_tau or (ion != -1 and elem != 'H'):
+        if self._need_temp(elem, ion, get_tau):
             temp = self.gasprop.get_temp(0, segment=fn).astype(np.float32)
             temp = temp[ind]
             #Some codes occasionally output negative temperatures, fix them
