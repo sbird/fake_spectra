@@ -165,6 +165,9 @@ class Spectra:
         if reload_file:
             if not quiet:
                 print("Reloading from snapshot (will save to: ", self.savefile, " )", flush=True)
+            #Check this before converting, or we just get an AttributeError.
+            if cofm is None or axis is None:
+                raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -172,8 +175,6 @@ class Spectra:
             if np.shape(axis) == ():
                 axis = np.array([axis])
             self.axis = axis.astype(np.int32)
-            if cofm is None or axis is None:
-                raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
             try:
                 self.npart = self.snapshot_set.get_npart()
                 #If we got here without a snapshot_set, we really have an IOError
