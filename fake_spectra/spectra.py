@@ -507,27 +507,27 @@ class Spectra:
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion, get_tau)
         if load_all_data_first:
+            #Accumulate the segments and join them once at the end: appending to an array
+            #inside the loop recopies everything read so far for each new segment.
+            #Segments with no particles near a sightline are simply not collected.
+            segments = [] if amumass is False else [(pos, vel, elem_den, temp, hh)]
             for nseg in range(1, self.snapshot_set.get_n_segments()):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
-                # We cannot concatenate onto empty arrays,
-                #so if the first segment contained no particles we must rename
-                if amumass is False:
-                    pos = pos_
-                    vel = vel_
-                    temp = temp_
-                    elem_den = elem_den_
-                    hh = hh_
-                else:
-                    pos = np.concatenate((pos, pos_), axis=0)
-                    if get_tau:
-                        vel = np.concatenate((vel, vel_), axis=0)
-                    elem_den = np.append(elem_den, elem_den_)
-                    if self._need_temp(elem, ion, get_tau):
-                        temp = np.append(temp, temp_)
-                    hh = np.append(hh, hh_)
+                segments.append((pos_, vel_, elem_den_, temp_, hh_))
                 amumass = amumass_
+            if amumass is not False:
+                pos = np.concatenate([seg[0] for seg in segments], axis=0)
+                elem_den = np.concatenate([seg[2] for seg in segments])
+                hh = np.concatenate([seg[4] for seg in segments])
+                #Velocity and temperature are dummies unless we asked for them:
+                #in that case keep the dummy from the first segment we kept.
+                vel = np.concatenate([seg[1] for seg in segments], axis=0) if get_tau else segments[0][1]
+                if self._need_temp(elem, ion, get_tau):
+                    temp = np.concatenate([seg[3] for seg in segments])
+                else:
+                    temp = segments[0][3]
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
         if get_tau:
@@ -641,14 +641,18 @@ class Spectra:
     def find_all_particles(self):
         """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
         nsegments = self.snapshot_set.get_n_segments()
-        pp = np.empty([0, 3])
-        hhh = np.array([])
+        #Join once at the end, and do not start from a float64 empty array,
+        #which would upcast the whole thing.
+        pp = []
+        hhh = []
         for i in range(nsegments):
             (pos, _, _, _, hh, amumass) = self._read_particle_data(i, "H", -1, False)
             if amumass is not False:
-                pp = np.concatenate([pp, pos])
-                hhh = np.concatenate([hhh, hh])
-        return pp, hhh
+                pp.append(pos)
+                hhh.append(hh)
+        if len(pp) == 0:
+            return (np.empty([0, 3], dtype=np.float32), np.empty(0, dtype=np.float32))
+        return (np.concatenate(pp), np.concatenate(hhh))
 
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Get a filtered list of particles to add to the sightlines"""
@@ -1556,16 +1560,15 @@ class Spectra:
             section_size = self.box
         # renormalize in section_size chunks (i.e. divide spectra and normalize)
         flux_sections = self.renormalize_flux(flux, section_size)
-
+        nonzeroflux_sections = flux_sections[flux_sections > 0]
         # rescale the renormalized sections
         # tau should be nearly all the optical depths (minus where flux <= 0)
-        tau = -np.log(flux_sections[np.where(flux_sections > 0)])
+        tau = -np.log(nonzeroflux_sections)
         # get the scaling factor
         scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)))
         # scale the positive flux
         # non-positive flux will be removed in the call to compute_curvature
-        flux_sections[np.where(flux_sections > 0)] = flux_sections[np.where(flux_sections > 0)]**scale
-
+        flux_sections[flux_sections > 0] = nonzeroflux_sections**scale
         # compute mean absolute curvature for each rescaled, renormalized section
         curvature = self.compute_curvature(flux_sections)
 
