@@ -228,6 +228,68 @@ def test_hcd_components():
         assert np.max(tau) < 0.4 * total
         assert np.abs(prof.iterate_new_spectrum(tau)[2] / total - 1) < 0.01
 
+def test_hcd_pair():
+    """Check that two absorbers blended inside the same window are resolved into
+    separate profiles. A single symmetric profile lumps their column densities
+    together at the position of the stronger one, and so over-predicts the far wing."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    mask = np.ones(nbins, dtype=bool)
+    for (sep, second) in ((30, 3e6), (60, 3e6), (150, 8e5), (200, 3e6)):
+        shapes = [prof.shape_at(nbins//2), prof.shape_at(nbins//2 + sep)]
+        tau = 8e6*shapes[0] + second*shapes[1]
+        amps = prof.fit_components(tau, mask, shapes, 0.5)
+        assert np.abs(amps[0]/8e6 - 1) < 0.01
+        assert np.abs(amps[1]/second - 1) < 0.01
+        #The total column density is recovered whether or not the pair is resolved
+        assert np.abs(prof.iterate_new_spectrum(tau)[2]/(8e6 + second) - 1) < 0.01
+
+def test_hcd_neighbour():
+    """Check that an absorber outside the window is left for a later iteration:
+    its column density must not be counted as part of this one."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    amplitude = 8e6
+    hcd = amplitude*prof.shape_at(nbins//2)
+    for sep in (400, 800):
+        tau = hcd + 3e6*prof.shape_at(nbins//2 + sep)
+        (fitted, _, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/amplitude - 1) < 0.01
+        #and the fitted profile is a single one, centred on this absorber
+        assert np.max(np.abs(fitted - amplitude*prof.shape_at(nbins//2))) < 0.01 * amplitude
+
+def test_hcd_notsplit():
+    """Check that a single absorber in the forest is not spuriously split in two."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    for amplitude in (1e6, 8e6, 5e7):
+        tau = amplitude*prof.shape_at(nbins//2) + _forest(nbins)
+        (fitted, _, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/amplitude - 1) < 0.01
+        assert np.max(np.abs(fitted - amp*prof.shape_at(nbins//2))) < 0.01 * amplitude
+
+def test_hcd_recentre():
+    """Check that a profile is centred on the bulk of the absorption rather than on the
+    peak pixel. An absorber with internal velocity structure has its peak away from its
+    centroid, and a profile centred on the peak over-predicts the wing on the far side."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    mask = np.ones(nbins, dtype=bool)
+    #A lopsided absorber: a strong narrow peak with a weaker shoulder to one side.
+    tau = 6e6*prof.shape_at(nbins//2) + 2e6*prof.shape_at(nbins//2 - 20) + 2e6*prof.shape_at(nbins//2 - 40)
+    assert np.argmax(tau) == nbins//2
+    (centres, amps) = prof.fit_profiles(tau, mask, [nbins//2], 0.5)
+    #The centre moves blueward, towards the bulk of the column density
+    assert centres[0] < nbins//2
+    #and the profile must not over-predict the optical depth in either damping wing
+    fitted = amps[0]*prof.shape_at(centres[0])
+    dvel = np.abs(np.arange(nbins) - nbins//2)*5.
+    wings = (dvel > 500) & (dvel < 3000)
+    assert not np.any(fitted[wings] > tau[wings])
+    #A symmetric absorber is not moved at all
+    tau = 6e6*prof.shape_at(nbins//2) + 2e6*prof.shape_at(nbins//2 - 20) + 2e6*prof.shape_at(nbins//2 + 20)
+    assert prof.fit_profiles(tau, mask, [nbins//2], 0.5)[0] == [nbins//2]
+
 def test_hcd_blended():
     """Check that two blended HCDs are both found, and that a spectrum
     without an HCD is left alone."""
