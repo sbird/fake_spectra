@@ -716,19 +716,23 @@ class Spectra:
         Keep track of the number discarded in self.discarded.
         Must implement get_cofm for this to work
         """
+        #We only replace sightlines, we cannot invent new axes for extra ones.
+        if ndla > self.NumLos:
+            raise ValueError("Cannot find more absorbers (%d) than there are sightlines (%d)" % (ndla, self.NumLos))
         #Declare variables
         found = 0
         wanted = ndla
-        cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
+        cofm_DLA = np.empty([ndla, np.shape(self.cofm)[1]], dtype=self.cofm.dtype)
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem, ion, 1215, False)
         ind = self.filter_DLA(col_den, thresh)
-        H1_DLA = np.empty_like(col_den)
+        #Note this is indexed by absorber, not by sightline, so it has ndla rows.
+        H1_DLA = np.empty([ndla, np.shape(col_den)[1]], dtype=col_den.dtype)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
-        cofm_DLA[found:top] = self.cofm[ind][:top, :]
-        H1_DLA[found:top] = col_den[ind][:top, :]
+        cofm_DLA[found:top] = self.cofm[ind][:top-found, :]
+        H1_DLA[found:top] = col_den[ind][:top-found, :]
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
         print("Discarded: ", self.discarded)
@@ -745,11 +749,12 @@ class Spectra:
             self.discarded += self.NumLos-np.size(ind)
             print("Discarded: ", self.discarded)
         #Correct proportions in case we find slightly more than we need
-        self.discarded = int(self.discarded*1.*wanted/1./found)
+        if found > 0:
+            self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
         self.cofm = cofm_DLA
         self.axis = self.axis[:ndla]
-        self.colden[("H", 1)] = H1_DLA[:top]
+        self.colden[(elem, ion)] = H1_DLA
         #Finalise the cofm array
         self.cofm_final = True
         self.NumLos = ndla
@@ -1122,14 +1127,17 @@ class Spectra:
         tot_f_N = tot_f_N/(width*dist*tot_lines)
         return (center, tot_f_N)
 
-    def _rho_abs(self, thresh=10**20.3, upthresh=None, elem="H", ion=1):
+    def _rho_abs(self, thresh=10**20.3, upthresh=np.inf, elem="H", ion=1):
         """Compute rho_abs, the sum of the mass in an absorber,
            divided by the volume of the spectra in g/cm^3 (comoving).
             Omega_DLA = m_p * avg. column density / (1+z)^2 / length of column
         """
+        #None means no upper threshold
+        if upthresh is None:
+            upthresh = np.inf
         #Column density of ion in atoms cm^-2 (physical)
         col_den = np.sum(self.get_col_density(elem, ion), axis=1)
-        if thresh > 0 or upthresh is not None:
+        if thresh > 0 or np.isfinite(upthresh):
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
