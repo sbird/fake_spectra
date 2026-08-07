@@ -559,8 +559,10 @@ class Spectra:
         the ionic density, so the two can be multiplied together."""
         #Sentinel returned when there is nothing near a sightline.
         empty = (False, False, False, False, False, False) + ((False,) if get_species_den else ())
-        pos = self.snapshot_set.get_data(0, "Position", segment=fn).astype(np.float32)
-        hh = self.snapshot_set.get_smooth_length(0, segment=fn).astype(np.float32)
+        #These two are needed in full to find the particles near a sightline,
+        #so all we can do is avoid a copy if they are float32 already.
+        pos = self.snapshot_set.get_data(0, "Position", segment=fn).astype(np.float32, copy=False)
+        hh = self.snapshot_set.get_smooth_length(0, segment=fn).astype(np.float32, copy=False)
 
         #Find particles we care about
         if self.cofm_final:
@@ -576,24 +578,22 @@ class Spectra:
             return empty
         pos = pos[ind, :]
         hh = hh[ind]
-        #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
+        #Get the rest of the arrays: reducing them each time to have a smaller memory footprint.
+        #Note we index before converting, so that we never convert a whole snapshot block.
         vel = np.zeros(1, dtype=np.float32)
         temp = np.zeros(1, dtype=np.float32)
         if get_tau:
-            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn).astype(np.float32)
-            vel = vel[ind, :]
+            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)[ind, :].astype(np.float32)
         #gas density amu / cm^3
-        den = self.gasprop.get_code_rhoH(0, segment=fn).astype(np.float32)
+        den = self.gasprop.get_code_rhoH(0, segment=fn)[ind].astype(np.float32)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
         else:
             amumass = 1
-        den = den[ind]
         #Only need temp for ionic density, and tau later
         if self._need_temp(elem, ion, get_tau):
-            temp = self.gasprop.get_temp(0, segment=fn).astype(np.float32)
-            temp = temp[ind]
+            temp = self.gasprop.get_temp(0, segment=fn)[ind].astype(np.float32)
             #Some codes occasionally output negative temperatures, fix them
             it = np.where(temp <= 0)
             temp[it] = 1
@@ -714,21 +714,21 @@ class Spectra:
             ind = index of particles we care about
         Returns mass_frac - mass fraction of this ion
         """
+        #Note we take the particles (and the species) we want before converting,
+        #so that we never convert a whole snapshot block.
         if elem == "Z":
-            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn).astype(np.float32)
+            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)[ind].astype(np.float32)
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
             try:
-                mass_frac = (self.snapshot_set.get_data(0, "GFM_Metals", segment=fn).astype(np.float32))[:, nelem]
+                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[ind, nelem].astype(np.float32)
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24], dtype=np.float32)
-                nvalues = self.snapshot_set.get_blocklen(0, "Density", segment=fn)
-                mass_frac = metal_abund[nelem]*np.ones(nvalues, dtype=np.float32)
-        mass_frac = mass_frac[ind]
+                mass_frac = metal_abund[nelem]*np.ones(np.size(ind), dtype=np.float32)
         #Deal with floating point roundoff - mass_frac will sometimes be negative
-        mass_frac[np.where(mass_frac <= 0)] = 0
+        mass_frac[mass_frac <= 0] = 0
         assert mass_frac.dtype == np.float32
         return mass_frac
 
