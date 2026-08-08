@@ -56,14 +56,13 @@ class HCDProfiles(object):
         for j in range(0, 10):
             if mask.all() or np.max(newtau[~mask]) < tau_thresh:
                 break
-            #This divides out the wings and returns a new spectrum.
-            (tau_fitted, peak_index, amplitude) = self.iterate_new_spectrum(newtau, mask=~mask)
-            #print("Fit out:", peak_index, amplitude/np.max(tau_local))
+            #This fits the largest DLA wings and returns a new spectrum.
+            (tau_fitted, amplitude) = self.iterate_new_spectrum(newtau, mask=~mask)
             #We only want to fit to regions that are not already saturated in the fit.
             mask |= (tau_fitted > masktau)
             #Subtract the Voigt profile
             newtau = newtau - tau_fitted
-            #Noramlise away anything that ends up slightly negative
+            #Normalise away anything that ends up slightly negative
             newtau[newtau < 0] = 0
         #Fit did not converge
         assert mask.all() or np.max(newtau[~mask]) < tau_thresh
@@ -176,18 +175,22 @@ class HCDProfiles(object):
         #Not enough of the profile in the spectrum to place a window at all.
         if amps is None:
             (centres, amps) = ([peak_index], np.array([amplitude]))
+        #Compute the first profile.
+        tau_fitted = amps[0] * self.shape_at(centres[0])
+
         #Look for a second peak inside the window of the first.
         offset = (np.arange(self.nbins) - centres[0] + self.nbins//2) % self.nbins - self.nbins//2
-        second = mask * (self.shape_at(centres[0])*amps[0] > window) * (np.abs(offset)*self.dvbin > minsep)
+        second = mask * (tau_fitted > window) * (np.abs(offset)*self.dvbin > minsep)
         if np.any(second):
-            newc = centres + [int(np.argmax(np.where(second, tau, -np.inf)))]
+            newc = centres + [np.argmax(np.where(second, tau, -np.inf))]
             (newc, newamps) = self.fit_profiles(tau, mask, newc, window)
             #A second profile which is shallower than the window, or which holds a
             #negligible part of the column density, is not worth fitting.
             if newamps is not None and np.min(newamps) > max(window, secfrac*np.max(newamps)):
+                tau_fitted = np.sum([a * self.shape_at(c) for (a, c) in zip(newamps, newc)], axis=0)
                 (centres, amps) = (newc, newamps)
-        tau_fitted = np.sum([a*self.shape_at(cc) for (a, cc) in zip(amps, centres)], axis=0)
-        return tau_fitted, peak_index, np.sum(amps)
+        #print("Centers:",centres, " Amps:",amps)
+        return tau_fitted, np.sum(amps)
 
     def profile(self, stddev, amplitude):
         """Compute the Voigt profile, which is the real part of the

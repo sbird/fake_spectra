@@ -170,8 +170,7 @@ def test_hcd_amplitude():
     prof = voigtfit.HCDProfiles(2048, 5.)
     for amplitude in (1e6, 5e6, 1e7, 1e8):
         tau = prof.profile(prof.btherm, amplitude)
-        (_, peak_index, fitted) = prof.iterate_new_spectrum(tau)
-        assert peak_index == 1024
+        (_, fitted) = prof.iterate_new_spectrum(tau)
         assert np.abs(fitted / amplitude - 1) < 0.01
 
 def _forest(nbins, seed=7):
@@ -193,8 +192,8 @@ def test_hcd_forest():
     hcd = prof.profile(prof.btherm, amplitude)
     #A uniform absorbing floor, and a smoothly varying forest
     for extra in (0.1, 0.3, 1.0, _forest(nbins)):
-        fitted = prof.iterate_new_spectrum(hcd + extra)[2]
-        assert np.abs(fitted / amplitude - 1) < 0.01
+        (fitted, amp) = prof.iterate_new_spectrum(hcd + extra)
+        assert np.abs(amp / amplitude - 1) < 0.01
     #End to end: the forest outside the mask must survive the subtraction intact
     forest = _forest(nbins)
     (newtau, mask) = prof.do_hcd_fit(hcd + forest)
@@ -212,7 +211,8 @@ def test_hcd_saturated():
     tau = prof.profile(prof.btherm, amplitude)
     #Even the least absorbed pixel in the spectrum is saturated
     assert np.min(tau) > 100
-    assert np.abs(prof.iterate_new_spectrum(tau)[2] / amplitude - 1) < 0.05
+    (fitted, amp) = prof.iterate_new_spectrum(tau)
+    assert np.abs(amp / amplitude - 1) < 0.05
 
 def test_hcd_components():
     """Check that a system whose column density is spread over several components is
@@ -226,7 +226,8 @@ def test_hcd_components():
                       for i in range(ncomp)], axis=0)
         #The peak is only a fraction of the total column
         assert np.max(tau) < 0.4 * total
-        assert np.abs(prof.iterate_new_spectrum(tau)[2] / total - 1) < 0.01
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp / total - 1) < 0.01
 
 def test_hcd_pair():
     """Check that two absorbers blended inside the same window are resolved into
@@ -242,7 +243,8 @@ def test_hcd_pair():
         assert np.abs(amps[0]/8e6 - 1) < 0.01
         assert np.abs(amps[1]/second - 1) < 0.01
         #The total column density is recovered whether or not the pair is resolved
-        assert np.abs(prof.iterate_new_spectrum(tau)[2]/(8e6 + second) - 1) < 0.01
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/(8e6 + second) - 1) < 0.01
 
 def test_hcd_neighbour():
     """Check that an absorber outside the window is left for a later iteration:
@@ -253,7 +255,7 @@ def test_hcd_neighbour():
     hcd = amplitude*prof.shape_at(nbins//2)
     for sep in (400, 800):
         tau = hcd + 3e6*prof.shape_at(nbins//2 + sep)
-        (fitted, _, amp) = prof.iterate_new_spectrum(tau)
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
         assert np.abs(amp/amplitude - 1) < 0.01
         #and the fitted profile is a single one, centred on this absorber
         assert np.max(np.abs(fitted - amplitude*prof.shape_at(nbins//2))) < 0.01 * amplitude
@@ -264,7 +266,7 @@ def test_hcd_notsplit():
     prof = voigtfit.HCDProfiles(nbins, 5.)
     for amplitude in (1e6, 8e6, 5e7):
         tau = amplitude*prof.shape_at(nbins//2) + _forest(nbins)
-        (fitted, _, amp) = prof.iterate_new_spectrum(tau)
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
         assert np.abs(amp/amplitude - 1) < 0.01
         assert np.max(np.abs(fitted - amp*prof.shape_at(nbins//2))) < 0.01 * amplitude
 
