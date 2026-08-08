@@ -1253,52 +1253,24 @@ class Spectra:
             spos = cofm[:, :2]
         return spos
 
-    def _mask_single_tau(self, tau_spec, tau_thresh=1e6, thresh2=0.2):
-        """Create a mask for the DLA regions from a single spectrum.
-        The algorithm is the same as Chabanier 2019.
-        We find each DLA, identified using a maximum optical depth cut (tau_thresh).
-        We then mask pixels in the contiguous region around the DLA as long as the absorption is larger than
-        a secondary threshold, thresh2.
-
-        Arguments: tau_spec: optical depth array from a single spectrum.
-        tau_thresh: optical depth threshold at which to enable filtering.
-        thresh2: threshold for masking the DLA pixels.
-        Returns: mask 1 for masked pixels, 0 for retained.
-        """
-        #Masking algorithm in the paper:
-        #'Specifically, we mask all DLA pixels where the transmitted flux decreases by 20% or more
-        #and correct the transmitted flux of the remaining DLA pixels using a Voigt profile.' (2503.14741)
-        #We do not attempt the correction, we just mask a wide region. We have checked our answer is insensitive to the region masked.
-        mask = np.zeros_like(tau_spec, dtype=bool)
-        tt = np.array(tau_spec)
-        while np.max(tt) > tau_thresh:
-            maxx = np.argmax(tt)
-#             print("m %g, w %d" % (np.max(tt), maxx))
-            for j in range(0, self.nbins):
-                #Note python indexing means no need to deal with periodicity
-                if tt[maxx-j] <= thresh2:
-                    break
-                mask[maxx-j] = True
-                tt[maxx-j] = 0
-            for j in range(1, self.nbins):
-                ind = maxx + j
-                if ind >= self.nbins:
-                    ind -= self.nbins
-                if tt[ind] <= thresh2:
-                    break
-                mask[ind] = True
-                tt[ind] = 0
-        return mask
-
-    def _filter_tau_rescale(self, tau, tau_thresh=None, thresh2=0.2, mean_flux_desired=None):
+    def _filter_tau_rescale(self, tau, tau_thresh=None, masktau=1, mean_flux_desired=None, elem="H", ion=1, line=1215):
         """Filter optical depths to set pixels around optically thick absorbers to the mean flux,
            so that dF = 0.
-        The algorithm is:
-           - Identify strong absorbers with a pixel tau > tau_thresh
-           - Find the contiguous region around the absorber with tau > thresh2
-           - Compute the scaling factor to reach the desired mean flux in the non-masked region
-           - Scale the non-masked region and set the masked region to the desired mean flux
+        The algorithm is the same as Chabanier 2019.
+        We find each DLA, identified using a maximum optical depth cut (tau_thresh).
+        We then fit a voigt profile, mask the core, and correct the wings.
+
+        Arguments: tau: optical depth array.
+                   tau_thresh: optical depth threshold at which to enable filtering.
+                   masktau: The region where the optical depth in the fit
+                            Voigt profile is larger than masktau is masked.
+
+        'Specifically, we mask all DLA pixels where the transmitted flux decreases by 20% or more
+        and correct the transmitted flux of the remaining DLA pixels using a Voigt profile.' (2503.14741)
+
+        Returns: masked and rescaled tau array.
         """
+
         scale = 1.
         if mean_flux_desired is not None:
             #Find the desired mean flux before filtering (note this will be off by 10% or so)
@@ -1306,12 +1278,19 @@ class Spectra:
         mask = np.zeros_like(tau, dtype=bool)
         if tau_thresh is not None:
             tau_thresh /= scale
-            thresh2 /= scale
+            masktau /= scale
+            tau = np.copy(tau)
+            voigt = voigtfit.HCDProfiles(self.nbins, self.dvbin, elem=elem, ion=ion, line=line)
             #Only a sightline containing a strong absorber can be masked at all, and
             #strong absorbers are rare, so find those sightlines in one vectorised
             #pass rather than walking every sightline in python.
             for i in np.nonzero(np.max(tau, axis=1) > tau_thresh)[0]:
-                mask[i,:] = self._mask_single_tau(tau[i], tau_thresh=tau_thresh, thresh2=thresh2)
+                try:
+                    tau[i], mask[i] = voigt.do_hcd_fit(tau[i], tau_thresh=tau_thresh, masktau=masktau)
+                except AssertionError:
+                    print("Masking failed to converge on spectrum %d of %d" % (i,np.shape(tau)[0]))
+                    mask[i] = True
+                    continue
             assert not mask.all()
             if mean_flux_desired is not None:
                 #Compressing the array is a full copy, so skip it if nothing is masked.
@@ -1320,20 +1299,19 @@ class Spectra:
             tau = np.multiply(tau, scale)
             tau[mask] = -np.log(mean_flux_desired)
         elif tau_thresh is not None:
-            tau = np.copy(tau)
             tau[mask] = -np.log(np.mean(np.exp(-tau[~mask])))
         return tau
 
     def get_mean_flux(self, elem="H", ion=1, line=1215, tau_thresh=None):
         """Get the mean flux along a set of sightlines"""
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, elem=elem, ion=ion, line=line)
         return np.mean(np.exp(-tau))
 
     def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None, tau_thresh=None):
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
         return fstat.flux_pdf(tau, nbins=nbins)
 
     def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None):
@@ -1347,7 +1325,7 @@ class Spectra:
                     This interacts poorly with mean flux rescaling.
             tau_thresh: threshold optical depth for a strong absorber. Pixels around the strong absorber are set to the mean flux after mean flux rescaling."""
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
@@ -1370,7 +1348,7 @@ class Spectra:
             Nmu: the number of mu bins to use for the power spectrum, the default 10 is what usually used for 3D correlation functions.
             """
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
         (k, mu, avg_flux_power) = fstat.flux_power_3d(comm_nbodykit, tau, self.box, mean_flux_desired=None, dk=dk, Nmu=Nmu, quiet=False)
         # The fist row is the k=0, which we ommit
         return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
