@@ -72,42 +72,39 @@ class HCDProfiles(object):
         """The pre-computed profile shape, centred on a given pixel."""
         return np.roll(self.voigt_shape, centre - self.nbins//2)
 
-    def fit_components(self, tau, mask, shapes, window):
+    def fit_amplitudes(self, tau, shapes, deepest, window):
         """Amplitudes of a set of profiles, from the integrated optical depth.
+        The masked tau and profile shapes should be passed in.
 
         Each profile is integrated over the pixels of the window where it is the deepest,
         which gives one equation per profile, and the resulting linear system is solved.
         For a single profile this is just the sum of the optical depth over the window
-        divided by the sum of the profile. The window is iterated, but as the integral is
-        insensitive to its exact extent this converges immediately in practice.
+        divided by the sum of the profile.
 
         Returns None if the system cannot be solved, or gives a negative amplitude.
         """
         ncomp = len(shapes)
-        #Start from the whole spectrum, then iterate to place the window.
-        amps = np.array([np.sum(tau[mask]) / np.sum(shapes[0][mask])]*ncomp)
-        #Assign each pixel to the profile which is deepest there.
-        deepest = np.argmax(shapes, axis=0)
-        for _ in range(4):
-            wpix = mask * (np.sum([a*s for (a, s) in zip(amps, shapes)], axis=0) > window)
-            mat = np.empty((ncomp, ncomp))
-            vec = np.empty(ncomp)
-            for i in range(ncomp):
-                region = wpix * (deepest == i)
-                #Too little of this profile is in the spectrum to integrate over.
-                if np.sum(region) < 3:
-                    return None
-                mat[i] = [np.sum(s[region]) for s in shapes]
-                vec[i] = np.sum(tau[region])
-            try:
-                newamps = np.linalg.solve(mat, vec)
-            except np.linalg.LinAlgError:
+        #Start with a guess of the amplitude: the total optical depth..
+        amps = np.array([np.sum(tau) / np.sum(shapes[0])]*ncomp)
+        #Region where the total profile is deeper than the window.
+        wpix = (np.sum([a*s for (a, s) in zip(amps, shapes)], axis=0) > window)
+        mat = np.empty((ncomp, ncomp))
+        vec = np.empty(ncomp)
+        for i in range(ncomp):
+            region = wpix * (deepest == i)
+            #Too little of this profile is in the spectrum to integrate over.
+            if np.sum(region) < 3:
                 return None
-            #A negative column density is unphysical: the components are not really distinct.
-            if np.any(newamps <= 0):
-                return None
-            amps = newamps
-        return amps
+            mat[i] = [np.sum(s[region]) for s in shapes]
+            vec[i] = np.sum(tau[region])
+        try:
+            newamps = np.linalg.solve(mat, vec)
+        except np.linalg.LinAlgError:
+            return None
+        #A negative column density is unphysical: the components are not really distinct.
+        if np.any(newamps <= 0):
+            return None
+        return newamps
 
     def fit_profiles(self, tau, mask, centres, window, niter=4):
         """Fit a profile to each of a list of centres, refining the centres as we go.
@@ -122,20 +119,26 @@ class HCDProfiles(object):
         amps = None
         for _ in range(niter):
             shapes = [self.shape_at(cc) for cc in centres]
-            amps = self.fit_components(tau, mask, shapes, window)
+            #Array storing the profile with the largest absorption for each pixel.
+            #Has shape like the number of pixels
+            deepest = np.argmax(shapes, axis=0)
+            amps = self.fit_amplitudes(tau[mask], [s[mask] for s in shapes], deepest[mask], window)
             if amps is None:
                 return centres, None
+            #Find a region where the total optical depth is greater than some window
             wpix = mask * (np.sum([a*s for (a, s) in zip(amps, shapes)], axis=0) > window)
-            #Assign each pixel to the profile which is deepest there.
-            deepest = np.argmax(shapes, axis=0)
             newcentres = list(centres)
             for i, cc in enumerate(centres):
+                #This masks out the region where this absorber is the main contributor
                 region = wpix * (deepest == i)
+                #No point if the region where this is important is small
                 if np.sum(region) < 3:
                     continue
+                #The new centre is the optical depth weighted centroid of the pixels
                 offset = (np.arange(self.nbins) - cc + self.nbins//2) % self.nbins - self.nbins//2
                 shift = np.sum(offset[region]*tau[region]) / np.sum(tau[region])
                 newcentres[i] = int(round(cc + shift)) % self.nbins
+            #Convergence: in practice niter <= 2 almost always.
             if newcentres == centres:
                 break
             centres = newcentres
