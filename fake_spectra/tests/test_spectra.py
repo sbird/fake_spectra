@@ -81,11 +81,9 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 
 import numpy as np
 
-from fake_spectra import spectra as ss
 from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
-from fake_spectra import halocat
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -239,7 +237,7 @@ def test_hcd_pair():
     for (sep, second) in ((30, 3e6), (60, 3e6), (150, 8e5), (200, 3e6)):
         shapes = [prof.shape_at(nbins//2), prof.shape_at(nbins//2 + sep)]
         tau = 8e6*shapes[0] + second*shapes[1]
-        amps = prof.fit_components(tau, mask, shapes, 0.5)
+        (centres, amps) = prof.fit_profiles(tau, mask, [nbins//2, nbins//2 + sep], 0.5)
         assert np.abs(amps[0]/8e6 - 1) < 0.01
         assert np.abs(amps[1]/second - 1) < 0.01
         #The total column density is recovered whether or not the pair is resolved
