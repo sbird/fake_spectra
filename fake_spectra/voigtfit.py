@@ -35,6 +35,15 @@ class HCDProfiles(object):
         self.btherm = bfac*np.sqrt(1e4)
         #Pre-compute the Voigt profile shape
         self.voigt_shape = self.profile(self.btherm, 1)
+        #Two copies of the profile back to back, so that a profile centred on an
+        #arbitrary pixel is a slice of this array rather than a fresh np.roll.
+        self._shape_tiled = np.tile(self.voigt_shape, 2)
+        self._shape_tiled.flags.writeable = False
+        #Likewise the signed offset of each pixel from a centre, wrapped around the box.
+        #Stored as a float so that the centroid below is a BLAS dot product.
+        offset = np.array((np.arange(self.nbins) + self.nbins//2) % self.nbins - self.nbins//2, dtype=np.float64)
+        self._offset_tiled = np.tile(offset, 2)
+        self._offset_tiled.flags.writeable = False
 
     def do_hcd_fit(self, tau_local, tau_thresh=1e6, masktau=1):
         """Fit out HCDs, especially the damping wings.
@@ -48,59 +57,82 @@ class HCDProfiles(object):
         The region that will be masked.
         """
         assert np.size(tau_local) == self.nbins
-        newtau = np.array(tau_local)
-        #Initialize mask using the whole spectrum for fitting the first peak.
+        #A float64 copy, so that the profile can be subtracted from it in place.
+        newtau = np.array(tau_local, dtype=np.float64)
+        #Initialize the fitting region using the whole spectrum for fitting the first peak.
         #The central regions of the peak will be masked outright, the wings will be divided out.
-        mask = np.zeros_like(tau_local, dtype=bool)
+        #We track the pixels still to be fitted, as that is what the fitters want.
+        unmasked = np.ones_like(newtau, dtype=bool)
         #Do the fit iteratively, stopping when we have removed all the HCDs.
+        #An all-masked spectrum has a maximum of -inf and so stops here as well.
         for j in range(0, 10):
-            if mask.all() or np.max(newtau[~mask]) < tau_thresh:
+            if np.max(newtau, where=unmasked, initial=-np.inf) < tau_thresh:
                 break
             #This fits the largest DLA wings and returns a new spectrum.
-            (tau_fitted, amplitude) = self.iterate_new_spectrum(newtau, mask=~mask)
+            (tau_fitted, amplitude) = self.iterate_new_spectrum(newtau, mask=unmasked)
             #We only want to fit to regions that are not already saturated in the fit.
-            mask |= (tau_fitted > masktau)
-            #Subtract the Voigt profile
-            newtau = newtau - tau_fitted
-            #Normalise away anything that ends up slightly negative
-            newtau[newtau < 0] = 0
+            unmasked &= (tau_fitted <= masktau)
+            #Subtract the Voigt profile, normalising away anything that ends up negative.
+            np.subtract(newtau, tau_fitted, out=newtau)
+            np.maximum(newtau, 0, out=newtau)
         #Fit did not converge
-        assert mask.all() or np.max(newtau[~mask]) < tau_thresh
-        return newtau, mask
+        assert np.max(newtau, where=unmasked, initial=-np.inf) < tau_thresh
+        return newtau, ~unmasked
 
     def shape_at(self, centre):
-        """The pre-computed profile shape, centred on a given pixel."""
-        return np.roll(self.voigt_shape, centre - self.nbins//2)
+        """The pre-computed profile shape, centred on a given pixel.
+        This is a read-only view of the pre-computed array."""
+        shift = (centre - self.nbins//2) % self.nbins
+        return self._shape_tiled[self.nbins - shift: 2*self.nbins - shift]
 
-    def fit_amplitudes(self, tau, shapes, deepest, window):
+    def offset_from(self, centre):
+        """Signed offset in pixels of each pixel from a centre, wrapped around the box.
+        This is a read-only view of the pre-computed array."""
+        shift = centre % self.nbins
+        return self._offset_tiled[self.nbins - shift: 2*self.nbins - shift]
+
+    def total_profile(self, amps, shapes):
+        """The sum of a set of profile shapes with the given amplitudes."""
+        total = amps[0]*shapes[0]
+        for (a, s) in zip(amps[1:], shapes[1:]):
+            total += a*s
+        return total
+
+    def fit_amplitudes(self, tau, shapes, deepest, mask, window):
         """Amplitudes of a set of profiles, from the integrated optical depth.
-        The masked tau and profile shapes should be passed in.
 
         Each profile is integrated over the pixels of the window where it is the deepest,
         which gives one equation per profile, and the resulting linear system is solved.
         For a single profile this is just the sum of the optical depth over the window
         divided by the sum of the profile.
 
+        deepest: index of the deepest profile in each pixel, or None for a single profile.
+        mask: pixels to use.
+
         Returns None if the system cannot be solved, or gives a negative amplitude.
         """
         ncomp = len(shapes)
         #Start with a guess of the amplitude: the total optical depth..
-        amps = np.array([np.sum(tau) / np.sum(shapes[0])]*ncomp)
+        amps = np.full(ncomp, np.sum(tau, where=mask) / np.sum(shapes[0], where=mask))
         #Region where the total profile is deeper than the window.
-        wpix = (np.sum([a*s for (a, s) in zip(amps, shapes)], axis=0) > window)
+        wpix = mask & (self.total_profile(amps, shapes) > window)
         mat = np.empty((ncomp, ncomp))
         vec = np.empty(ncomp)
         for i in range(ncomp):
-            region = wpix * (deepest == i)
+            region = np.flatnonzero(wpix if deepest is None else wpix & (deepest == i))
             #Too little of this profile is in the spectrum to integrate over.
-            if np.sum(region) < 3:
+            if region.size < 3:
                 return None
-            mat[i] = [np.sum(s[region]) for s in shapes]
-            vec[i] = np.sum(tau[region])
-        try:
-            newamps = np.linalg.solve(mat, vec)
-        except np.linalg.LinAlgError:
-            return None
+            mat[i] = [s[region].sum() for s in shapes]
+            vec[i] = tau[region].sum()
+        if ncomp == 1:
+            #A one by one system: np.linalg.solve is all overhead here.
+            newamps = vec / mat[0]
+        else:
+            try:
+                newamps = np.linalg.solve(mat, vec)
+            except np.linalg.LinAlgError:
+                return None
         #A negative column density is unphysical: the components are not really distinct.
         if np.any(newamps <= 0):
             return None
@@ -120,23 +152,31 @@ class HCDProfiles(object):
         for _ in range(niter):
             shapes = [self.shape_at(cc) for cc in centres]
             #Array storing the profile with the largest absorption for each pixel.
-            #Has shape like the number of pixels
-            deepest = np.argmax(shapes, axis=0)
-            amps = self.fit_amplitudes(tau[mask], [s[mask] for s in shapes], deepest[mask], window)
+            #Has shape like the number of pixels. A single profile is trivially the
+            #deepest everywhere, which we flag with None to save the comparisons,
+            #and for a pair it is a single comparison rather than a stacked argmax.
+            if len(shapes) == 1:
+                deepest = None
+            elif len(shapes) == 2:
+                deepest = shapes[1] > shapes[0]
+            else:
+                deepest = np.argmax(shapes, axis=0)
+            amps = self.fit_amplitudes(tau, shapes, deepest, mask, window)
             if amps is None:
                 return centres, None
             #Find a region where the total optical depth is greater than some window
-            wpix = mask * (np.sum([a*s for (a, s) in zip(amps, shapes)], axis=0) > window)
+            wpix = mask & (self.total_profile(amps, shapes) > window)
             newcentres = list(centres)
             for i, cc in enumerate(centres):
                 #This masks out the region where this absorber is the main contributor
-                region = wpix * (deepest == i)
+                region = np.flatnonzero(wpix if deepest is None else wpix & (deepest == i))
                 #No point if the region where this is important is small
-                if np.sum(region) < 3:
+                if region.size < 3:
                     continue
                 #The new centre is the optical depth weighted centroid of the pixels
-                offset = (np.arange(self.nbins) - cc + self.nbins//2) % self.nbins - self.nbins//2
-                shift = np.sum(offset[region]*tau[region]) / np.sum(tau[region])
+                offset = self.offset_from(cc)[region]
+                taur = tau[region]
+                shift = np.dot(offset, taur) / taur.sum()
                 newcentres[i] = int(round(cc + shift)) % self.nbins
             #Convergence: in practice niter <= 2 almost always.
             if newcentres == centres:
@@ -173,7 +213,7 @@ class HCDProfiles(object):
         #Find largest peak in unmasked region
         peak_index = np.argmax(np.where(mask, tau, -np.inf))
         #The integral over the whole spectrum, used to place the first window.
-        amplitude = np.sum(tau[mask]) / np.sum(self.shape_at(peak_index)[mask])
+        amplitude = np.sum(tau, where=mask) / np.sum(self.shape_at(peak_index), where=mask)
         (centres, amps) = self.fit_profiles(tau, mask, [peak_index], window)
         #Not enough of the profile in the spectrum to place a window at all.
         if amps is None:
@@ -182,15 +222,15 @@ class HCDProfiles(object):
         tau_fitted = amps[0] * self.shape_at(centres[0])
 
         #Look for a second peak inside the window of the first.
-        offset = (np.arange(self.nbins) - centres[0] + self.nbins//2) % self.nbins - self.nbins//2
-        second = mask * (tau_fitted > window) * (np.abs(offset)*self.dvbin > minsep)
+        offset = self.offset_from(centres[0])
+        second = mask & (tau_fitted > window) & (np.abs(offset)*self.dvbin > minsep)
         if np.any(second):
             newc = centres + [np.argmax(np.where(second, tau, -np.inf))]
             (newc, newamps) = self.fit_profiles(tau, mask, newc, window)
             #A second profile which is shallower than the window, or which holds a
             #negligible part of the column density, is not worth fitting.
             if newamps is not None and np.min(newamps) > max(window, secfrac*np.max(newamps)):
-                tau_fitted = np.sum([a * self.shape_at(c) for (a, c) in zip(newamps, newc)], axis=0)
+                tau_fitted = self.total_profile(newamps, [self.shape_at(c) for c in newc])
                 (centres, amps) = (newc, newamps)
         #print("Centers:",centres, " Amps:",amps)
         return tau_fitted, np.sum(amps)
