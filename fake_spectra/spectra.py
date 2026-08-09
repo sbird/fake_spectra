@@ -1268,6 +1268,8 @@ class Spectra:
         'Specifically, we mask all DLA pixels where the transmitted flux decreases by 20% or more
         and correct the transmitted flux of the remaining DLA pixels using a Voigt profile.' (2503.14741)
 
+        Mutates the input array.
+
         Returns: masked and rescaled tau array.
         """
 
@@ -1279,7 +1281,6 @@ class Spectra:
         if tau_thresh is not None:
             tau_thresh /= scale
             masktau /= scale
-            tau = np.copy(tau)
             voigt = voigtfit.HCDProfiles(self.nbins, self.dvbin, elem=elem, ion=ion, line=line)
             #Only a sightline containing a strong absorber can be masked at all, and
             #strong absorbers are rare, so find those sightlines in one vectorised
