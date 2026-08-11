@@ -1314,8 +1314,8 @@ class Spectra:
                     continue
             assert not mask.all()
             if mean_flux_desired is not None:
-                #Compressing the array is a full copy, so skip it if nothing is masked.
-                scale = fstat.mean_flux(tau[~mask] if mask.any() else tau, mean_flux_desired=mean_flux_desired)
+                #Pass the mask rather than compressing the array, which is a full copy.
+                scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, mask=mask if mask.any() else None)
         if mean_flux_desired is not None:
             tau = np.multiply(tau, scale)
             tau[mask] = -np.log(mean_flux_desired)

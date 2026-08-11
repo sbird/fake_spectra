@@ -28,9 +28,12 @@ def obs_mean_tau(redshift):
 #Worker threads, created on first use and shared by everything in this module.
 _POOL = None
 _POOL_SIZE = 0
-#Chunks smaller than this are not worth handing to another thread.
-_MF_MINCHUNK = 250000
-#Nor is an array of optical depths smaller than this worth splitting up.
+#Optical depths are turned into flux one block of this many pixels at a time,
+#so that the scratch space needed does not grow with the size of the input.
+#Small enough that a block stays in cache, large enough that the python
+#overhead of a block is irrelevant.
+_MF_BLOCK = 1 << 19
+#An array of optical depths smaller than this is not worth splitting up.
 _FP_MINTHREAD = 1 << 20
 
 def _nthreads(nthreads):
@@ -52,16 +55,20 @@ def _get_pool(nthreads):
         _POOL_SIZE = nthreads
     return _POOL
 
-def _mean_flux_sums(tau, scale, out):
-    """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one chunk of tau.
-    The numpy ufuncs release the GIL, so chunks are summed in parallel."""
-    flux = np.multiply(tau, -scale, out=out)
+def _mean_flux_sums(block, scale):
+    """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one block of tau.
+    Masked pixels are zeroed, so that they contribute to neither sum.
+    The numpy ufuncs release the GIL, so blocks are summed in parallel."""
+    (tau, mask) = block
+    flux = np.multiply(tau, -scale)
     np.exp(flux, out=flux)
-    mean_flux = np.sum(flux)
+    if mask is not None:
+        flux[mask] = 0
+    mean_flux = np.sum(flux, dtype=np.float64)
     np.multiply(flux, tau, out=flux)
-    return mean_flux, np.sum(flux)
+    return mean_flux, np.sum(flux, dtype=np.float64)
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None):
+def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None, mask=None):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -71,25 +78,32 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None):
         mean_flux_desired - mean flux desired
         tol - tolerance within which to hit mean flux
         nthreads - threads to use for the sums (default: all available cores)
+        mask - boolean array shaped like tau. True pixels are left out of the mean,
+               which saves compressing the array before calling this.
     returns:
         scaling factor for tau."""
-    tau = np.ravel(np.asarray(tau, dtype=np.float64))
+    tau = np.ravel(tau)
+    #A python float, so that the Newton iteration stays in python floats: a numpy
+    #double would promote a single precision block of tau to double precision.
+    mean_flux_desired = float(mean_flux_desired)
     nbins = np.size(tau)
+    bounds = list(range(0, nbins, _MF_BLOCK)) + [nbins]
+    if mask is not None:
+        mask = np.ravel(mask)
+        nbins -= np.count_nonzero(mask)
     if nbins == 0:
         return 0
-    nthreads = _nthreads(nthreads)
-    nchunk = max(1, min(nthreads, nbins // _MF_MINCHUNK))
-    bounds = np.linspace(0, nbins, nchunk+1).astype(int)
-    chunks = [tau[bounds[i]:bounds[i+1]] for i in range(nchunk)]
-    #Scratch space, allocated once and reused by every iteration.
-    scratch = [np.empty_like(cc) for cc in chunks]
-    pool = _get_pool(nthreads) if nchunk > 1 else None
+    blocks = [(tau[ss:ee], None if mask is None else mask[ss:ee])
+              for (ss, ee) in zip(bounds[:-1], bounds[1:])]
+    nthreads = min(_nthreads(nthreads), len(blocks))
+    pool = _get_pool(nthreads) if nthreads > 1 else None
     newscale = 1.
     while True:
         scale = newscale
-        #Farm out all but the first chunk, then do that one here.
-        futures = [pool.submit(_mean_flux_sums, chunks[i], scale, scratch[i]) for i in range(1, nchunk)]
-        sums = [_mean_flux_sums(chunks[0], scale, scratch[0])] + [ff.result() for ff in futures]
+        if pool is None:
+            sums = [_mean_flux_sums(bb, scale) for bb in blocks]
+        else:
+            sums = list(pool.map(_mean_flux_sums, blocks, [scale]*len(blocks)))
         flux = math.fsum([ss[0] for ss in sums])
         tau_flux = math.fsum([ss[1] for ss in sums])
         #Newton-Raphson
