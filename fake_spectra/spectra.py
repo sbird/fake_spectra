@@ -81,10 +81,16 @@ class Spectra:
             use_external_Hz - user provided value for H(z) [km/s/Mpc] to be used
                      when converting comoving to velocity units.
                      If not proviced, will assume flat LCDM and compute it.
+            sightlines - Restrict the object to a subset of the sightlines in the savefile:
+                     either a slice or a sorted array of indices. Only these sightlines are
+                     read from disc, so a large file can be used without the memory to hold
+                     all of it. Everything per-sightline (cofm, axis, NumLos, and the lazily
+                     loaded optical depths and column densities) refers to the subset.
     """
     def __init__(self, num, base, cofm, axis, MPI=None, nbins=None, res=1., cdir=None, savefile="spectra.hdf5",
                  savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True, turn_off_selfshield=False,
-                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
+                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None,
+                 sightlines=None):
 
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
@@ -117,6 +123,10 @@ class Spectra:
         self.dens_weight_dens = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
+        #The sightlines to read from the savefile, None for all of them.
+        if sightlines is not None and reload_file:
+            raise ValueError("sightlines selects a subset of a savefile, so it cannot be used with reload_file")
+        self.sightlines = sightlines
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
         self.cofm_final = False
         self.num_important = {}
@@ -357,6 +367,16 @@ class Spectra:
             #Save the dataset
             gg.create_dataset(str(key[-1]), data=value)
 
+    def _load_sightlines(self, dataset):
+        """Read a dataset with one row per sightline from the savefile, restricted to
+        the sightlines this object was asked for. Reading a subset from the file is
+        much cheaper than reading everything and throwing most of it away.
+        Note getattr: a child class may load a savefile before calling our __init__."""
+        sightlines = getattr(self, "sightlines", None)
+        if sightlines is None:
+            return dataset[:]
+        return dataset[sightlines]
+
     def _really_load_array(self, key, array, array_name):
         """Replace a lazy-loaded array with the real one from disc"""
         #First check it was not already loaded
@@ -365,9 +385,9 @@ class Spectra:
         #If not, load it.
         f = h5py.File(self.savefile, 'r')
         if np.size(key) == 2:
-            array[key] = np.array(f[array_name][str(key[0])][str(key[1])])
+            array[key] = self._load_sightlines(f[array_name][str(key[0])][str(key[1])])
         elif np.size(key) == 3:
-            array[key] = np.array(f[array_name][str(key[0])][str(key[1])][str(key[2])])
+            array[key] = self._load_sightlines(f[array_name][str(key[0])][str(key[1])][str(key[2])])
         else:
             raise ValueError("Not supported")
         f.close()
@@ -488,10 +508,10 @@ class Spectra:
                 grp = f["num_important"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
+                        self.num_important[(elem, int(ion))] = self._load_sightlines(grp[elem][ion])
                 grp = f["spectra"]
-                self.cofm = np.array(grp["cofm"])
-                self.axis = np.array(grp["axis"])
+                self.cofm = self._load_sightlines(grp["cofm"])
+                self.axis = self._load_sightlines(grp["axis"])
                 # older files might not have Hz stored
                 if "Hz" in grid_file.attrs:
                     self.Hz = grid_file.attrs["Hz"]
