@@ -4,11 +4,9 @@ the power spectrum, the pdf and to normalise to a mean tau.
 Useful for lyman alpha forest work."""
 
 import math
-import os
 import numpy as np
 import scipy.fft
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 
 # You need `nbodykit` only if you want to compute the 3D power spectrum with `flux_power_3d`
 try :
@@ -25,9 +23,6 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-#Worker threads, created on first use and shared by everything in this module.
-_POOL = None
-_POOL_SIZE = 0
 #Optical depths are turned into flux one block of this many pixels at a time,
 #so that the scratch space needed does not grow with the size of the input.
 #Small enough that a block stays in cache, large enough that the python
@@ -35,25 +30,6 @@ _POOL_SIZE = 0
 _MF_BLOCK = 1 << 19
 #An array of optical depths smaller than this is not worth splitting up.
 _FP_MINTHREAD = 1 << 20
-
-def _nthreads(nthreads):
-    """Default to one thread per core we are allowed to run on."""
-    if nthreads is None:
-        return len(os.sched_getaffinity(0))
-    return max(1, nthreads)
-
-def _get_pool(nthreads):
-    """The module thread pool, grown if a later call wants more threads than an
-    earlier one. The numpy and scipy calls we hand it release the GIL, so its
-    threads do real work in parallel. Note nothing submitted to the pool may
-    itself submit to the pool: a fixed size pool waiting on itself deadlocks."""
-    global _POOL, _POOL_SIZE
-    if _POOL is None or _POOL_SIZE < nthreads:
-        if _POOL is not None:
-            _POOL.shutdown(wait=True)
-        _POOL = ThreadPoolExecutor(max_workers=nthreads)
-        _POOL_SIZE = nthreads
-    return _POOL
 
 def _mean_flux_sums(block, scale):
     """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one block of tau.
@@ -68,7 +44,7 @@ def _mean_flux_sums(block, scale):
     np.multiply(flux, tau, out=flux)
     return mean_flux, np.sum(flux, dtype=np.float64)
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None, mask=None):
+def mean_flux(tau, mean_flux_desired, tol = 1e-6, pool=None, mask=None):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -77,7 +53,8 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None, mask=None):
         tau - optical depths to scale
         mean_flux_desired - mean flux desired
         tol - tolerance within which to hit mean flux
-        nthreads - threads to use for the sums (default: all available cores)
+        pool - ThreadPoolExecutor to sum the blocks with. The default of None
+               means the sums are done in serial.
         mask - boolean array shaped like tau. True pixels are left out of the mean,
                which saves compressing the array before calling this.
     returns:
@@ -95,8 +72,8 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-6, nthreads=None, mask=None):
         return 0
     blocks = [(tau[ss:ee], None if mask is None else mask[ss:ee])
               for (ss, ee) in zip(bounds[:-1], bounds[1:])]
-    nthreads = min(_nthreads(nthreads), len(blocks))
-    pool = _get_pool(nthreads) if nthreads > 1 else None
+    if len(blocks) == 1:
+        pool = None
     newscale = 1.
     while True:
         scale = newscale
@@ -126,20 +103,20 @@ def _batch_pdf(tau_batch, scale, bins):
     (counts, _) = np.histogram(flux, bins=bins)
     return counts
 
-def flux_pdf(tau, nbins=20, mean_flux_desired=None, nthreads=None):
+def flux_pdf(tau, nbins=20, mean_flux_desired=None, pool=None):
     """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)
         Arguments:
             tau - optical depths
             nbins - number of bins of the histogram
             mean_flux_desired - if set, the optical depths are rescaled to it
-            nthreads - threads to use (default: all available cores)
+            pool - ThreadPoolExecutor to count the batches with. The default of
+                   None means the histogram is computed in serial.
         Returns:
             cbins - centre of each flux bin
             fpdf - normalised histogram of the flux"""
-    nthreads = _nthreads(nthreads)
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired, nthreads=nthreads)
+        scale = mean_flux(tau, mean_flux_desired, pool=pool)
     bins = np.arange(nbins+1)/(1.*nbins)
     tau = np.ravel(tau)
     ntau = np.size(tau)
@@ -147,18 +124,13 @@ def flux_pdf(tau, nbins=20, mean_flux_desired=None, nthreads=None):
     nbatch = 10
     if ntau < _FP_MINTHREAD:
         #Not worth threading, nor splitting up: this is what it used to do.
-        nthreads = 1
+        pool = None
         nbatch = 1
     bounds = [(i*ntau//nbatch, min((i+1)*ntau//nbatch, ntau)) for i in range(nbatch)]
-    if nthreads == 1:
+    if pool is None:
         parts = [_batch_pdf(tau[ss:ee], scale, bins) for (ss, ee) in bounds]
     else:
-        pool = _get_pool(nthreads)
-        #In waves of nthreads, so that nthreads really does cap the threads used.
-        parts = []
-        for i in range(0, len(bounds), nthreads):
-            parts += list(pool.map(lambda bb: _batch_pdf(tau[bb[0]:bb[1]], scale, bins),
-                                   bounds[i:i+nthreads]))
+        parts = list(pool.map(lambda bb: _batch_pdf(tau[bb[0]:bb[1]], scale, bins), bounds))
     counts = np.sum(parts, axis=0)
     #Normalise to a probability density, exactly as np.histogram(density=True)
     #does: by the bin width and the number of samples which landed in a bin.
@@ -186,7 +158,7 @@ def _batch_power(tau_batch, scale, workers):
     rfftd = scipy.fft.rfft(flux, axis=1, workers=workers, overwrite_x=True)
     return np.sum(np.abs(rfftd)**2, axis=0), np.array(rfftd[:, 0].real)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, nthreads=None):
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, pool=None):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -197,15 +169,16 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, nt
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
 	    vmax - velocity scale corresponding to maximal length of the sightline.
-            nthreads - threads to use (default: all available cores)
+            pool - ThreadPoolExecutor to transform the batches of sightlines
+                   with. The default of None means the power is computed in
+                   serial, letting the transform itself use the threads.
         Returns:
             flux_power - flux power spectrum in km/s. Shape is (npix)
             bins - the frequency space bins of the power spectrum, in s/km.
     """
-    nthreads = _nthreads(nthreads)
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired, nthreads=nthreads)
+        scale = mean_flux(tau, mean_flux_desired, pool=pool)
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
     (nspec, npix) = np.shape(tau)
     mean_flux_power = np.zeros(npix//2+1, dtype=np.float64)
@@ -215,17 +188,12 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, nt
     # compute in batches, purely for computational efficiency
     bounds = [(i*nspec//10, min((i+1)*nspec//10, nspec)) for i in range(10)]
     if nspec*npix < _FP_MINTHREAD:
-        nthreads = 1
-    if nthreads == 1:
+        pool = None
+    if pool is None:
         #Let the transform have the threads if we are not using them ourselves.
         parts = [_batch_power(tau[ss:ee], scale, -1) for (ss, ee) in bounds]
     else:
-        pool = _get_pool(nthreads)
-        #In waves of nthreads, so that nthreads really does cap the threads used.
-        parts = []
-        for i in range(0, len(bounds), nthreads):
-            parts += list(pool.map(lambda bb: _batch_power(tau[bb[0]:bb[1]], scale, 1),
-                                   bounds[i:i+nthreads]))
+        parts = list(pool.map(lambda bb: _batch_power(tau[bb[0]:bb[1]], scale, 1), bounds))
     for (ss, ee), (power, kzchunk) in zip(bounds, parts):
         mean_flux_power += power
         kzero[ss:ee] = kzchunk

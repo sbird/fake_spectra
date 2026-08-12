@@ -24,6 +24,7 @@ import os.path as path
 import shutil
 import numpy as np
 import h5py
+from concurrent.futures import ThreadPoolExecutor
 
 from . import abstractsnapshot as absn
 from . import gas_properties
@@ -133,6 +134,11 @@ class Spectra:
 
         self.discarded=0
         self.npart=0
+
+        #Worker threads for the flux statistics. The numpy and scipy calls they
+        #are given release the GIL, so they do real work in parallel. Set to
+        #None to compute the flux statistics in serial instead.
+        self.pool = ThreadPoolExecutor(max_workers=len(os.sched_getaffinity(0)))
 
         self.turn_off_selfshield = turn_off_selfshield
 
@@ -1296,7 +1302,7 @@ class Spectra:
         scale = 1.
         if mean_flux_desired is not None:
             #Find the desired mean flux before filtering (note this will be off by 10% or so)
-            scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired)
+            scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, pool=self.pool)
         mask = np.zeros_like(tau, dtype=bool)
         if tau_thresh is not None:
             tau_thresh /= scale
@@ -1315,7 +1321,7 @@ class Spectra:
             assert not mask.all()
             if mean_flux_desired is not None:
                 #Pass the mask rather than compressing the array, which is a full copy.
-                scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, mask=mask if mask.any() else None)
+                scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, mask=mask if mask.any() else None, pool=self.pool)
         if mean_flux_desired is not None:
             tau = np.multiply(tau, scale)
             tau[mask] = -np.log(mean_flux_desired)
@@ -1333,7 +1339,7 @@ class Spectra:
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
         tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
-        return fstat.flux_pdf(tau, nbins=nbins)
+        return fstat.flux_pdf(tau, nbins=nbins, pool=self.pool)
 
     def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None, masktau=1):
         """Get the power spectrum of (variations in) the flux along the line of sight.
@@ -1350,7 +1356,7 @@ class Spectra:
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
-        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=None, window=window)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=None, window=window, pool=self.pool)
         return kf[1:], avg_flux_power[1:]
 
     def get_flux_power_3D(self, comm_nbodykit=None, elem="H", ion=1, line=1215, mean_flux_desired=None, tau_thresh=None, dk=None, Nmu=10):
@@ -1566,7 +1572,7 @@ class Spectra:
         # tau should be nearly all the optical depths (minus where flux <= 0)
         tau = -np.log(nonzeroflux_sections)
         # get the scaling factor
-        scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)))
+        scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)), pool=self.pool)
         # scale the positive flux
         # non-positive flux will be removed in the call to compute_curvature
         flux_sections[flux_sections > 0] = nonzeroflux_sections**scale
