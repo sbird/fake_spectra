@@ -84,6 +84,8 @@ import numpy as np
 from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
+from fake_spectra.near_lines import near_lines
+from fake_spectra._spectra_priv import _near_lines
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -308,3 +310,28 @@ def test_hcd_blended():
     (newtau, mask) = prof.do_hcd_fit(noise)
     assert not np.any(mask)
     assert np.all(newtau == noise)
+
+def test_near_lines():
+    """Check the sightline neighbour search against the C++ implementation
+    it replaced, which is still in the extension module."""
+    rng = np.random.default_rng(11)
+    for _ in range(20):
+        box = float(rng.choice([10., 100., 25000.]))
+        npart = int(rng.integers(1, 5000))
+        nlos = int(rng.integers(1, 50))
+        pos = (rng.random((npart, 3))*box).astype(np.float32)
+        #Smoothing lengths spanning several decades, with the occasional
+        #very large low-density particle.
+        hh = (10**rng.uniform(-3, np.log10(0.3*box), npart)).astype(np.float32)
+        hh[rng.integers(0, npart, 3)] = box*0.4
+        axis = rng.choice([1, 2, 3], nlos).astype(np.int32)
+        cofm = rng.random((nlos, 3))*box
+        assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
+                              np.sort(_near_lines(box, pos, hh, axis, cofm)))
+    #All the sightlines along a single axis
+    axis = np.ones(nlos, dtype=np.int32)
+    assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
+                          np.sort(_near_lines(box, pos, hh, axis, cofm)))
+    #Nothing near a sightline: an empty index list, not a failure
+    hh = np.zeros(npart, dtype=np.float32)
+    assert np.size(near_lines(box, pos, hh, axis, cofm)) == 0
