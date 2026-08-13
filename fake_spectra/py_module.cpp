@@ -2,7 +2,6 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include "part_int.h"
-#include <set>
 #include <gsl/gsl_interp2d.h>
 #include <gsl/gsl_errno.h>
 
@@ -19,84 +18,6 @@ int check_float(PyArrayObject * arr)
   return check_type(arr, NPY_FLOAT);
 }
 
-
-/* When handed a list of particles,
- * return a list of bools with True for those nearby to a sightline*/
-extern "C" PyObject * Py_near_lines(PyObject *self, PyObject *args)
-{
-    int NumLos;
-    long long Npart;
-    double box100;
-    PyArrayObject *cofm, *axis, *pos, *hh, *is_a_line;
-    PyObject *out;
-
-    if(!PyArg_ParseTuple(args, "dO!O!O!O!",&box100,  &PyArray_Type, &pos, &PyArray_Type, &hh, &PyArray_Type, &axis, &PyArray_Type, &cofm) )
-      return NULL;
-
-    if(2 > PyArray_NDIM(cofm) || 1 >  PyArray_NDIM(axis)){
-      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
-      return NULL;
-    }
-    NumLos = PyArray_DIM(cofm,0);
-    Npart = PyArray_DIM(pos,0);
-
-    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1)){
-      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
-      return NULL;
-    }
-    if(check_type(cofm, NPY_DOUBLE) || check_type(axis,NPY_INT)){
-      PyErr_SetString(PyExc_ValueError, "cofm must have 64-bit float type and axis must be a 32-bit integer\n");
-      return NULL;
-    }
-    if(check_float(pos) || check_float(hh)){
-       PyErr_SetString(PyExc_TypeError, "pos and h must have 32-bit float type\n");
-       return NULL;
-    }
-
-    //Setup los_tables
-    //PyArray_GETCONTIGUOUS increments the reference count of the object,
-    //so to avoid leaking we need to save the PyArrayObject pointer.
-    cofm = PyArray_GETCONTIGUOUS(cofm);
-    axis = PyArray_GETCONTIGUOUS(axis);
-    double * Cofm =(double *) PyArray_DATA(cofm);
-    int32_t * Axis =(int32_t *) PyArray_DATA(axis);
-    IndexTable sort_los_table(Cofm, Axis, NumLos, box100);
-
-    //Set of particles near a line
-    std::set<int> near_lines;
-    //find lists
-    //DANGER: potentially huge allocation
-    pos = PyArray_GETCONTIGUOUS(pos);
-    hh = PyArray_GETCONTIGUOUS(hh);
-    const float * Pos =(float *) PyArray_DATA(pos);
-    const float * h = (float *) PyArray_DATA(hh);
-    #pragma omp parallel for
-    for(long long i=0; i < Npart; i++){
-	    std::map<int, double> nearby=sort_los_table.get_near_lines(&(Pos[3*i]),h[i]);
-        if(nearby.size()>0){
-           #pragma omp critical
-           {
-              near_lines.insert(i);
-           }
-        }
-    }
-    //Copy data into python
-    npy_intp size = near_lines.size();
-    is_a_line = (PyArrayObject *) PyArray_SimpleNew(1, &size, NPY_INT);
-    int i=0;
-    for (std::set<int>::const_iterator it = near_lines.begin(); it != near_lines.end() && i < size; ++it, ++i){
-            *(npy_int *)PyArray_GETPTR1(is_a_line,i) = (*it);
-    }
-    out = Py_BuildValue("O", is_a_line);
-    Py_DECREF(is_a_line);
-    //Because PyArray_GETCONTIGUOUS incremented the reference count,
-    //and may have made an allocation, in which case this does not point to what it used to.
-    Py_DECREF(pos);
-    Py_DECREF(hh);
-    Py_DECREF(cofm);
-    Py_DECREF(axis);
-    return out;
-}
 
 /*****************************************************************************/
 /*Interface for SPH interpolation*/
@@ -311,11 +232,6 @@ static PyMethodDef spectrae[] = {
    "Find absorption or column density by interpolating particles. "
    "    Arguments: compute_tau nbins, boxsize, velfac, atime, lambda, gamma, fosc, species mass (amu), pos, vel, dens, temp, h, axis, cofm"
    "    "},
-  {"_near_lines", Py_near_lines,METH_VARARGS,
-   "Give a list of particles and sightlines, "
-   "return a list of booleans for those particles near "
-   "a sightline."
-   "   Arguments: box, pos, h, axis, cofm"},
   {"_interpolate_2d",Py_interpolate_2d,METH_VARARGS,
    "Do 2D interpolation in parallel in C."
    ""},
