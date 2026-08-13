@@ -80,10 +80,12 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 """
 
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
 from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
+from fake_spectra import near_lines as near_lines_mod
 from fake_spectra.near_lines import near_lines
 
 #def setup():
@@ -347,6 +349,16 @@ def test_near_lines():
     axis = np.ones(nlos, dtype=np.int32)
     assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
                           _brute_force_near_lines(box, pos, hh, axis, cofm))
+    #Splitting the mesh lookup into blocks, and giving the blocks to a thread
+    #pool, changes neither the particles found nor their order.
+    #An odd size, so that the last block is a short one.
+    npart = 2*near_lines_mod._MESH_BLOCK + 1
+    pos = (rng.random((npart, 3))*box).astype(np.float32)
+    hh = (10**rng.uniform(-3, np.log10(0.3*box), npart)).astype(np.float32)
+    serial = near_lines(box, pos, hh, axis, cofm)
+    assert np.size(serial) > 0
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        assert np.array_equal(near_lines(box, pos, hh, axis, cofm, pool=pool), serial)
     #Nothing near a sightline: an empty index list, not a failure
     hh = np.zeros(npart, dtype=np.float32)
     assert np.size(near_lines(box, pos, hh, axis, cofm)) == 0

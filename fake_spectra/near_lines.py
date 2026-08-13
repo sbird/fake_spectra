@@ -21,7 +21,12 @@ from scipy.ndimage import maximum_filter
 #The two coordinates perpendicular to each (1-indexed) sightline axis.
 _PERP = {1: (1, 2), 2: (0, 2), 3: (0, 1)}
 
-def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
+#Particles per block of the mesh lookup. Small enough that several blocks
+#are available to the thread pool, large enough that the per-block numpy
+#overhead does not show up.
+_MESH_BLOCK = 1 << 18
+
+def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1, pool=None):
     """Find particles within a smoothing length of a sightline.
 
     The distance is the periodic distance in the two coordinates
@@ -42,6 +47,8 @@ def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
                 mesh and go straight to the tree. Without this a few
                 large low-density particles force a very wide dilation.
         workers - threads for the tree query; -1 uses all cores.
+        pool - ThreadPoolExecutor to do the mesh lookup with. The default
+                of None does it in serial.
     Returns:
         Sorted indices of the particles near a sightline.
     """
@@ -70,15 +77,8 @@ def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
         #cKDTree wants its periodic points within [0, box).
         tree = cKDTree(lines, boxsize=box)
         mesh = _line_mesh(lines, cell, ncell, nbin, used, maxbin)
-        ip = np.multiply(pos[:, aa], np.float32(1./cell), dtype=np.float32).astype(np.int32)
-        np.clip(ip, 0, ncell-1, out=ip)
-        iq = np.multiply(pos[:, bb], np.float32(1./cell), dtype=np.float32).astype(np.int32)
-        np.clip(iq, 0, ncell-1, out=iq)
-        maybe = mesh[hbin, ip, iq]
-        del ip, iq, mesh
-        #No need to look again at particles already known to be near a line.
-        maybe &= np.logical_not(near)
-        (cand,) = np.nonzero(maybe)
+        cand = _mesh_lookup(pos, hbin, near, mesh, (aa, bb), cell, ncell, pool)
+        del mesh
         if np.size(cand) == 0:
             continue
         perp = np.mod(pos[cand][:, [aa, bb]].astype(np.float64), box)
@@ -86,6 +86,35 @@ def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
         (dist, _) = tree.query(perp, k=1, workers=workers)
         near[cand[dist <= hh[cand]]] = True
     return np.nonzero(near)[0].astype(np.int32)
+
+def _mesh_lookup(pos, hbin, near, mesh, perp, cell, ncell, pool):
+    """Find the particles whose mesh cell is within reach of a sightline.
+    Done in blocks: the numpy calls for a block release the GIL, so blocks
+    given to the thread pool really do run at the same time, and the
+    temporaries are a block long rather than a snapshot long."""
+    npart = np.shape(pos)[0]
+    bounds = list(range(0, npart, _MESH_BLOCK)) + [npart]
+    blocks = list(zip(bounds[:-1], bounds[1:]))
+    args = (pos, hbin, near, mesh, perp, cell, ncell)
+    if pool is None or len(blocks) == 1:
+        cand = [_mesh_lookup_block(*args, bb) for bb in blocks]
+    else:
+        cand = list(pool.map(lambda bb: _mesh_lookup_block(*args, bb), blocks))
+    return np.concatenate(cand) if len(cand) > 1 else cand[0]
+
+def _mesh_lookup_block(pos, hbin, near, mesh, perp, cell, ncell, block):
+    """Mesh lookup for one block of particles. Returns their indices."""
+    (aa, bb) = perp
+    (ss, ee) = block
+    ip = np.multiply(pos[ss:ee, aa], np.float32(1./cell), dtype=np.float32).astype(np.int32)
+    np.clip(ip, 0, ncell-1, out=ip)
+    iq = np.multiply(pos[ss:ee, bb], np.float32(1./cell), dtype=np.float32).astype(np.int32)
+    np.clip(iq, 0, ncell-1, out=iq)
+    maybe = mesh[hbin[ss:ee], ip, iq]
+    del ip, iq
+    #No need to look again at particles already known to be near a line.
+    maybe &= np.logical_not(near[ss:ee])
+    return np.nonzero(maybe)[0] + ss
 
 def _line_mesh(lines, cell, ncell, nbin, used, maxbin):
     """Build, for each smoothing length bin, a boolean mesh of the cells

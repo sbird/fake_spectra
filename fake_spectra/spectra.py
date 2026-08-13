@@ -736,7 +736,7 @@ class Spectra:
         #Axis is 1-indexed between 1 and 3. 1 is x axis.
         assert np.min(axis) > 0
         assert np.max(axis) < 4
-        ind = near_lines(self.box, pos, hh, axis, cofm)
+        ind = near_lines(self.box, pos, hh, axis, cofm, pool=self.pool)
         return ind
 
     def get_mass_frac(self, elem, fn, ind):
