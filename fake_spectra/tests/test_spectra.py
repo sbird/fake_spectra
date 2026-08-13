@@ -85,7 +85,6 @@ from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
 from fake_spectra.near_lines import near_lines
-from fake_spectra._spectra_priv import _near_lines
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -311,9 +310,25 @@ def test_hcd_blended():
     assert not np.any(mask)
     assert np.all(newtau == noise)
 
+def _brute_force_near_lines(box, pos, hh, axis, cofm):
+    """Reference sightline neighbour search: compare every particle to every
+    sightline. Far too slow to use in anger, but hard to get wrong."""
+    #The two coordinates perpendicular to each 1-indexed sightline axis
+    perp = {1: (1, 2), 2: (0, 2), 3: (0, 1)}
+    pos = pos.astype(np.float64)
+    near = np.zeros(np.shape(pos)[0], dtype=bool)
+    for (ax, line) in zip(axis, cofm):
+        (aa, bb) = perp[int(ax)]
+        dx = np.abs(pos[:, aa] - line[aa])
+        dy = np.abs(pos[:, bb] - line[bb])
+        #Periodic wrapping: take the shorter way round the box
+        dx = np.minimum(dx, box - dx)
+        dy = np.minimum(dy, box - dy)
+        near |= (dx**2 + dy**2 <= hh.astype(np.float64)**2)
+    return np.nonzero(near)[0].astype(np.int32)
+
 def test_near_lines():
-    """Check the sightline neighbour search against the C++ implementation
-    it replaced, which is still in the extension module."""
+    """Check the sightline neighbour search against a brute force search."""
     rng = np.random.default_rng(11)
     for _ in range(20):
         box = float(rng.choice([10., 100., 25000.]))
@@ -327,11 +342,11 @@ def test_near_lines():
         axis = rng.choice([1, 2, 3], nlos).astype(np.int32)
         cofm = rng.random((nlos, 3))*box
         assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
-                              np.sort(_near_lines(box, pos, hh, axis, cofm)))
+                              _brute_force_near_lines(box, pos, hh, axis, cofm))
     #All the sightlines along a single axis
     axis = np.ones(nlos, dtype=np.int32)
     assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
-                          np.sort(_near_lines(box, pos, hh, axis, cofm)))
+                          _brute_force_near_lines(box, pos, hh, axis, cofm))
     #Nothing near a sightline: an empty index list, not a failure
     hh = np.zeros(npart, dtype=np.float32)
     assert np.size(near_lines(box, pos, hh, axis, cofm)) == 0
