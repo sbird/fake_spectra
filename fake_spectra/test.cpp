@@ -161,6 +161,15 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nextlos++;\
     } while(0)
 
+//Is a particle among those found near a line?
+static bool has_particle(const NearParticles& nearby, const int line, const int ipart)
+{
+    for(long long i = nearby.offsets[line]; i < nearby.offsets[line+1]; i++)
+        if(nearby.part[i] == ipart)
+            return true;
+    return false;
+}
+
 BOOST_AUTO_TEST_CASE(check_index_table)
 {
     int nextlos = 0;
@@ -252,33 +261,32 @@ BOOST_AUTO_TEST_CASE(check_index_table)
                         4000,4000,4000, 1000,9999.9,9999.9, 1000.5,2000,501,
                         7500,7500,7500, 4008,4008.0,4008.0, 2000.0,9999,9999.8};
     float hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
-    std::valarray< std::map<int, double> > nearby_array = tab.get_near_particles(poses, hh, 9);
-    BOOST_CHECK_EQUAL(nearby_array.size(), nextlos);
+    NearParticles nearby_array = tab.get_near_particles(poses, hh, 9);
+    BOOST_CHECK_EQUAL(nearby_array.nlines(), nextlos);
     //Did we pick up the right number of particles in all cases?
-    BOOST_CHECK_EQUAL(nearby_array[0].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[1].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[2].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[3].size(),2);
-    BOOST_CHECK_EQUAL(nearby_array[4].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[5].size(),2);
-    BOOST_CHECK_EQUAL(nearby_array[6].size(),3);
-    BOOST_CHECK_EQUAL(nearby_array[7].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[8].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[9].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[10].size(),0);
-    BOOST_CHECK_EQUAL(nearby_array[11].size(),0);
-    BOOST_CHECK_EQUAL(nearby_array[12].size(),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(0),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(1),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(2),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(3),2);
+    BOOST_CHECK_EQUAL(nearby_array.size(4),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(5),2);
+    BOOST_CHECK_EQUAL(nearby_array.size(6),3);
+    BOOST_CHECK_EQUAL(nearby_array.size(7),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(8),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(9),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(10),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(11),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(12),0);
     //Check a few values
-    BOOST_CHECK_EQUAL(nearby_array[0].begin()->first,3);
-    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
-    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
-    BOOST_CHECK(nearby_array[5].find(4) != nearby_array[5].end());
-    BOOST_CHECK(nearby_array[5].find(8) != nearby_array[5].end());
-    std::map<int, double>::iterator it = nearby_array[6].begin();
-    BOOST_CHECK_EQUAL(it->first,0);
-    BOOST_CHECK_EQUAL((++it)->first,1);
-    BOOST_CHECK_EQUAL((++it)->first,2);
-    BOOST_CHECK_EQUAL(nearby_array[8].begin()->first,5);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[0]],3);
+    BOOST_CHECK(has_particle(nearby_array, 3, 3));
+    BOOST_CHECK(has_particle(nearby_array, 5, 4));
+    BOOST_CHECK(has_particle(nearby_array, 5, 8));
+    //The particles of a line come out in increasing index order
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]],0);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]+1],1);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]+2],2);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[8]],5);
 }
 
 BOOST_AUTO_TEST_CASE(check_profile)
