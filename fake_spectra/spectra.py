@@ -588,9 +588,10 @@ class Spectra:
         #Sentinel returned when there is nothing near a sightline.
         empty = (False, False, False, False, False, False) + ((False,) if get_species_den else ())
         #These two are needed in full to find the particles near a sightline,
-        #so all we can do is avoid a copy if they are float32 already.
-        pos = self.snapshot_set.get_data(0, "Position", segment=fn).astype(np.float32, copy=False)
-        hh = self.snapshot_set.get_smooth_length(0, segment=fn).astype(np.float32, copy=False)
+        #but the search does not need them in single precision, so convert
+        #after indexing like everything else and never hold both copies.
+        pos = self.snapshot_set.get_data(0, "Position", segment=fn)
+        hh = self.snapshot_set.get_smooth_length(0, segment=fn)
 
         #Find particles we care about
         if self.cofm_final:
@@ -604,8 +605,8 @@ class Spectra:
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
             return empty
-        pos = pos[ind, :]
-        hh = hh[ind]
+        pos = pos[ind, :].astype(np.float32, copy=False)
+        hh = hh[ind].astype(np.float32, copy=False)
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint.
         #Note we index before converting, so that we never convert a whole snapshot block.
         vel = np.zeros(1, dtype=np.float32)

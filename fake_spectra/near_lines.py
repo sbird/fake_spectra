@@ -50,8 +50,13 @@ def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
     if npart == 0 or np.size(axis) == 0:
         return np.nonzero(near)[0].astype(np.int32)
     cell = np.float32(box/ncell)
-    #Bin the particles by smoothing length in powers of two.
-    hbin = np.log2(np.maximum(hh/cell, np.float32(1.)))
+    #Bin the particles by smoothing length in powers of two. Single precision
+    #whatever the input dtype, so that a double precision snapshot does not
+    #pay for a double precision temporary: the spare cell of dilation radius
+    #below is much larger than the rounding.
+    hbin = np.multiply(hh, np.float32(1./cell), dtype=np.float32)
+    np.maximum(hbin, np.float32(1.), out=hbin)
+    np.log2(hbin, out=hbin)
     np.ceil(hbin, out=hbin)
     hbin = hbin.astype(np.int32)
     np.clip(hbin, 0, maxbin, out=hbin)
@@ -65,9 +70,9 @@ def near_lines(box, pos, hh, axis, cofm, ncell=1024, maxbin=5, workers=-1):
         #cKDTree wants its periodic points within [0, box).
         tree = cKDTree(lines, boxsize=box)
         mesh = _line_mesh(lines, cell, ncell, nbin, used, maxbin)
-        ip = (pos[:, aa]*np.float32(1./cell)).astype(np.int32)
+        ip = np.multiply(pos[:, aa], np.float32(1./cell), dtype=np.float32).astype(np.int32)
         np.clip(ip, 0, ncell-1, out=ip)
-        iq = (pos[:, bb]*np.float32(1./cell)).astype(np.int32)
+        iq = np.multiply(pos[:, bb], np.float32(1./cell), dtype=np.float32).astype(np.int32)
         np.clip(iq, 0, ncell-1, out=iq)
         maybe = mesh[hbin, ip, iq]
         del ip, iq, mesh
