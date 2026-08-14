@@ -1,16 +1,32 @@
 """Modified versions of gas properties and spectra that use the rate network."""
 
+import os
+
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
+from scipy.ndimage import spline_filter, map_coordinates
 from . import gas_properties
 from . import spectra
 from .rate_network import RateNetwork
 
+#Number of grid cells to pad the interpolation table by. map_coordinates takes the
+#value of the spline outside the table from a boundary condition, which disagrees
+#with a real bicubic spline by ~1e-3 in the outermost cell. Padding the table with
+#real values keeps every point we actually evaluate in the interior. The error from
+#the boundary decays by a factor of ~3.7 per cell of padding (the cubic B-spline
+#pole is -0.268), so 8 cells leaves it at ~3e-7, well below the ~2e-6 error of the
+#interpolation itself.
+NPAD = 8
+
+#Interpolating fewer particles than this is not worth the thread dispatch overhead.
+MINPARALLEL = 100000
+
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
-    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, temp_factor=1, gamma_factor=1, **kwargs):
+    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, temp_factor=1, gamma_factor=1, pool=None, **kwargs):
         super().__init__(redshift, absnap, hubble=hubble, fbar=fbar, units=units, sf_neutral=sf_neutral)
         self.rates = RateNetwork(redshift, f_bar = fbar, **kwargs)
+        #Thread pool used to evaluate the interpolation. Set to None to interpolate in serial.
+        self.pool = pool
         self.temp_factor = temp_factor
         self.gamma_factor = gamma_factor
         self.maxdens = self.PhysDensThresh/0.76
@@ -32,17 +48,40 @@ class RateNetworkGas(gas_properties.GasProperties):
         #Build interpolation
         self.densgrid = np.linspace(dlim[0], dlim[1], dsz)
         self.ienergygrid = np.linspace(elim[0], elim[1], tsz)
-        dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
-        self.lh0grid = np.zeros_like(dgrid)
-        self.tempgrid = np.zeros_like(dgrid)
+        self.ddens = (dlim[1] - dlim[0])/(dsz - 1)
+        self.dienergy = (elim[1] - elim[0])/(tsz - 1)
+        #Evaluate the rate network on a grid padded by NPAD cells on each side.
+        denspad = np.linspace(dlim[0] - NPAD*self.ddens, dlim[1] + NPAD*self.ddens, dsz + 2*NPAD)
+        ienergypad = np.linspace(elim[0] - NPAD*self.dienergy, elim[1] + NPAD*self.dienergy, tsz + 2*NPAD)
+        dgrid, egrid = np.meshgrid(denspad, ienergypad)
+        lh0pad = np.zeros_like(dgrid)
+        temppad = np.zeros_like(dgrid)
         #We assume primordial helium
-        for i in range(dsz):
-            self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
-            self.tempgrid[:,i] = np.log(self.rates.get_temp(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
-        #Bicubic splines over the (density, internal energy) grid.
-        #The grids are stored as [ienergy, density], so transpose them.
-        self.lh0spline = RectBivariateSpline(self.densgrid, self.ienergygrid, self.lh0grid.T)
-        self.tempspline = RectBivariateSpline(self.densgrid, self.ienergygrid, self.tempgrid.T)
+        for i in range(np.size(denspad)):
+            lh0pad[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
+            temppad[:,i] = np.log(self.rates.get_temp(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
+        #The grids over (densgrid, ienergygrid) themselves, indexed as [ienergy, density].
+        self.lh0grid = lh0pad[NPAD:-NPAD, NPAD:-NPAD]
+        self.tempgrid = temppad[NPAD:-NPAD, NPAD:-NPAD]
+        #Bicubic spline coefficients over the padded grid. Prefiltering here means
+        #the interpolation itself is a single cheap pass over the particles.
+        self.lh0coef = spline_filter(lh0pad, order=3, output=np.float64)
+        self.tempcoef = spline_filter(temppad, order=3, output=np.float64)
+
+    def _eval_interp(self, coef, ldensity, lienergy):
+        """Evaluate the bicubic spline with the given coefficients at the particle
+        densities and internal energies. map_coordinates releases the GIL, so this
+        is done on the thread pool if we have one and there is enough work to do."""
+        def _evaluate(ldens, lien):
+            """Interpolate a chunk of particles, in units of padded grid cells."""
+            coords = np.array([(lien - self.ienergygrid[0])/self.dienergy + NPAD,
+                               (ldens - self.densgrid[0])/self.ddens + NPAD])
+            return map_coordinates(coef, coords, order=3, prefilter=False)
+        if self.pool is None or np.size(ldensity) < MINPARALLEL:
+            return _evaluate(ldensity, lienergy)
+        nchunk = len(os.sched_getaffinity(0))
+        chunks = zip(np.array_split(ldensity, nchunk), np.array_split(lienergy, nchunk))
+        return np.concatenate(list(self.pool.map(lambda cc: _evaluate(*cc), chunks)))
 
     def get_temp(self,part_type, segment):
         """Compute temperature (in K) from internal energy using the rate network."""
@@ -80,11 +119,11 @@ class RateNetworkGas(gas_properties.GasProperties):
             raise ValueError("Density out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.densgrid), np.max(self.densgrid), np.min(ldensity[ii]), np.max(ldensity[ii])))
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
         if nhi:
-            spline = self.lh0spline
+            coef = self.lh0coef
         else:
-            spline = self.tempspline
+            coef = self.tempcoef
 
-        out[ii] = np.exp(spline.ev(ldensity[ii], lienergy[ii]))
+        out[ii] = np.exp(self._eval_interp(coef, ldensity[ii], lienergy[ii]))
         ii2 = np.where(ldensity >= np.max(self.densgrid))
         return out,ii2,density,ienergy
 

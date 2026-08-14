@@ -275,6 +275,10 @@ class Spectra:
             if gasprop_args is not None:
                 gprop_args.update(gasprop_args)
             self.gasprop = gasprop(**gprop_args)
+            #Share the worker threads with the gas properties class. Set as an attribute
+            #rather than a constructor argument so that gasprop classes which do not use
+            #a pool (including the default one) need not accept it.
+            self.gasprop.pool = self.pool
         except AttributeError:
             #Occurs if we didn't load a snapshot
             pass
