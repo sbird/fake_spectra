@@ -49,17 +49,6 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
         return;
 }
 
-/*Returns a std::map of lines close to the coordinates xx, yy, zz.
- * the key is the line index, and the value is the distance from the two axes not projected along*/
-std::map<int,double> IndexTable::get_near_lines(const float pos[],const float hh)
-{
-      std::map<int, double> nearby;
-      for_each_near_line(pos, hh, [&nearby](const int iproc, const double dr2){
-              nearby[iproc] = dr2;
-          });
-      return nearby;
-}
-
 /*This function takes a particle list and returns, for each line, the list of
  * particles near it: near is defined as dx^2+dy^2 < h^2.
  * Each thread searches a contiguous chunk of the particles into its own

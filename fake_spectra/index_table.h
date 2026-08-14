@@ -38,20 +38,6 @@ class IndexTable
 public:
   IndexTable(const double cofm[], const int axis[], const int NumLos_i, const double box);
 
-  //Get a list of lines nearby a particle with coordinates xx, yy, zz and smoothing length hh.
-  std::map<int,double> get_near_lines(const float pos[], const float hh);
-
-  //Call fn(line index, squared distance) for each line near a particle.
-  //Templated so that the callback is inlined into the search, which
-  //means a caller need not build a container for each particle.
-  template<class F> void for_each_near_line(const float pos[], const float hh, F fn)
-  {
-      if(index_table.size() > 0)
-          each_nearby(pos[0], index_table, pos, hh, fn);
-      if(index_table_xx.size() > 0)
-          each_nearby(pos[1], index_table_xx, pos, hh, fn);
-  }
-
   //Find the particles near each line.
   NearParticles get_near_particles(const float pos[], const float hh[], const long long npart);
   float * assign_cells(const int i, const NearParticles& nearby, const float pos[]);
@@ -63,6 +49,17 @@ public:
   }
 
 private:
+  //Call fn(line index, squared distance) for each line near a particle.
+  //Templated so that the callback is inlined into the search, which
+  //means the caller need not build a container for each particle.
+  template<class F> void for_each_near_line(const float pos[], const float hh, F fn)
+  {
+      if(index_table.size() > 0)
+          each_nearby(pos[0], index_table, pos, hh, fn);
+      if(index_table_xx.size() > 0)
+          each_nearby(pos[1], index_table_xx, pos, hh, fn);
+  }
+
   //Get the transverse distance from sightline iproc to position pos
   inline double calc_dr2(const double d1, const double d2)
   {
