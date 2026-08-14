@@ -139,7 +139,7 @@ class Spectra:
         #Worker threads for the flux statistics. The numpy and scipy calls they
         #are given release the GIL, so they do real work in parallel. Set to
         #None to compute the flux statistics in serial instead.
-        self.pool = ThreadPoolExecutor(max_workers=len(os.sched_getaffinity(0)))
+        self.pool = ThreadPoolExecutor(max_workers=spec_utils.cpu_count())
 
         self.turn_off_selfshield = turn_off_selfshield
 

@@ -1,10 +1,9 @@
 """Modified versions of gas properties and spectra that use the rate network."""
 
-import os
-
 import numpy as np
 from scipy.ndimage import spline_filter, map_coordinates
 from . import gas_properties
+from . import spec_utils
 from . import spectra
 from .rate_network import RateNetwork
 
@@ -79,7 +78,7 @@ class RateNetworkGas(gas_properties.GasProperties):
             return map_coordinates(coef, coords, order=3, prefilter=False)
         if self.pool is None or np.size(ldensity) < MINPARALLEL:
             return _evaluate(ldensity, lienergy)
-        nchunk = len(os.sched_getaffinity(0))
+        nchunk = spec_utils.cpu_count()
         chunks = zip(np.array_split(ldensity, nchunk), np.array_split(lienergy, nchunk))
         return np.concatenate(list(self.pool.map(lambda cc: _evaluate(*cc), chunks)))
 

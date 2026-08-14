@@ -79,6 +79,7 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 
 """
 
+import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
@@ -362,3 +363,18 @@ def test_near_lines():
     #Nothing near a sightline: an empty index list, not a failure
     hh = np.zeros(npart, dtype=np.float32)
     assert np.size(near_lines(box, pos, hh, axis, cofm)) == 0
+
+def testCpuCount(monkeypatch):
+    """Check the CPU count falls back sensibly on platforms and python versions
+    which do not have the more specific interfaces. Neither fallback can run on
+    linux with a recent python, so fake their absence."""
+    assert spec_utils.cpu_count() >= 1
+    #No os.process_cpu_count: python < 3.13, so use the affinity mask.
+    monkeypatch.delattr(os, "process_cpu_count", raising=False)
+    assert spec_utils.cpu_count() == len(os.sched_getaffinity(0))
+    #No os.sched_getaffinity either: not linux, so all we have is the CPU count.
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    assert spec_utils.cpu_count() == os.cpu_count()
+    #Both missing and the CPU count unknowable: still safe to divide work by.
+    monkeypatch.setattr(os, "cpu_count", lambda: None)
+    assert spec_utils.cpu_count() == 1
