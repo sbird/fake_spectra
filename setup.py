@@ -57,15 +57,6 @@ def check_for_openmp(compiler):
 extra_compile_args=['-ffast-math',]
 extra_link_args = ['-ffast-math',]
 
-try:
-    gsl_libs = subprocess.check_output(["gsl-config", "--libs"], stderr=subprocess.STDOUT, universal_newlines=True)
-    extra_link_args += gsl_libs.split()
-    gsl_incl = subprocess.check_output(["gsl-config", "--cflags"], stderr=subprocess.STDOUT, universal_newlines=True)
-    extra_compile_args += gsl_incl.split()
-except subprocess.CalledProcessError as e:
-    print(e.output)
-    raise
-
 # Get compiler invocation
 compiler = os.environ.get('CC', distutils.sysconfig.get_config_var('CC'))
 # make sure to use just the compiler name without flags

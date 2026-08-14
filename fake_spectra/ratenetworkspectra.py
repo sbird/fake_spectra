@@ -1,7 +1,7 @@
 """Modified versions of gas properties and spectra that use the rate network."""
 
 import numpy as np
-from ._spectra_priv import _interpolate_2d
+from scipy.interpolate import RectBivariateSpline
 from . import gas_properties
 from . import spectra
 from .rate_network import RateNetwork
@@ -39,6 +39,10 @@ class RateNetworkGas(gas_properties.GasProperties):
         for i in range(dsz):
             self.lh0grid[:,i] = np.log(self.rates.get_neutral_fraction(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
             self.tempgrid[:,i] = np.log(self.rates.get_temp(np.exp(dgrid[:,i]), np.exp(egrid[:,i])))
+        #Bicubic splines over the (density, internal energy) grid.
+        #The grids are stored as [ienergy, density], so transpose them.
+        self.lh0spline = RectBivariateSpline(self.densgrid, self.ienergygrid, self.lh0grid.T)
+        self.tempspline = RectBivariateSpline(self.densgrid, self.ienergygrid, self.tempgrid.T)
 
     def get_temp(self,part_type, segment):
         """Compute temperature (in K) from internal energy using the rate network."""
@@ -71,13 +75,16 @@ class RateNetworkGas(gas_properties.GasProperties):
         ii = np.where(ldensity < np.max(self.densgrid))
         if (np.max(self.ienergygrid) < np.max(lienergy[ii])) or (np.min(self.ienergygrid) > np.min(lienergy[ii])):
             raise ValueError("Ienergy out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.ienergygrid), np.max(self.ienergygrid), np.min(lienergy[ii]), np.max(lienergy[ii])))
+        #The spline extrapolates silently below the bottom of the density grid, so check explicitly.
+        if np.min(self.densgrid) > np.min(ldensity[ii]):
+            raise ValueError("Density out of range: interp %g -> %g. Present: %g -> %g" % (np.min(self.densgrid), np.max(self.densgrid), np.min(ldensity[ii]), np.max(ldensity[ii])))
         #Correct internal energy to the internal energy of a cold cloud if we are on the star forming equation of state.
         if nhi:
-            zgrid = self.lh0grid
+            spline = self.lh0spline
         else:
-            zgrid = self.tempgrid
+            spline = self.tempspline
 
-        out[ii] = np.exp(_interpolate_2d(ldensity[ii], lienergy[ii], self.densgrid, self.ienergygrid, zgrid))
+        out[ii] = np.exp(spline.ev(ldensity[ii], lienergy[ii]))
         ii2 = np.where(ldensity >= np.max(self.densgrid))
         return out,ii2,density,ienergy
 
