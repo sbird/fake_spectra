@@ -18,7 +18,8 @@ struct NearParticles
     //One more than the number of lines: offsets[i+1] ends line i.
     std::vector<long long> offsets;
     //Particle index, and its squared distance from the line.
-    std::vector<int> part;
+    //The index is 64 bit: a snapshot may have more than 2^31 particles.
+    std::vector<long long> part;
     std::vector<double> dr2;
 
     //Number of particles near line i

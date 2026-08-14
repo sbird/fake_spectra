@@ -20,9 +20,9 @@
 void ParticleInterp::compute_tau(double tau[], const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart)
 {
     const NearParticles nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
-    const unsigned int nlines = nearby_array.nlines();
+    const long long nlines = nearby_array.nlines();
     #pragma omp parallel for
-    for(unsigned int i = 0; i < nlines; ++i)
+    for(long long i = 0; i < nlines; ++i)
     {
         float * arr2 = NULL;
         if(kernel == VORONOI_MESH) arr2 = sort_los_table.assign_cells(i, nearby_array, Pos);
@@ -31,10 +31,10 @@ void ParticleInterp::compute_tau(double tau[], const float Pos[], const float Ve
         //List of particles near this los
         //Loop over them
         const long long first = nearby_array.offsets[i];
-        const int nnear = nearby_array.size(i);
-        for(int ind = 0; ind < nnear; ++ind)
+        const long long nnear = nearby_array.size(i);
+        for(long long ind = 0; ind < nnear; ++ind)
         {
-          const int ipart = nearby_array.part[first+ind];
+          const long long ipart = nearby_array.part[first+ind];
           const double dr2 = nearby_array.dr2[first+ind];
           //Particle position parallel to axis
           const float ppos = Pos[3*ipart+axis-1];
@@ -52,9 +52,9 @@ void ParticleInterp::compute_tau(double tau[], const float Pos[], const float Ve
 void ParticleInterp::compute_colden(double colden[], const float Pos[], const float Dens[], const float h[], const long long npart)
 {
     const NearParticles nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
-    const unsigned int nlines = nearby_array.nlines();
+    const long long nlines = nearby_array.nlines();
     #pragma omp parallel for
-    for(unsigned int i = 0; i < nlines; ++i)
+    for(long long i = 0; i < nlines; ++i)
     {
         float * arr2 = NULL;
         if(kernel == VORONOI_MESH) arr2 = sort_los_table.assign_cells(i, nearby_array, Pos);
@@ -63,10 +63,10 @@ void ParticleInterp::compute_colden(double colden[], const float Pos[], const fl
         //List of particles near this los
         //Loop over them
         const long long first = nearby_array.offsets[i];
-        const int nnear = nearby_array.size(i);
-        for(int ind = 0; ind < nnear; ++ind)
+        const long long nnear = nearby_array.size(i);
+        for(long long ind = 0; ind < nnear; ++ind)
         {
-          const int ipart = nearby_array.part[first+ind];
+          const long long ipart = nearby_array.part[first+ind];
           const double dr2 = nearby_array.dr2[first+ind];
           //Particle position parallel to axis
           const float ppos = Pos[3*ipart+axis-1];

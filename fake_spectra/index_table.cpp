@@ -61,14 +61,16 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
 NearParticles IndexTable::get_near_particles(const float pos[], const float hh[], const long long npart)
 {
     const int nthread = max_threads();
-    std::vector<std::vector<int> > tpart(nthread), tline(nthread);
+    //Particle indices are 64 bit, line indices are bounded by NumLos.
+    std::vector<std::vector<long long> > tpart(nthread);
+    std::vector<std::vector<int> > tline(nthread);
     std::vector<std::vector<double> > tdr2(nthread);
     //How many particles each thread found for each line.
     std::vector<long long> counts((long long)nthread*NumLos, 0);
     #pragma omp parallel
     {
         const int tid = this_thread();
-        std::vector<int>& mypart = tpart[tid];
+        std::vector<long long>& mypart = tpart[tid];
         std::vector<int>& myline = tline[tid];
         std::vector<double>& mydr2 = tdr2[tid];
         long long * mycount = &counts[(long long)tid*NumLos];
@@ -119,7 +121,7 @@ NearParticles IndexTable::get_near_particles(const float pos[], const float hh[]
 float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, const float pos[])
 {
     const long long first = nearby.offsets[line_i];
-    const int Ncells = nearby.size(line_i);
+    const long long Ncells = nearby.size(line_i);
     // printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
     float * arr2 = new float [2*Ncells];
     //Nothing is near this line, so there is nothing to assign the
@@ -127,7 +129,7 @@ float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, 
     if(Ncells == 0)
         return arr2;
     // initialize
-    for(int i = 0; i < 2*Ncells; ++i)
+    for(long long i = 0; i < 2*Ncells; ++i)
         arr2[i] = 3*boxsize;
 
     // divide each sightline into an array. grid size = RESO ckpc/h
@@ -143,9 +145,9 @@ float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, 
         double xp = (i+0.5)*reso;
         // find the particle index that this point along the sightline belongs to
         double min_dist = boxsize;
-        int min_ind = 0;
-        for(int ind = 0; ind < Ncells; ++ind){
-            const int ipart = nearby.part[first+ind];
+        long long min_ind = 0;
+        for(long long ind = 0; ind < Ncells; ++ind){
+            const long long ipart = nearby.part[first+ind];
             double dx, dy, dz;
             // take into account periodicity
             dx = fabs(pos[3*ipart+axis_i-1]-xp);
@@ -185,7 +187,7 @@ float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, 
         arr2[2*min_ind+1] = xp;
     }
 
-    for(int i = 0; i < Ncells; ++i){
+    for(long long i = 0; i < Ncells; ++i){
         arr2[2*i] -= 0.5*reso;
         arr2[2*i+1] += 0.5*reso;
     }
