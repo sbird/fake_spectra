@@ -122,6 +122,10 @@ float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, 
     const int Ncells = nearby.size(line_i);
     // printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
     float * arr2 = new float [2*Ncells];
+    //Nothing is near this line, so there is nothing to assign the
+    //grid points to. The caller's particle loop is empty as well.
+    if(Ncells == 0)
+        return arr2;
     // initialize
     for(int i = 0; i < 2*Ncells; ++i)
         arr2[i] = 3*boxsize;

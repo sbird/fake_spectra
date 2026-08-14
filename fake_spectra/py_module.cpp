@@ -7,13 +7,45 @@
 /*Check whether the passed array has type typename. Returns 1 if it doesn't, 0 if it does.*/
 int check_type(PyArrayObject * arr, int npy_typename)
 {
-  return !PyArray_EquivTypes(PyArray_DESCR(arr), PyArray_DescrFromType(npy_typename));
+  //PyArray_DescrFromType hands out a new reference, which we own.
+  PyArray_Descr * descr = PyArray_DescrFromType(npy_typename);
+  const int badtype = !PyArray_EquivTypes(PyArray_DESCR(arr), descr);
+  Py_DECREF(descr);
+  return badtype;
 }
 
 int check_float(PyArrayObject * arr)
 {
   return check_type(arr, NPY_FLOAT);
 }
+
+/* Holds the contiguous version of an input array. PyArray_GETCONTIGUOUS takes
+ * a reference, and may hand back a fresh array rather than the one passed in,
+ * so the reference has to be dropped on every path out of the interpolation,
+ * including the error ones. */
+class ContiguousArray
+{
+  public:
+    explicit ContiguousArray(PyArrayObject * arr): contig(PyArray_GETCONTIGUOUS(arr)) {}
+    ~ContiguousArray()
+    {
+        Py_XDECREF(contig);
+    }
+    //The reference is owned by exactly one of these.
+    ContiguousArray(const ContiguousArray&) = delete;
+    ContiguousArray& operator=(const ContiguousArray&) = delete;
+    //False if getting a contiguous copy failed, in which case data() is not usable.
+    bool valid() const
+    {
+        return contig != NULL;
+    }
+    void * data() const
+    {
+        return PyArray_DATA(contig);
+    }
+  private:
+    PyArrayObject * contig;
+};
 
 
 /*****************************************************************************/
@@ -70,22 +102,19 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 
     //Initialise P from the data in the input numpy arrays.
     //Note: better be sure they are float32 in the calling function.
-    //PyArray_GETCONTIGUOUS increments the reference count of the object,
-    pos = PyArray_GETCONTIGUOUS(pos);
-    dens = PyArray_GETCONTIGUOUS(dens);
-    h = PyArray_GETCONTIGUOUS(h);
-    float * Pos =(float *) PyArray_DATA(pos);
-    float * Hh= (float *) PyArray_DATA(h);
-    float * Dens =(float *) PyArray_DATA(dens);
-
-    cofm = PyArray_GETCONTIGUOUS(cofm);
-    axis = PyArray_GETCONTIGUOUS(axis);
-    double * Cofm =(double *) PyArray_DATA(cofm);
-    int32_t * Axis =(int32_t *) PyArray_DATA(axis);
-    if( !Pos || !Dens || !Hh || !Cofm || !Axis ){
+    //These hold the references taken by PyArray_GETCONTIGUOUS until they go
+    //out of scope, so returning early does not leak them.
+    ContiguousArray pos_c(pos), dens_c(dens), h_c(h), cofm_c(cofm), axis_c(axis);
+    if( !pos_c.valid() || !dens_c.valid() || !h_c.valid() || !cofm_c.valid() || !axis_c.valid() ){
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
+    float * Pos =(float *) pos_c.data();
+    float * Hh= (float *) h_c.data();
+    float * Dens =(float *) dens_c.data();
+
+    double * Cofm =(double *) cofm_c.data();
+    int32_t * Axis =(int32_t *) axis_c.data();
     ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos, kernel, tautail);
 
     PyObject * for_return;
@@ -93,23 +122,20 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
      * Note: for an array of shape (a,b), element (i,j) can be accessed as
      * [i*b+j] */
     if (compute_tau){
-        vel = PyArray_GETCONTIGUOUS(vel);
-        temp = PyArray_GETCONTIGUOUS(temp);
-
-        float * Vel =(float *) PyArray_DATA(vel);
-        float * Temp =(float *) PyArray_DATA(temp);
-
-        if( !Vel || !Temp ){
+        ContiguousArray vel_c(vel), temp_c(temp);
+        if( !vel_c.valid() || !temp_c.valid() ){
           PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of Vel and Temp failed\n");
           return NULL;
         }
+        float * Vel =(float *) vel_c.data();
+        float * Temp =(float *) temp_c.data();
 
         PyArrayObject * tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
-        double * tau = (double *) PyArray_DATA(tau_out);
         if ( !tau_out ){
           PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for tau\n");
           return NULL;
         }
+        double * tau = (double *) PyArray_DATA(tau_out);
         PyArray_FILLWBYTE(tau_out, 0);
         //Do the work
         pint.compute_tau(tau, Pos, Vel, Dens, Temp, Hh, Npart);
@@ -117,17 +143,14 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         //Build a tuple from the interp struct
         for_return = Py_BuildValue("O", tau_out);
         Py_DECREF(tau_out);
-        Py_DECREF(vel);
-        Py_DECREF(temp);
-
     }
     else{
         PyArrayObject * colden_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
-        double * colden = (double *) PyArray_DATA(colden_out);
         if ( !colden_out ){
           PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for colden\n");
           return NULL;
         }
+        double * colden = (double *) PyArray_DATA(colden_out);
         //Initialise output arrays to 0.
         PyArray_FILLWBYTE(colden_out, 0);
 
@@ -138,14 +161,6 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         for_return = Py_BuildValue("O", colden_out);
         Py_DECREF(colden_out);
     }
-
-    //Because PyArray_GETCONTIGUOUS incremented the reference count,
-    //and may have made an allocation, in which case this does not point to what it used to.
-    Py_DECREF(pos);
-    Py_DECREF(dens);
-    Py_DECREF(h);
-    Py_DECREF(cofm);
-    Py_DECREF(axis);
 
     return for_return;
 }

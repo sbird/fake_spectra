@@ -213,7 +213,9 @@ int load_hdf5_snapshot(const char *ffname, pdata *P, int fileno)
 exit:
   H5Gclose(hdf_group);
   H5Fclose(hdf_file);
-  if(fileno < 1){
+  /*Note length is unsigned, so length-1 is not a valid index when nothing was
+   * read: we get here with length == 0 whenever reading the file failed.*/
+  if(fileno < 1 && length > 0){
         printf("\nP[%d].Pos = [%g %g %g]\n", 0, (*P).Pos[0], (*P).Pos[1],(*P).Pos[2]);
         printf("P[%d].Vel = [%g %g %g]\n", 0, (*P).Vel[0], (*P).Vel[1],(*P).Vel[2]);
         printf("P[-1].Density = %e\n", (*P).Mass[0]);
