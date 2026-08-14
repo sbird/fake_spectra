@@ -1,4 +1,3 @@
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include "part_int.h"
@@ -159,50 +158,26 @@ static PyMethodDef spectrae[] = {
   {NULL, NULL, 0, NULL},
 };
 
-//Python 3 changed the module initialisation.
-#if PY_MAJOR_VERSION >= 3
-  static struct PyModuleDef moduledef = {
-    PyModuleDef_HEAD_INIT,
-    "_spectra_priv", /* m_name */
-    "C functions for accelerating spectral work",      /* m_doc */
-    -1,                  /* m_size */
-    spectrae,            /* m_methods */
-    NULL,                /* m_reload */
-    NULL,                /* m_traverse */
-    NULL,                /* m_clear */
-    NULL,                /* m_free */
-  };
-#endif
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "_spectra_priv", /* m_name */
+  "C functions for accelerating spectral work",      /* m_doc */
+  -1,                  /* m_size */
+  spectrae,            /* m_methods */
+  NULL,                /* m_reload */
+  NULL,                /* m_traverse */
+  NULL,                /* m_clear */
+  NULL,                /* m_free */
+};
 
-static PyObject *
-moduleinit(void)
+PyMODINIT_FUNC
+PyInit__spectra_priv(void)
 {
     PyObject *m;
 
-#if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&moduledef);
     import_array();
-#else
-    m = Py_InitModule3("_spectra_priv",spectrae, "C functions for accelerating spectral work");
-    _import_array();
-#endif
-
     if (m == NULL)
         return NULL;
-
-  return m;
+    return m;
 }
-
-#if PY_MAJOR_VERSION < 3
-    PyMODINIT_FUNC
-    init_spectra_priv(void)
-    {
-        moduleinit();
-    }
-#else
-    PyMODINIT_FUNC
-    PyInit__spectra_priv(void)
-    {
-        return moduleinit();
-    }
-#endif
