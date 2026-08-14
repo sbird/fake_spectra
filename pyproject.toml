@@ -1,9 +1,51 @@
 [build-system]
 # Minimum requirements for the build system to execute.
+# setuptools 61 is the first version to read metadata from pyproject.toml.
 requires = [
-    "setuptools",
+    "setuptools>=61",
     "wheel",
     "numpy",
     "scipy",
     "h5py",
 ]
+
+[project]
+name = "fake_spectra"
+version = "2.3.0"
+description = "Analysis tools for generating artificial spectra from simulations."
+readme = {text = "Analysis tools for generating artificial spectra for SPH or meshless cosmological simulation codes, including AREPO, Gadget, SIMBA, etc", content-type = "text/plain"}
+authors = [{name = "Simeon Bird", email = "spb@ucr.edu"}]
+# The SPDX string form of this, and project.license-files, need setuptools 77.
+license = {text = "MIT"}
+# The source uses f-strings, so it will not even parse before this.
+requires-python = ">=3.6"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+[project.urls]
+Homepage = "http://github.com/sbird/fake_spectra"
+
+[tool.setuptools]
+packages = [
+    "fake_spectra",
+    "fake_spectra.tests",
+    "fake_spectra.cloudy_tables",
+    # Directories of data files. Python treats any directory as importable, so
+    # setuptools wants these listed even though they contain no code.
+    "fake_spectra.data",
+    "fake_spectra.cloudy_tables.ion_out_no_atten",
+    "fake_spectra.cloudy_tables.ion_out_photo_atten",
+]
+
+[tool.setuptools.package-data]
+"fake_spectra" = ["*.dat"]
+"fake_spectra.data" = ["TREECOOL*"]
+"fake_spectra.tests" = ["*.npz"]
+"fake_spectra.cloudy_tables.ion_out_no_atten" = ["cloudy_table.npz"]
+"fake_spectra.cloudy_tables.ion_out_photo_atten" = ["cloudy_table.npz"]
