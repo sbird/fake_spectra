@@ -82,6 +82,26 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
       return NULL;
     }
 
+    /*Check the shapes before reading any dimension past the first: the
+     * interpolation indexes these arrays directly, so one that is too short
+     * is an out of bounds read rather than an exception. Note PyArray_DIM
+     * itself reads past the shape for an array of too small a rank.*/
+    if(PyArray_NDIM(pos) != 2 || PyArray_DIM(pos,1) != 3)
+    {
+      PyErr_SetString(PyExc_ValueError, "pos must have dimensions (npart,3)\n");
+      return NULL;
+    }
+    if(PyArray_NDIM(cofm) != 2 || PyArray_DIM(cofm,1) != 3)
+    {
+      PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
+      return NULL;
+    }
+    if(PyArray_NDIM(dens) != 1 || PyArray_NDIM(h) != 1 || PyArray_NDIM(axis) != 1)
+    {
+      PyErr_SetString(PyExc_ValueError, "dens, h and axis must be one-dimensional\n");
+      return NULL;
+    }
+
     NumLos = PyArray_DIM(cofm,0);
     Npart = PyArray_DIM(pos,0);
     //Malloc stuff
@@ -94,10 +114,27 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
       return NULL;
     }
 
-    if(NumLos != PyArray_DIM(axis,0) || 3 != PyArray_DIM(cofm,1))
+    if(NumLos != PyArray_DIM(axis,0))
     {
       PyErr_SetString(PyExc_ValueError, "cofm must have dimensions (np.size(axis),3) \n");
       return NULL;
+    }
+
+    /*Vel and temp are indexed with the same particle indices as pos, but only
+     * when we are computing tau: the caller is free to pass a dummy for them
+     * when all we want is the column density.*/
+    if(compute_tau)
+    {
+        if(PyArray_NDIM(vel) != 2 || PyArray_DIM(vel,0) != Npart || PyArray_DIM(vel,1) != 3)
+        {
+          PyErr_SetString(PyExc_ValueError, "vel must have dimensions (npart,3) to compute tau\n");
+          return NULL;
+        }
+        if(PyArray_NDIM(temp) != 1 || PyArray_DIM(temp,0) != Npart)
+        {
+          PyErr_SetString(PyExc_ValueError, "temp must be the same length as pos to compute tau\n");
+          return NULL;
+        }
     }
 
     //Initialise P from the data in the input numpy arrays.
