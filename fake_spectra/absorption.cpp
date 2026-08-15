@@ -32,6 +32,9 @@
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
 
+/*The tabulated Voigt function, built once before main().*/
+const VoigtTable voigt_table;
+
 /* Find the integral of the particle density in this pixel by integrating an SPH kernel
  * over the z direction.
  * Arguments:

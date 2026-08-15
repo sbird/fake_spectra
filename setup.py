@@ -82,6 +82,7 @@ cmodule = [
             depends = [
                 "fake_spectra/Faddeeva.h",
                 "fake_spectra/absorption.h",
+                "fake_spectra/fastvoigt.h",
                 "fake_spectra/index_table.h",
                 "fake_spectra/part_int.h",
                 "fake_spectra/singleabs.h",]

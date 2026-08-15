@@ -54,7 +54,7 @@ cextract/build/read_snapshot.o: cextract/read_snapshot.cpp cextract/global_vars.
 btest/%.o: fake_spectra/%.cpp fake_spectra/%.h
 	$(CXX) $(CFLAGS) -c $< -o $@
 
-btest/absorption.o: fake_spectra/absorption.cpp fake_spectra/absorption.h fake_spectra/singleabs.h
+btest/absorption.o: fake_spectra/absorption.cpp fake_spectra/absorption.h fake_spectra/singleabs.h fake_spectra/fastvoigt.h
 btest/part_int.o: fake_spectra/part_int.cpp fake_spectra/part_int.h fake_spectra/absorption.h fake_spectra/index_table.h
 
 clean:
