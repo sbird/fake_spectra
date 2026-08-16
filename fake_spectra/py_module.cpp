@@ -152,6 +152,14 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
 
     double * Cofm =(double *) cofm_c.data();
     int32_t * Axis =(int32_t *) axis_c.data();
+    //The index table buckets each line by its axis, so an axis outside this
+    //range would be an out of bounds access rather than a bad answer.
+    for(int i = 0; i < NumLos; i++){
+        if(Axis[i] < 1 || Axis[i] > 3){
+            PyErr_SetString(PyExc_ValueError, "axis must be 1, 2 or 3\n");
+            return NULL;
+        }
+    }
     ParticleInterp pint(nbins, lambda, gamma, fosc, amumass, box100, velfac, atime, Cofm, Axis ,NumLos, kernel, tautail);
 
     PyObject * for_return;

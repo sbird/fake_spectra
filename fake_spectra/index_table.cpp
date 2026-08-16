@@ -35,17 +35,20 @@ static inline int cur_threads()
 #endif
 }
 
-// Construct the index tables as maps, which are automatically sorted.
+/* The two coordinates transverse to each (1-indexed) sightline axis. */
+static const int PERP[4][2] = {{0,0},{1,2},{0,2},{0,1}};
+
+// Bucket the lines of each axis onto their own mesh.
 IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumLos_i, const double box):
   cofm(cofm_i), axis(axis_i), NumLos(NumLos_i), boxsize(box)
 {
+        std::vector<int> lines[3];
         for(int i=0;i<NumLos;i++){
-            if(axis[i] == 1)
-                index_table_xx.insert(std::pair<const double, const int>(cofm[3*i+1], i));
-            else
-                index_table.insert(std::pair<const double, const int>(cofm[3*i], i));
+            assert(axis[i] > 0 && axis[i] < 4);
+            lines[axis[i]-1].push_back(i);
         }
-        assert(index_table_xx.size() + index_table.size() == (unsigned int) NumLos);
+        for(int ax = 0; ax < 3; ax++)
+            mesh[ax].build(cofm, lines[ax], PERP[ax+1][0], PERP[ax+1][1], boxsize);
         return;
 }
 
@@ -74,6 +77,12 @@ NearParticles IndexTable::get_near_particles(const float pos[], const float hh[]
         std::vector<int>& myline = tline[tid];
         std::vector<double>& mydr2 = tdr2[tid];
         long long * mycount = &counts[(long long)tid*NumLos];
+        /*Most particles reaching here are near one line, so this is about the
+         * right size, and saves regrowing the buffers as they fill.*/
+        const size_t guess = npart/nthread + 16;
+        mypart.reserve(guess);
+        myline.reserve(guess);
+        mydr2.reserve(guess);
         /* Static schedule hands the chunks out round robin in order of the thread number.
          * So thread t searches the t'th chunk, which is what puts the particles of a line in order.*/
         const int nth = cur_threads();
