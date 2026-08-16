@@ -462,65 +462,64 @@ class Spectra:
             f = h5py.File(savefile, 'r')
         except IOError as io:
             raise IOError("Could not read saved data from: "+savefile+". If the file does not exist, try using reload_file=True") from io
-        else:
-            with f:
-                grid_file = f["Header"]
-                self.red = grid_file.attrs["redshift"]
-                self.atime = 1./(1+self.red)
-                self.OmegaM = grid_file.attrs["omegam"]
-                self.nbins = grid_file.attrs["nbins"]
-                self.omegab = grid_file.attrs["omegab"]
-                self.OmegaLambda = grid_file.attrs["omegal"]
-                self.hubble = grid_file.attrs["hubble"]
-                self.npart = np.array(grid_file.attrs["npart"])
-                self.box = grid_file.attrs["box"]
-                self.discarded = grid_file.attrs["discarded"]
-                grp = f["colden"]
+        with f:
+            grid_file = f["Header"]
+            self.red = grid_file.attrs["redshift"]
+            self.atime = 1./(1+self.red)
+            self.OmegaM = grid_file.attrs["omegam"]
+            self.nbins = grid_file.attrs["nbins"]
+            self.omegab = grid_file.attrs["omegab"]
+            self.OmegaLambda = grid_file.attrs["omegal"]
+            self.hubble = grid_file.attrs["hubble"]
+            self.npart = np.array(grid_file.attrs["npart"])
+            self.box = grid_file.attrs["box"]
+            self.discarded = grid_file.attrs["discarded"]
+            grp = f["colden"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.colden[(elem, int(ion))] = np.array([0])
+            grp = f["tau_obs"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.tau_obs[(elem, int(ion))] = np.array([0])
+            grp = f["tau"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    for line in grp[elem][ion].keys():
+                        self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
+            try:
+                grp = f["velocity"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        self.colden[(elem, int(ion))] = np.array([0])
-                grp = f["tau_obs"]
+                        self.velocity[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["temperature"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        self.tau_obs[(elem, int(ion))] = np.array([0])
-                grp = f["tau"]
+                        self.temp[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["density_weight_density"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        for line in grp[elem][ion].keys():
-                            self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
-                try:
-                    grp = f["velocity"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.velocity[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                try:
-                    grp = f["temperature"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.temp[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                try:
-                    grp = f["density_weight_density"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.dens_weight_dens[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                grp = f["num_important"]
-                for elem in grp.keys():
-                    for ion in grp[elem].keys():
-                        self.num_important[(elem, int(ion))] = self._load_sightlines(grp[elem][ion])
-                grp = f["spectra"]
-                self.cofm = self._load_sightlines(grp["cofm"])
-                self.axis = self._load_sightlines(grp["axis"])
-                # older files might not have Hz stored
-                if "Hz" in grid_file.attrs:
-                    self.Hz = grid_file.attrs["Hz"]
-                else:
-                    self.Hz = None
+                        self.dens_weight_dens[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            grp = f["num_important"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.num_important[(elem, int(ion))] = self._load_sightlines(grp[elem][ion])
+            grp = f["spectra"]
+            self.cofm = self._load_sightlines(grp["cofm"])
+            self.axis = self._load_sightlines(grp["axis"])
+            # older files might not have Hz stored
+            if "Hz" in grid_file.attrs:
+                self.Hz = grid_file.attrs["Hz"]
+            else:
+                self.Hz = None
 
     def _need_temp(self, elem, ion, get_tau):
         """Do we need to load the temperature? It is used for the line width when computing tau,
@@ -1380,7 +1379,7 @@ class Spectra:
         vel = np.linspace(0, self.vmax, flux_i.shape[1])
         vel_stepsize = vel[1]-vel[0] # velocity bin size (km/sec)
         if vel_stepsize >= vel_seg_min:
-            raise Exception("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
+            raise ValueError("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
 
         # index spacing to get ~velocity breakpoint spacing
         ind_break_spacing = int(np.round(ini_break_spacing/vel_stepsize))
@@ -1461,7 +1460,7 @@ class Spectra:
         vel_stepsize = self.vmax/(flux.shape[1]-1)
 
         if section_size < vel_stepsize/self.velfac or section_size > self.box:
-            raise Exception("Section size must be greater than spatial resolution and <= box size.\n"+"Spatial resolution is "+str(vel_stepsize/self.velfac)+", box size is "+str(self.box))
+            raise ValueError("Section size must be greater than spatial resolution and <= box size.\n"+"Spatial resolution is "+str(vel_stepsize/self.velfac)+", box size is "+str(self.box))
 
         # number of (non-integer) sections that could fit into the box
         n_sections = self.box/section_size
