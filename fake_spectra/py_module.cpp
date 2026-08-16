@@ -14,11 +14,6 @@ int check_type(PyArrayObject * arr, int npy_typename)
   return badtype;
 }
 
-int check_float(PyArrayObject * arr)
-{
-  return check_type(arr, NPY_FLOAT);
-}
-
 /* Holds the contiguous version of an input array. PyArray_GETCONTIGUOUS takes
  * a reference, and may hand back a fresh array rather than the one passed in,
  * so the reference has to be dropped on every path out of the interpolation,
@@ -69,8 +64,8 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     }
 
     //Check that our input has the right types
-    if(check_float(pos) || check_float(vel) || check_float(dens) || check_float(temp) || check_float(h)){
-       PyErr_SetString(PyExc_TypeError, "One of the data arrays does not have 32-bit float type\n");
+    if(check_type(pos, NPY_DOUBLE) || check_type(vel, NPY_DOUBLE) || check_type(dens, NPY_DOUBLE) || check_type(temp, NPY_DOUBLE) || check_type(h, NPY_DOUBLE)){
+       PyErr_SetString(PyExc_TypeError, "One of the particle data arrays does not have 64-bit float type\n");
        return NULL;
     }
     if(check_type(cofm,NPY_DOUBLE)){
@@ -138,7 +133,7 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
     }
 
     //Initialise P from the data in the input numpy arrays.
-    //Note: better be sure they are float32 in the calling function.
+    //Note: better be sure they are float64 in the calling function.
     //These hold the references taken by PyArray_GETCONTIGUOUS until they go
     //out of scope, so returning early does not leak them.
     ContiguousArray pos_c(pos), dens_c(dens), h_c(h), cofm_c(cofm), axis_c(axis);
@@ -146,9 +141,9 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of input arrays failed\n");
         return NULL;
     }
-    float * Pos =(float *) pos_c.data();
-    float * Hh= (float *) h_c.data();
-    float * Dens =(float *) dens_c.data();
+    double * Pos =(double *) pos_c.data();
+    double * Hh= (double *) h_c.data();
+    double * Dens =(double *) dens_c.data();
 
     double * Cofm =(double *) cofm_c.data();
     int32_t * Axis =(int32_t *) axis_c.data();
@@ -172,8 +167,8 @@ extern "C" PyObject * Py_Particle_Interpolation(PyObject *self, PyObject *args)
           PyErr_SetString(PyExc_MemoryError, "Getting contiguous copies of Vel and Temp failed\n");
           return NULL;
         }
-        float * Vel =(float *) vel_c.data();
-        float * Temp =(float *) temp_c.data();
+        double * Vel =(double *) vel_c.data();
+        double * Temp =(double *) temp_c.data();
 
         PyArrayObject * tau_out = (PyArrayObject *) PyArray_SimpleNew(2, size, NPY_DOUBLE);
         if ( !tau_out ){

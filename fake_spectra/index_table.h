@@ -90,16 +90,16 @@ public:
     }
 
     //Call fn(line index, squared distance) for each line within hh of the particle.
-    template<class F> void query(const float pos[], const float hh, F fn) const
+    template<class F> void query(const double pos[], const double hh, F fn) const
     {
-        const float x = pos[p1], y = pos[p2];
+        const double x = pos[p1], y = pos[p2];
         int i0 = ifloor((x-hh)*invcell), i1 = ifloor((x+hh)*invcell);
         int j0 = ifloor((y-hh)*invcell), j1 = ifloor((y+hh)*invcell);
         //A particle reaching more than a box covers every cell, and wrapping
         //the cell index would visit some of them more than once.
         if(i1 - i0 + 1 >= ncell) { i0 = 0; i1 = ncell-1; }
         if(j1 - j0 + 1 >= ncell) { j0 = 0; j1 = ncell-1; }
-        const double hh2 = (double)hh*hh;
+        const double hh2 = hh*hh;
         for(int i = i0; i <= i1; i++) {
             const int ii = wrap(i);
             for(int j = j0; j <= j1; j++) {
@@ -177,8 +177,8 @@ public:
   IndexTable(const double cofm[], const int axis[], const int NumLos_i, const double box);
 
   //Find the particles near each line.
-  NearParticles get_near_particles(const float pos[], const float hh[], const long long npart);
-  float * assign_cells(const int i, const NearParticles& nearby, const float pos[]);
+  NearParticles get_near_particles(const double pos[], const double hh[], const long long npart);
+  double * assign_cells(const int i, const NearParticles& nearby, const double pos[]);
 
   //Get the axis of a line
   inline int get_axis(const int iproc)
@@ -190,7 +190,7 @@ private:
   //Call fn(line index, squared distance) for each line near a particle.
   //Templated so that the callback is inlined into the search, which
   //means the caller need not build a container for each particle.
-  template<class F> void for_each_near_line(const float pos[], const float hh, F fn)
+  template<class F> void for_each_near_line(const double pos[], const double hh, F fn)
   {
       for(int ax = 0; ax < 3; ax++)
           if(!mesh[ax].empty())

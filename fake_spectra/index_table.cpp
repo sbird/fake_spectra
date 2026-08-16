@@ -61,7 +61,7 @@ IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumL
  * Each thread searches its chunk in order, and the chunks are handed out
  * in order, so the particles of a line come out sorted by particle index,
  * as they were when each line kept a std::map. */
-NearParticles IndexTable::get_near_particles(const float pos[], const float hh[], const long long npart)
+NearParticles IndexTable::get_near_particles(const double pos[], const double hh[], const long long npart)
 {
     const int nthread = max_threads();
     //Particle indices are 64 bit, line indices are bounded by NumLos.
@@ -127,12 +127,12 @@ NearParticles IndexTable::get_near_particles(const float pos[], const float hh[]
     return nearby;
 }
 
-float * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, const float pos[])
+double * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, const double pos[])
 {
     const long long first = nearby.offsets[line_i];
     const long long Ncells = nearby.size(line_i);
     // printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
-    float * arr2 = new float [2*Ncells];
+    double * arr2 = new double [2*Ncells];
     //Nothing is near this line, so there is nothing to assign the
     //grid points to. The caller's particle loop is empty as well.
     if(Ncells == 0)

@@ -216,7 +216,7 @@ static bool has_particle(const NearParticles& nearby, const int line, const int 
 
 //The lines near a single particle, as a map from line index to the squared
 //distance from the line, which is what the interpolation is given.
-static std::map<int, double> lines_near(IndexTable& tab, const float pos[], const float hh)
+static std::map<int, double> lines_near(IndexTable& tab, const double pos[], const double hh)
 {
     const NearParticles nearby = tab.get_near_particles(pos, &hh, 1);
     std::map<int, double> found;
@@ -233,19 +233,19 @@ BOOST_FIXTURE_TEST_CASE(check_near_lines, TestLines)
 {
     IndexTable tab = table();
     //Now start testing.
-    float pos[3] = {500,2000,1000};
+    double pos[3] = {500,2000,1000};
     std::map<int, double> nearby = lines_near(tab, pos, 1);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
     BOOST_CHECK_EQUAL(nearby.begin()->second,0);
     //First coordinate not important
-    float poss[3] = {5000,2000,1000};
+    double poss[3] = {5000,2000,1000};
     nearby = lines_near(tab, poss, 1);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
     BOOST_CHECK_EQUAL(nearby.begin()->second,0);
     //Slight offset, still within h
-    float pos3[3] = {5010,2010,990};
+    double pos3[3] = {5010,2010,990};
     nearby = lines_near(tab, pos3, 20);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
@@ -256,7 +256,7 @@ BOOST_FIXTURE_TEST_CASE(check_near_lines, TestLines)
 
     //Within h in each coordinate separately, but further than h away:
     //the cut is a circle, not a square, and only the distance sees that.
-    float pos6[3] = {5000,2008,1008};
+    double pos6[3] = {5000,2008,1008};
     nearby = lines_near(tab, pos6, 10);
     BOOST_CHECK_EQUAL(nearby.size(),0);
     nearby = lines_near(tab, pos6, 12);
@@ -264,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE(check_near_lines, TestLines)
     FLOATS_APPROX_NEAR_TO(nearby.at(6),8*8+8*8.);
 
     //Check duplicates are handled
-    float pos2[3] = {4000,4000,4000};
+    double pos2[3] = {4000,4000,4000};
     nearby = lines_near(tab, pos2, 1);
     BOOST_CHECK_EQUAL(nearby.size(),2);
     BOOST_CHECK_EQUAL(nearby.begin()->first,0);
@@ -281,14 +281,14 @@ BOOST_FIXTURE_TEST_CASE(check_near_lines, TestLines)
     BOOST_CHECK_EQUAL(nearby.at(3),10*10.);
 
     //Check periodic wrapping is working
-    float pos5[3] = {1000,9999.9,9999.9};
+    double pos5[3] = {1000,9999.9,9999.9};
     nearby = lines_near(tab, pos5, 0.6);
     BOOST_CHECK_EQUAL(nearby.size(),2);
     FLOATS_APPROX_NEAR_TO(nearby.at(4),0.5*0.5+0.2*0.2);
     FLOATS_APPROX_NEAR_TO(nearby.at(5),0.3*0.3+0.4*0.4);
 
     //Check multiple axes
-    float pos4[3] = {1000.5,2000,501};
+    double pos4[3] = {1000.5,2000,501};
     nearby = lines_near(tab, pos4, 1.5);
     BOOST_CHECK_EQUAL(nearby.size(),3);
     FLOATS_APPROX_NEAR_TO(nearby.at(7),0.25);
@@ -302,10 +302,10 @@ BOOST_FIXTURE_TEST_CASE(check_index_table, TestLines)
 {
     IndexTable tab = table();
     //Now test get_near_particles
-    float poses[3*9] = { 500,2000,1000, 5000,2000.0,1000.0, 5010.0,2010,990,
+    double poses[3*9] = { 500,2000,1000, 5000,2000.0,1000.0, 5010.0,2010,990,
                         4000,4000,4000, 1000,9999.9,9999.9, 1000.5,2000,501,
                         7500,7500,7500, 4008,4008.0,4008.0, 2000.0,9999,9999.8};
-    float hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
+    double hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
     NearParticles nearby_array = tab.get_near_particles(poses, hh, 9);
     BOOST_CHECK_EQUAL(nearby_array.nlines(), nextlos);
     //Did we pick up the right number of particles in all cases?

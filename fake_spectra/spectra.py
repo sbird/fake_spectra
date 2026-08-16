@@ -225,7 +225,7 @@ class Spectra:
             self.load_savefile(self.savefile)
 
         # Conversion factors from internal units
-        self.rscale = np.float32((self.units.UnitLength_in_cm*self.atime)/self.hubble)
+        self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble
         #Convert comoving internal units to physical km/s.
         if self.Hz is None:
             #Assume flat LCDM cosmology to compute H(z) (in km/s/Mpc)
@@ -609,16 +609,16 @@ class Spectra:
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
             return empty
-        pos = pos[ind, :].astype(np.float32, copy=False)
-        hh = hh[ind].astype(np.float32, copy=False)
+        pos = pos[ind, :]
+        hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint.
-        #Note we index before converting, so that we never convert a whole snapshot block.
-        vel = np.zeros(1, dtype=np.float32)
-        temp = np.zeros(1, dtype=np.float32)
+        #Note we index first, so that we never touch a whole snapshot block.
+        vel = np.zeros(1)
+        temp = np.zeros(1)
         if get_tau:
-            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)[ind, :].astype(np.float32)
+            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)[ind, :]
         #gas density amu / cm^3
-        den = self.gasprop.get_code_rhoH(0, segment=fn)[ind].astype(np.float32)
+        den = self.gasprop.get_code_rhoH(0, segment=fn)[ind]
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
@@ -626,7 +626,7 @@ class Spectra:
             amumass = 1
         #Only need temp for ionic density, and tau later
         if self._need_temp(elem, ion, get_tau):
-            temp = self.gasprop.get_temp(0, segment=fn)[ind].astype(np.float32)
+            temp = self.gasprop.get_temp(0, segment=fn)[ind]
             #Some codes occasionally output negative temperatures, fix them
             it = np.where(temp <= 0)
             temp[it] = 1
@@ -641,7 +641,7 @@ class Spectra:
             if get_species_den:
                 species_den = elem_den/amumass
             # Neutral hydrogen mass frac
-            elem_den *= (self.gasprop.get_reproc_HI(0, segment=fn)[ind]).astype(np.float32)
+            elem_den *= self.gasprop.get_reproc_HI(0, segment=fn)[ind]
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
@@ -674,8 +674,8 @@ class Spectra:
     def find_all_particles(self):
         """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
         nsegments = self.snapshot_set.get_n_segments()
-        #Join once at the end, and do not start from a float64 empty array,
-        #which would upcast the whole thing.
+        #Join once at the end: appending inside the loop would recopy
+        #everything read so far for each new segment.
         pp = []
         hhh = []
         for i in range(nsegments):
@@ -684,7 +684,7 @@ class Spectra:
                 pp.append(pos)
                 hhh.append(hh)
         if len(pp) == 0:
-            return (np.empty([0, 3], dtype=np.float32), np.empty(0, dtype=np.float32))
+            return (np.empty([0, 3]), np.empty(0))
         return (np.concatenate(pp), np.concatenate(hhh))
 
     def _filter_particles(self, elem_den, pos, velocity, den):
@@ -720,7 +720,7 @@ class Spectra:
             den2[np.where(den2 < denslimits[0])] = denslimits[0]
         else:
             den2 = den
-        return np.float32(self.cloudy_table.ion(elem, ion, den2, temp2))
+        return self.cloudy_table.ion(elem, ion, den2, temp2)
 
     def _do_interpolation_work(self, pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
@@ -729,6 +729,15 @@ class Spectra:
             gamma_X = 0
         else:
             gamma_X = line.gamma_X
+        #The interpolation works in double precision throughout and takes its
+        #particle data that way. A double precision snapshot, which is what a
+        #modern simulation writes, is already double here and this is free;
+        #a single precision one is widened once, at the boundary.
+        pos = np.asarray(pos, dtype=np.float64)
+        vel = np.asarray(vel, dtype=np.float64)
+        elem_den = np.asarray(elem_den, dtype=np.float64)
+        temp = np.asarray(temp, dtype=np.float64)
+        hh = np.asarray(hh, dtype=np.float64)
         return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
     def particles_near_lines(self, pos, hh, axis=None, cofm=None):
@@ -754,19 +763,18 @@ class Spectra:
         #Note we take the particles (and the species) we want before converting,
         #so that we never convert a whole snapshot block.
         if elem == "Z":
-            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)[ind].astype(np.float32)
+            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)[ind]
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
             try:
-                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[ind, nelem].astype(np.float32)
+                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[ind, nelem]
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
-                metal_abund = np.array([0.76, 0.24], dtype=np.float32)
-                mass_frac = metal_abund[nelem]*np.ones(np.size(ind), dtype=np.float32)
+                metal_abund = np.array([0.76, 0.24])
+                mass_frac = metal_abund[nelem]*np.ones(np.size(ind))
         #Deal with floating point roundoff - mass_frac will sometimes be negative
         mass_frac[mass_frac <= 0] = 0
-        assert mass_frac.dtype == np.float32
         return mass_frac
 
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
@@ -1062,7 +1070,7 @@ class Spectra:
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
         line = self.lines[("H", 1)][1215]
-        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        phys = self.dvbin/self.velfac*self.rscale
         temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
         return temp
 
@@ -1085,7 +1093,7 @@ class Spectra:
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
         line = self.lines[("H", 1)][1215]
-        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        phys = self.dvbin/self.velfac*self.rscale
         dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/self.rscale), temp, hh, amumass, line, False)
         return dens
 

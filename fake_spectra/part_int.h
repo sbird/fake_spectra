@@ -35,12 +35,12 @@ class ParticleInterp: public LineAbsorption
          * at each bin along the line of sight. This is in redshift space,
          * including peculiar velocities.
          */
-        void compute_tau(double * tau, const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart);
+        void compute_tau(double * tau, const double Pos[], const double Vel[], const double Dens[], const double temp[], const double h[], const long long npart);
         /*Interpolate the particles to compute binned column density
          * at each bin along the line of sight. This is in physical space, not redshift space, ie,
          * peculiar velocities are ignored.
          */
-        void compute_colden(double * colden, const float Pos[], const float Dens[], const float h[], const long long npart);
+        void compute_colden(double * colden, const double Pos[], const double Dens[], const double h[], const long long npart);
 
     private:
         const int nbins;
