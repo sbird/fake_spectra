@@ -21,7 +21,6 @@ def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
 def _read_particle_data(self,fn, elem, ion, get_tau):
 def _filter_particles(self, elem_den, pos, velocity, den):
 def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
-def particles_near_lines(self, pos, hh,axis=None, cofm=None):
 def _vel_single_file(self,fn, elem, ion):
 def _temp_single_file(self,fn, elem, ion):
 def compute_spectra(self,elem, ion, ll, get_tau):

@@ -34,7 +34,6 @@ from . import voigtfit
 from . import spec_utils
 from . import fluxstatistics as fstat
 from ._spectra_priv import _Particle_Interpolate
-from .near_lines import near_lines
 
 from .cloudy_tables import convert_cloudy
 def _get_cloudy_table(red, cdir=None):
@@ -723,18 +722,6 @@ class Spectra:
         temp = np.asarray(temp, dtype=np.float64)
         hh = np.asarray(hh, dtype=np.float64)
         return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
-
-    def particles_near_lines(self, pos, hh, axis=None, cofm=None):
-        """Filter a particle list, returning an index list of those near sightlines"""
-        if axis is None:
-            axis = self.axis
-        if cofm is None:
-            cofm = self.cofm
-        #Axis is 1-indexed between 1 and 3. 1 is x axis.
-        assert np.min(axis) > 0
-        assert np.max(axis) < 4
-        ind = near_lines(self.box, pos, hh, axis, cofm, pool=self.pool)
-        return ind
 
     def get_mass_frac(self, elem, fn, npart):
         """Get the mass fraction of a given species from a snapshot.
