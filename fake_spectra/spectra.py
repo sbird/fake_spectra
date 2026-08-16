@@ -657,9 +657,8 @@ class Spectra:
             #Note this must be taken on the same particles as the ionic density below.
             if get_species_den:
                 species_den = elem_den[ind2]/amumass
-            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, ind, ind2)
+            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp)
             del ind2
-        #Get rid of ind so we have some memory for the interpolator
         del den
         #Put density into number density of particles, from amu
         elem_den /= amumass
@@ -693,10 +692,8 @@ class Spectra:
         ind2 = np.where(elem_den > 0)
         return ind2
 
-    def _get_elem_den(self, elem, ion, den, temp, ind, ind2):
+    def _get_elem_den(self, elem, ion, den, temp):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
-        #Shut up a pylint warning
-        _ = (ind, ind2)
         #Load a cloudy table if not done already
         try:
             self.cloudy_table
