@@ -38,15 +38,15 @@ class LineAbsorption
          *
          * Input:
          * dr2: transverse distance to spectra from particle (comoving kpc/h)
-         * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 from C extractor 
+         * dens: value of density field for absorbing species (1e10 M_sun / h / (comoving kpc/h)^3 from C extractor
          * or amu/cm^2 kpc/h from the python module)
          * ppos: particle distance from box edge parallel to spectrum (comoving kpc/h)
          * pvel: particle velocity parallel to spectrum (physical km/s) (not needed for colden)
          * temp: particle temperature (K) (not needed for colden)
          * smooth: particle smoothing length (comoving kpc/h)
          */
-        void add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float ppos, const float smooth);
-        void add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth);
+        void add_colden_particle(double * colden, const int nbins, const double dr2, const double dens, const double ppos, const double smooth);
+        void add_tau_particle(double * tau, const int nbins, const double dr2, const double dens, const double ppos, const double pvel, const double temp, const double smooth);
 
     private:
         /* Threshold of tau below which we stop computing profiles.
