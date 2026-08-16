@@ -3,10 +3,6 @@
 
 import numpy as np
 from . import subfindhdf
-try:
-    xrange(1)
-except NameError:
-    xrange = range
 
 #Internal gadget mass unit: 1e10 M_sun/h in g/h
 UnitMass_in_g=1.989e43
@@ -63,7 +59,7 @@ def find_wanted_halos(num, base, min_mass, dist=1):
     (ind, sub_mass,sub_cofm,sub_radii) = find_all_halos(num, base, min_mass)
     sub_radii*=dist
     #For each halo
-    ind2=np.where([is_masked(ii,sub_mass,sub_cofm,sub_radii) for ii in xrange(0,np.size(sub_mass))])
+    ind2=np.where([is_masked(ii,sub_mass,sub_cofm,sub_radii) for ii in range(0,np.size(sub_mass))])
     ind=(np.ravel(ind)[ind2],)
     sub_mass=sub_mass[ind2]
     sub_cofm=sub_cofm[ind2]

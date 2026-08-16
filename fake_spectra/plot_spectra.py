@@ -8,11 +8,6 @@ import matplotlib.pyplot as plt
 
 from . import spectra
 
-try:
-    xrange(1)
-except NameError:
-    xrange = range
-
 class PlottingSpectra(spectra.Spectra):
     """Class to plot things connected with spectra."""
     def __init__(self,num, base, cofm=None, axis=None, load_halo=True, label='',**kwargs):
@@ -189,8 +184,8 @@ class PlottingSpectra(spectra.Spectra):
         if xlog:
             xvals = np.log10(xvals)
         (H, xedges, yedges) = np.histogram2d(xvals, yvals,bins=nbins)
-        xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in xrange(0,np.size(xedges)-1)])
-        ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in xrange(0,np.size(yedges)-1)])
+        xbins=np.array([(xedges[i+1]+xedges[i])/2 for i in range(0,np.size(xedges)-1)])
+        ybins=np.array([(yedges[i+1]+yedges[i])/2 for i in range(0,np.size(yedges)-1)])
         xx = np.logspace(np.min(xbins), np.max(xbins),15)
         ax = plt.gca()
         if ylog:

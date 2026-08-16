@@ -20,11 +20,11 @@ Also note that there is some instability at very low metallicities - the code wi
 
 from __future__ import print_function
 import os
-import os.path as path
+from os import path
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import h5py
-from concurrent.futures import ThreadPoolExecutor
 
 from . import abstractsnapshot as absn
 from . import gas_properties
@@ -42,12 +42,6 @@ def _get_cloudy_table(red, cdir=None):
     if cdir is None:
         return convert_cloudy.CloudyTable(red)
     return convert_cloudy.CloudyTable(red, cdir)
-
-#python2 compat
-try:
-    xrange(1)
-except NameError:
-    xrange = range
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -238,10 +232,10 @@ class Spectra:
             # if reloading from snapshot, pixel width must have been defined
             if res is None:
                 if nbins is not None:
-                   self.nbins = nbins
-                   res = self.vmax/(1.*nbins)
+                    self.nbins = nbins
+                    res = self.vmax/(1.*nbins)
                 else:
-                   raise ValueError('pixel width (res) not provided')
+                    raise ValueError('pixel width (res) not provided')
             if nbins is None:
                 # nbins must be an integer
                 self.nbins=int(self.vmax/res)
@@ -421,7 +415,7 @@ class Spectra:
             flux += noise_array
         else:
             noise_array = np.empty([lines, self.nbins])
-            for ii in xrange(lines):
+            for ii in range(lines):
                 np.random.seed(ii)
                 noise_array[ii] = np.random.normal(0, 1./snr[ii], self.nbins)
                 flux[ii] += noise_array[ii]
@@ -452,7 +446,7 @@ class Spectra:
             flux /= (1.0 + delta)
         else:
             delta = np.empty(lines)
-            for ii in xrange(lines):
+            for ii in range(lines):
                 np.random.seed(2*ii+1)
                 delta[ii] = np.random.normal(0, CE[ii])
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
@@ -855,12 +849,12 @@ class Spectra:
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments(part_type=0)
-        arepo = (self.kernel_int == 2)
+        arepo = self.kernel_int == 2
         if arepo :
             nsegments=1
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         #Do remaining files
-        for nn in xrange(1, nsegments):
+        for nn in range(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             print(f"rank = {self.rank} | "+"Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
             #Add new file
@@ -962,7 +956,7 @@ class Spectra:
             #Array for line indices
             ntau = np.empty([self.NumLos, self.nbins], dtype=np.float32)
             #Use the maximum unsaturated optical depth
-            for ii in xrange(self.NumLos):
+            for ii in range(self.NumLos):
                 # we want unsaturated lines, defined as those with tau < 3
                 #which is the maximum tau in the sample of Neeleman 2013
                 #Also use lines with some absorption: tau > 0.1, roughly twice noise level.
@@ -1010,7 +1004,7 @@ class Spectra:
         result = func(0, elem, ion)
         if nsegments > 1:
             #Do remaining files
-            for nn in xrange(1, nsegments):
+            for nn in range(1, nsegments):
                 tresult = func(nn, elem, ion)
                 #Add new file
                 result += tresult
@@ -1159,7 +1153,7 @@ class Spectra:
         else:
             rho = self.get_col_density(elem, ion)
             cbins = np.max((int(np.round((close/self.dvbin))), 1))
-            rhob = np.array([np.sum(rho[:, cbins*i:cbins*(i+1)], axis=1) for i in xrange(int(np.shape(rho)[1]/cbins))]).T
+            rhob = np.array([np.sum(rho[:, cbins*i:cbins*(i+1)], axis=1) for i in range(int(np.shape(rho)[1]/cbins))]).T
             #Check that fp roundoff is not too severe: this can sometimes trigger for silly reasons
             #assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
             rho = rhob
@@ -1186,7 +1180,7 @@ class Spectra:
         #Avg. Column density in g cm^-2 (comoving)
         HIden = self.lines.get_mass(elem) * self.units.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.units.UnitLength_in_cm/self.hubble)
+        length = self.box*self.units.UnitLength_in_cm/self.hubble
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
@@ -1259,9 +1253,9 @@ class Spectra:
         axis = self.axis[0]
         if axis == 1:
             spos = cofm[:, 1:]
-        if axis == 2:
+        elif axis == 2:
             spos = np.vstack([cofm[:, 0], cofm[:, 2]]).T
-        if axis == 3:
+        else: #axis == 3:
             spos = cofm[:, :2]
         return spos
 
