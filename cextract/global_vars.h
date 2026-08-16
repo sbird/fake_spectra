@@ -9,13 +9,13 @@
 
 struct particle_data
 {
-  float *Pos;
-  float *Vel;
-  float *Mass;
-  float *U, *Ne;
-  float *temp;
-  float *h;
-  float *fraction;
+  double *Pos;
+  double *Vel;
+  double *Mass;
+  double *U, *Ne;
+  double *temp;
+  double *h;
+  double *fraction;
 };
 typedef struct particle_data pdata;
 

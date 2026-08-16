@@ -56,14 +56,14 @@ void populate_los_table(double * cofm, int * aaxis, int NumLos, char * ext_table
 /*Note this assumes only one species*/
 int alloc_parts(pdata* P, int np)
 {
-    return ((*P).Vel=(float *)malloc(np*3*sizeof(float))) &&
-    ((*P).Pos=(float *)malloc(np*3*sizeof(float))) &&
-     ((*P).Mass=(float *) malloc(np*sizeof(float))) &&
-    ((*P).U=(float *)malloc(np*sizeof(float))) &&
-    ((*P).fraction=(float *)malloc(np*sizeof(float))) &&
-    ((*P).temp=(float *)malloc(np*sizeof(float))) &&
-    ((*P).Ne=(float *)malloc(np*sizeof(float))) &&
-    ((*P).h=(float *)malloc(np*sizeof(float)));
+    return ((*P).Vel=(double *)malloc(np*3*sizeof(double))) &&
+    ((*P).Pos=(double *)malloc(np*3*sizeof(double))) &&
+     ((*P).Mass=(double *) malloc(np*sizeof(double))) &&
+    ((*P).U=(double *)malloc(np*sizeof(double))) &&
+    ((*P).fraction=(double *)malloc(np*sizeof(double))) &&
+    ((*P).temp=(double *)malloc(np*sizeof(double))) &&
+    ((*P).Ne=(double *)malloc(np*sizeof(double))) &&
+    ((*P).h=(double *)malloc(np*sizeof(double)));
 }
 
 void free_parts(pdata* P)

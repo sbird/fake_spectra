@@ -23,7 +23,9 @@ hsize_t get_single_dataset(const char *name, void * data_ptr,  hsize_t data_leng
              return 0;
           }
           H5LTget_dataset_info(*hdf_group, name, &vlength, &class_id, &type_size);
-          if(type_size != 4 || class_id != H5T_FLOAT  || vlength > data_length || H5LTread_dataset_float(*hdf_group, name, data_ptr) < 0 ){
+          /*The interpolation wants double: HDF5 widens a single precision
+           * dataset on read, so both sizes are fine here.*/
+          if((type_size != 4 && type_size != 8) || class_id != H5T_FLOAT  || vlength > data_length || H5LTread_dataset_double(*hdf_group, name, data_ptr) < 0 ){
               fprintf(stderr, "File %d: Failed reading %s (%lu)\n",fileno,name, (uint64_t)vlength);
               return 0;
           }
@@ -41,7 +43,7 @@ hsize_t get_triple_dataset(const char *name, void * data_ptr, hsize_t data_lengt
              return 0;
           }
           H5LTget_dataset_info(*hdf_group, name, &vlength[0], &class_id, &type_size);
-          if(type_size != 4 || class_id != H5T_FLOAT || vlength[1] != 3 || vlength[0] > data_length || H5LTread_dataset_float(*hdf_group, name, data_ptr) < 0 ){
+          if((type_size != 4 && type_size != 8) || class_id != H5T_FLOAT || vlength[1] != 3 || vlength[0] > data_length || H5LTread_dataset_double(*hdf_group, name, data_ptr) < 0 ){
               fprintf(stderr, "File %d: Failed reading %s (%lu)\n",fileno,name, (uint64_t)vlength[0]);
               return 0;
           }
