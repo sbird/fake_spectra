@@ -597,28 +597,15 @@ class Spectra:
         pos = self.snapshot_set.get_data(0, "Position", segment=fn)
         hh = self.snapshot_set.get_smooth_length(0, segment=fn)
 
-        #Find particles we care about
-        if self.cofm_final:
-            try:
-                ind = self.part_ind[fn]
-            except KeyError:
-                ind = self.particles_near_lines(pos, hh, self.axis, self.cofm)
-                self.part_ind[fn] = ind
-        else:
-            ind = self.particles_near_lines(pos, hh, self.axis, self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
-        if np.size(ind) == 0:
-            return empty
-        pos = pos[ind, :]
-        hh = hh[ind]
         #Get the rest of the arrays: reducing them each time to have a smaller memory footprint.
         #Note we index first, so that we never touch a whole snapshot block.
         vel = np.zeros(1)
         temp = np.zeros(1)
         if get_tau:
-            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)[ind, :]
+            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)
         #gas density amu / cm^3
-        den = self.gasprop.get_code_rhoH(0, segment=fn)[ind]
+        den = self.gasprop.get_code_rhoH(0, segment=fn)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
@@ -626,14 +613,14 @@ class Spectra:
             amumass = 1
         #Only need temp for ionic density, and tau later
         if self._need_temp(elem, ion, get_tau):
-            temp = self.gasprop.get_temp(0, segment=fn)[ind]
+            temp = self.gasprop.get_temp(0, segment=fn)
             #Some codes occasionally output negative temperatures, fix them
             it = np.where(temp <= 0)
             temp[it] = 1
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^3 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
-        elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, ind)
+        elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, np.size(hh))
         #At this point elem_den is the density in all ionisation states of this element.
         species_den = None
         #Special case H1:
@@ -641,7 +628,7 @@ class Spectra:
             if get_species_den:
                 species_den = elem_den/amumass
             # Neutral hydrogen mass frac
-            elem_den *= self.gasprop.get_reproc_HI(0, segment=fn)[ind]
+            elem_den *= self.gasprop.get_reproc_HI(0, segment=fn)
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
@@ -749,29 +736,30 @@ class Spectra:
         ind = near_lines(self.box, pos, hh, axis, cofm, pool=self.pool)
         return ind
 
-    def get_mass_frac(self, elem, fn, ind):
+    def get_mass_frac(self, elem, fn, npart):
         """Get the mass fraction of a given species from a snapshot.
         Arguments:
             elem = name of element
             data = pointer to hdf5 array containing baryons
-            ind = index of particles we care about
+            npart = number of particles
         Returns mass_frac - mass fraction of this ion
         """
         #Note we take the particles (and the species) we want before converting,
         #so that we never convert a whole snapshot block.
         if elem == "Z":
-            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)[ind]
+            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)
+            #Deal with floating point roundoff - mass_frac will sometimes be negative
+            mass_frac[mass_frac <= 0] = 0
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
             try:
-                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[ind, nelem]
+                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[:, nelem]
+                mass_frac[mass_frac <= 0] = 0
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
                 metal_abund = np.array([0.76, 0.24])
-                mass_frac = metal_abund[nelem]*np.ones(np.size(ind))
-        #Deal with floating point roundoff - mass_frac will sometimes be negative
-        mass_frac[mass_frac <= 0] = 0
+                mass_frac = metal_abund[nelem]*np.ones(npart)
         return mass_frac
 
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
