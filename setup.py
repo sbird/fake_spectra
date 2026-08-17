@@ -1,6 +1,6 @@
-from distutils.core import setup
-from distutils.extension import Extension
-import distutils.sysconfig
+from setuptools import setup
+from setuptools.extension import Extension
+import sysconfig
 import numpy
 import tempfile
 import os
@@ -57,17 +57,8 @@ def check_for_openmp(compiler):
 extra_compile_args=['-ffast-math',]
 extra_link_args = ['-ffast-math',]
 
-try:
-    gsl_libs = subprocess.check_output(["gsl-config", "--libs"], stderr=subprocess.STDOUT, universal_newlines=True)
-    extra_link_args += gsl_libs.split()
-    gsl_incl = subprocess.check_output(["gsl-config", "--cflags"], stderr=subprocess.STDOUT, universal_newlines=True)
-    extra_compile_args += gsl_incl.split()
-except subprocess.CalledProcessError as e:
-    print(e.output)
-    raise
-
 # Get compiler invocation
-compiler = os.environ.get('CC', distutils.sysconfig.get_config_var('CC'))
+compiler = os.environ.get('CC', sysconfig.get_config_var('CC'))
 # make sure to use just the compiler name without flags
 compiler = compiler.split()[0]
 
@@ -91,6 +82,7 @@ cmodule = [
             depends = [
                 "fake_spectra/Faddeeva.h",
                 "fake_spectra/absorption.h",
+                "fake_spectra/fastvoigt.h",
                 "fake_spectra/index_table.h",
                 "fake_spectra/part_int.h",
                 "fake_spectra/singleabs.h",]
@@ -99,30 +91,5 @@ cmodule = [
             extra_link_args=extra_link_args,
             include_dirs = ["fake_spectra/", numpy.get_include()])]
 
-setup(
-    name="fake_spectra",
-    version='2.2.6',
-    author="Simeon Bird",
-    author_email="spb@ucr.edu",
-    license = "MIT",
-    #Use the subclass which adds openmp flags as appropriate
-#     cmdclass = {'build_ext': build_ext_subclass },
-    url="http://github.com/sbird/fake_spectra",
-    description="Analysis tools for generating artificial spectra from simulations.",
-    long_description="Analysis tools for generating artificial spectra for SPH or meshless cosmological simulation codes, including AREPO, Gadget, SIMBA, etc",
-    long_description_content_type = "text/plain",
-    packages = ['fake_spectra', 'fake_spectra.tests', 'fake_spectra.cloudy_tables'],
-    requires=['numpy', 'h5py','scipy'],
-    package_data = {
-            'fake_spectra.tests': ['*.npz'],
-            'fake_spectra': ['data/TREECOOL*', '*.dat'],
-            'fake_spectra.cloudy_tables': ['ion_out_*/cloudy_table.npz']
-           },
-    ext_modules = cmodule,
-    classifiers = ["Development Status :: 4 - Beta",
-                   "Intended Audience :: Developers",
-                   "Intended Audience :: Science/Research",
-                   "Programming Language :: Python :: 3",
-                   "Topic :: Scientific/Engineering :: Astronomy",
-                   "Topic :: Scientific/Engineering :: Visualization"]
-)
+#Everything except the extension itself is static metadata, and lives in pyproject.toml.
+setup(ext_modules = cmodule)

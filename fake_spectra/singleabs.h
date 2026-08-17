@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cassert>
 #include "Faddeeva.h"
+#include "fastvoigt.h"
 
 #define NGRID 8
 #define TOP_HAT_KERNEL 0
@@ -55,6 +56,10 @@ inline double sph_quintic_kernel(const double q)
  */
 inline double profile(const double uu, const double aa)
 {
+    /*For the small damping parameters we actually see, the expansion in a is
+     * accurate to a few times 1e-6 and more than ten times faster.*/
+    if (aa <= VOIGT_AMAX)
+        return fast_voigt(uu, aa);
     std::complex<double> ww ( uu , aa);
     std::complex<double> result = Faddeeva::w(ww);
     return result.real();
@@ -86,6 +91,30 @@ class SingleAbsorber
                 {
                     if(vdr2 > 0 && vsmooth > 0) m_vhigh = (vsmooth - vdr2)/2.;
                     else m_vhigh = 0;
+                }
+                /*Neither the sample points of the inner integral nor the kernel weight
+                 * at each of them depends on the bin, so find them once per particle
+                 * instead of once per bin. Because we are integrating over the whole
+                 * sph kernel, the first and last points have q = 1 and so zero weight,
+                 * and are not stored: nor is any other point outside the kernel.*/
+                const double deltav=2.*m_vhigh/NGRID;
+                m_npoint = 0;
+                for(int i=1; i<NGRID; ++i)
+                {
+                    const double vv = i*deltav-m_vhigh;
+                    const double q = sqrt(vdr2+vv*vv)/vsmooth;
+                    double weight = 3./4./M_PI;
+                    if(kernel == SPH_CUBIC_SPLINE)
+                        weight = sph_cubic_kernel(q);
+                    else if(kernel == SPH_QUINTIC_SPLINE)
+                        weight = sph_quintic_kernel(q);
+                    else if(kernel == VORONOI_MESH)
+                        weight = 1;
+                    if(weight == 0)
+                        continue;
+                    m_vv[m_npoint] = vv;
+                    m_weight[m_npoint] = deltav*weight;
+                    m_npoint++;
                 }
             };
 
@@ -142,28 +171,18 @@ class SingleAbsorber
          */
         inline double tau_kern_inner(const double vouter)
         {
-            //Integration region goes from -vhigh to vhigh, where vhigh is precomputed kernel support
-            const double deltav=2.*m_vhigh/NGRID;
-            //Because we are integrating over the whole sph kernel,
-            //the first and last terms will have q = 1, sph_kernel = 0, so don't need to compute them.
+            //The sample points over the kernel support and their weights (which
+            //include the integration measure) are precomputed in the constructor:
+            //only the broadening function depends on the bin.
             double total = 0;
-            for(int i=1; i<NGRID; ++i)
+            const double ibtherm = 1./btherm;
+            for(int i=0; i<m_npoint; ++i)
             {
-                const double vv = i*deltav-m_vhigh;
-                const double q = sqrt(vdr2+vv*vv)/vsmooth;
                 //The difference between this velocity bin and the particle velocity
-                const double vdiff = vv - vouter;
-                const double T0 = vdiff/btherm;
-                double tbin = profile(T0, aa);
-                if(kernel == SPH_CUBIC_SPLINE)
-                    tbin*=sph_cubic_kernel(q);
-                else if(kernel == SPH_QUINTIC_SPLINE)
-                    tbin*=sph_quintic_kernel(q);
-                else if(kernel == TOP_HAT_KERNEL)
-                    tbin *= 3./4./M_PI;
-                total+=tbin;
+                const double T0 = (m_vv[i] - vouter)*ibtherm;
+                total += m_weight[i]*profile(T0, aa);
             }
-            return deltav*total;
+            return total;
         }
 
         const double btherm;
@@ -172,6 +191,11 @@ class SingleAbsorber
         const double aa;
         const int kernel;
         double m_vhigh;
+        //The sample points of the inner integral, and the kernel weight there
+        //multiplied by the integration measure.
+        double m_vv[NGRID];
+        double m_weight[NGRID];
+        int m_npoint;
 };
 
 double sph_cubic_kern_frac(double zlow, double zhigh, double smooth, double dr2, double zrange);

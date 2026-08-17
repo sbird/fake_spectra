@@ -17,66 +17,64 @@
 //For NULL
 #include <cstddef>
 
-void ParticleInterp::compute_tau(double tau[], const float Pos[], const float Vel[], const float Dens[], const float temp[], const float h[], const long long npart)
+void ParticleInterp::compute_tau(double tau[], const double Pos[], const double Vel[], const double Dens[], const double temp[], const double h[], const long long npart)
 {
-    const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
-    //Use a plain int as not sure openmp can handle iterators efficiently.
-    const unsigned int nlines = nearby_array.size();
+    const NearParticles nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
+    const long long nlines = nearby_array.nlines();
     #pragma omp parallel for
-    for(unsigned int i = 0; i < nlines; ++i)
+    for(long long i = 0; i < nlines; ++i)
     {
-        float * arr2 = NULL;
+        double * arr2 = NULL;
         if(kernel == VORONOI_MESH) arr2 = sort_los_table.assign_cells(i, nearby_array, Pos);
         const int axis = sort_los_table.get_axis(i);
         double * tau_loc = &tau[i*nbins];
         //List of particles near this los
         //Loop over them
-        int ind = 0;
-        for(std::map<int, double>::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)
+        const long long first = nearby_array.offsets[i];
+        const long long nnear = nearby_array.size(i);
+        for(long long ind = 0; ind < nnear; ++ind)
         {
-          const int ipart = it->first;
-          const double dr2 = it->second;
+          const long long ipart = nearby_array.part[first+ind];
+          const double dr2 = nearby_array.dr2[first+ind];
           //Particle position parallel to axis
-          const float ppos = Pos[3*ipart+axis-1];
-          const float pvel = Vel[3*ipart+axis-1];
+          const double ppos = Pos[3*ipart+axis-1];
+          const double pvel = Vel[3*ipart+axis-1];
           if(kernel == VORONOI_MESH)
               add_tau_particle(tau_loc, nbins, arr2[2*ind], Dens[ipart], ppos, pvel, temp[ipart], arr2[2*ind+1]);
           else
               add_tau_particle(tau_loc, nbins, dr2, Dens[ipart], ppos, pvel, temp[ipart], h[ipart]);
-          ind++;
         }  /*Loop over list of particles near LOS*/
         if(kernel == VORONOI_MESH) delete [] arr2;
     } /* Loop over LOS*/
     return;
 }
 
-void ParticleInterp::compute_colden(double colden[], const float Pos[], const float Dens[], const float h[], const long long npart)
+void ParticleInterp::compute_colden(double colden[], const double Pos[], const double Dens[], const double h[], const long long npart)
 {
-    const std::valarray< std::map<int, double> > nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
-    //Use a plain int as not sure openmp can handle iterators efficiently.
-    const unsigned int nlines = nearby_array.size();
+    const NearParticles nearby_array = sort_los_table.get_near_particles(Pos, h, npart);
+    const long long nlines = nearby_array.nlines();
     #pragma omp parallel for
-    for(unsigned int i = 0; i < nlines; ++i)
+    for(long long i = 0; i < nlines; ++i)
     {
-        float * arr2 = NULL;
+        double * arr2 = NULL;
         if(kernel == VORONOI_MESH) arr2 = sort_los_table.assign_cells(i, nearby_array, Pos);
         const int axis = sort_los_table.get_axis(i);
         double * colden_loc = &colden[i*nbins];
         //List of particles near this los
         //Loop over them
-        int ind = 0;
-        for(std::map<int, double>::const_iterator it = nearby_array[i].begin(); it != nearby_array[i].end(); ++it)
+        const long long first = nearby_array.offsets[i];
+        const long long nnear = nearby_array.size(i);
+        for(long long ind = 0; ind < nnear; ++ind)
         {
-          const int ipart = it->first;
-          const double dr2 = it->second;
+          const long long ipart = nearby_array.part[first+ind];
+          const double dr2 = nearby_array.dr2[first+ind];
           //Particle position parallel to axis
-          const float ppos = Pos[3*ipart+axis-1];
+          const double ppos = Pos[3*ipart+axis-1];
           //Don't need temp if no tau
           if(kernel == VORONOI_MESH)
               add_colden_particle(colden_loc, nbins, arr2[2*ind], Dens[ipart], ppos, arr2[2*ind+1]);
           else
               add_colden_particle(colden_loc, nbins, dr2, Dens[ipart], ppos, h[ipart]);
-          ind++;
         }  /*Loop over list of particles near LOS*/
         if(kernel == VORONOI_MESH) delete [] arr2;
     } /* Loop over LOS*/

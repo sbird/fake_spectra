@@ -2,160 +2,143 @@
 #include <stdio.h>
 #include <cmath>
 #include <cassert>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-// Construct the index tables as maps, which are automatically sorted.
+//The thread that is running, and how many of them there could be.
+//Compiling without OpenMP leaves one of each.
+static inline int this_thread()
+{
+#ifdef _OPENMP
+    return omp_get_thread_num();
+#else
+    return 0;
+#endif
+}
+
+static inline int max_threads()
+{
+#ifdef _OPENMP
+    return omp_get_max_threads();
+#else
+    return 1;
+#endif
+}
+
+static inline int cur_threads()
+{
+#ifdef _OPENMP
+    return omp_get_num_threads();
+#else
+    return 1;
+#endif
+}
+
+/* The two coordinates transverse to each (1-indexed) sightline axis. */
+static const int PERP[4][2] = {{0,0},{1,2},{0,2},{0,1}};
+
+// Bucket the lines of each axis onto their own mesh.
 IndexTable::IndexTable(const double cofm_i[], const int axis_i[], const int NumLos_i, const double box):
   cofm(cofm_i), axis(axis_i), NumLos(NumLos_i), boxsize(box)
 {
+        std::vector<int> lines[3];
         for(int i=0;i<NumLos;i++){
-            if(axis[i] == 1)
-                index_table_xx.insert(std::pair<const double, const int>(cofm[3*i+1], i));
-            else
-                index_table.insert(std::pair<const double, const int>(cofm[3*i], i));
+            assert(axis[i] > 0 && axis[i] < 4);
+            lines[axis[i]-1].push_back(i);
         }
-        assert(index_table_xx.size() + index_table.size() == (unsigned int) NumLos);
+        for(int ax = 0; ax < 3; ax++)
+            mesh[ax].build(cofm, lines[ax], PERP[ax+1][0], PERP[ax+1][1], boxsize);
         return;
 }
 
-/*Returns a std::map of lines close to the coordinates xx, yy, zz.
- * the key is the line index, and the value is the distance from the two axes not projected along*/
-void IndexTable::get_nearby_from_range(std::multimap<const double, const int>::const_iterator low, std::multimap<const double, const int>::const_iterator high, std::map<int, double>& nearby, const float pos[], const float hh, const float first)
+/*This function takes a particle list and returns, for each line, the list of
+ * particles near it: near is defined as dx^2+dy^2 < h^2.
+ * Each thread searches a contiguous chunk of the particles into its own
+ * buffer, counting as it goes how many particles it found for each line.
+ * Those counts give every thread a place to write in the output, so the
+ * particles can be gathered without a lock, and in one pass over them.
+ * Each thread searches its chunk in order, and the chunks are handed out
+ * in order, so the particles of a line come out sorted by particle index,
+ * as they were when each line kept a std::map. */
+NearParticles IndexTable::get_near_particles(const double pos[], const double hh[], const long long npart)
 {
-      for(std::multimap<const double, const int>::const_iterator it = low; it != high;++it)
-      {
-          const int iproc=it->second;
-          /*If close in the second coord, save line*/
-          /*Load a sightline from the table.*/
-          const int iaxis = axis[iproc];
-
-          float second;
-          double lproj2;
-          if (iaxis == 3){
-            second = pos[1];
-            lproj2 = cofm[3*iproc+1];
-          }
-          else{
-            second = pos[2];
-            lproj2 = cofm[3*iproc+2];
-          }
-          const double lproj = it->first;
-
-          if(second_close(second, lproj2, hh)){
-              double dr2 = calc_dr2(first-lproj, second-lproj2);
-              if (dr2 <= hh*hh){
-                      nearby[iproc]=dr2;
-              }
-          }
-      }
-}
-
-inline bool IndexTable::second_close(const float second, const double lproj2, const float hh)
-{
-    /* Now check that xx-hh < proj < xx +  hh */
-    float ffp=second+hh;
-    //Periodic wrap
-    if(ffp > boxsize)
-        if(lproj2 < ffp - boxsize)
-            return true;
-    float ffm=second-hh;
-    if(ffm < 0)
-        if(lproj2 > ffm + boxsize)
-            return true;
-    if (lproj2 > ffm && lproj2 < ffp)
-        return true;
-    else
-        return false;
-}
-
-inline double IndexTable::calc_dr2(const double d1, const double d2)
-{
-    double dr, dr2;
-    /*    Distance to projection axis */
-    dr = fabs(d1);
-
-    if(dr > 0.5*boxsize)
-            dr = boxsize - dr; /* Keep dr between 0 and box/2 */
-
-    dr2 = dr*dr;
-
-    dr = fabs(d2);
-    if (dr > 0.5*boxsize)
-      dr = boxsize - dr; /* between 0 and box/2 */
-
-    dr2 += (dr*dr);
-    return dr2;
-}
-
-void IndexTable::get_nearby(float first, std::multimap<const double, const int>& sort_los, std::map<int, double>& nearby, const float pos[], const float hh)
-{
-      /*Now find the elements where dr < 2 hh, wrapping with respect to boxsize*/
-      /* First find highest index where xx + 2 hh > priax */
-      float ffp=first+hh;
-      if(ffp > boxsize)
-         ffp-=boxsize;
-      /* Now find lowest index in what remains where xx - 2 hh < priax */
-      float ffm=first-hh;
-      if(ffm < 0)
-         ffm+=boxsize;
-      std::multimap<const double, const int>::const_iterator low,high;
-      //An iterator to the first element not less than ffm
-      low=sort_los.lower_bound(ffm);
-      //An iterator to the first element greater than ffp
-      high=sort_los.lower_bound(ffp);
-      //If periodic wrapping occurred, we want to go through zero
-      if(ffm <= ffp) {
-        get_nearby_from_range(low, high, nearby, pos, hh, first);
-      }
-      else {
-        get_nearby_from_range(sort_los.begin(), high, nearby, pos, hh, first);
-        get_nearby_from_range(low, sort_los.end(), nearby, pos, hh, first);
-      }
-}
-
-/*This function takes a particle position and returns a list of the indices of lines near it in index_nr_lines
- * Near is defined as: dx^2+dy^2 < 4h^2 */
-std::map<int,double> IndexTable::get_near_lines(const float pos[],const float hh)
-{
-      std::map<int, double> nearby;
-      if(index_table.size() > 0){
-        get_nearby(pos[0],index_table, nearby, pos, hh);
-      }
-      if(index_table_xx.size() > 0){
-        get_nearby(pos[1],index_table_xx, nearby, pos, hh);
-      }
-      return nearby;
-}
-
-//Find a list of particles near each line
-std::valarray< std::map<int, double> > IndexTable::get_near_particles(const float pos[], const float hh[], const long long npart)
-{
-    //List of lines. Each element contains a list of particles and their distances to the line.
-    std::valarray< std::map<int, double> > line_near_parts(NumLos);
-    //find lists
-    #pragma omp parallel for
-    for(long long i=0; i < npart; i++){
-        //Get list of lines near this particle
-	    std::map<int, double> nearby=get_near_lines(&(pos[3*i]),hh[i]);
-
-        if(nearby.size()){
-            #pragma omp critical
-            {
-                //Insert the particles into the list of particle lists
-                for(std::map <int, double>::const_iterator it = nearby.begin(); it != nearby.end(); ++it)
-                       line_near_parts[it->first].insert(std::pair<int, double>(i, it->second));
-            }
+    const int nthread = max_threads();
+    //Particle indices are 64 bit, line indices are bounded by NumLos.
+    std::vector<std::vector<long long> > tpart(nthread);
+    std::vector<std::vector<int> > tline(nthread);
+    std::vector<std::vector<double> > tdr2(nthread);
+    //How many particles each thread found for each line.
+    std::vector<long long> counts((long long)nthread*NumLos, 0);
+    #pragma omp parallel
+    {
+        const int tid = this_thread();
+        std::vector<long long>& mypart = tpart[tid];
+        std::vector<int>& myline = tline[tid];
+        std::vector<double>& mydr2 = tdr2[tid];
+        long long * mycount = &counts[(long long)tid*NumLos];
+        /*Most particles reaching here are near one line, so this is about the
+         * right size, and saves regrowing the buffers as they fill.*/
+        const size_t guess = npart/nthread + 16;
+        mypart.reserve(guess);
+        myline.reserve(guess);
+        mydr2.reserve(guess);
+        /* Static schedule hands the chunks out round robin in order of the thread number.
+         * So thread t searches the t'th chunk, which is what puts the particles of a line in order.*/
+        const int nth = cur_threads();
+        const long long chunk = (npart + nth - 1)/nth;
+        #pragma omp for schedule(static, chunk)
+        for(long long i = 0; i < npart; i++){
+            for_each_near_line(&(pos[3*i]), hh[i], [&](const int iproc, const double dr2){
+                    mypart.push_back(i);
+                    myline.push_back(iproc);
+                    mydr2.push_back(dr2);
+                    mycount[iproc]++;
+                });
         }
     }
-    return line_near_parts;
+    //Where each thread starts writing for each line: line major and thread
+    //minor, so that the chunks of a line end up in the order searched.
+    NearParticles nearby;
+    nearby.offsets.resize(NumLos+1);
+    std::vector<long long> start((long long)nthread*NumLos);
+    long long total = 0;
+    for(int il = 0; il < NumLos; il++){
+        nearby.offsets[il] = total;
+        for(int it = 0; it < nthread; it++){
+            start[(long long)it*NumLos + il] = total;
+            total += counts[(long long)it*NumLos + il];
+        }
+    }
+    nearby.offsets[NumLos] = total;
+    nearby.part.resize(total);
+    nearby.dr2.resize(total);
+    //One iteration per buffer, however many threads there turn out to be.
+    #pragma omp parallel for schedule(static, 1)
+    for(int it = 0; it < nthread; it++){
+        long long * where = &start[(long long)it*NumLos];
+        const size_t nent = tpart[it].size();
+        for(size_t k = 0; k < nent; k++){
+            const long long ii = where[tline[it][k]]++;
+            nearby.part[ii] = tpart[it][k];
+            nearby.dr2[ii] = tdr2[it][k];
+        }
+    }
+    return nearby;
 }
 
-float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map<int, double> > nearby_array, const float pos[])
+double * IndexTable::assign_cells(const int line_i, const NearParticles& nearby, const double pos[])
 {
-    const int Ncells = nearby_array[line_i].size();
+    const long long first = nearby.offsets[line_i];
+    const long long Ncells = nearby.size(line_i);
     // printf("assigning parts of line %d to %d cells...\n", line_i, Ncells);
-    float * arr2 = new float [2*Ncells];
+    double * arr2 = new double [2*Ncells];
+    //Nothing is near this line, so there is nothing to assign the
+    //grid points to. The caller's particle loop is empty as well.
+    if(Ncells == 0)
+        return arr2;
     // initialize
-    for(int i = 0; i < 2*Ncells; ++i)
+    for(long long i = 0; i < 2*Ncells; ++i)
         arr2[i] = 3*boxsize;
 
     // divide each sightline into an array. grid size = RESO ckpc/h
@@ -171,9 +154,9 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
         double xp = (i+0.5)*reso;
         // find the particle index that this point along the sightline belongs to
         double min_dist = boxsize;
-        int min_ind = 0, ind = 0;
-        for(std::map<int, double>::const_iterator it = nearby_array[line_i].begin(); it != nearby_array[line_i].end(); ++it){
-            const int ipart = it->first;
+        long long min_ind = 0;
+        for(long long ind = 0; ind < Ncells; ++ind){
+            const long long ipart = nearby.part[first+ind];
             double dx, dy, dz;
             // take into account periodicity
             dx = fabs(pos[3*ipart+axis_i-1]-xp);
@@ -187,7 +170,6 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
                 min_dist = dist;
                 min_ind = ind;
             }
-            ind++;
         }
         //This changes sign in the special
         //case where we have wrapped around the box.
@@ -214,7 +196,7 @@ float * IndexTable::assign_cells(const int line_i, const std::valarray< std::map
         arr2[2*min_ind+1] = xp;
     }
 
-    for(int i = 0; i < Ncells; ++i){
+    for(long long i = 0; i < Ncells; ++i){
         arr2[2*i] -= 0.5*reso;
         arr2[2*i+1] += 0.5*reso;
     }

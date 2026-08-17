@@ -13,11 +13,6 @@ from . import subfindhdf
 from . import spec_utils
 from . import plot_spectra as ps
 
-try:
-    xrange(1)
-except NameError:
-    xrange = range
-
 class HaloAssignedSpectra(ps.PlottingSpectra):
     """Class which extends the Spectra class to include methods that connect each absorber in a sightline to a galactic halo."""
     def __init__(self, *args, **kwargs):
@@ -114,7 +109,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
         dists = []
         halos = []
         #X axis first
-        for ii in xrange(len(zpos)):
+        for ii in range(len(zpos)):
             proj_pos = np.array(self.cofm[ii,:])
             ax = self.axis[ii]-1
             dists.append([])
@@ -148,7 +143,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
         seps = np.zeros(self.NumLos, dtype=np.bool)
         (roll, colden) = spec_utils.get_rolled_spectra(den)
         #deal with periodicity by making sure the deepest point is in the middle
-        for ii in xrange(self.NumLos):
+        for ii in range(self.NumLos):
             # This is column density, not absorption, so we cannot
             # use the line width to find the peak region.
             lcolden = colden[ii,:]
@@ -159,7 +154,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
                 seps = combine_regions(lcolden > relthresh*np.max(lcolden))
             # Find weighted z position for each one
             zposes = []
-            for jj in xrange(np.shape(seps)[0]):
+            for jj in range(np.shape(seps)[0]):
                 nn = np.arange(self.nbins)[seps[jj,0]:seps[jj,1]]-roll[ii]
                 llcolden = lcolden[seps[jj,0]:seps[jj,1]]
                 zpos = np.sum(llcolden*nn)
@@ -175,7 +170,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
         """Find the single most massive halos associated with absorption near a sightline, possibly via a subhalo."""
         (halos, subhalos) = self.find_nearby_halos()
         outhalos = np.zeros(self.NumLos,dtype=int)-1
-        for ii in xrange(self.NumLos):
+        for ii in range(self.NumLos):
             subhalo_parent = list(self.sub_sub_index[subhalos[ii]])
             both = list(set(subhalo_parent+halos[ii]))
             if len(both) > 0:
@@ -196,7 +191,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
         (halos, _) = self.assign_to_halo(zpos, self.sub_radii, self.sub_cofm)
         (subhalos, _) = self.assign_to_halo(zpos, self.sub_sub_radii, self.sub_sub_cofm)
         #Merge absorption features inside the same halo
-        for ii in xrange(self.NumLos):
+        for ii in range(self.NumLos):
             halos[ii] = list(set(halos[ii]))
             subhalos[ii] = list(set(subhalos[ii]))
         print("no. halos: ",sum([len(hh) for hh in halos])," mult halos: ",sum([len(hh) > 1 for hh in halos]))
@@ -242,7 +237,7 @@ class HaloAssignedSpectra(ps.PlottingSpectra):
         colors = ("red", "purple", "cyan")
         lss = ("--", ":", "-")
         #Histogram of vel width for all halos in given virial velocity bin
-        for ii in xrange(len(low)):
+        for ii in range(len(low)):
             vind = np.where((virial > low[ii])*(virial < high[ii]))
             vhist2 = np.histogram(array[ind][vind], v_table)[0]
             func(vbin, vhist2/(1.*vhist), color=colors[ii], ls=lss[ii], label=labels[ii])
@@ -280,7 +275,7 @@ def combine_regions(condition, mindist=0):
     if mindist > 0 and np.shape(reg)[0] > 1:
         newreg = np.array(reg[0,:])
         newreg.shape = (1,2)
-        for ii in xrange(1,np.shape(reg)[0]):
+        for ii in range(1,np.shape(reg)[0]):
             if reg[ii,0] - newreg[-1,1] < mindist:
                 #Move the end point of the last segment to that of this one
                 newreg[-1,1] = reg[ii,1]

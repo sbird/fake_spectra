@@ -13,3 +13,9 @@ fake_spectra.egg-info/SOURCES.txt
 fake_spectra.egg-info/PKG-INFO
 fake_spectra.egg-info/dependency_links.txt
 fake_spectra/*.so
+.*.cache
+*.pyc
+build.log
+dist/
+.pytest_cache/
+cextract/*.o

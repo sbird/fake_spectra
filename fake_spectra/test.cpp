@@ -161,63 +161,111 @@ BOOST_AUTO_TEST_CASE(check_compute_colden)
     nextlos++;\
     } while(0)
 
-BOOST_AUTO_TEST_CASE(check_index_table)
+//A table of sightlines with various interesting and likely to break
+//properties. IndexTable keeps pointers to cofm and axis rather than copying
+//them, so the table must not outlive this.
+struct TestLines
 {
-    int nextlos = 0;
+    int nextlos;
     double cofm[TLOS*3];
     int axis[TLOS];
-    //Construct a table of sightlines with various interesting and likely to break properties
-    //Two sightlines with the same position.
-    SIGHTLINE(1,4000,4000,4000);
-    SIGHTLINE(1,4000,4000,4000);
-    //Then one a little further away
-    SIGHTLINE(1,4000,4020,4010);
-    //Then one a little further in only one axis
-    SIGHTLINE(1,4000,4000,4010);
-    //One near the edge of the box
-    SIGHTLINE(1,0,0.4,0.1);
-    //Other box edge
-    SIGHTLINE(1,0,10000-0.4,0.3);
-    //One on its own
-    SIGHTLINE(1,0,2000,1000);
-    //Same but on different axes
-    SIGHTLINE(3,1000,2000,500);
-    SIGHTLINE(2,1000,2000,500);
-    SIGHTLINE(1,1000,2000,500);
-    //Fill out the table a bit
-    SIGHTLINE(3,3000,5000,550);
-    SIGHTLINE(3,8000,5500,9000);
-    SIGHTLINE(1,6000,5500,9000);
 
-    assert(nextlos < TLOS);
-    //Construct the table
-    IndexTable tab(cofm, axis, nextlos, 10000);
+    TestLines(): nextlos(0)
+    {
+        //Construct a table of sightlines with various interesting and likely to break properties
+        //Two sightlines with the same position.
+        SIGHTLINE(1,4000,4000,4000);
+        SIGHTLINE(1,4000,4000,4000);
+        //Then one a little further away
+        SIGHTLINE(1,4000,4020,4010);
+        //Then one a little further in only one axis
+        SIGHTLINE(1,4000,4000,4010);
+        //One near the edge of the box
+        SIGHTLINE(1,0,0.4,0.1);
+        //Other box edge
+        SIGHTLINE(1,0,10000-0.4,0.3);
+        //One on its own
+        SIGHTLINE(1,0,2000,1000);
+        //Same but on different axes
+        SIGHTLINE(3,1000,2000,500);
+        SIGHTLINE(2,1000,2000,500);
+        SIGHTLINE(1,1000,2000,500);
+        //Fill out the table a bit
+        SIGHTLINE(3,3000,5000,550);
+        SIGHTLINE(3,8000,5500,9000);
+        SIGHTLINE(1,6000,5500,9000);
 
+
+        assert(nextlos < TLOS);
+    }
+
+    IndexTable table()
+    {
+        return IndexTable(cofm, axis, nextlos, 10000);
+    }
+};
+
+//Is a particle among those found near a line?
+static bool has_particle(const NearParticles& nearby, const int line, const int ipart)
+{
+    for(long long i = nearby.offsets[line]; i < nearby.offsets[line+1]; i++)
+        if(nearby.part[i] == ipart)
+            return true;
+    return false;
+}
+
+//The lines near a single particle, as a map from line index to the squared
+//distance from the line, which is what the interpolation is given.
+static std::map<int, double> lines_near(IndexTable& tab, const double pos[], const double hh)
+{
+    const NearParticles nearby = tab.get_near_particles(pos, &hh, 1);
+    std::map<int, double> found;
+    for(int il = 0; il < nearby.nlines(); il++)
+        if(nearby.size(il) > 0)
+            found[il] = nearby.dr2[nearby.offsets[il]];
+    return found;
+}
+
+/* Check the geometry of the search: which lines are near a particle, and
+ * how far away they are. The distances matter as much as the identities:
+ * the interpolation uses them as the impact parameter. */
+BOOST_FIXTURE_TEST_CASE(check_near_lines, TestLines)
+{
+    IndexTable tab = table();
     //Now start testing.
-    float pos[3] = {500,2000,1000};
-    std::map<int, double> nearby = tab.get_near_lines(pos, 1);
+    double pos[3] = {500,2000,1000};
+    std::map<int, double> nearby = lines_near(tab, pos, 1);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
     BOOST_CHECK_EQUAL(nearby.begin()->second,0);
     //First coordinate not important
-    float poss[3] = {5000,2000,1000};
-    nearby = tab.get_near_lines(poss, 1);
+    double poss[3] = {5000,2000,1000};
+    nearby = lines_near(tab, poss, 1);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
     BOOST_CHECK_EQUAL(nearby.begin()->second,0);
     //Slight offset, still within h
-    float pos3[3] = {5010,2010,990};
-    nearby = tab.get_near_lines(pos3, 20);
+    double pos3[3] = {5010,2010,990};
+    nearby = lines_near(tab, pos3, 20);
     BOOST_CHECK_EQUAL(nearby.size(),1);
     BOOST_CHECK_EQUAL(nearby.begin()->first,6);
     BOOST_CHECK_EQUAL(nearby.begin()->second,10*10+10*10.);
     //Slight offset, just outside h
-    nearby = tab.get_near_lines(pos3, 10);
+    nearby = lines_near(tab, pos3, 10);
     BOOST_CHECK_EQUAL(nearby.size(),0);
 
+    //Within h in each coordinate separately, but further than h away:
+    //the cut is a circle, not a square, and only the distance sees that.
+    double pos6[3] = {5000,2008,1008};
+    nearby = lines_near(tab, pos6, 10);
+    BOOST_CHECK_EQUAL(nearby.size(),0);
+    nearby = lines_near(tab, pos6, 12);
+    BOOST_CHECK_EQUAL(nearby.size(),1);
+    FLOATS_APPROX_NEAR_TO(nearby.at(6),8*8+8*8.);
+
     //Check duplicates are handled
-    float pos2[3] = {4000,4000,4000};
-    nearby = tab.get_near_lines(pos2, 1);
+    double pos2[3] = {4000,4000,4000};
+    nearby = lines_near(tab, pos2, 1);
     BOOST_CHECK_EQUAL(nearby.size(),2);
     BOOST_CHECK_EQUAL(nearby.begin()->first,0);
     BOOST_CHECK_EQUAL(nearby.begin()->second,0);
@@ -225,7 +273,7 @@ BOOST_AUTO_TEST_CASE(check_index_table)
     BOOST_CHECK_EQUAL((++nearby.begin())->second,0);
 
     //Check duplicates are handled: wider
-    nearby = tab.get_near_lines(pos2, 25);
+    nearby = lines_near(tab, pos2, 25);
     BOOST_CHECK_EQUAL(nearby.size(),4);
     BOOST_CHECK_EQUAL(nearby.at(0),0);
     BOOST_CHECK_EQUAL(nearby.at(1),0);
@@ -233,52 +281,57 @@ BOOST_AUTO_TEST_CASE(check_index_table)
     BOOST_CHECK_EQUAL(nearby.at(3),10*10.);
 
     //Check periodic wrapping is working
-    float pos5[3] = {1000,9999.9,9999.9};
-    nearby = tab.get_near_lines(pos5, 0.6);
+    double pos5[3] = {1000,9999.9,9999.9};
+    nearby = lines_near(tab, pos5, 0.6);
     BOOST_CHECK_EQUAL(nearby.size(),2);
     FLOATS_APPROX_NEAR_TO(nearby.at(4),0.5*0.5+0.2*0.2);
     FLOATS_APPROX_NEAR_TO(nearby.at(5),0.3*0.3+0.4*0.4);
 
     //Check multiple axes
-    float pos4[3] = {1000.5,2000,501};
-    nearby = tab.get_near_lines(pos4, 1.5);
+    double pos4[3] = {1000.5,2000,501};
+    nearby = lines_near(tab, pos4, 1.5);
     BOOST_CHECK_EQUAL(nearby.size(),3);
     FLOATS_APPROX_NEAR_TO(nearby.at(7),0.25);
     FLOATS_APPROX_NEAR_TO(nearby.at(8),0.25+1);
     FLOATS_APPROX_NEAR_TO(nearby.at(9),1);
 
+}
+
+/* Check the transpose: the particles near each line. */
+BOOST_FIXTURE_TEST_CASE(check_index_table, TestLines)
+{
+    IndexTable tab = table();
     //Now test get_near_particles
-    float poses[3*9] = { 500,2000,1000, 5000,2000.0,1000.0, 5010.0,2010,990,
+    double poses[3*9] = { 500,2000,1000, 5000,2000.0,1000.0, 5010.0,2010,990,
                         4000,4000,4000, 1000,9999.9,9999.9, 1000.5,2000,501,
                         7500,7500,7500, 4008,4008.0,4008.0, 2000.0,9999,9999.8};
-    float hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
-    std::valarray< std::map<int, double> > nearby_array = tab.get_near_particles(poses, hh, 9);
-    BOOST_CHECK_EQUAL(nearby_array.size(), nextlos);
+    double hh[9] = {1,1,20,25,0.6,1.5,7,10,0.8};
+    NearParticles nearby_array = tab.get_near_particles(poses, hh, 9);
+    BOOST_CHECK_EQUAL(nearby_array.nlines(), nextlos);
     //Did we pick up the right number of particles in all cases?
-    BOOST_CHECK_EQUAL(nearby_array[0].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[1].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[2].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[3].size(),2);
-    BOOST_CHECK_EQUAL(nearby_array[4].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[5].size(),2);
-    BOOST_CHECK_EQUAL(nearby_array[6].size(),3);
-    BOOST_CHECK_EQUAL(nearby_array[7].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[8].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[9].size(),1);
-    BOOST_CHECK_EQUAL(nearby_array[10].size(),0);
-    BOOST_CHECK_EQUAL(nearby_array[11].size(),0);
-    BOOST_CHECK_EQUAL(nearby_array[12].size(),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(0),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(1),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(2),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(3),2);
+    BOOST_CHECK_EQUAL(nearby_array.size(4),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(5),2);
+    BOOST_CHECK_EQUAL(nearby_array.size(6),3);
+    BOOST_CHECK_EQUAL(nearby_array.size(7),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(8),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(9),1);
+    BOOST_CHECK_EQUAL(nearby_array.size(10),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(11),0);
+    BOOST_CHECK_EQUAL(nearby_array.size(12),0);
     //Check a few values
-    BOOST_CHECK_EQUAL(nearby_array[0].begin()->first,3);
-    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
-    BOOST_CHECK(nearby_array[3].find(3) != nearby_array[3].end());
-    BOOST_CHECK(nearby_array[5].find(4) != nearby_array[5].end());
-    BOOST_CHECK(nearby_array[5].find(8) != nearby_array[5].end());
-    std::map<int, double>::iterator it = nearby_array[6].begin();
-    BOOST_CHECK_EQUAL(it->first,0);
-    BOOST_CHECK_EQUAL((++it)->first,1);
-    BOOST_CHECK_EQUAL((++it)->first,2);
-    BOOST_CHECK_EQUAL(nearby_array[8].begin()->first,5);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[0]],3);
+    BOOST_CHECK(has_particle(nearby_array, 3, 3));
+    BOOST_CHECK(has_particle(nearby_array, 5, 4));
+    BOOST_CHECK(has_particle(nearby_array, 5, 8));
+    //The particles of a line come out in increasing index order
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]],0);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]+1],1);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[6]+2],2);
+    BOOST_CHECK_EQUAL(nearby_array.part[nearby_array.offsets[8]],5);
 }
 
 BOOST_AUTO_TEST_CASE(check_profile)

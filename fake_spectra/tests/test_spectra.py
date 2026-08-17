@@ -20,9 +20,7 @@ def load_savefile(self,savefile=None):
 def _interpolate_single_file(self,fn, elem, ion, ll, get_tau):
 def _read_particle_data(self,fn, elem, ion, get_tau):
 def _filter_particles(self, elem_den, pos, velocity, den):
-def _get_elem_den(self, elem, ion, den, temp, data, ind, ind2, star):
 def _do_interpolation_work(self,pos, vel, elem_den, temp, hh, amumass, line, get_tau):
-def particles_near_lines(self, pos, hh,axis=None, cofm=None):
 def _vel_single_file(self,fn, elem, ion):
 def _temp_single_file(self,fn, elem, ion):
 def compute_spectra(self,elem, ion, ll, get_tau):
@@ -79,13 +77,15 @@ def eq_width_hist(self, elem, ion, line, dv=0.05, eq_cut = 0.02):
 
 """
 
+import os
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
-from fake_spectra import spectra as ss
 from fake_spectra import unitsystem
 from fake_spectra import spec_utils
 from fake_spectra import voigtfit
-from fake_spectra import halocat
+from fake_spectra import near_lines as near_lines_mod
+from fake_spectra.near_lines import near_lines
 
 #def setup():
     #"""Load the fake data section and module to be used by these tests"""
@@ -148,3 +148,231 @@ def test_voigtfit():
         (ll, tfit) = prof.get_fitted_profile()
         #Check the fit is reasonable
         assert np.sum((tfit - tau)**2/(tau+0.5)**2)/np.size(tfit) < 0.05
+
+def test_hcd_isolated():
+    """Check that a single isolated HCD is fitted out and its core masked."""
+    nbins = 2048
+    dvbin = 5.
+    prof = voigtfit.HCDProfiles(nbins, dvbin)
+    amplitude = 5e6
+    tau = np.roll(prof.profile(prof.btherm, amplitude), 300)
+    (newtau, mask) = prof.do_hcd_fit(tau)
+    #The wings should be subtracted to nothing: the residual is 5e-3
+    assert np.max(newtau) < 1.
+    #The core, where the profile is saturated, should be masked
+    assert np.all(mask == (tau > 1))
+    #The peak of the profile is masked, the edges of the spectrum are not
+    assert mask[(nbins//2 + 300) % nbins]
+    assert not mask.all()
+
+def test_hcd_amplitude():
+    """Check that the fitted amplitude of an isolated HCD is recovered."""
+    prof = voigtfit.HCDProfiles(2048, 5.)
+    for amplitude in (1e6, 5e6, 1e7, 1e8):
+        tau = prof.profile(prof.btherm, amplitude)
+        (_, fitted) = prof.iterate_new_spectrum(tau)
+        assert np.abs(fitted / amplitude - 1) < 0.01
+
+def _forest(nbins, seed=7):
+    """A smooth, noiseless forest-like optical depth field with mean tau ~0.4."""
+    rng = np.random.default_rng(seed)
+    kk = np.fft.rfftfreq(nbins)
+    gauss = np.fft.irfft(np.fft.rfft(rng.normal(size=nbins))*np.exp(-0.5*(kk/0.01)**2), nbins)
+    return np.exp(gauss/np.std(gauss) - 1.)
+
+def test_hcd_forest():
+    """Check that absorption blended with the HCD does not bias the fitted amplitude.
+    The integral of the forest over a spectrum is negligible next to that of an HCD.
+    A least squares fit is instead biased high here by a factor of a few: extra
+    absorption is one-sided, so the only way a fit can account for it is to deepen
+    the profile."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    amplitude = 8e6
+    hcd = prof.profile(prof.btherm, amplitude)
+    #A uniform absorbing floor, and a smoothly varying forest
+    for extra in (0.1, 0.3, 1.0, _forest(nbins)):
+        (fitted, amp) = prof.iterate_new_spectrum(hcd + extra)
+        assert np.abs(amp / amplitude - 1) < 0.01
+    #End to end: the forest outside the mask must survive the subtraction intact
+    forest = _forest(nbins)
+    (newtau, mask) = prof.do_hcd_fit(hcd + forest)
+    #The mask should cover the core and not much more
+    assert (hcd > 1).sum() <= mask.sum() < 1.1 * (hcd > 1).sum()
+    #Nothing outside the mask should be over-subtracted down to zero optical depth
+    assert not np.any((newtau[~mask] == 0) & (forest[~mask] > 0.1))
+    assert np.abs(np.mean(np.exp(-newtau[~mask])) / np.mean(np.exp(-forest[~mask])) - 1) < 0.01
+
+def test_hcd_saturated():
+    """Check an absorber saturated over the whole spectrum, so that the window
+    cannot be placed inside it."""
+    prof = voigtfit.HCDProfiles(64, 5.)
+    amplitude = 1e8
+    tau = prof.profile(prof.btherm, amplitude)
+    #Even the least absorbed pixel in the spectrum is saturated
+    assert np.min(tau) > 100
+    (fitted, amp) = prof.iterate_new_spectrum(tau)
+    assert np.abs(amp / amplitude - 1) < 0.05
+
+def test_hcd_components():
+    """Check that a system whose column density is spread over several components is
+    recovered in full. The peak optical depth badly under-represents such a system,
+    but the integrated optical depth is unchanged by velocity structure."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    total = 8e6
+    for (ncomp, sep) in ((3, 40), (5, 30), (3, 100)):
+        tau = np.sum([np.roll(prof.profile(prof.btherm, total/ncomp), (i - ncomp//2)*sep)
+                      for i in range(ncomp)], axis=0)
+        #The peak is only a fraction of the total column
+        assert np.max(tau) < 0.4 * total
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp / total - 1) < 0.01
+
+def test_hcd_pair():
+    """Check that two absorbers blended inside the same window are resolved into
+    separate profiles. A single symmetric profile lumps their column densities
+    together at the position of the stronger one, and so over-predicts the far wing."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    mask = np.ones(nbins, dtype=bool)
+    for (sep, second) in ((30, 3e6), (60, 3e6), (150, 8e5), (200, 3e6)):
+        shapes = [prof.shape_at(nbins//2), prof.shape_at(nbins//2 + sep)]
+        tau = 8e6*shapes[0] + second*shapes[1]
+        (centres, amps) = prof.fit_profiles(tau, mask, [nbins//2, nbins//2 + sep], 0.5)
+        assert np.abs(amps[0]/8e6 - 1) < 0.01
+        assert np.abs(amps[1]/second - 1) < 0.01
+        #The total column density is recovered whether or not the pair is resolved
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/(8e6 + second) - 1) < 0.01
+
+def test_hcd_neighbour():
+    """Check that an absorber outside the window is left for a later iteration:
+    its column density must not be counted as part of this one."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    amplitude = 8e6
+    hcd = amplitude*prof.shape_at(nbins//2)
+    for sep in (400, 800):
+        tau = hcd + 3e6*prof.shape_at(nbins//2 + sep)
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/amplitude - 1) < 0.01
+        #and the fitted profile is a single one, centred on this absorber
+        assert np.max(np.abs(fitted - amplitude*prof.shape_at(nbins//2))) < 0.01 * amplitude
+
+def test_hcd_notsplit():
+    """Check that a single absorber in the forest is not spuriously split in two."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    for amplitude in (1e6, 8e6, 5e7):
+        tau = amplitude*prof.shape_at(nbins//2) + _forest(nbins)
+        (fitted, amp) = prof.iterate_new_spectrum(tau)
+        assert np.abs(amp/amplitude - 1) < 0.01
+        assert np.max(np.abs(fitted - amp*prof.shape_at(nbins//2))) < 0.01 * amplitude
+
+def test_hcd_recentre():
+    """Check that a profile is centred on the bulk of the absorption rather than on the
+    peak pixel. An absorber with internal velocity structure has its peak away from its
+    centroid, and a profile centred on the peak over-predicts the wing on the far side."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    mask = np.ones(nbins, dtype=bool)
+    #A lopsided absorber: a strong narrow peak with a weaker shoulder to one side.
+    tau = 6e6*prof.shape_at(nbins//2) + 2e6*prof.shape_at(nbins//2 - 20) + 2e6*prof.shape_at(nbins//2 - 40)
+    assert np.argmax(tau) == nbins//2
+    (centres, amps) = prof.fit_profiles(tau, mask, [nbins//2], 0.5)
+    #The centre moves blueward, towards the bulk of the column density
+    assert centres[0] < nbins//2
+    #and the profile must not over-predict the optical depth in either damping wing
+    fitted = amps[0]*prof.shape_at(centres[0])
+    dvel = np.abs(np.arange(nbins) - nbins//2)*5.
+    wings = (dvel > 500) & (dvel < 3000)
+    assert not np.any(fitted[wings] > tau[wings])
+    #A symmetric absorber is not moved at all
+    tau = 6e6*prof.shape_at(nbins//2) + 2e6*prof.shape_at(nbins//2 - 20) + 2e6*prof.shape_at(nbins//2 + 20)
+    assert prof.fit_profiles(tau, mask, [nbins//2], 0.5)[0] == [nbins//2]
+
+def test_hcd_blended():
+    """Check that two blended HCDs are both found, and that a spectrum
+    without an HCD is left alone."""
+    nbins = 2048
+    prof = voigtfit.HCDProfiles(nbins, 5.)
+    rng = np.random.default_rng(23)
+    noise = rng.exponential(0.3, nbins)
+    tau = noise + np.roll(prof.profile(prof.btherm, 3e6), -600) + prof.profile(prof.btherm, 8e6)
+    (newtau, mask) = prof.do_hcd_fit(tau)
+    #Both cores are masked
+    assert mask[nbins//2]
+    assert mask[(nbins//2 - 600) % nbins]
+    #Both damping wings are gone: what is left is the noise
+    assert np.max(newtau) < 10 * np.max(noise)
+    #A spectrum with no HCD in it should be untouched
+    (newtau, mask) = prof.do_hcd_fit(noise)
+    assert not np.any(mask)
+    assert np.all(newtau == noise)
+
+def _brute_force_near_lines(box, pos, hh, axis, cofm):
+    """Reference sightline neighbour search: compare every particle to every
+    sightline. Far too slow to use in anger, but hard to get wrong."""
+    #The two coordinates perpendicular to each 1-indexed sightline axis
+    perp = {1: (1, 2), 2: (0, 2), 3: (0, 1)}
+    pos = pos.astype(np.float64)
+    near = np.zeros(np.shape(pos)[0], dtype=bool)
+    for (ax, line) in zip(axis, cofm):
+        (aa, bb) = perp[int(ax)]
+        dx = np.abs(pos[:, aa] - line[aa])
+        dy = np.abs(pos[:, bb] - line[bb])
+        #Periodic wrapping: take the shorter way round the box
+        dx = np.minimum(dx, box - dx)
+        dy = np.minimum(dy, box - dy)
+        near |= (dx**2 + dy**2 <= hh.astype(np.float64)**2)
+    return np.nonzero(near)[0].astype(np.int32)
+
+def test_near_lines():
+    """Check the sightline neighbour search against a brute force search."""
+    rng = np.random.default_rng(11)
+    for _ in range(20):
+        box = float(rng.choice([10., 100., 25000.]))
+        npart = int(rng.integers(1, 5000))
+        nlos = int(rng.integers(1, 50))
+        pos = (rng.random((npart, 3))*box).astype(np.float32)
+        #Smoothing lengths spanning several decades, with the occasional
+        #very large low-density particle.
+        hh = (10**rng.uniform(-3, np.log10(0.3*box), npart)).astype(np.float32)
+        hh[rng.integers(0, npart, 3)] = box*0.4
+        axis = rng.choice([1, 2, 3], nlos).astype(np.int32)
+        cofm = rng.random((nlos, 3))*box
+        assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
+                              _brute_force_near_lines(box, pos, hh, axis, cofm))
+    #All the sightlines along a single axis
+    axis = np.ones(nlos, dtype=np.int32)
+    assert np.array_equal(near_lines(box, pos, hh, axis, cofm),
+                          _brute_force_near_lines(box, pos, hh, axis, cofm))
+    #Splitting the mesh lookup into blocks, and giving the blocks to a thread
+    #pool, changes neither the particles found nor their order.
+    #An odd size, so that the last block is a short one.
+    npart = 2*near_lines_mod._MESH_BLOCK + 1
+    pos = (rng.random((npart, 3))*box).astype(np.float32)
+    hh = (10**rng.uniform(-3, np.log10(0.3*box), npart)).astype(np.float32)
+    serial = near_lines(box, pos, hh, axis, cofm)
+    assert np.size(serial) > 0
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        assert np.array_equal(near_lines(box, pos, hh, axis, cofm, pool=pool), serial)
+    #Nothing near a sightline: an empty index list, not a failure
+    hh = np.zeros(npart, dtype=np.float32)
+    assert np.size(near_lines(box, pos, hh, axis, cofm)) == 0
+
+def testCpuCount(monkeypatch):
+    """Check the CPU count falls back sensibly on platforms and python versions
+    which do not have the more specific interfaces. Neither fallback can run on
+    linux with a recent python, so fake their absence."""
+    assert spec_utils.cpu_count() >= 1
+    #No os.process_cpu_count: python < 3.13, so use the affinity mask.
+    monkeypatch.delattr(os, "process_cpu_count", raising=False)
+    assert spec_utils.cpu_count() == len(os.sched_getaffinity(0))
+    #No os.sched_getaffinity either: not linux, so all we have is the CPU count.
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    assert spec_utils.cpu_count() == os.cpu_count()
+    #Both missing and the CPU count unknowable: still safe to divide work by.
+    monkeypatch.setattr(os, "cpu_count", lambda: None)
+    assert spec_utils.cpu_count() == 1

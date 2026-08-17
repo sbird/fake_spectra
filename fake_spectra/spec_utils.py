@@ -1,6 +1,21 @@
 """Some utility functions for the spectra."""
+import os
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+
+def cpu_count():
+    """The number of CPUs usable by this process.
+
+    os.process_cpu_count is new in python 3.13 and os.sched_getaffinity is
+    Linux-only, so fall back to the total CPU count where we have to."""
+    try:
+        return os.process_cpu_count() or 1
+    except AttributeError:
+        pass
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:
+        return os.cpu_count() or 1
 
 def res_corr(flux, dvbin, fwhm=8):
     """
@@ -14,10 +29,15 @@ def res_corr(flux, dvbin, fwhm=8):
         args:
             flux - The input flux spectra
             dvbin - the width in km/s for the input flux
-            fwhm - FWHM of the spectrograph in km/s
+            fwhm - FWHM of the spectrograph in km/s. If this is zero, as it is for a
+                   perfect spectrograph, the spectrum is returned unsmoothed.
     """
     # Convert FWHM input to internal units
     res = fwhm/dvbin
+    #An infinite resolution spectrograph does no smoothing. Note gaussian_filter1d
+    #would divide by zero for sigma = 0 and return a spectrum which is all NaN.
+    if res <= 0:
+        return np.copy(flux)
     #FWHM of a Gaussian is 2 \sqrt(2 ln 2) sigma
     sigma = res/(2*np.sqrt(2*np.log(2)))
     #Do filter in wrapping mode to avoid edge effects

@@ -20,8 +20,9 @@ Also note that there is some instability at very low metallicities - the code wi
 
 from __future__ import print_function
 import os
-import os.path as path
+from os import path
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import h5py
 
@@ -32,7 +33,7 @@ from . import unitsystem
 from . import voigtfit
 from . import spec_utils
 from . import fluxstatistics as fstat
-from ._spectra_priv import _Particle_Interpolate, _near_lines
+from ._spectra_priv import _Particle_Interpolate
 
 from .cloudy_tables import convert_cloudy
 def _get_cloudy_table(red, cdir=None):
@@ -41,12 +42,6 @@ def _get_cloudy_table(red, cdir=None):
     if cdir is None:
         return convert_cloudy.CloudyTable(red)
     return convert_cloudy.CloudyTable(red, cdir)
-
-#python2 compat
-try:
-    xrange(1)
-except NameError:
-    xrange = range
 
 class Spectra:
     """Class to interpolate particle densities along a line of sight and calculate their absorption
@@ -81,10 +76,16 @@ class Spectra:
             use_external_Hz - user provided value for H(z) [km/s/Mpc] to be used
                      when converting comoving to velocity units.
                      If not proviced, will assume flat LCDM and compute it.
+            sightlines - Restrict the object to a subset of the sightlines in the savefile:
+                     either a slice or a sorted array of indices. Only these sightlines are
+                     read from disc, so a large file can be used without the memory to hold
+                     all of it. Everything per-sightline (cofm, axis, NumLos, and the lazily
+                     loaded optical depths and column densities) refers to the subset.
     """
     def __init__(self, num, base, cofm, axis, MPI=None, nbins=None, res=1., cdir=None, savefile="spectra.hdf5",
                  savedir=None, reload_file=False, spec_res = 0,load_halo=False, units=None, sf_neutral=True, turn_off_selfshield=False,
-                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None):
+                 quiet=False, load_snapshot=True, gasprop=None, gasprop_args=None, kernel=None, use_external_Hz=None,
+                 sightlines=None):
 
         #Present for compatibility. Functionality moved to HaloAssignedSpectra
         _= load_halo
@@ -117,12 +118,21 @@ class Spectra:
         self.dens_weight_dens = {}
         #A cache of the indices of particles near sightlines.
         self.part_ind = {}
+        #The sightlines to read from the savefile, None for all of them.
+        if sightlines is not None and reload_file:
+            raise ValueError("sightlines selects a subset of a savefile, so it cannot be used with reload_file")
+        self.sightlines = sightlines
         #This variable should be set to true once the sightlines are fixed, and the cache can be used.
         self.cofm_final = False
         self.num_important = {}
 
         self.discarded=0
         self.npart=0
+
+        #Worker threads for the flux statistics. The numpy and scipy calls they
+        #are given release the GIL, so they do real work in parallel. Set to
+        #None to compute the flux statistics in serial instead.
+        self.pool = ThreadPoolExecutor(max_workers=spec_utils.cpu_count())
 
         self.turn_off_selfshield = turn_off_selfshield
 
@@ -165,6 +175,9 @@ class Spectra:
         if reload_file:
             if not quiet:
                 print("Reloading from snapshot (will save to: ", self.savefile, " )", flush=True)
+            #Check this before converting, or we just get an AttributeError.
+            if cofm is None or axis is None:
+                raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
             #Make sure the obvious syntax for a single sightline works
             if np.shape(cofm) == (3,):
                 cofm = np.array([cofm,])
@@ -172,8 +185,6 @@ class Spectra:
             if np.shape(axis) == ():
                 axis = np.array([axis])
             self.axis = axis.astype(np.int32)
-            if cofm is None or axis is None:
-                raise RuntimeError("None was passed for cofm or axis. If you are trying to load from a savefile, use reload_file=False.")
             try:
                 self.npart = self.snapshot_set.get_npart()
                 #If we got here without a snapshot_set, we really have an IOError
@@ -207,7 +218,7 @@ class Spectra:
             self.load_savefile(self.savefile)
 
         # Conversion factors from internal units
-        self.rscale = np.float32((self.units.UnitLength_in_cm*self.atime)/self.hubble)
+        self.rscale = (self.units.UnitLength_in_cm*self.atime)/self.hubble
         #Convert comoving internal units to physical km/s.
         if self.Hz is None:
             #Assume flat LCDM cosmology to compute H(z) (in km/s/Mpc)
@@ -221,10 +232,10 @@ class Spectra:
             # if reloading from snapshot, pixel width must have been defined
             if res is None:
                 if nbins is not None:
-                   self.nbins = nbins
-                   res = self.vmax/(1.*nbins)
+                    self.nbins = nbins
+                    res = self.vmax/(1.*nbins)
                 else:
-                   raise ValueError('pixel width (res) not provided')
+                    raise ValueError('pixel width (res) not provided')
             if nbins is None:
                 # nbins must be an integer
                 self.nbins=int(self.vmax/res)
@@ -257,6 +268,10 @@ class Spectra:
             if gasprop_args is not None:
                 gprop_args.update(gasprop_args)
             self.gasprop = gasprop(**gprop_args)
+            #Share the worker threads with the gas properties class. Set as an attribute
+            #rather than a constructor argument so that gasprop classes which do not use
+            #a pool (including the default one) need not accept it.
+            self.gasprop.pool = self.pool
         except AttributeError:
             #Occurs if we didn't load a snapshot
             pass
@@ -356,6 +371,16 @@ class Spectra:
             #Save the dataset
             gg.create_dataset(str(key[-1]), data=value)
 
+    def _load_sightlines(self, dataset):
+        """Read a dataset with one row per sightline from the savefile, restricted to
+        the sightlines this object was asked for. Reading a subset from the file is
+        much cheaper than reading everything and throwing most of it away.
+        Note getattr: a child class may load a savefile before calling our __init__."""
+        sightlines = getattr(self, "sightlines", None)
+        if sightlines is None:
+            return dataset[:]
+        return dataset[sightlines]
+
     def _really_load_array(self, key, array, array_name):
         """Replace a lazy-loaded array with the real one from disc"""
         #First check it was not already loaded
@@ -364,9 +389,9 @@ class Spectra:
         #If not, load it.
         f = h5py.File(self.savefile, 'r')
         if np.size(key) == 2:
-            array[key] = np.array(f[array_name][str(key[0])][str(key[1])])
+            array[key] = self._load_sightlines(f[array_name][str(key[0])][str(key[1])])
         elif np.size(key) == 3:
-            array[key] = np.array(f[array_name][str(key[0])][str(key[1])][str(key[2])])
+            array[key] = self._load_sightlines(f[array_name][str(key[0])][str(key[1])][str(key[2])])
         else:
             raise ValueError("Not supported")
         f.close()
@@ -376,24 +401,24 @@ class Spectra:
         Parameters:
         snr : an array of signal to noise ratio (constant along each sightine)
         flux : an array of spectra (flux)  we want to add noise to
-        spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
+        spec_num : the index to spectra we want to add noise to. Leave it as -1 to add the noise to all spectra.
+        Returns (flux, noise), where noise has the same shape as the flux passed in.
         """
-        noise_array = np.array([])
-        if np.size(np.shape(flux)) == 1:
-            lines = 1
-        else:
+        lines = 1
+        if np.size(np.shape(flux)) > 1:
             lines = np.shape(flux)[0]
         #This is to get around the type rules.
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum
-            np.random.seed(spec_num)
-            flux += np.random.normal(0, 1./snr[spec_num], self.nbins)
+            np.random.seed(42 if spec_num < 0 else spec_num)
+            noise_array = np.random.normal(0, 1./snr[spec_num], self.nbins)
+            flux += noise_array
         else:
-            for ii in xrange(lines):
+            noise_array = np.empty([lines, self.nbins])
+            for ii in range(lines):
                 np.random.seed(ii)
-                noise = np.random.normal(0, 1./snr[ii], self.nbins)
-                noise_array = np.append(noise_array, noise)
-                flux[ii]+= noise
+                noise_array[ii] = np.random.normal(0, 1./snr[ii], self.nbins)
+                flux[ii] += noise_array[ii]
         return (flux, noise_array)
 
 
@@ -407,14 +432,13 @@ class Spectra:
         spec_num : the index to spectra we want to add nose to. Leave it as -1 to add the noise to all spectra.
         u_delta, l_delta : upper and lower limit of the delta parameter
         """
-        if np.size(np.shape(flux)) == 1:
-            lines = 1
-        else:
+        lines = 1
+        if np.size(np.shape(flux)) > 1:
             lines = np.shape(flux)[0]
         #This is to get around the type rules
         if lines == 1:
             #This ensures that we always get the same noise for the same spectrum and is differen from seed for rand noise
-            np.random.seed(2*spec_num)
+            np.random.seed(2*(85 if spec_num < 0 else spec_num+1))
             delta = np.random.normal(0, CE[spec_num])
             # Use lower and upper limit of delta from 2sigma for the highest CE in the survey
             while (delta < l_delta) or (delta > u_delta):
@@ -422,8 +446,8 @@ class Spectra:
             flux /= (1.0 + delta)
         else:
             delta = np.empty(lines)
-            for ii in xrange(lines):
-                np.random.seed(2*ii)
+            for ii in range(lines):
+                np.random.seed(2*ii+1)
                 delta[ii] = np.random.normal(0, CE[ii])
                 while (delta[ii] < l_delta) or (delta[ii] > u_delta):
                     delta[ii] = np.random.normal(0, CE[ii])
@@ -438,91 +462,96 @@ class Spectra:
             f = h5py.File(savefile, 'r')
         except IOError as io:
             raise IOError("Could not read saved data from: "+savefile+". If the file does not exist, try using reload_file=True") from io
-        else:
-            with f:
-                grid_file = f["Header"]
-                self.red = grid_file.attrs["redshift"]
-                self.atime = 1./(1+self.red)
-                self.OmegaM = grid_file.attrs["omegam"]
-                self.nbins = grid_file.attrs["nbins"]
-                self.omegab = grid_file.attrs["omegab"]
-                self.OmegaLambda = grid_file.attrs["omegal"]
-                self.hubble = grid_file.attrs["hubble"]
-                self.npart = np.array(grid_file.attrs["npart"])
-                self.box = grid_file.attrs["box"]
-                self.discarded = grid_file.attrs["discarded"]
-                grp = f["colden"]
+        with f:
+            grid_file = f["Header"]
+            self.red = grid_file.attrs["redshift"]
+            self.atime = 1./(1+self.red)
+            self.OmegaM = grid_file.attrs["omegam"]
+            self.nbins = grid_file.attrs["nbins"]
+            self.omegab = grid_file.attrs["omegab"]
+            self.OmegaLambda = grid_file.attrs["omegal"]
+            self.hubble = grid_file.attrs["hubble"]
+            self.npart = np.array(grid_file.attrs["npart"])
+            self.box = grid_file.attrs["box"]
+            self.discarded = grid_file.attrs["discarded"]
+            grp = f["colden"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.colden[(elem, int(ion))] = np.array([0])
+            grp = f["tau_obs"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.tau_obs[(elem, int(ion))] = np.array([0])
+            grp = f["tau"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    for line in grp[elem][ion].keys():
+                        self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
+            try:
+                grp = f["velocity"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        self.colden[(elem, int(ion))] = np.array([0])
-                grp = f["tau_obs"]
+                        self.velocity[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["temperature"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        self.tau_obs[(elem, int(ion))] = np.array([0])
-                grp = f["tau"]
+                        self.temp[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            try:
+                grp = f["density_weight_density"]
                 for elem in grp.keys():
                     for ion in grp[elem].keys():
-                        for line in grp[elem][ion].keys():
-                            self.tau[(elem, int(ion), int(float(line)))] = np.array([0])
-                try:
-                    grp = f["velocity"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.velocity[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                try:
-                    grp = f["temperature"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.temp[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                try:
-                    grp = f["density_weight_density"]
-                    for elem in grp.keys():
-                        for ion in grp[elem].keys():
-                            self.dens_weight_dens[(elem, int(ion))] = np.array([0])
-                except KeyError:
-                    pass
-                grp = f["num_important"]
-                for elem in grp.keys():
-                    for ion in grp[elem].keys():
-                        self.num_important[(elem, int(ion))] = np.array(grp[elem][ion])
-                grp = f["spectra"]
-                self.cofm = np.array(grp["cofm"])
-                self.axis = np.array(grp["axis"])
-                # older files might not have Hz stored
-                if "Hz" in grid_file.attrs:
-                    self.Hz = grid_file.attrs["Hz"]
-                else:
-                    self.Hz = None
+                        self.dens_weight_dens[(elem, int(ion))] = np.array([0])
+            except KeyError:
+                pass
+            grp = f["num_important"]
+            for elem in grp.keys():
+                for ion in grp[elem].keys():
+                    self.num_important[(elem, int(ion))] = self._load_sightlines(grp[elem][ion])
+            grp = f["spectra"]
+            self.cofm = self._load_sightlines(grp["cofm"])
+            self.axis = self._load_sightlines(grp["axis"])
+            # older files might not have Hz stored
+            if "Hz" in grid_file.attrs:
+                self.Hz = grid_file.attrs["Hz"]
+            else:
+                self.Hz = None
+
+    def _need_temp(self, elem, ion, get_tau):
+        """Do we need to load the temperature? It is used for the line width when computing tau,
+        and by the cloudy table for every ion except the HI special case, which has its own
+        neutral fraction. Note H is not special for ions other than HI."""
+        return get_tau or (ion != -1 and not (elem == 'H' and ion == 1))
 
     def _interpolate_single_file(self, nsegment, elem, ion, ll, get_tau, load_all_data_first=False):
         """Read arrays and perform interpolation for a single file"""
         (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(nsegment, elem, ion, get_tau)
         if load_all_data_first:
+            #Accumulate the segments and join them once at the end: appending to an array
+            #inside the loop recopies everything read so far for each new segment.
+            #Segments with no particles near a sightline are simply not collected.
+            segments = [] if amumass is False else [(pos, vel, elem_den, temp, hh)]
             for nseg in range(1, self.snapshot_set.get_n_segments()):
                 (pos_, vel_, elem_den_, temp_, hh_, amumass_) = self._read_particle_data(nseg, elem, ion, get_tau)
                 if amumass_ is False:
                     continue
-                # We cannot concatenate onto empty arrays,
-                #so if the first segment contained no particles we must rename
-                if amumass is False:
-                    pos = pos_
-                    vel = vel_
-                    temp = temp_
-                    elem_den = elem_den_
-                    hh = hh_
-                else:
-                    pos = np.concatenate((pos, pos_), axis=0)
-                    if get_tau:
-                        vel = np.concatenate((vel, vel_), axis=0)
-                    elem_den = np.append(elem_den, elem_den_)
-                    if get_tau or (ion != -1 and elem != 'H'):
-                        temp = np.append(temp, temp_)
-                    hh = np.append(hh, hh_)
+                segments.append((pos_, vel_, elem_den_, temp_, hh_))
                 amumass = amumass_
+            if amumass is not False:
+                pos = np.concatenate([seg[0] for seg in segments], axis=0)
+                elem_den = np.concatenate([seg[2] for seg in segments])
+                hh = np.concatenate([seg[4] for seg in segments])
+                #Velocity and temperature are dummies unless we asked for them:
+                #in that case keep the dummy from the first segment we kept.
+                vel = np.concatenate([seg[1] for seg in segments], axis=0) if get_tau else segments[0][1]
+                if self._need_temp(elem, ion, get_tau):
+                    temp = np.concatenate([seg[3] for seg in segments])
+                else:
+                    temp = segments[0][3]
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
         if get_tau:
@@ -547,59 +576,56 @@ class Spectra:
         # print(pos.shape, vel.shape, elem_den.shape, temp.shape, hh.shape, amumass)
         return self._do_interpolation_work(pos, vel, elem_den, temp, hh, amumass, line, get_tau)
 
-    def _read_particle_data(self, fn, elem, ion, get_tau):
-        """Read the particle data for a single interpolation"""
-        pos = self.snapshot_set.get_data(0, "Position", segment=fn).astype(np.float32)
-        hh = self.snapshot_set.get_smooth_length(0, segment=fn).astype(np.float32)
+    def _read_particle_data(self, fn, elem, ion, get_tau, get_species_den=False):
+        """Read the particle data for a single interpolation.
+        If get_species_den is True, an extra array is returned containing the density of
+        this element in all ionisation states. It is on the same (filtered) particles as
+        the ionic density, so the two can be multiplied together."""
+        #Sentinel returned when there is nothing near a sightline.
+        empty = (False, False, False, False, False, False) + ((False,) if get_species_den else ())
+        #These two are needed in full to find the particles near a sightline,
+        #but the search does not need them in single precision, so convert
+        #after indexing like everything else and never hold both copies.
+        pos = self.snapshot_set.get_data(0, "Position", segment=fn)
+        hh = self.snapshot_set.get_smooth_length(0, segment=fn)
 
-        #Find particles we care about
-        if self.cofm_final:
-            try:
-                ind = self.part_ind[fn]
-            except KeyError:
-                ind = self.particles_near_lines(pos, hh, self.axis, self.cofm)
-                self.part_ind[fn] = ind
-        else:
-            ind = self.particles_near_lines(pos, hh, self.axis, self.cofm)
         #Do nothing if there aren't any, and return a suitably shaped zero array
-        if np.size(ind) == 0:
-            return (False, False, False, False, False, False)
-        pos = pos[ind, :]
-        hh = hh[ind]
-        #Get the rest of the arrays: reducing them each time to have a smaller memory footprint
-        vel = np.zeros(1, dtype=np.float32)
-        temp = np.zeros(1, dtype=np.float32)
+        #Get the rest of the arrays: reducing them each time to have a smaller memory footprint.
+        #Note we index first, so that we never touch a whole snapshot block.
+        vel = np.zeros(1)
+        temp = np.zeros(1)
         if get_tau:
-            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn).astype(np.float32)
-            vel = vel[ind, :]
+            vel = self.snapshot_set.get_peculiar_velocity(0, segment=fn)
         #gas density amu / cm^3
-        den = self.gasprop.get_code_rhoH(0, segment=fn).astype(np.float32)
+        den = self.gasprop.get_code_rhoH(0, segment=fn)
         # Get mass of atomic species
         if elem != "Z":
             amumass = self.lines.get_mass(elem)
         else:
             amumass = 1
-        den = den[ind]
         #Only need temp for ionic density, and tau later
-        if get_tau or (ion != -1 and elem != 'H'):
-            temp = self.gasprop.get_temp(0, segment=fn).astype(np.float32)
-            temp = temp[ind]
+        if self._need_temp(elem, ion, get_tau):
+            temp = self.gasprop.get_temp(0, segment=fn)
             #Some codes occasionally output negative temperatures, fix them
             it = np.where(temp <= 0)
             temp[it] = 1
         #Find the mass fraction in this ion
         #Get the mass fraction in this species: elem_den is now density in ionic species in amu/cm^3 kpc/h
         #(these weird units are chosen to be correct when multiplied by the smoothing length)
-        elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, ind)
+        elem_den = (den*self.rscale)*self.get_mass_frac(elem, fn, np.size(hh))
+        #At this point elem_den is the density in all ionisation states of this element.
+        species_den = None
         #Special case H1:
         if elem == 'H' and ion == 1:
+            if get_species_den:
+                species_den = elem_den/amumass
             # Neutral hydrogen mass frac
-            elem_den *= (self.gasprop.get_reproc_HI(0, segment=fn)[ind]).astype(np.float32)
+            elem_den *= self.gasprop.get_reproc_HI(0, segment=fn)
         elif ion != -1:
             #Cloudy density in physical H atoms / cm^3
             ind2 = self._filter_particles(elem_den, pos, vel, den)
             if np.size(ind2) == 0:
-                return (False, False, False, False, False, False)
+                return empty
             #Shrink arrays: we don't want to interpolate particles
             #with no mass in them
             temp = temp[ind2]
@@ -607,26 +633,37 @@ class Spectra:
             hh = hh[ind2]
             if get_tau:
                 vel = vel[ind2]
-            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp, ind, ind2)
+            #Note this must be taken on the same particles as the ionic density below.
+            if get_species_den:
+                species_den = elem_den[ind2]/amumass
+            elem_den = elem_den[ind2] * self._get_elem_den(elem, ion, den[ind2], temp)
             del ind2
-        #Get rid of ind so we have some memory for the interpolator
         del den
         #Put density into number density of particles, from amu
         elem_den /= amumass
         #Do interpolation.
+        if get_species_den:
+            #For ion == -1 the ionic density is the species density.
+            if species_den is None:
+                species_den = elem_den
+            return (pos, vel, elem_den, temp, hh, amumass, species_den)
         return (pos, vel, elem_den, temp, hh, amumass)
 
     def find_all_particles(self):
         """Returns the positions, velocities and smoothing lengths of all particles near sightlines."""
         nsegments = self.snapshot_set.get_n_segments()
-        pp = np.empty([0, 3])
-        hhh = np.array([])
+        #Join once at the end: appending inside the loop would recopy
+        #everything read so far for each new segment.
+        pp = []
+        hhh = []
         for i in range(nsegments):
             (pos, _, _, _, hh, amumass) = self._read_particle_data(i, "H", -1, False)
             if amumass is not False:
-                pp = np.concatenate([pp, pos])
-                hhh = np.concatenate([hhh, hh])
-        return pp, hhh
+                pp.append(pos)
+                hhh.append(hh)
+        if len(pp) == 0:
+            return (np.empty([0, 3]), np.empty(0))
+        return (np.concatenate(pp), np.concatenate(hhh))
 
     def _filter_particles(self, elem_den, pos, velocity, den):
         """Get a filtered list of particles to add to the sightlines"""
@@ -634,10 +671,8 @@ class Spectra:
         ind2 = np.where(elem_den > 0)
         return ind2
 
-    def _get_elem_den(self, elem, ion, den, temp, ind, ind2):
+    def _get_elem_den(self, elem, ion, den, temp):
         """Get the density in an elemental species. Broken out so it can be over-ridden by child classes."""
-        #Shut up a pylint warning
-        _ = (ind, ind2)
         #Load a cloudy table if not done already
         try:
             self.cloudy_table
@@ -661,7 +696,7 @@ class Spectra:
             den2[np.where(den2 < denslimits[0])] = denslimits[0]
         else:
             den2 = den
-        return np.float32(self.cloudy_table.ion(elem, ion, den2, temp2))
+        return self.cloudy_table.ion(elem, ion, den2, temp2)
 
     def _do_interpolation_work(self, pos, vel, elem_den, temp, hh, amumass, line, get_tau):
         """Run the interpolation on some pre-determined arrays, spat out by _read_particle_data"""
@@ -670,44 +705,41 @@ class Spectra:
             gamma_X = 0
         else:
             gamma_X = line.gamma_X
+        #The interpolation works in double precision throughout and takes its
+        #particle data that way. A double precision snapshot, which is what a
+        #modern simulation writes, is already double here and this is free;
+        #a single precision one is widened once, at the boundary.
+        pos = np.asarray(pos, dtype=np.float64)
+        vel = np.asarray(vel, dtype=np.float64)
+        elem_den = np.asarray(elem_den, dtype=np.float64)
+        temp = np.asarray(temp, dtype=np.float64)
+        hh = np.asarray(hh, dtype=np.float64)
         return _Particle_Interpolate(get_tau*1, self.nbins, self.kernel_int, self.box, self.velfac, self.atime, line.lambda_X*1e-8, gamma_X, line.fosc_X, amumass, self.tautail, pos, vel, elem_den, temp, hh, self.axis, self.cofm)
 
-    def particles_near_lines(self, pos, hh, axis=None, cofm=None):
-        """Filter a particle list, returning an index list of those near sightlines"""
-        if axis is None:
-            axis = self.axis
-        if cofm is None:
-            cofm = self.cofm
-        #Axis is 1-indexed between 1 and 3. 1 is x axis.
-        assert np.min(axis) > 0
-        assert np.max(axis) < 4
-        ind = _near_lines(self.box, pos, hh, axis, cofm)
-        return ind
-
-    def get_mass_frac(self, elem, fn, ind):
+    def get_mass_frac(self, elem, fn, npart):
         """Get the mass fraction of a given species from a snapshot.
         Arguments:
             elem = name of element
             data = pointer to hdf5 array containing baryons
-            ind = index of particles we care about
+            npart = number of particles
         Returns mass_frac - mass fraction of this ion
         """
+        #Note we take the particles (and the species) we want before converting,
+        #so that we never convert a whole snapshot block.
         if elem == "Z":
-            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn).astype(np.float32)
+            mass_frac = self.snapshot_set.get_data(0, "Metallicity", segment=fn)
+            #Deal with floating point roundoff - mass_frac will sometimes be negative
+            mass_frac[mass_frac <= 0] = 0
         else:
             nelem = self.species.index(elem)
             #Get metallicity of this metal species
             try:
-                mass_frac = (self.snapshot_set.get_data(0, "GFM_Metals", segment=fn).astype(np.float32))[:, nelem]
+                mass_frac = self.snapshot_set.get_data(0, "GFM_Metals", segment=fn)[:, nelem]
+                mass_frac[mass_frac <= 0] = 0
             except KeyError:
                 #If GFM_Metals is not defined, fall back to primordial abundances
-                metal_abund = np.array([0.76, 0.24], dtype=np.float32)
-                nvalues = self.snapshot_set.get_blocklen(0, "Density", segment=fn)
-                mass_frac = metal_abund[nelem]*np.ones(nvalues, dtype=np.float32)
-        mass_frac = mass_frac[ind]
-        #Deal with floating point roundoff - mass_frac will sometimes be negative
-        mass_frac[np.where(mass_frac <= 0)] = 0
-        assert mass_frac.dtype == np.float32
+                metal_abund = np.array([0.76, 0.24])
+                mass_frac = metal_abund[nelem]*np.ones(npart)
         return mass_frac
 
     def replace_not_DLA(self, ndla, thresh=10**20.3, elem="H", ion=1):
@@ -716,19 +748,23 @@ class Spectra:
         Keep track of the number discarded in self.discarded.
         Must implement get_cofm for this to work
         """
+        #We only replace sightlines, we cannot invent new axes for extra ones.
+        if ndla > self.NumLos:
+            raise ValueError("Cannot find more absorbers (%d) than there are sightlines (%d)" % (ndla, self.NumLos))
         #Declare variables
         found = 0
         wanted = ndla
-        cofm_DLA = np.empty_like(self.cofm)[:ndla, :]
+        cofm_DLA = np.empty([ndla, np.shape(self.cofm)[1]], dtype=self.cofm.dtype)
         #Filter
         #Note: line does nothing
         col_den = self.compute_spectra(elem, ion, 1215, False)
         ind = self.filter_DLA(col_den, thresh)
-        H1_DLA = np.empty_like(col_den)
+        #Note this is indexed by absorber, not by sightline, so it has ndla rows.
+        H1_DLA = np.empty([ndla, np.shape(col_den)[1]], dtype=col_den.dtype)
         #Update saves
         top = np.min([wanted, found+np.size(ind)])
-        cofm_DLA[found:top] = self.cofm[ind][:top, :]
-        H1_DLA[found:top] = col_den[ind][:top, :]
+        cofm_DLA[found:top] = self.cofm[ind][:top-found, :]
+        H1_DLA[found:top] = col_den[ind][:top-found, :]
         found += np.size(ind)
         self.discarded = self.NumLos-np.size(ind)
         print("Discarded: ", self.discarded)
@@ -745,11 +781,12 @@ class Spectra:
             self.discarded += self.NumLos-np.size(ind)
             print("Discarded: ", self.discarded)
         #Correct proportions in case we find slightly more than we need
-        self.discarded = int(self.discarded*1.*wanted/1./found)
+        if found > 0:
+            self.discarded = int(self.discarded*1.*wanted/1./found)
         #Copy back
         self.cofm = cofm_DLA
         self.axis = self.axis[:ndla]
-        self.colden[("H", 1)] = H1_DLA[:top]
+        self.colden[(elem, ion)] = H1_DLA
         #Finalise the cofm array
         self.cofm_final = True
         self.NumLos = ndla
@@ -811,12 +848,12 @@ class Spectra:
         """
         #Get array sizes
         nsegments = self.snapshot_set.get_n_segments(part_type=0)
-        arepo = (self.kernel_int == 2)
+        arepo = self.kernel_int == 2
         if arepo :
             nsegments=1
         result = self._interpolate_single_file(0, elem, ion, ll, get_tau, load_all_data_first=arepo)
         #Do remaining files
-        for nn in xrange(1, nsegments):
+        for nn in range(1, nsegments):
             tresult = self._interpolate_single_file(nn, elem, ion, ll, get_tau)
             print(f"rank = {self.rank} | "+"Interpolation %.1f percent done" % (100*nn/nsegments), flush=True)
             #Add new file
@@ -840,7 +877,7 @@ class Spectra:
         #lambda in Angstroms, dvbin in km/s,
         #so dl is in Angstrom
         dl = self.dvbin / light * line
-        eq_width = np.trapz(-np.expm1(-tau), dx=dl, axis=1)
+        eq_width = np.trapezoid(-np.expm1(-tau), dx=dl, axis=1)
         #Don't need to divide by 1+z as lambda_X is already rest wavelength
         return eq_width
 
@@ -903,21 +940,22 @@ class Spectra:
             self._really_load_array((elem, ion), self.tau_obs, "tau_obs")
             ntau = self.tau_obs[(elem, ion)]
         except KeyError:
-            #Compute tau for each line
+            #Compute tau for each line. compute_spectra is float32, so there is
+            #no point storing this in double: it is the largest array we make.
             nlines = len(self.lines[(elem, ion)])
-            tau = np.zeros([nlines, self.NumLos, self.nbins])
-            for ll in range(nlines):
-                line = list(self.lines[(elem, ion)].keys())[ll]
-                tau_loc = self.compute_spectra(elem, ion, line, True)
-                tau[ll, :, :] = tau_loc
-                del tau_loc
+            tau = np.zeros([nlines, self.NumLos, self.nbins], dtype=np.float32)
             #Maximum tau in each spectra with each line,
             #after convolving with a Gaussian for instrumental broadening.
-            maxtaus = np.max(spec_utils.res_corr(tau, self.dvbin, self.spec_res), axis=-1)
+            #Convolve one line at a time, so we never need a second copy of the whole array.
+            maxtaus = np.empty([nlines, self.NumLos])
+            for ll in range(nlines):
+                line = list(self.lines[(elem, ion)].keys())[ll]
+                tau[ll, :, :] = self.compute_spectra(elem, ion, line, True)
+                maxtaus[ll, :] = np.max(spec_utils.res_corr(tau[ll], self.dvbin, self.spec_res), axis=-1)
             #Array for line indices
-            ntau = np.empty([self.NumLos, self.nbins])
+            ntau = np.empty([self.NumLos, self.nbins], dtype=np.float32)
             #Use the maximum unsaturated optical depth
-            for ii in xrange(self.NumLos):
+            for ii in range(self.NumLos):
                 # we want unsaturated lines, defined as those with tau < 3
                 #which is the maximum tau in the sample of Neeleman 2013
                 #Also use lines with some absorption: tau > 0.1, roughly twice noise level.
@@ -965,7 +1003,7 @@ class Spectra:
         result = func(0, elem, ion)
         if nsegments > 1:
             #Do remaining files
-            for nn in xrange(1, nsegments):
+            for nn in range(1, nsegments):
                 tresult = func(nn, elem, ion)
                 #Add new file
                 result += tresult
@@ -997,7 +1035,7 @@ class Spectra:
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
         line = self.lines[("H", 1)][1215]
-        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        phys = self.dvbin/self.velfac*self.rscale
         temp = self._do_interpolation_work(pos, vel, elem_den*temp/phys, temp, hh, amumass, line, False)
         return temp
 
@@ -1014,12 +1052,13 @@ class Spectra:
 
     def _densweightdens(self, fn, elem, ion):
         """Get the density weighted interpolated density field for a single file"""
-        (pos, vel, elem_den, temp, hh, amumass) = self._read_particle_data(fn, elem, ion, True)
+        #The species density must be on the same particles as the ionic density,
+        #so ask for both from a single read.
+        (pos, vel, elem_den, temp, hh, amumass, species_den) = self._read_particle_data(fn, elem, ion, True, get_species_den=True)
         if amumass is False:
             return np.zeros([np.shape(self.cofm)[0], self.nbins], dtype=np.float32)
-        (_, _, species_den, _, _, _) = self._read_particle_data(fn, elem, -1, True)
         line = self.lines[("H", 1)][1215]
-        phys = np.float32(self.dvbin/self.velfac*self.rscale)
+        phys = self.dvbin/self.velfac*self.rscale
         dens = self._do_interpolation_work(pos, vel, (elem_den/phys)*(species_den/self.rscale), temp, hh, amumass, line, False)
         return dens
 
@@ -1113,7 +1152,7 @@ class Spectra:
         else:
             rho = self.get_col_density(elem, ion)
             cbins = np.max((int(np.round((close/self.dvbin))), 1))
-            rhob = np.array([np.sum(rho[:, cbins*i:cbins*(i+1)], axis=1) for i in xrange(int(np.shape(rho)[1]/cbins))]).T
+            rhob = np.array([np.sum(rho[:, cbins*i:cbins*(i+1)], axis=1) for i in range(int(np.shape(rho)[1]/cbins))]).T
             #Check that fp roundoff is not too severe: this can sometimes trigger for silly reasons
             #assert np.abs((np.sum(rhob) / np.sum(rho))-1) < 5e-2
             rho = rhob
@@ -1122,14 +1161,17 @@ class Spectra:
         tot_f_N = tot_f_N/(width*dist*tot_lines)
         return (center, tot_f_N)
 
-    def _rho_abs(self, thresh=10**20.3, upthresh=None, elem="H", ion=1):
+    def _rho_abs(self, thresh=10**20.3, upthresh=np.inf, elem="H", ion=1):
         """Compute rho_abs, the sum of the mass in an absorber,
            divided by the volume of the spectra in g/cm^3 (comoving).
             Omega_DLA = m_p * avg. column density / (1+z)^2 / length of column
         """
+        #None means no upper threshold
+        if upthresh is None:
+            upthresh = np.inf
         #Column density of ion in atoms cm^-2 (physical)
         col_den = np.sum(self.get_col_density(elem, ion), axis=1)
-        if thresh > 0 or upthresh is not None:
+        if thresh > 0 or np.isfinite(upthresh):
             HIden = np.sum(col_den[np.where((col_den > thresh)*(col_den < upthresh))])/np.size(col_den)
         else:
             HIden = np.mean(col_den)
@@ -1137,7 +1179,7 @@ class Spectra:
         #Avg. Column density in g cm^-2 (comoving)
         HIden = self.lines.get_mass(elem) * self.units.protonmass * HIden/(1+self.red)**2
         #Length of column (each cell) in comoving cm
-        length = (self.box*self.units.UnitLength_in_cm/self.hubble)
+        length = self.box*self.units.UnitLength_in_cm/self.hubble
         #Avg density in g/cm^3 (comoving)
         return HIden/length
 
@@ -1176,7 +1218,7 @@ class Spectra:
         #H0 in 1/s units
         h100 = self.units.h100*self.hubble
         #The 1+z factor converts lightspeed to comoving
-        omega_abs = self.lines.get_mass(elem)*self.units.protonmass/self.units.light*h100/self.units.rho_crit(self.hubble)*np.trapz(moment, bins)
+        omega_abs = self.lines.get_mass(elem)*self.units.protonmass/self.units.light*h100/self.units.rho_crit(self.hubble)*np.trapezoid(moment, bins)
         return omega_abs
 
     def line_density(self, thresh=10**20.3, upthresh=10**40, elem="H", ion=1):
@@ -1210,78 +1252,75 @@ class Spectra:
         axis = self.axis[0]
         if axis == 1:
             spos = cofm[:, 1:]
-        if axis == 2:
+        elif axis == 2:
             spos = np.vstack([cofm[:, 0], cofm[:, 2]]).T
-        if axis == 3:
+        else: #axis == 3:
             spos = cofm[:, :2]
         return spos
 
-    def _filter_single_tau_complex(self, tt, taueff, tau_thresh=1e6, thresh2=0.25):
-        """Filter out the DLA regions from a single spectrum. The algorithm is the same as Chabanier 2019.
+    def _filter_tau_rescale(self, tau, tau_thresh=None, masktau=1, mean_flux_desired=None, elem="H", ion=1, line=1215):
+        """Filter optical depths to set pixels around optically thick absorbers to the mean flux,
+           so that dF = 0.
+        The algorithm is the same as Chabanier 2019.
         We find each DLA, identified using a maximum optical depth cut (tau_thresh).
-        We then replace optically thick absorption around the DLA as long as the absorption is larger than
-        mean optical depth + a secondary threshold, thresh2. The replaced absorption is set to the mean flux.
+        We then fit a voigt profile, mask the core, and correct the wings.
 
-        Arguments: tt: optical depth array from a single spectrum.
-        taueff: effective tau. The DLA will be replaced with constant absorption at this value.
-        tau_thresh: optical depth threshold at which to enable filtering.
-        thresh2: how far out from the center should we replace the filtered values"""
-        #Chabanier uses about 20% of the absorption from DLA, which works out to thresh2 = 0.25
-        #She corrects the wings using a Voigt profile, but that seems tricky.
-        tot = 0
-        newthresh = taueff + thresh2
-        while np.max(tt) > tau_thresh:
-            maxx = np.argmax(tt)
-#             print("m %g, w %d" % (np.max(tt), maxx))
-            j = 0
-            while tt[maxx-j] > newthresh:
-                tt[maxx-j] = taueff
-                #Note python indexing means no need to deal with periodicity
-                j += 1
-            tot += j
-            j = 1
-            if maxx + j >= self.nbins:
-                j -= self.nbins
-            while tt[maxx+j] > newthresh:
-                tt[maxx+j] = taueff
-                j += 1
-                if maxx + j >= self.nbins:
-                    j-= self.nbins
-            tot += j
-#         assert np.max(tt) < tau_thresh*1.01
-        return tt,tot
+        Arguments: tau: optical depth array.
+                   tau_thresh: optical depth threshold at which to enable filtering.
+                   masktau: The region where the optical depth in the fit
+                            Voigt profile is larger than masktau is masked.
 
-    def _filter_tau(self, tau, tau_thresh=None):
-        """Filter optical depths to remove sightlines with optically thick absorbers.
-        Note this alters the input tau array."""
+        'Specifically, we mask all DLA pixels where the transmitted flux decreases by 20% or more
+        and correct the transmitted flux of the remaining DLA pixels using a Voigt profile.' (2503.14741)
+
+        Mutates the input array.
+
+        Returns: masked and rescaled tau array.
+        """
+
+        scale = 1.
+        if mean_flux_desired is not None:
+            #Find the desired mean flux before filtering (note this will be off by 10% or so)
+            scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, pool=self.pool)
+        mask = np.zeros_like(tau, dtype=bool)
         if tau_thresh is not None:
-            tausum = np.max(tau, axis=1)
-            #Tried to exclude the DLA sightlines when computing mean flux, made very small difference.
-            taueff = -1*np.log(np.mean(np.exp(-tau)))
-            ii = np.where(tausum > tau_thresh)
-            #print("Filtering spectra", np.shape(ii))
-            tot = 0
-            for i in ii[0]:
-                (tt, tot2) = self._filter_single_tau_complex(tau[i], taueff, tau_thresh=tau_thresh)
-                tau[i] = tt
-                tot += tot2
-            #print("filter frac all=%g dlalines=%g" % (tot / np.size(tau), tot/np.size(ii)/self.nbins))
-            assert np.max(tau) < tau_thresh*1.01
+            tau_thresh /= scale
+            masktau /= scale
+            voigt = voigtfit.HCDProfiles(self.nbins, self.dvbin, elem=elem, ion=ion, line=line)
+            #Only a sightline containing a strong absorber can be masked at all, and
+            #strong absorbers are rare, so find those sightlines in one vectorised
+            #pass rather than walking every sightline in python.
+            for i in np.nonzero(np.max(tau, axis=1) > tau_thresh)[0]:
+                try:
+                    tau[i], mask[i] = voigt.do_hcd_fit(tau[i], tau_thresh=tau_thresh, masktau=masktau)
+                except AssertionError:
+                    print("Masking failed to converge on spectrum %d of %d" % (i,np.shape(tau)[0]))
+                    mask[i] = True
+                    continue
+            assert not mask.all()
+            if mean_flux_desired is not None:
+                #Pass the mask rather than compressing the array, which is a full copy.
+                scale = fstat.mean_flux(tau, mean_flux_desired=mean_flux_desired, mask=mask if mask.any() else None, pool=self.pool)
+        if mean_flux_desired is not None:
+            tau = np.multiply(tau, scale)
+            tau[mask] = -np.log(mean_flux_desired)
+        elif tau_thresh is not None:
+            tau[mask] = -np.log(np.mean(np.exp(-tau[~mask])))
         return tau
 
     def get_mean_flux(self, elem="H", ion=1, line=1215, tau_thresh=None):
         """Get the mean flux along a set of sightlines"""
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau(tau, tau_thresh=tau_thresh)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, elem=elem, ion=ion, line=line)
         return np.mean(np.exp(-tau))
 
     def get_flux_pdf(self, elem="H", ion=1, line=1215, nbins=20, mean_flux_desired=None, tau_thresh=None):
         """Get the flux PDF, a histogram of the flux values."""
         tau = self.get_tau(elem, ion, line)
-        tau = self._filter_tau(tau, tau_thresh=tau_thresh)
-        return fstat.flux_pdf(tau, nbins=nbins, mean_flux_desired=mean_flux_desired)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
+        return fstat.flux_pdf(tau, nbins=nbins, pool=self.pool)
 
-    def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None):
+    def get_flux_power_1D(self, elem="H", ion=1, line=1215, mean_flux_desired=None, window=False, tau_thresh=None, masktau=1):
         """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -1290,14 +1329,13 @@ class Spectra:
                 to match the desired mean flux.
             window: if True, the flux power spectrum is divided by the window function for the pixel width.
                     This interacts poorly with mean flux rescaling.
-            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling."""
+            tau_thresh: threshold optical depth for a strong absorber. Pixels around the strong absorber are set to the mean flux after mean flux rescaling."""
         tau = self.get_tau(elem, ion, line)
-        #Remove sightlines which contain a strong absorber
-        tau = self._filter_tau(tau, tau_thresh=tau_thresh)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, masktau=masktau, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
         #Mean flux rescaling does not commute with the spectrum resolution correction!
         if mean_flux_desired is not None and window is True and self.spec_res > 0:
             raise ValueError("Cannot sensibly rescale mean flux with gaussian smoothing")
-        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=mean_flux_desired, window=window)
+        (kf, avg_flux_power) = fstat.flux_power(tau, self.vmax, spec_res=self.spec_res, mean_flux_desired=None, window=window, pool=self.pool)
         return kf[1:], avg_flux_power[1:]
 
     def get_flux_power_3D(self, comm_nbodykit=None, elem="H", ion=1, line=1215, mean_flux_desired=None, tau_thresh=None, dk=None, Nmu=10):
@@ -1311,14 +1349,13 @@ class Spectra:
             line: line to use for the optical depth, i.e. 1215 for Lyman alpha
             mean_flux_desired: if not None, the spectral optical depths will be rescaled
                 to match the desired mean flux.
-            tau_thresh: sightlines with a total optical depth greater than this value are removed before mean flux rescaling.
+            tau_thresh: the contiguous regions around pixels with a total optical depth greater than this value are set to the mean flux after mean flux rescaling.
             dk: the k bin width to use for the power spectrum, in h/cMpc units. If None, the default is used which is 2pi/boxsize.
             Nmu: the number of mu bins to use for the power spectrum, the default 10 is what usually used for 3D correlation functions.
             """
         tau = self.get_tau(elem, ion, line)
-        #Remove sightlines which contain a strong absorber
-        tau = self._filter_tau(tau, tau_thresh=tau_thresh)
-        (k, mu, avg_flux_power) = fstat.flux_power_3d(comm_nbodykit, tau, self.box, mean_flux_desired, dk=dk, Nmu=Nmu, quiet=False)
+        tau = self._filter_tau_rescale(tau, tau_thresh=tau_thresh, mean_flux_desired=mean_flux_desired, elem=elem, ion=ion, line=line)
+        (k, mu, avg_flux_power) = fstat.flux_power_3d(comm_nbodykit, tau, self.box, mean_flux_desired=None, dk=dk, Nmu=Nmu, quiet=False)
         # The fist row is the k=0, which we ommit
         return k[1:,:], mu[1:,:], avg_flux_power[1:,:]
 
@@ -1342,13 +1379,13 @@ class Spectra:
         vel = np.linspace(0, self.vmax, flux_i.shape[1])
         vel_stepsize = vel[1]-vel[0] # velocity bin size (km/sec)
         if vel_stepsize >= vel_seg_min:
-            raise Exception("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
+            raise ValueError("Velocity resolution must be less than minimum segment size (vel_stepsize < vel_seg_min)")
 
         # index spacing to get ~velocity breakpoint spacing
         ind_break_spacing = int(np.round(ini_break_spacing/vel_stepsize))
 
         all_spline_flux = np.zeros(flux_i.shape)
-        for j in range(self.NumLos):
+        for j in range(flux_i.shape[0]):
 
             flux = flux_i[j] # flux for current sight line
 
@@ -1423,7 +1460,7 @@ class Spectra:
         vel_stepsize = self.vmax/(flux.shape[1]-1)
 
         if section_size < vel_stepsize/self.velfac or section_size > self.box:
-            raise Exception("Section size must be greater than spatial resolution and <= box size.\n"+"Spatial resolution is "+str(vel_stepsize/self.velfac)+", box size is "+str(self.box))
+            raise ValueError("Section size must be greater than spatial resolution and <= box size.\n"+"Spatial resolution is "+str(vel_stepsize/self.velfac)+", box size is "+str(self.box))
 
         # number of (non-integer) sections that could fit into the box
         n_sections = self.box/section_size
@@ -1509,16 +1546,15 @@ class Spectra:
             section_size = self.box
         # renormalize in section_size chunks (i.e. divide spectra and normalize)
         flux_sections = self.renormalize_flux(flux, section_size)
-
+        nonzeroflux_sections = flux_sections[flux_sections > 0]
         # rescale the renormalized sections
         # tau should be nearly all the optical depths (minus where flux <= 0)
-        tau = -np.log(flux_sections[np.where(flux_sections > 0)])
+        tau = -np.log(nonzeroflux_sections)
         # get the scaling factor
-        scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)))
+        scale = fstat.mean_flux(tau, np.exp(-fstat.obs_mean_tau(1/self.atime - 1)), pool=self.pool)
         # scale the positive flux
         # non-positive flux will be removed in the call to compute_curvature
-        flux_sections[np.where(flux_sections > 0)] = flux_sections[np.where(flux_sections > 0)]**scale
-
+        flux_sections[flux_sections > 0] = nonzeroflux_sections**scale
         # compute mean absolute curvature for each rescaled, renormalized section
         curvature = self.compute_curvature(flux_sections)
 

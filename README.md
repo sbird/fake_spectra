@@ -19,10 +19,8 @@ how to use it.
 
 Required Python libraries:
 - numpy (core functionality)
+- scipy (core functionality)
 - h5py (for saving)
-
-Required C libraries:
-- GSL
 
 Optional libraries:
 - matplotlib (if you want to plot)

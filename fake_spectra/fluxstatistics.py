@@ -5,8 +5,8 @@ Useful for lyman alpha forest work."""
 
 import math
 import numpy as np
+import scipy.fft
 from datetime import datetime
-from ._spectra_priv import _rescale_mean_flux
 
 # You need `nbodykit` only if you want to compute the 3D power spectrum with `flux_power_3d`
 try :
@@ -23,7 +23,28 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
-def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
+#Optical depths are turned into flux one block of this many pixels at a time,
+#so that the scratch space needed does not grow with the size of the input.
+#Small enough that a block stays in cache, large enough that the python
+#overhead of a block is irrelevant.
+_MF_BLOCK = 1 << 19
+#An array of optical depths smaller than this is not worth splitting up.
+_FP_MINTHREAD = 1 << 20
+
+def _mean_flux_sums(block, scale):
+    """Partial sums of exp(-scale*tau) and tau*exp(-scale*tau) over one block of tau.
+    Masked pixels are zeroed, so that they contribute to neither sum.
+    The numpy ufuncs release the GIL, so blocks are summed in parallel."""
+    (tau, mask) = block
+    flux = np.multiply(tau, -scale)
+    np.exp(flux, out=flux)
+    if mask is not None:
+        flux[mask] = 0
+    mean_flux = np.sum(flux, dtype=np.float64)
+    np.multiply(flux, tau, out=flux)
+    return mean_flux, np.sum(flux, dtype=np.float64)
+
+def mean_flux(tau, mean_flux_desired, tol = 1e-6, pool=None, mask=None):
     """Scale the optical depths by a constant value until we get the observed mean flux.
     ie, we want F_obs = bar{F} = < e^-tau >
     Solves iteratively using Newton-Raphson.
@@ -32,31 +53,90 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-5, thresh=1e30):
         tau - optical depths to scale
         mean_flux_desired - mean flux desired
         tol - tolerance within which to hit mean flux
+        pool - ThreadPoolExecutor to sum the blocks with. The default of None
+               means the sums are done in serial.
+        mask - boolean array shaped like tau. True pixels are left out of the mean,
+               which saves compressing the array before calling this.
     returns:
-        scaling factor for tau"""
-    if np.size(tau) == 0:
+        scaling factor for tau."""
+    tau = np.ravel(tau)
+    #A python float, so that the Newton iteration stays in python floats: a numpy
+    #double would promote a single precision block of tau to double precision.
+    mean_flux_desired = float(mean_flux_desired)
+    nbins = np.size(tau)
+    bounds = list(range(0, nbins, _MF_BLOCK)) + [nbins]
+    if mask is not None:
+        mask = np.ravel(mask)
+        nbins -= np.count_nonzero(mask)
+    if nbins == 0:
         return 0
-    return _rescale_mean_flux(tau.astype(np.float64), mean_flux_desired, np.size(tau), tol, thresh)
+    blocks = [(tau[ss:ee], None if mask is None else mask[ss:ee])
+              for (ss, ee) in zip(bounds[:-1], bounds[1:])]
+    if len(blocks) == 1:
+        pool = None
+    newscale = 1.
+    while True:
+        scale = newscale
+        if pool is None:
+            sums = [_mean_flux_sums(bb, scale) for bb in blocks]
+        else:
+            sums = list(pool.map(_mean_flux_sums, blocks, [scale]*len(blocks)))
+        flux = math.fsum([ss[0] for ss in sums])
+        tau_flux = math.fsum([ss[1] for ss in sums])
+        #Newton-Raphson
+        newscale = scale + (flux - mean_flux_desired * nbins)/tau_flux
+        #We don't want the absorption to change sign and become emission;
+        #0 is too far.
+        if newscale <= 0:
+            newscale = 1e-10
+        #Stop once the scale has converged. Written like this so that
+        #if there is a NaN in the data, the condition will be true and we will exit.
+        if not abs(newscale - scale) > tol * newscale:
+            assert not np.isnan(newscale)
+            return newscale
 
-def flux_pdf(tau, nbins=20, mean_flux_desired=None):
-    """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)"""
+def _batch_pdf(tau_batch, scale, bins):
+    """Histogram counts of the flux for one batch of optical depths. The
+    exponential and most of the histogram release the GIL, so batches given to
+    the thread pool run at the same time."""
+    flux = np.exp(-scale * tau_batch)
+    (counts, _) = np.histogram(flux, bins=bins)
+    return counts
+
+def flux_pdf(tau, nbins=20, mean_flux_desired=None, pool=None):
+    """Compute the flux pdf, a normalised histogram of the flux, exp(-tau)
+        Arguments:
+            tau - optical depths
+            nbins - number of bins of the histogram
+            mean_flux_desired - if set, the optical depths are rescaled to it
+            pool - ThreadPoolExecutor to count the batches with. The default of
+                   None means the histogram is computed in serial.
+        Returns:
+            cbins - centre of each flux bin
+            fpdf - normalised histogram of the flux"""
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired)
-    flux = np.exp(-scale * tau)
+        scale = mean_flux(tau, mean_flux_desired, pool=pool)
     bins = np.arange(nbins+1)/(1.*nbins)
-    (fpdf, _) = np.histogram(flux, bins=bins,density=True)
+    tau = np.ravel(tau)
+    ntau = np.size(tau)
+    # count in batches, purely for computational efficiency
+    nbatch = 10
+    if ntau < _FP_MINTHREAD:
+        #Not worth threading, nor splitting up: this is what it used to do.
+        pool = None
+        nbatch = 1
+    bounds = [(i*ntau//nbatch, min((i+1)*ntau//nbatch, ntau)) for i in range(nbatch)]
+    if pool is None:
+        parts = [_batch_pdf(tau[ss:ee], scale, bins) for (ss, ee) in bounds]
+    else:
+        parts = list(pool.map(lambda bb: _batch_pdf(tau[bb[0]:bb[1]], scale, bins), bounds))
+    counts = np.sum(parts, axis=0)
+    #Normalise to a probability density, exactly as np.histogram(density=True)
+    #does: by the bin width and the number of samples which landed in a bin.
+    fpdf = counts/np.diff(bins)/np.sum(counts)
     cbins = (bins[1:] + bins[:-1])/2.
     return cbins, fpdf
-
-def _powerspectrum(inarray, axis=-1):
-    """Compute the power spectrum of the input using np.fft"""
-    rfftd = np.fft.rfft(inarray, axis=axis)
-    # Want P(k)= F(k).re*F(k).re+F(k).im*F(k).im
-    power = np.abs(rfftd)**2
-    #Normalise the FFT so it is independent of input size.
-    power /= np.shape(inarray)[axis]**2
-    return power
 
 def _window_function(k, *, R, dv):
     """The window function corresponding to the spectra response of the spectrograph.
@@ -68,7 +148,17 @@ def _window_function(k, *, R, dv):
     sigma = R/(2*np.sqrt(2*np.log(2)))
     return np.exp(-0.5 * (k * sigma)**2) * np.sinc(k * dv/2/math.pi)
 
-def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
+def _batch_power(tau_batch, scale, workers):
+    """Summed flux power, and the k=0 Fourier mode of each sightline, for one
+    batch of sightlines. Everything in here releases the GIL, so batches given
+    to the thread pool really do run at the same time."""
+    flux = np.exp(-scale*tau_batch)
+    # Calculate flux power for each spectrum in turn.
+    # scipy's fft threads over the transforms, np.fft does not.
+    rfftd = scipy.fft.rfft(flux, axis=1, workers=workers, overwrite_x=True)
+    return np.sum(np.abs(rfftd)**2, axis=0), np.array(rfftd[:, 0].real)
+
+def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False, pool=None):
     """Get the power spectrum of (variations in) the flux along the line of sight.
         This is: P_F(k_F) = <d_F d_F>
                  d_F = e^-tau / mean(e^-tau) - 1
@@ -79,27 +169,43 @@ def flux_power(tau, vmax, spec_res = 8, mean_flux_desired=None, window=False):
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
 	    vmax - velocity scale corresponding to maximal length of the sightline.
+            pool - ThreadPoolExecutor to transform the batches of sightlines
+                   with. The default of None means the power is computed in
+                   serial, letting the transform itself use the threads.
         Returns:
             flux_power - flux power spectrum in km/s. Shape is (npix)
             bins - the frequency space bins of the power spectrum, in s/km.
     """
     scale = 1.
     if mean_flux_desired is not None:
-        scale = mean_flux(tau, mean_flux_desired)
+        scale = mean_flux(tau, mean_flux_desired, pool=pool)
         #print("rescaled: ",scale,"frac: ",np.sum(tau>1)/np.sum(tau>0))
-    else:
-        mean_flux_desired = np.mean(np.exp(-tau))
     (nspec, npix) = np.shape(tau)
-    mean_flux_power = np.zeros(npix//2+1, dtype=tau.dtype)
+    mean_flux_power = np.zeros(npix//2+1, dtype=np.float64)
+    #The k=0 mode of each sightline is the flux summed over pixels, which is
+    #all we need to get the mean flux: no separate pass over tau required.
+    kzero = np.empty(nspec, dtype=np.float64)
     # compute in batches, purely for computational efficiency
-    for i in range(10):
-        end = min((i+1)*nspec//10, nspec)
-        dflux=np.exp(-scale*tau[i*nspec//10:end])/mean_flux_desired - 1.
-        # Calculate flux power for each spectrum in turn
-        flux_power_perspectra = _powerspectrum(dflux, axis=1)
-        #Take the mean and convert units.
-        mean_flux_power += vmax*np.sum(flux_power_perspectra, axis=0)
-    mean_flux_power/= nspec
+    bounds = [(i*nspec//10, min((i+1)*nspec//10, nspec)) for i in range(10)]
+    if nspec*npix < _FP_MINTHREAD:
+        pool = None
+    if pool is None:
+        #Let the transform have the threads if we are not using them ourselves.
+        parts = [_batch_power(tau[ss:ee], scale, -1) for (ss, ee) in bounds]
+    else:
+        parts = list(pool.map(lambda bb: _batch_power(tau[bb[0]:bb[1]], scale, 1), bounds))
+    for (ss, ee), (power, kzchunk) in zip(bounds, parts):
+        mean_flux_power += power
+        kzero[ss:ee] = kzchunk
+    if mean_flux_desired is None:
+        mean_flux_desired = np.sum(kzero)/(nspec*npix)
+    #We want the power of d_F = F/mean(F) - 1. The FFT is linear, so dividing
+    #by the mean flux just rescales every mode and subtracting one shifts k=0
+    #alone: both can be applied to the summed power. The npix**2 normalises
+    #the FFT so it is independent of input size, and vmax converts the units.
+    mean_flux_power *= vmax/(npix**2 * nspec * mean_flux_desired**2)
+    mean_flux_power[0] = vmax*np.sum((kzero/mean_flux_desired - npix)**2)/(npix**2 * nspec)
+    mean_flux_power = mean_flux_power.astype(tau.dtype)
     assert np.shape(mean_flux_power) == (npix//2+1,)
     kf = _flux_power_bins(vmax, npix)
     #Divide out the window function
@@ -111,7 +217,7 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
     """Compute the 3D power spectrum of the input using nbodykit
     Parameters:
     dfux_mesh - 3D array of flux variations, type is `mesh` in `nbodykit`
-    boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+    boxsize - size of the box in units of interest (eg, comoving cMpc/h),
                 the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
     los - line of sight direction, i.e. [0,0,1] for z-axis
     dk - bin width in k
@@ -119,8 +225,8 @@ def _3d_powerspectrum(dflux_mesh, boxsize, los, dk=None, Nmu=10):
     Returns:
     power - a dictionary with the p(k,mu) and the k and mu bins, keys:['power','k','mu']
     """
-    power = FFTPower(dflux_mesh, BoxSize=boxsize, 
-                     mode='2d', los= los, dk=dk, 
+    power = FFTPower(dflux_mesh, BoxSize=boxsize,
+                     mode='2d', los= los, dk=dk,
                      Nmu=Nmu)
     return power.power
 
@@ -134,11 +240,11 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         We compute the power spectrum along each sightline and then average the result.
         Arguments:
         comm_nbodykit: MPI communicator for nbodykit, I prefer to have one communicator for each process, i.e.
-                        turning off parallel processing in nbodykit cause it is already fast enough. 
+                        turning off parallel processing in nbodykit cause it is already fast enough.
                         You can set it as None if parallelism is not a concern to you.
             tau - optical depths. Shape is (NumLos, npix)
             mean_flux_desired - Mean flux to rescale to.
-        boxsize - size of the box in units of interest (eg, comoving cMpc/h), 
+        boxsize - size of the box in units of interest (eg, comoving cMpc/h),
                 the units of the 3d power spectrum, i.e. P(k,mu), will be in these units
         Returns:
             k, mu - the k and mu bins of the power spectrum
@@ -149,7 +255,6 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
         scale = 1.
         if mean_flux_desired is not None:
             scale = mean_flux(tau, mean_flux_desired)
-            tau *= scale
             print(f"rescaled: {scale}, mean_flux_desired = {mean_flux_desired}")
         else:
             mean_flux_desired = np.mean(np.exp(-tau))
@@ -165,15 +270,15 @@ def flux_power_3d(comm_nbodykit, tau, boxsize, mean_flux_desired=None, dk=None, 
             end = min((i+1)*nspec//3, nspec)
             # Turn on nbodkit's loging
             setup_logging('debug')
-            # No interpoaltion is needed if the data is already on a uniform cube
+            # No interpolation is needed if the data is already on a uniform cube
             if npix == nt:
-                mesh = ArrayMesh((np.exp(-tau[i*nspec//3:end])/mean_flux_desired -1 ).reshape((nt, nt, npix)), BoxSize=boxsize)
+                mesh = ArrayMesh((np.exp(-scale * tau[i*nspec//3:end])/mean_flux_desired -1 ).reshape((nt, nt, npix)), BoxSize=boxsize)
                 mesh = mesh.compute(Nmesh=(nt,nt,nt))
             # Otherwise, do TSC interpoaltion to match the transverse resolution
             else:
                 print(f'Interpolating the spectra along the perp direction | {datetime.now()}', flush=True)
-                cat = ArrayCatalog({'Position': coords, 'df': np.exp(-tau[i*nspec//3:end].ravel()) / mean_flux_desired - 1})
-                mesh = cat.to_mesh(Nmesh=[nt, nt, nt], value='df', BoxSize=boxsize, resampler='tsc', compensated=True, interlaced=True)            
+                cat = ArrayCatalog({'Position': coords, 'df': np.exp(-scale * tau[i*nspec//3:end].ravel()) / mean_flux_desired - 1})
+                mesh = cat.to_mesh(Nmesh=[nt, nt, nt], value='df', BoxSize=boxsize, resampler='tsc', compensated=True, interlaced=True)
 
             print(f'Calculating the 3D power spectrum for axis {i} | {datetime.now()}', flush=True)
             los = [0, 0, 0]
@@ -206,8 +311,8 @@ def _flux_power_bins(vmax, npix):
             nbins - number of bins of *input spectrum* - not the fourier output!
         Returns: bin center in s/km
     """
-    #Get the frequency component
-    kf = np.fft.rfftfreq(npix)
+    #Get the frequency component, from the same library as the transform
+    kf = scipy.fft.rfftfreq(npix)
     #Units:
     #The largest frequency scale is the velocity scale of the box,
     #not 1/nbins as rfftfreq gives.

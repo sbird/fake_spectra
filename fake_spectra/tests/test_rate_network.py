@@ -1,9 +1,10 @@
 """Tests for the rate network."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from fake_spectra import rate_network
 from fake_spectra import ratenetworkspectra
-from fake_spectra._spectra_priv import _interpolate_2d
 
 def _exact_alphaHp():
     """For hydrogen recombination we have an exact answer from Ferland et al 1992 (http://adsabs.harvard.edu/abs/1992ApJ...387...95F).
@@ -106,6 +107,39 @@ def testRateNetworkGas():
     elim = (np.log(20), np.log(3e6))
     randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
     randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
-    spl = _interpolate_2d(randd.astype(np.float32), randi.astype(np.float32), gasprop.densgrid, gasprop.ienergygrid, gasprop.lh0grid)
+    spl = gasprop._eval_interp(gasprop.lh0coef, randd, randi)
     rate = np.array([np.log(gasprop.rates.get_neutral_fraction(np.exp(dd), np.exp(ii))) for dd, ii in zip(randd, randi)])
     assert np.all(np.abs(spl - rate) < 1e-5)
+
+def testInterpNodes():
+    """The interpolation should reproduce the tabulated values exactly at the grid
+    nodes. This pins down the padding offset and the order of the two axes."""
+    gasprop = ratenetworkspectra.RateNetworkGas(3, None, sf_neutral=False)
+    dgrid, egrid = np.meshgrid(gasprop.densgrid, gasprop.ienergygrid)
+    nodes = gasprop._eval_interp(gasprop.lh0coef, dgrid.ravel(), egrid.ravel())
+    assert np.all(np.abs(nodes - gasprop.lh0grid.ravel()) < 1e-10)
+
+def testInterpEdges():
+    """Check the interpolation is still accurate within a cell of the edge of the
+    table, where it depends on the padding rather than on a boundary condition."""
+    gasprop = ratenetworkspectra.RateNetworkGas(3, None, sf_neutral=False)
+    dd, ii = gasprop.densgrid, gasprop.ienergygrid
+    #Points within one grid cell of each of the four edges of the table.
+    for (dlim, elim) in ((dd[[0, 1]], ii[[0, -1]]), (dd[[-2, -1]], ii[[0, -1]]),
+                         (dd[[0, -1]], ii[[0, 1]]), (dd[[0, -1]], ii[[-2, -1]])):
+        randd = np.random.uniform(dlim[0], dlim[1], size=100)
+        randi = np.random.uniform(elim[0], elim[1], size=100)
+        interp = gasprop._eval_interp(gasprop.lh0coef, randd, randi)
+        rate = np.array([np.log(gasprop.rates.get_neutral_fraction(np.exp(dd_), np.exp(ii_))) for dd_, ii_ in zip(randd, randi)])
+        assert np.all(np.abs(interp - rate) < 1e-5)
+
+def testInterpParallel():
+    """Check that interpolating on a thread pool gives the same answer as in serial."""
+    gasprop = ratenetworkspectra.RateNetworkGas(3, None, sf_neutral=False)
+    randd = np.random.uniform(gasprop.densgrid[0], gasprop.densgrid[-1], size=4*ratenetworkspectra.MINPARALLEL)
+    randi = np.random.uniform(gasprop.ienergygrid[0], gasprop.ienergygrid[-1], size=4*ratenetworkspectra.MINPARALLEL)
+    serial = gasprop._eval_interp(gasprop.lh0coef, randd, randi)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        gasprop.pool = pool
+        parallel = gasprop._eval_interp(gasprop.lh0coef, randd, randi)
+    assert np.all(serial == parallel)

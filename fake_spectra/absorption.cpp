@@ -3,7 +3,7 @@
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -31,6 +31,9 @@
 
 /*Conversion factor between internal energy and mu and temperature in K */
 #define TSCALE ((GAMMA-1.0) * PROTONMASS * ESCALE / BOLTZMANN)
+
+/*The tabulated Voigt function, built once before main().*/
+const VoigtTable voigt_table;
 
 /* Find the integral of the particle density in this pixel by integrating an SPH kernel
  * over the z direction.
@@ -164,7 +167,7 @@ kernel(kernel_i)
  * tau, and the density from the particle to the array colden
  * The slightly C-style interface is so we can easily use the data in python
  */
-void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const float dens, const float pos, const float smooth)
+void LineAbsorption::add_colden_particle(double * colden, const int nbins, const double dr2, const double dens, const double pos, const double smooth)
 {
   double pos1 = pos;
   if(kernel == VORONOI_MESH)
@@ -209,7 +212,7 @@ void LineAbsorption::add_colden_particle(double * colden, const int nbins, const
   }
 }
 
-void LineAbsorption::add_tau_particle(double * tau, const int nbins, const double dr2, const float dens, const float ppos, const float pvel, const float temp, const float smooth)
+void LineAbsorption::add_tau_particle(double * tau, const int nbins, const double dr2, const double dens, const double ppos, const double pvel, const double temp, const double smooth)
 {
   /* Velocity of particle parallel to los: pos in kpc/h comoving
      to vel in km/s physical. Note that gadget velocities come comoving,

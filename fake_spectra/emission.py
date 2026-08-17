@@ -14,6 +14,7 @@ import h5py
 import numpy as np
 
 from . import spectra as ss
+from .near_lines import near_lines
 
 def maginJy(mag, band):
     """Convert a magnitude to flux in Jansky, according to wikipedia's table"""
@@ -51,7 +52,7 @@ class EmissionSpectra(ss.Spectra):
         #Set each stellar radius to the pixel size
         hh = hhmult*np.ones(np.shape(pos)[0], dtype=np.float32)
         #Find particles we care about
-        ind = self.particles_near_lines(pos, hh,self.axis,self.cofm)
+        ind = near_lines(self.box, pos, hh, self.axis, self.cofm, pool=self.pool)
         #print np.size(ind)
         #Do nothing if there aren't any, and return a suitably shaped zero array
         if np.size(ind) == 0:
@@ -60,7 +61,7 @@ class EmissionSpectra(ss.Spectra):
         hh = hh[ind]
         #Find the magnitude of stars in this band
         emflux = maginJy(self.snapshot_set.get_data(4,"GFM_StellarPhotometrics", segment = fn).astype(np.float32)[ind][:,nband],band)
-        fluxx = np.array([ np.sum(emflux[self.particles_near_lines(pos, hh,np.array([ax,]),np.array([cofm,]))]) for (ax, cofm) in zip(self.axis, self.cofm)])
+        fluxx = np.array([ np.sum(emflux[near_lines(self.box, pos, hh, np.array([ax,]), np.array([cofm,]), pool=self.pool)]) for (ax, cofm) in zip(self.axis, self.cofm)])
         #print np.sum(emflux)
         return fluxx
         #return (pos, emflux, hh)
@@ -139,7 +140,7 @@ def calculator(H0, Omega_M, zz):
     a = np.logspace(np.log10(az), 0, n)
     a2H = a*a*np.sqrt(Omega_M/a**3+WR/(a**4)+WV)
     #Comoving distance
-    DCMR = np.trapz(1./a2H, a)
+    DCMR = np.trapezoid(1./a2H, a)
     #In Mpc
     DC_Mpc = (light/H0) * DCMR
     # angular size distance In Mpc

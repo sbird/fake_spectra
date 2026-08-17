@@ -16,12 +16,24 @@
 #ifndef NOGREAD
 
 #include <math.h>
+#include <vector>
 #include "global_vars.h"
 #include "gadgetreader.hpp"
 
 
 /* Snapshot information */
 #define PARTTYPE 0/* Particle type required */
+
+/* GadgetReader hands back the single precision the file holds, but the
+ * interpolation wants double, so read into a scratch buffer and widen.
+ * ncomp is how many values a particle has in this block: 3 for a position. */
+static void GetBlockDouble(GadgetReader::GSnap& snap, const char * name, double * out, int64_t npart, int ncomp, int64_t start, int mask)
+{
+  std::vector<float> buf((size_t)npart*ncomp);
+  snap.GetBlock(name, &buf[0], npart, start, mask);
+  for(int64_t i = 0; i < npart*ncomp; i++)
+      out[i] = buf[i];
+}
 
 int load_header(const char *fname,double  *atime, double *redshift, double * Hz, double *box100, double *h100)
 {
@@ -70,10 +82,10 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
     exit(1);
   }
   printf("Reading from %ld to %ld\n",StartPart,StartPart+NumPart);
-  snap.GetBlock("POS ",(*P).Pos,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
-  snap.GetBlock("VEL ",(*P).Vel,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  GetBlockDouble(snap, "POS ",(*P).Pos,NumPart,3,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  GetBlockDouble(snap, "VEL ",(*P).Vel,NumPart,3,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
   /* Particle densities */
-  snap.GetBlock("RHO ",(*P).Mass,NumPart,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
+  GetBlockDouble(snap, "RHO ",(*P).Mass,NumPart,1,StartPart, (1<<N_TYPE)-1-(1<<PARTTYPE));
   for(int i=0; i< NumPart;i++)
   if ((*P).Mass[i] != (*P).Mass[0]){
         fprintf(stderr, "i=%d N = %ld Mass change: %g\n",i,NumPart, (*P).Mass[i]);
@@ -83,7 +95,7 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
   if(PARTTYPE == 0)
     { 
       /*The internal energy of all the Sph particles is read in */
-      snap.GetBlock("U   ",(*P).U,NumPart,StartPart,0);
+      GetBlockDouble(snap, "U   ",(*P).U,NumPart,1,StartPart,0);
       /* The free electron fraction */
       if(snap.GetHeader().flag_cooling)
         {
@@ -92,29 +104,29 @@ int64_t load_snapshot(const char *fname,int64_t StartPart, pdata *P)
           /* Use that the universe is neutral, so 
            * NE = NHP + NHEP +2 NHEPP*/
       #ifdef SPLIT_NE
-          snap.GetBlock("NHP ",(*P).Ne,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NHP ",(*P).Ne,NumPart,1,StartPart,0);
           /*Use the space for HSML as temp space*/
-          snap.GetBlock("NHEP",(*P).h,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NHEP",(*P).h,NumPart,1,StartPart,0);
           for(int k=0;k<NumPart;k++){
                   (*P).Ne[k]+=(*P).h[k];
           }
-          snap.GetBlock("NHEQ",(*P).h,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NHEQ",(*P).h,NumPart,1,StartPart,0);
           for(int k=0;k<NumPart;k++){
                   (*P).Ne[k]+=2*(*P).h[k];
           }
       #else
-          snap.GetBlock("NE  ",(*P).Ne,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NE  ",(*P).Ne,NumPart,1,StartPart,0);
       #endif
       #ifdef HELIUM
-          snap.GetBlock("NHE ",(*P).NHep,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NHE ",(*P).NHep,NumPart,1,StartPart,0);
       #endif 
           /* The HI fraction, nHI/nH */
-          snap.GetBlock("NH  ",(*P).fraction,NumPart,StartPart,0);
+          GetBlockDouble(snap, "NH  ",(*P).fraction,NumPart,1,StartPart,0);
           /*An NHE block*/
         }
      /* The smoothing length */
-     snap.GetBlock("HSML",(*P).h,NumPart,StartPart,0);
-     for(i=0;i<NumPart;i++)
+     GetBlockDouble(snap, "HSML",(*P).h,NumPart,1,StartPart,0);
+     for(int64_t i=0;i<NumPart;i++)
              (*P).h[i] = (*P).h[i]/2;
     }
 
