@@ -60,9 +60,6 @@ def mean_flux(tau, mean_flux_desired, tol = 1e-6, pool=None, mask=None):
     returns:
         scaling factor for tau."""
     tau = np.ravel(tau)
-    #A python float, so that the Newton iteration stays in python floats: a numpy
-    #double would promote a single precision block of tau to double precision.
-    mean_flux_desired = float(mean_flux_desired)
     nbins = np.size(tau)
     bounds = list(range(0, nbins, _MF_BLOCK)) + [nbins]
     if mask is not None:
