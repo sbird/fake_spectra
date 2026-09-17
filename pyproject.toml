@@ -11,7 +11,7 @@ requires = [
 
 [project]
 name = "fake_spectra"
-version = "2.3.0"
+version = "2.3.1"
 description = "Analysis tools for generating artificial spectra from simulations."
 readme = {text = "Analysis tools for generating artificial spectra for SPH or meshless cosmological simulation codes, including AREPO, Gadget, SIMBA, etc", content-type = "text/plain"}
 authors = [{name = "Simeon Bird", email = "spb@ucr.edu"}]
