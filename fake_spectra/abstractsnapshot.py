@@ -191,10 +191,10 @@ class HDF5Snapshot(AbstractSnapshot):
         if len(fnames) == 0:
             raise IOError("No files found")
         fnames.sort()
-        
+
         if self.comm is None:
             return [fff for fff in fnames if h5py.is_hdf5(fff) ]
-        
+
         else:
             num_files = len(fnames)
             files_per_rank = int(num_files/size)
@@ -225,7 +225,10 @@ class HDF5Snapshot(AbstractSnapshot):
 
     def get_npart(self):
         """Get the total number of particles in the snapshot."""
-        return self.get_header_attr("NumPart_Total")+2**32*self.get_header_attr("NumPart_Total_HighWord")
+        #Cast to int64 first: numpy 2 no longer promotes uint32 * 2**32 to a wider type.
+        npart = np.asarray(self.get_header_attr("NumPart_Total"), dtype=np.int64)
+        highword = np.asarray(self.get_header_attr("NumPart_Total_HighWord"), dtype=np.int64)
+        return npart + 2**32 * highword
 
     def get_omega_baryon(self):
         """Get omega_baryon from a single file (neglecting stars)."""
@@ -336,7 +339,7 @@ class BigFileSnapshot(AbstractSnapshot):
 
     def get_n_segments(self, part_type, chunk_size = 256.**3):
         """Distribute particles among ranks. Also, break the load on each rank into segments containing
-        chunk_size particles and return number of these segments for each rank""" 
+        chunk_size particles and return number of these segments for each rank"""
         #Store number of particles on each rank in an array
         self.parts_rank = ((self.get_npart()[part_type]//self.size)*np.ones(shape=(self.size,))).astype(int)
         remainder = int(self.get_npart()[part_type]%self.size)
